@@ -230,23 +230,40 @@ export default function ListingDetailPage() {
                 </p>
               )}
 
-              {/* Operator */}
-              <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
-                <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
-                  {String(listing.operatorName || "V").charAt(0)}
-                </div>
-                <div>
-                  <p className="font-semibold text-navy-700">
-                    {String(listing.operatorName || "Local Operator")}
+              {/* Operator / Claim Banner */}
+              {td.unclaimed ? (
+                <div className="mt-8 p-6 bg-gradient-to-r from-gold-500 to-gold-600 rounded-2xl text-white">
+                  <h3 className="font-bold text-lg">Is this your business?</h3>
+                  <p className="text-white/80 text-sm mt-1">
+                    This listing was created from public data. Claim it for free
+                    to add photos, pricing, availability, and start receiving
+                    bookings.
                   </p>
-                  <p className="text-sm text-navy-400">
-                    Verified VakayGo operator
-                  </p>
+                  <a
+                    href="/auth/signup"
+                    className="inline-flex items-center gap-2 bg-white text-gold-600 px-5 py-2.5 rounded-xl font-semibold mt-4 hover:bg-cream-100 transition-colors text-sm"
+                  >
+                    Claim This Business — Free
+                  </a>
                 </div>
-                <div className="ml-auto">
-                  <Shield size={20} className="text-teal-500" />
+              ) : (
+                <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
+                  <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                    {String(listing.operatorName || "V").charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-navy-700">
+                      {String(listing.operatorName || "Local Operator")}
+                    </p>
+                    <p className="text-sm text-navy-400">
+                      Verified VakayGo operator
+                    </p>
+                  </div>
+                  <div className="ml-auto">
+                    <Shield size={20} className="text-teal-500" />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick Info */}
               {listing.typeData && (
