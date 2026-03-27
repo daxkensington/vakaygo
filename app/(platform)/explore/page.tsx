@@ -60,11 +60,14 @@ export default function ExplorePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [activeIsland, setActiveIsland] = useState("");
+
   useEffect(() => {
-    // Check URL params for initial category
     const params = new URLSearchParams(window.location.search);
     const typeParam = params.get("type");
+    const islandParam = params.get("island");
     if (typeParam) setActiveCategory(typeParam);
+    if (islandParam) setActiveIsland(islandParam);
   }, []);
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function ExplorePage() {
       const params = new URLSearchParams();
       if (activeCategory !== "all") params.set("type", activeCategory);
       if (searchQuery) params.set("q", searchQuery);
+      if (activeIsland) params.set("island", activeIsland);
 
       try {
         const res = await fetch(`/api/listings?${params}`);
@@ -87,7 +91,7 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [activeCategory, searchQuery]);
+  }, [activeCategory, searchQuery, activeIsland]);
 
   return (
     <>
