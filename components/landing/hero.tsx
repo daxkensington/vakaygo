@@ -1,81 +1,147 @@
-import { Search, MapPin, Calendar } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Search, MapPin, Calendar, ChevronDown } from "lucide-react";
+
+const heroImages = [
+  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=80&auto=format",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format",
+  "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1920&q=80&auto=format",
+];
 
 export function Hero() {
-  return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background gradient — replace with real hero image later */}
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-700 via-teal-700 to-navy-900" />
-      <div className="absolute inset-0 bg-[url('/images/hero/hero-pattern.svg')] opacity-5" />
-      <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/20 to-transparent" />
+  const [currentImage, setCurrentImage] = useState(0);
+  const [loaded, setLoaded] = useState(false);
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 text-center pt-20">
-        <div className="inline-flex items-center gap-2 bg-gold-500/20 text-gold-300 border border-gold-500/30 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
+  useEffect(() => {
+    setLoaded(true);
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
+      {/* Rotating background images */}
+      {heroImages.map((img, i) => (
+        <div
+          key={img}
+          className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
+          style={{
+            opacity: currentImage === i ? 1 : 0,
+            backgroundImage: `url(${img})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      ))}
+
+      {/* Cinematic overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/40 to-navy-900/90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-900/30 to-transparent" />
+
+      {/* Content */}
+      <div
+        className={`relative z-10 mx-auto max-w-6xl px-6 text-center transition-all duration-1000 ${
+          loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
-          Launching in Grenada — 2026
+          Now launching in Grenada
         </div>
 
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          Your Caribbean
+        <h1
+          className="text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] tracking-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Your Entire Trip.
           <br />
-          Adventure{" "}
-          <span className="text-gold-400">Starts Here</span>
+          <span className="bg-gradient-to-r from-gold-300 via-gold-400 to-gold-500 bg-clip-text text-transparent">
+            One Platform.
+          </span>
         </h1>
 
-        <p className="mt-6 text-lg md:text-xl text-cream-200 max-w-2xl mx-auto leading-relaxed">
-          Discover stays, tours, dining, events, and experiences across the
-          islands — all in one place, powered by locals who know it best.
+        <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed font-light">
+          Stays. Tours. Dining. Events. Transport. Guides.
+          <br className="hidden md:block" />
+          Everything you need for the perfect Caribbean vacation.
         </p>
 
         {/* Search Bar */}
-        <div className="mt-10 mx-auto max-w-3xl">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2 flex flex-col md:flex-row gap-2">
-            <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-4 py-3">
-              <MapPin size={20} className="text-gold-500 shrink-0" />
-              <input
-                type="text"
-                placeholder="Where are you going?"
-                className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium"
-                disabled
-              />
+        <div className="mt-12 mx-auto max-w-3xl">
+          <div className="bg-white/[0.07] backdrop-blur-xl rounded-2xl p-2 shadow-[0_8px_60px_rgba(0,0,0,0.3)] border border-white/10">
+            <div className="flex flex-col md:flex-row gap-2">
+              <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
+                <MapPin size={20} className="text-gold-500 shrink-0" />
+                <div className="text-left">
+                  <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+                    Destination
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Grenada, Caribbean"
+                    className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
+                <Calendar size={20} className="text-gold-500 shrink-0" />
+                <div className="text-left">
+                  <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+                    Dates
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Add your travel dates"
+                    className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
+                    disabled
+                  />
+                </div>
+              </div>
+              <button className="bg-gold-500 hover:bg-gold-600 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]">
+                <Search size={18} />
+                <span className="hidden md:inline">Explore</span>
+              </button>
             </div>
-            <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-4 py-3">
-              <Calendar size={20} className="text-gold-500 shrink-0" />
-              <input
-                type="text"
-                placeholder="When?"
-                className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium"
-                disabled
-              />
-            </div>
-            <button className="bg-gold-500 hover:bg-gold-600 text-white px-8 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
-              <Search size={18} />
-              Explore
-            </button>
           </div>
         </div>
 
-        {/* Trust indicators */}
-        <div className="mt-8 flex flex-wrap justify-center gap-8 text-sm text-cream-300">
-          <div className="flex items-center gap-2">
-            <span className="text-gold-400 font-bold">500+</span> Experiences
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gold-400 font-bold">Verified</span> Local Operators
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gold-400 font-bold">Instant</span> Booking
-          </div>
+        {/* Stats */}
+        <div className="mt-14 flex flex-wrap justify-center gap-12 text-sm">
+          {[
+            { value: "6", label: "Experience Types" },
+            { value: "100%", label: "Local Operators" },
+            { value: "Instant", label: "Booking" },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center">
+              <p className="text-2xl font-bold text-gold-400">{stat.value}</p>
+              <p className="text-white/60 mt-1">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Bottom wave */}
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 120" className="w-full h-auto">
-          <path
-            fill="#FEFCF7"
-            d="M0,96L48,85.3C96,75,192,53,288,53.3C384,53,480,75,576,80C672,85,768,75,864,58.7C960,43,1056,21,1152,21.3C1248,21,1344,43,1392,53.3L1440,64L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"
+      {/* Scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+        <ChevronDown size={28} className="text-white/40" />
+      </div>
+
+      {/* Image indicators */}
+      <div className="absolute bottom-8 right-8 z-10 flex gap-2">
+        {heroImages.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentImage(i)}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              currentImage === i
+                ? "bg-gold-400 w-6"
+                : "bg-white/30 hover:bg-white/50"
+            }`}
           />
-        </svg>
+        ))}
       </div>
     </section>
   );

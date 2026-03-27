@@ -6,58 +6,86 @@ const steps = [
     icon: Globe,
     title: "Choose Your Island",
     description:
-      "Pick your destination. Start with Grenada, with more Caribbean islands coming soon.",
+      "Pick your destination from our growing list of Caribbean islands. Each one curated by people who actually live there.",
+    color: "bg-gold-500",
   },
   {
     number: "02",
     icon: Search,
     title: "Discover & Book",
     description:
-      "Browse stays, tours, restaurants, events, and transport. Book everything in seconds.",
+      "Browse stays, tours, restaurants, events, and transport. Compare prices, read real reviews, book in seconds.",
+    color: "bg-teal-500",
   },
   {
     number: "03",
     icon: TreePalm,
     title: "Enjoy Your Vakay",
     description:
-      "Show up and soak it in. Your whole trip is planned, booked, and ready to go.",
+      "Show up relaxed. Your whole trip is planned, booked, and confirmed. Just soak it in.",
+    color: "bg-gold-500",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 md:py-28 bg-white">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
+    <section id="how-it-works" className="py-24 md:py-32 bg-navy-700 relative overflow-hidden">
+      {/* Background texture */}
+      <div className="absolute inset-0 opacity-5">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-6">
+        <div className="text-center mb-20">
+          <p className="text-sm font-semibold text-gold-400 uppercase tracking-widest mb-4">
+            Simple as 1-2-3
+          </p>
           <h2
-            className="text-3xl md:text-4xl font-bold text-navy-700 tracking-tight"
+            className="text-4xl md:text-5xl font-bold text-white tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            How it <span className="text-teal-500">works</span>
+            Plan your perfect trip
+            <br />
+            <span className="text-gold-400">in minutes</span>
           </h2>
-          <p className="mt-4 text-navy-400 max-w-xl mx-auto">
-            Three steps between you and the best trip of your life.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
           {/* Connecting line */}
-          <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-[2px] bg-gradient-to-r from-gold-300 via-teal-300 to-gold-300" />
+          <div className="hidden md:block absolute top-20 left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-gold-500/0 via-gold-500/40 to-gold-500/0" />
 
-          {steps.map((step) => (
-            <div key={step.number} className="relative text-center">
-              <div className="relative z-10 w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[var(--shadow-elevated)]">
-                <step.icon size={28} className="text-white" />
+          {steps.map((step, i) => (
+            <div
+              key={step.number}
+              className="relative group"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <div className="bg-white/[0.05] backdrop-blur-sm rounded-3xl p-10 border border-white/10 hover:bg-white/[0.08] transition-all duration-500 hover:-translate-y-2 text-center h-full">
+                {/* Step number */}
+                <div className="text-6xl font-bold text-white/[0.06] absolute top-6 right-8">
+                  {step.number}
+                </div>
+
+                <div
+                  className={`relative z-10 w-16 h-16 ${step.color} rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg`}
+                >
+                  <step.icon size={30} className="text-white" />
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-4">
+                  {step.title}
+                </h3>
+                <p className="text-white/60 leading-relaxed">
+                  {step.description}
+                </p>
               </div>
-              <span className="text-sm font-bold text-gold-500 tracking-wider uppercase">
-                Step {step.number}
-              </span>
-              <h3 className="text-xl font-bold text-navy-700 mt-2 mb-3">
-                {step.title}
-              </h3>
-              <p className="text-navy-400 leading-relaxed max-w-xs mx-auto">
-                {step.description}
-              </p>
             </div>
           ))}
         </div>

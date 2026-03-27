@@ -1,57 +1,108 @@
-import { Layers, ShieldCheck, Sparkles } from "lucide-react";
+"use client";
+
+import { Layers, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 
 const props = [
   {
     icon: Layers,
     title: "Everything in One Place",
     description:
-      "Stays, tours, dining, events, transport, and local guides — stop juggling 10 apps. Plan your entire trip right here.",
+      "Stays, tours, dining, events, transport, and local guides. Stop juggling 10 apps — plan your entire trip right here.",
+    gradient: "from-gold-500 to-gold-600",
+    iconBg: "bg-gold-500",
+    image:
+      "https://images.unsplash.com/photo-1602002418816-5c0aeef426aa?w=600&q=80&auto=format",
   },
   {
     icon: ShieldCheck,
-    title: "Book with Confidence",
+    title: "Trusted Local Operators",
     description:
-      "Every operator is verified. Real reviews from real travelers. Secure payments. No surprises, just great experiences.",
+      "Every business is verified. Real reviews from real travelers. Secure payments with instant confirmation.",
+    gradient: "from-teal-500 to-teal-600",
+    iconBg: "bg-teal-500",
+    image:
+      "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=600&q=80&auto=format",
   },
   {
     icon: Sparkles,
-    title: "AI Trip Planner",
+    title: "AI-Powered Trip Planning",
     description:
-      "Tell us your vibe — romantic, adventurous, family-friendly — and we'll build a day-by-day itinerary from the best local spots.",
+      'Tell us your vibe. "3-day romantic getaway in Grenada" — and we\'ll build a day-by-day itinerary from real local spots.',
+    gradient: "from-gold-500 to-teal-500",
+    iconBg: "bg-gradient-to-br from-gold-500 to-teal-500",
+    image:
+      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format",
   },
 ];
 
 export function ValueProps() {
   return (
-    <section className="py-20 md:py-28 bg-cream-50">
+    <section className="py-24 md:py-32 bg-cream-50 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
+        <div className="text-center mb-20">
+          <p className="text-sm font-semibold text-gold-500 uppercase tracking-widest mb-4">
+            Why VakayGo
+          </p>
           <h2
-            className="text-3xl md:text-4xl font-bold text-navy-700 tracking-tight"
+            className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight leading-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Travel should be{" "}
-            <span className="text-gold-500">effortless</span>
+            The only travel platform
+            <br />
+            <span className="text-teal-500">built by the Caribbean</span>
           </h2>
-          <p className="mt-4 text-navy-400 max-w-xl mx-auto">
-            We built VakayGo because planning a Caribbean trip shouldn&apos;t
-            require a PhD in Google searches.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {props.map((prop) => (
+        <div className="space-y-8">
+          {props.map((prop, i) => (
             <div
               key={prop.title}
-              className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-300 hover:-translate-y-1 transition-transform"
+              className={`group relative bg-white rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500 ${
+                i % 2 === 1 ? "md:flex-row-reverse" : ""
+              }`}
             >
-              <div className="w-12 h-12 bg-gold-50 rounded-xl flex items-center justify-center mb-6">
-                <prop.icon size={24} className="text-gold-500" />
+              <div
+                className={`flex flex-col ${
+                  i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
+                }`}
+              >
+                {/* Image side */}
+                <div className="md:w-1/2 relative overflow-hidden">
+                  <div
+                    className="h-64 md:h-full min-h-[320px] bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                    style={{ backgroundImage: `url(${prop.image})` }}
+                  />
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-${
+                      i % 2 === 1 ? "l" : "r"
+                    } ${prop.gradient} opacity-20`}
+                  />
+                </div>
+
+                {/* Text side */}
+                <div className="md:w-1/2 p-10 md:p-14 flex flex-col justify-center">
+                  <div
+                    className={`w-14 h-14 ${prop.iconBg} rounded-2xl flex items-center justify-center mb-6 shadow-lg`}
+                  >
+                    <prop.icon size={28} className="text-white" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-navy-700 mb-4 leading-tight">
+                    {prop.title}
+                  </h3>
+                  <p className="text-navy-400 leading-relaxed text-lg">
+                    {prop.description}
+                  </p>
+                  <div className="mt-8">
+                    <a
+                      href="#waitlist"
+                      className="inline-flex items-center gap-2 text-gold-500 font-semibold group-hover:gap-3 transition-all"
+                    >
+                      Join the waitlist
+                      <ArrowRight size={16} />
+                    </a>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-navy-700 mb-3">
-                {prop.title}
-              </h3>
-              <p className="text-navy-400 leading-relaxed">{prop.description}</p>
             </div>
           ))}
         </div>
