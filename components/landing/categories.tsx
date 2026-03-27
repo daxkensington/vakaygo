@@ -6,7 +6,7 @@ const categories = [
     icon: Home,
     name: "Stays",
     slug: "stay",
-    count: 24,
+    count: 85,
     description: "Villas, guesthouses & boutique hotels",
     image:
       "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&q=80&auto=format",
@@ -15,7 +15,7 @@ const categories = [
     icon: Compass,
     name: "Tours",
     slug: "tour",
-    count: 38,
+    count: 188,
     description: "Sailing, hiking, snorkeling & more",
     image:
       "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
@@ -24,7 +24,7 @@ const categories = [
     icon: UtensilsCrossed,
     name: "Dining",
     slug: "dining",
-    count: 52,
+    count: 130,
     description: "Local spots, street food & fine dining",
     image:
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format",
@@ -33,7 +33,7 @@ const categories = [
     icon: Music,
     name: "Events",
     slug: "event",
-    count: 15,
+    count: 14,
     description: "Fetes, festivals & beach parties",
     image:
       "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80&auto=format",
@@ -42,7 +42,7 @@ const categories = [
     icon: Car,
     name: "Transport",
     slug: "transport",
-    count: 18,
+    count: 48,
     description: "Airport transfers & island tours",
     image:
       "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&q=80&auto=format",
@@ -51,7 +51,7 @@ const categories = [
     icon: Users,
     name: "Guides",
     slug: "guide",
-    count: 12,
+    count: 3,
     description: "Expert locals who show you the real island",
     image:
       "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=600&q=80&auto=format",

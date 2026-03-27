@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, media, islands } from "@/drizzle/schema";
-import { eq, and, ilike, desc, asc, gte, lte, sql } from "drizzle-orm";
+import { listings, islands } from "@/drizzle/schema";
+import { eq, and, ilike, desc, asc, gte, lte } from "drizzle-orm";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -24,10 +24,19 @@ export async function GET(request: Request) {
     const conditions = [eq(listings.status, "active")];
 
     if (type && type !== "all") {
-      conditions.push(eq(listings.type, type as "stay" | "tour" | "dining" | "event" | "transport" | "guide"));
+      conditions.push(
+        eq(
+          listings.type,
+          type as "stay" | "tour" | "dining" | "event" | "transport" | "guide"
+        )
+      );
     }
     if (island) {
-      const [islandRow] = await db.select({ id: islands.id }).from(islands).where(eq(islands.slug, island)).limit(1);
+      const [islandRow] = await db
+        .select({ id: islands.id })
+        .from(islands)
+        .where(eq(islands.slug, island))
+        .limit(1);
       if (islandRow) conditions.push(eq(listings.islandId, islandRow.id));
     }
     if (search) {
@@ -41,11 +50,15 @@ export async function GET(request: Request) {
     }
 
     const orderBy =
-      sort === "price-asc" ? asc(listings.priceAmount) :
-      sort === "price-desc" ? desc(listings.priceAmount) :
-      sort === "rating" ? desc(listings.avgRating) :
-      sort === "newest" ? desc(listings.createdAt) :
-      desc(listings.isFeatured);
+      sort === "price-asc"
+        ? asc(listings.priceAmount)
+        : sort === "price-desc"
+          ? desc(listings.priceAmount)
+          : sort === "rating"
+            ? desc(listings.avgRating)
+            : sort === "newest"
+              ? desc(listings.createdAt)
+              : desc(listings.isFeatured);
 
     const results = await db
       .select({
@@ -71,27 +84,19 @@ export async function GET(request: Request) {
       .limit(limit)
       .offset(offset);
 
-    // Get primary images for each listing
-    const listingIds = results.map((r) => r.id);
-    let images: { listingId: string; url: string }[] = [];
-    if (listingIds.length > 0) {
-      images = await db
-        .select({ listingId: media.listingId, url: media.url })
-        .from(media)
-        .where(and(eq(media.isPrimary, true), sql`${media.listingId} = ANY(${listingIds})`));
-    }
-
-    const imageMap = new Map(images.map((i) => [i.listingId, i.url]));
-
+    // Return without images for now — most imported listings don't have images anyway
     const data = results.map((r) => ({
       ...r,
-      image: imageMap.get(r.id) || null,
+      image: null,
     }));
 
     return NextResponse.json({ listings: data });
   } catch (error) {
     console.error("Listings error:", error);
-    return NextResponse.json({ error: "Failed to fetch listings" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch listings" },
+      { status: 500 }
+    );
   }
 }
 
@@ -115,7 +120,10 @@ export async function POST(request: Request) {
     } = body;
 
     if (!operatorId || !title || !type) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     const db = getDb();
@@ -148,6 +156,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ listing });
   } catch (error) {
     console.error("Create listing error:", error);
-    return NextResponse.json({ error: "Failed to create listing" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create listing" },
+      { status: 500 }
+    );
   }
 }

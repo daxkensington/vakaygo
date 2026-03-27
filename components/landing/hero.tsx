@@ -112,9 +112,9 @@ export function Hero() {
         {/* Stats */}
         <div className="mt-14 flex flex-wrap justify-center gap-12 text-sm">
           {[
-            { value: "6", label: "Experience Types" },
-            { value: "100%", label: "Local Operators" },
-            { value: "Instant", label: "Booking" },
+            { value: "4,900+", label: "Listings" },
+            { value: "21", label: "Islands" },
+            { value: "6", label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gold-400">{stat.value}</p>
