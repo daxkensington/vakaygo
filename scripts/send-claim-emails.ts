@@ -18,7 +18,7 @@ import { listings, islands } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "re_cN9HR9Ff_DPAwFvhwr78BUAxDzEek815o";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "re_9veHwfmR_EfQt6FpKGS8MwUJgJcejmPDz";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
