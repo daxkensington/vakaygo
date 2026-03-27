@@ -1,0 +1,305 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
+import {
+  Star,
+  Calendar,
+  Users as UsersIcon,
+  Zap,
+  Shield,
+  Check,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
+
+type BookingWidgetProps = {
+  listing: {
+    id: string;
+    type: string;
+    priceAmount: string | null;
+    priceCurrency: string | null;
+    priceUnit: string | null;
+    avgRating: string | null;
+    reviewCount: number | null;
+    isInstantBook: boolean | null;
+  };
+};
+
+export function BookingWidget({ listing }: BookingWidgetProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [guests, setGuests] = useState(1);
+  const [includeInsurance, setIncludeInsurance] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [booked, setBooked] = useState(false);
+  const [bookingNumber, setBookingNumber] = useState("");
+  const [error, setError] = useState("");
+
+  const pricePerUnit = parseFloat(listing.priceAmount || "0");
+
+  // Calculate quantity
+  let quantity = guests;
+  if (listing.type === "stay" && startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    quantity = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  }
+  if (listing.priceUnit === "trip" || listing.priceUnit === "group") {
+    quantity = 1;
+  }
+
+  const pricing = calculateBookingPrice({
+    pricePerUnit,
+    quantity,
+    currency: listing.priceCurrency || "USD",
+    includeInsurance,
+  });
+
+  async function handleBook() {
+    if (!user) {
+      router.push("/auth/signin");
+      return;
+    }
+    if (!startDate) {
+      setError("Please select a date");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: listing.id,
+          startDate,
+          endDate: endDate || null,
+          guestCount: guests,
+          includeInsurance,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Booking failed");
+        return;
+      }
+
+      setBooked(true);
+      setBookingNumber(data.booking.bookingNumber);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (booked) {
+    return (
+      <div className="lg:col-span-1">
+        <div className="sticky top-24 bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)] text-center">
+          <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-navy-700">Booking Confirmed!</h3>
+          <p className="text-navy-400 mt-2">
+            Booking #{bookingNumber}
+          </p>
+          <p className="text-sm text-navy-400 mt-1">
+            Total: {formatCurrency(pricing.total)}
+          </p>
+          <p className="text-xs text-navy-300 mt-4">
+            Check your email for confirmation details.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="lg:col-span-1">
+      <div className="sticky top-24 bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)]">
+        {/* Price */}
+        <div className="mb-6">
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-bold text-navy-700">
+              {formatCurrency(pricePerUnit)}
+            </span>
+            <span className="text-navy-400">
+              / {listing.priceUnit || "unit"}
+            </span>
+          </div>
+          {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
+            <div className="flex items-center gap-1 mt-2">
+              <Star size={14} className="text-gold-500 fill-gold-500" />
+              <span className="text-sm font-semibold text-navy-700">
+                {parseFloat(listing.avgRating).toFixed(1)}
+              </span>
+              <span className="text-sm text-navy-400">
+                · {listing.reviewCount} reviews
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Date Selection */}
+        <div className="space-y-3 mb-6">
+          <div className="border border-cream-300 rounded-xl p-3 focus-within:border-gold-500 transition-colors">
+            <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+              {listing.type === "stay" ? "Check-in" : "Date"}
+            </label>
+            <div className="flex items-center gap-2 mt-1">
+              <Calendar size={16} className="text-navy-300" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-transparent text-navy-700 outline-none text-sm"
+              />
+            </div>
+          </div>
+          {listing.type === "stay" && (
+            <div className="border border-cream-300 rounded-xl p-3 focus-within:border-gold-500 transition-colors">
+              <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+                Check-out
+              </label>
+              <div className="flex items-center gap-2 mt-1">
+                <Calendar size={16} className="text-navy-300" />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-transparent text-navy-700 outline-none text-sm"
+                />
+              </div>
+            </div>
+          )}
+          <div className="border border-cream-300 rounded-xl p-3 focus-within:border-gold-500 transition-colors">
+            <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+              Guests
+            </label>
+            <div className="flex items-center gap-2 mt-1">
+              <UsersIcon size={16} className="text-navy-300" />
+              <select
+                value={guests}
+                onChange={(e) => setGuests(parseInt(e.target.value))}
+                className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n} value={n}>
+                    {n} guest{n > 1 ? "s" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Trip Insurance */}
+        <label className="flex items-center gap-3 p-3 rounded-xl bg-teal-50 cursor-pointer mb-6">
+          <input
+            type="checkbox"
+            checked={includeInsurance}
+            onChange={(e) => setIncludeInsurance(e.target.checked)}
+            className="w-4 h-4 accent-teal-500"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-navy-700">
+              Add trip protection
+            </p>
+            <p className="text-xs text-navy-400">
+              Cancel for any reason — {formatCurrency(pricing.insuranceFee || pricing.subtotal * 0.08)}
+            </p>
+          </div>
+          <ShieldCheck size={18} className="text-teal-500" />
+        </label>
+
+        {/* Price Breakdown */}
+        <div className="space-y-2 mb-6 text-sm">
+          <div className="flex justify-between">
+            <span className="text-navy-400">
+              {formatCurrency(pricePerUnit)} × {quantity} {listing.priceUnit}
+              {quantity > 1 ? "s" : ""}
+            </span>
+            <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-navy-400">Service fee</span>
+            <span className="text-navy-700">{formatCurrency(pricing.serviceFee)}</span>
+          </div>
+          {includeInsurance && pricing.insuranceFee && (
+            <div className="flex justify-between">
+              <span className="text-navy-400">Trip protection</span>
+              <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
+            </div>
+          )}
+          <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
+            <span className="text-navy-700">Total</span>
+            <span className="text-navy-700">{formatCurrency(pricing.total)}</span>
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* Book Button */}
+        <button
+          onClick={handleBook}
+          disabled={loading}
+          className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : listing.isInstantBook ? (
+            <>
+              <Zap size={18} />
+              Book Now
+            </>
+          ) : (
+            "Request to Book"
+          )}
+        </button>
+        <p className="text-center text-navy-300 text-xs mt-3">
+          {user ? "You won't be charged yet" : "Sign in to book"}
+        </p>
+
+        {/* Trust Signals */}
+        <div className="mt-6 pt-6 border-t border-cream-200 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-navy-400">
+            <Shield size={16} className="text-teal-500" />
+            Verified local operator
+          </div>
+          <div className="flex items-center gap-2 text-sm text-navy-400">
+            <Check size={16} className="text-teal-500" />
+            Free cancellation up to 24h
+          </div>
+          <div className="flex items-center gap-2 text-sm text-navy-400">
+            <Check size={16} className="text-teal-500" />
+            Secure payment via VakayGo
+          </div>
+        </div>
+
+        {/* Operator Earnings Transparency */}
+        <div className="mt-4 pt-4 border-t border-cream-200">
+          <p className="text-xs text-navy-300 text-center">
+            The operator earns {formatCurrency(pricing.operatorEarnings)} from this booking.
+            <br />
+            VakayGo takes just 3% — the lowest in the industry.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

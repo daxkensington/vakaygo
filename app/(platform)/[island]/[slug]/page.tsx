@@ -5,15 +5,14 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { BookingWidget } from "@/components/listings/booking-widget";
 import {
   Star,
   MapPin,
   Clock,
   Users as UsersIcon,
   Check,
-  X,
   Shield,
-  Calendar,
   ChevronLeft,
   Loader2,
   Share2,
@@ -397,133 +396,7 @@ export default function ListingDetailPage() {
             </div>
 
             {/* Right Sidebar — Booking Widget */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)]">
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-navy-700">
-                      ${listing.priceAmount ? parseFloat(listing.priceAmount).toFixed(0) : "—"}
-                    </span>
-                    <span className="text-navy-400">
-                      / {listing.priceUnit || "unit"}
-                    </span>
-                  </div>
-                  {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
-                    <div className="flex items-center gap-1 mt-2">
-                      <Star size={14} className="text-gold-500 fill-gold-500" />
-                      <span className="text-sm font-semibold text-navy-700">
-                        {parseFloat(listing.avgRating).toFixed(1)}
-                      </span>
-                      <span className="text-sm text-navy-400">
-                        · {listing.reviewCount} reviews
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Date Selection */}
-                <div className="space-y-3 mb-6">
-                  <div className="border border-cream-300 rounded-xl p-3">
-                    <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
-                      {listing.type === "stay" ? "Check-in" : "Date"}
-                    </label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar size={16} className="text-navy-300" />
-                      <input
-                        type="date"
-                        className="w-full bg-transparent text-navy-700 outline-none text-sm"
-                      />
-                    </div>
-                  </div>
-                  {listing.type === "stay" && (
-                    <div className="border border-cream-300 rounded-xl p-3">
-                      <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
-                        Check-out
-                      </label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Calendar size={16} className="text-navy-300" />
-                        <input
-                          type="date"
-                          className="w-full bg-transparent text-navy-700 outline-none text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <div className="border border-cream-300 rounded-xl p-3">
-                    <label className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
-                      Guests
-                    </label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <UsersIcon size={16} className="text-navy-300" />
-                      <select className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                          <option key={n} value={n}>
-                            {n} guest{n > 1 ? "s" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Price Breakdown */}
-                <div className="space-y-2 mb-6 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-navy-400">
-                      ${listing.priceAmount ? parseFloat(listing.priceAmount).toFixed(0) : "0"} × 1{" "}
-                      {listing.priceUnit}
-                    </span>
-                    <span className="text-navy-700">
-                      ${listing.priceAmount ? parseFloat(listing.priceAmount).toFixed(0) : "0"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-navy-400">Service fee</span>
-                    <span className="text-navy-700">
-                      ${listing.priceAmount ? (parseFloat(listing.priceAmount) * 0.06).toFixed(0) : "0"}
-                    </span>
-                  </div>
-                  <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
-                    <span className="text-navy-700">Total</span>
-                    <span className="text-navy-700">
-                      ${listing.priceAmount ? (parseFloat(listing.priceAmount) * 1.06).toFixed(0) : "0"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Book Button */}
-                <button className="w-full bg-gold-500 hover:bg-gold-600 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2">
-                  {listing.isInstantBook ? (
-                    <>
-                      <Zap size={18} />
-                      Book Now
-                    </>
-                  ) : (
-                    "Request to Book"
-                  )}
-                </button>
-                <p className="text-center text-navy-300 text-xs mt-3">
-                  You won&apos;t be charged yet
-                </p>
-
-                {/* Trust Signals */}
-                <div className="mt-6 pt-6 border-t border-cream-200 space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-navy-400">
-                    <Shield size={16} className="text-teal-500" />
-                    Verified local operator
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-navy-400">
-                    <X size={16} className="text-teal-500" />
-                    Free cancellation up to 24h
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-navy-400">
-                    <Check size={16} className="text-teal-500" />
-                    Secure payment via VakayGo
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BookingWidget listing={listing} />
           </div>
 
           {/* Similar Listings */}
