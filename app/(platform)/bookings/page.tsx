@@ -1,0 +1,199 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { useAuth } from "@/lib/auth-context";
+import Link from "next/link";
+import {
+  CalendarCheck,
+  Clock,
+  Check,
+  X,
+  Loader2,
+  MapPin,
+  Star,
+  AlertCircle,
+} from "lucide-react";
+
+type Booking = {
+  id: string;
+  bookingNumber: string;
+  status: string;
+  startDate: string;
+  endDate: string | null;
+  guestCount: number;
+  subtotal: string;
+  serviceFee: string;
+  totalAmount: string;
+  currency: string;
+  createdAt: string;
+  listingTitle: string;
+  listingType: string;
+  listingSlug: string;
+};
+
+const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: "Pending", color: "text-yellow-700", bg: "bg-yellow-50" },
+  confirmed: { label: "Confirmed", color: "text-teal-700", bg: "bg-teal-50" },
+  cancelled: { label: "Cancelled", color: "text-red-600", bg: "bg-red-50" },
+  completed: { label: "Completed", color: "text-green-700", bg: "bg-green-50" },
+  refunded: { label: "Refunded", color: "text-navy-600", bg: "bg-navy-50" },
+};
+
+export default function TravelerBookingsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    async function fetchBookings() {
+      try {
+        const res = await fetch("/api/bookings?view=traveler");
+        const data = await res.json();
+        setBookings(data.bookings || []);
+      } catch {
+        setBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBookings();
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center bg-cream-50">
+          <Loader2 size={32} className="animate-spin text-gold-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6 pt-20">
+          <CalendarCheck size={48} className="text-navy-200 mb-6" />
+          <h1 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
+            Sign in to view your bookings
+          </h1>
+          <p className="text-navy-400 mt-2">Keep track of all your trips in one place.</p>
+          <Link href="/auth/signin" className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+            Sign In
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Header />
+      <div className="pt-20 bg-cream-50 min-h-screen">
+        <div className="mx-auto max-w-4xl px-6 py-10">
+          <h1 className="text-3xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
+            My Bookings
+          </h1>
+          <p className="text-navy-400 mt-1">Your upcoming and past trips</p>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 size={32} className="animate-spin text-gold-500" />
+            </div>
+          ) : bookings.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center mt-8">
+              <CalendarCheck size={48} className="text-navy-200 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-navy-700">No bookings yet</h3>
+              <p className="text-navy-400 mt-2 max-w-md mx-auto">
+                Explore stays, tours, dining, and experiences in the Caribbean.
+                Your bookings will appear here.
+              </p>
+              <Link
+                href="/explore"
+                className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
+              >
+                Start Exploring
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-8">
+              {bookings.map((booking) => {
+                const status = statusConfig[booking.status] || statusConfig.pending;
+                const isPast = new Date(booking.startDate) < new Date();
+                return (
+                  <div
+                    key={booking.id}
+                    className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Link
+                            href={`/grenada/${booking.listingSlug}`}
+                            className="font-semibold text-navy-700 hover:text-gold-600 transition-colors text-lg"
+                          >
+                            {booking.listingTitle}
+                          </Link>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-navy-400">
+                          <span className="flex items-center gap-1">
+                            <CalendarCheck size={14} />
+                            {new Date(booking.startDate).toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                          <span>#{booking.bookingNumber}</span>
+                          <span className="capitalize">{booking.listingType}</span>
+                          <span>{booking.guestCount} guest{booking.guestCount > 1 ? "s" : ""}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-navy-700">
+                          ${parseFloat(booking.totalAmount).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-navy-400">total paid</p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    {isPast && booking.status === "completed" && (
+                      <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
+                        <p className="text-sm text-navy-400 flex items-center gap-1">
+                          <Star size={14} className="text-gold-500" />
+                          How was your experience?
+                        </p>
+                        <button className="text-sm font-semibold text-gold-500 hover:text-gold-600">
+                          Leave a Review
+                        </button>
+                      </div>
+                    )}
+                    {booking.status === "pending" && (
+                      <div className="mt-4 pt-4 border-t border-cream-200 flex items-center gap-2">
+                        <Clock size={14} className="text-yellow-500" />
+                        <p className="text-sm text-navy-400">
+                          Waiting for operator confirmation
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+      <Footer />
+    </>
+  );
+}
