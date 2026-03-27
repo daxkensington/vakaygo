@@ -12,12 +12,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Save to Neon database once connected
-    // For now, log to console so we don't lose signups
-    console.log("Waitlist signup:", { name, email, type, businessName });
+    if (process.env.DATABASE_URL) {
+      const { neon } = await import("@neondatabase/serverless");
+      const { drizzle } = await import("drizzle-orm/neon-http");
+      const { waitlist } = await import("@/drizzle/schema");
+
+      const sql = neon(process.env.DATABASE_URL);
+      const db = drizzle(sql);
+
+      await db
+        .insert(waitlist)
+        .values({
+          name,
+          email,
+          type: type || "traveler",
+          businessName: businessName || null,
+        })
+        .onConflictDoNothing({ target: waitlist.email });
+    } else {
+      console.log("Waitlist signup (no DB):", {
+        name,
+        email,
+        type,
+        businessName,
+      });
+    }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error("Waitlist error:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }
