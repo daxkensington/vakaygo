@@ -1,9 +1,12 @@
-import { Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
+import Link from "next/link";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight } from "lucide-react";
 
 const categories = [
   {
     icon: Home,
     name: "Stays",
+    slug: "stay",
+    count: 24,
     description: "Villas, guesthouses & boutique hotels",
     image:
       "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&q=80&auto=format",
@@ -11,6 +14,8 @@ const categories = [
   {
     icon: Compass,
     name: "Tours",
+    slug: "tour",
+    count: 38,
     description: "Sailing, hiking, snorkeling & more",
     image:
       "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
@@ -18,6 +23,8 @@ const categories = [
   {
     icon: UtensilsCrossed,
     name: "Dining",
+    slug: "dining",
+    count: 52,
     description: "Local spots, street food & fine dining",
     image:
       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format",
@@ -25,6 +32,8 @@ const categories = [
   {
     icon: Music,
     name: "Events",
+    slug: "event",
+    count: 15,
     description: "Fetes, festivals & beach parties",
     image:
       "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80&auto=format",
@@ -32,6 +41,8 @@ const categories = [
   {
     icon: Car,
     name: "Transport",
+    slug: "transport",
+    count: 18,
     description: "Airport transfers & island tours",
     image:
       "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&q=80&auto=format",
@@ -39,6 +50,8 @@ const categories = [
   {
     icon: Users,
     name: "Guides",
+    slug: "guide",
+    count: 12,
     description: "Expert locals who show you the real island",
     image:
       "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=600&q=80&auto=format",
@@ -66,8 +79,9 @@ export function Categories() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((cat) => (
-            <div
+            <Link
               key={cat.name}
+              href={`/explore?type=${cat.slug}`}
               className="group relative h-72 rounded-3xl overflow-hidden cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
             >
               {/* Background image */}
@@ -91,13 +105,18 @@ export function Categories() {
                 </p>
               </div>
 
-              {/* Coming soon badge */}
-              <div className="absolute top-5 right-5">
+              {/* Count + arrow */}
+              <div className="absolute top-5 right-5 flex items-center gap-2">
                 <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                  Coming soon
+                  {cat.count} listings
                 </span>
               </div>
-            </div>
+
+              {/* Explore arrow */}
+              <div className="absolute bottom-7 right-7 w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                <ArrowRight size={18} className="text-white" />
+              </div>
+            </Link>
           ))}
         </div>
       </div>

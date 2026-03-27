@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
+import Link from "next/link";
 import {
   Search,
   MapPin,
@@ -13,9 +14,10 @@ import {
   Car,
   Users,
   Star,
+  Loader2,
 } from "lucide-react";
 
-const categories = [
+const categoryTabs = [
   { id: "all", label: "All", icon: Search },
   { id: "stay", label: "Stays", icon: Home },
   { id: "tour", label: "Tours", icon: Compass },
@@ -23,98 +25,6 @@ const categories = [
   { id: "event", label: "Events", icon: Music },
   { id: "transport", label: "Transport", icon: Car },
   { id: "guide", label: "Guides", icon: Users },
-];
-
-// Placeholder listings for demo
-const demoListings = [
-  {
-    id: "1",
-    title: "Beachfront Villa with Ocean Views",
-    type: "stay",
-    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&q=80&auto=format",
-    price: 250,
-    priceUnit: "night",
-    rating: 4.9,
-    reviewCount: 47,
-    location: "Grand Anse, Grenada",
-  },
-  {
-    id: "2",
-    title: "Sunset Sailing & Snorkeling Tour",
-    type: "tour",
-    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
-    price: 85,
-    priceUnit: "person",
-    rating: 4.95,
-    reviewCount: 124,
-    location: "St. George's, Grenada",
-  },
-  {
-    id: "3",
-    title: "BB's Crab Back Restaurant",
-    type: "dining",
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format",
-    price: 35,
-    priceUnit: "avg meal",
-    rating: 4.7,
-    reviewCount: 89,
-    location: "St. George's, Grenada",
-  },
-  {
-    id: "4",
-    title: "Spicemas Carnival Fete",
-    type: "event",
-    image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80&auto=format",
-    price: 45,
-    priceUnit: "ticket",
-    rating: 4.8,
-    reviewCount: 56,
-    location: "St. George's, Grenada",
-  },
-  {
-    id: "5",
-    title: "Airport to Grand Anse Transfer",
-    type: "transport",
-    image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&q=80&auto=format",
-    price: 30,
-    priceUnit: "trip",
-    rating: 4.85,
-    reviewCount: 203,
-    location: "Maurice Bishop Airport",
-  },
-  {
-    id: "6",
-    title: "Chef Marcus — Private Island Food Tour",
-    type: "guide",
-    image: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=600&q=80&auto=format",
-    price: 120,
-    priceUnit: "person",
-    rating: 5.0,
-    reviewCount: 34,
-    location: "St. George's, Grenada",
-  },
-  {
-    id: "7",
-    title: "Rainforest Eco Lodge",
-    type: "stay",
-    image: "https://images.unsplash.com/photo-1602002418816-5c0aeef426aa?w=600&q=80&auto=format",
-    price: 180,
-    priceUnit: "night",
-    rating: 4.85,
-    reviewCount: 31,
-    location: "Grand Etang, Grenada",
-  },
-  {
-    id: "8",
-    title: "Underwater Sculpture Park Dive",
-    type: "tour",
-    image: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format",
-    price: 95,
-    priceUnit: "person",
-    rating: 4.92,
-    reviewCount: 78,
-    location: "Moliniere Bay, Grenada",
-  },
 ];
 
 const typeColors: Record<string, string> = {
@@ -126,16 +36,58 @@ const typeColors: Record<string, string> = {
   guide: "bg-gold-500",
 };
 
+type Listing = {
+  id: string;
+  title: string;
+  slug: string;
+  type: string;
+  headline: string | null;
+  priceAmount: string | null;
+  priceCurrency: string | null;
+  priceUnit: string | null;
+  avgRating: string | null;
+  reviewCount: number | null;
+  parish: string | null;
+  isFeatured: boolean | null;
+  islandSlug: string;
+  islandName: string;
+  image: string | null;
+};
+
 export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = demoListings.filter((listing) => {
-    if (activeCategory !== "all" && listing.type !== activeCategory) return false;
-    if (searchQuery && !listing.title.toLowerCase().includes(searchQuery.toLowerCase()))
-      return false;
-    return true;
-  });
+  useEffect(() => {
+    // Check URL params for initial category
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get("type");
+    if (typeParam) setActiveCategory(typeParam);
+  }, []);
+
+  useEffect(() => {
+    async function fetchListings() {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (activeCategory !== "all") params.set("type", activeCategory);
+      if (searchQuery) params.set("q", searchQuery);
+
+      try {
+        const res = await fetch(`/api/listings?${params}`);
+        const data = await res.json();
+        setListings(data.listings || []);
+      } catch {
+        setListings([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
+    return () => clearTimeout(debounce);
+  }, [activeCategory, searchQuery]);
 
   return (
     <>
@@ -163,7 +115,7 @@ export default function ExplorePage() {
 
             {/* Category Tabs */}
             <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
-              {categories.map((cat) => (
+              {categoryTabs.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
@@ -185,7 +137,9 @@ export default function ExplorePage() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="flex items-center justify-between mb-6">
             <p className="text-navy-400 text-sm">
-              <span className="font-semibold text-navy-700">{filtered.length}</span>{" "}
+              <span className="font-semibold text-navy-700">
+                {loading ? "..." : listings.length}
+              </span>{" "}
               experiences in Grenada
             </p>
             <div className="flex items-center gap-2">
@@ -194,70 +148,94 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((listing) => (
-              <div
-                key={listing.id}
-                className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-              >
-                {/* Image */}
-                <div className="relative h-52 overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: `url(${listing.image})` }}
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span
-                      className={`${typeColors[listing.type]} text-white text-xs font-semibold px-2.5 py-1 rounded-full`}
-                    >
-                      {listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}
-                    </span>
-                  </div>
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-navy-600"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Content */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs text-navy-400">{listing.location}</p>
-                    <div className="flex items-center gap-1">
-                      <Star size={12} className="text-gold-500 fill-gold-500" />
-                      <span className="text-xs font-semibold text-navy-700">
-                        {listing.rating}
-                      </span>
-                      <span className="text-xs text-navy-300">
-                        ({listing.reviewCount})
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 size={32} className="animate-spin text-gold-500" />
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-navy-400 text-lg">No listings found</p>
+              <p className="text-navy-300 text-sm mt-2">
+                Try a different search or category
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map((listing) => (
+                <Link
+                  key={listing.id}
+                  href={`/${listing.islandSlug}/${listing.slug}`}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
+                >
+                  {/* Image */}
+                  <div className="relative h-52 overflow-hidden">
+                    {listing.image ? (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                        style={{ backgroundImage: `url(${listing.image})` }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-cream-200 flex items-center justify-center">
+                        <span className="text-navy-300">No image</span>
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3">
+                      <span
+                        className={`${typeColors[listing.type] || "bg-navy-500"} text-white text-xs font-semibold px-2.5 py-1 rounded-full`}
+                      >
+                        {listing.type.charAt(0).toUpperCase() +
+                          listing.type.slice(1)}
                       </span>
                     </div>
+                    {listing.isFeatured && (
+                      <div className="absolute top-3 right-3">
+                        <span className="bg-gold-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                          Featured
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors">
-                    {listing.title}
-                  </h3>
-                  <p className="mt-2">
-                    <span className="font-bold text-navy-700">
-                      ${listing.price}
-                    </span>
-                    <span className="text-navy-400 text-sm">
-                      {" "}
-                      / {listing.priceUnit}
-                    </span>
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+
+                  {/* Content */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-navy-400">
+                        {listing.parish}, {listing.islandName}
+                      </p>
+                      {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Star
+                            size={12}
+                            className="text-gold-500 fill-gold-500"
+                          />
+                          <span className="text-xs font-semibold text-navy-700">
+                            {parseFloat(listing.avgRating).toFixed(1)}
+                          </span>
+                          <span className="text-xs text-navy-300">
+                            ({listing.reviewCount})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors">
+                      {listing.title}
+                    </h3>
+                    {listing.priceAmount && (
+                      <p className="mt-2">
+                        <span className="font-bold text-navy-700">
+                          ${parseFloat(listing.priceAmount).toFixed(0)}
+                        </span>
+                        <span className="text-navy-400 text-sm">
+                          {" "}
+                          / {listing.priceUnit}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
