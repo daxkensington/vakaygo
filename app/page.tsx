@@ -1,6 +1,7 @@
 import { Hero } from "@/components/landing/hero";
 import { StatsBar } from "@/components/landing/stats-bar";
 import { ValueProps } from "@/components/landing/value-props";
+import { FeaturedListings } from "@/components/landing/featured-listings";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Categories } from "@/components/landing/categories";
 import { AudienceSplit } from "@/components/landing/audience-split";
@@ -16,6 +17,7 @@ export default function LandingPage() {
       <main>
         <Hero />
         <StatsBar />
+        <FeaturedListings />
         <ValueProps />
         <HowItWorks />
         <Categories />

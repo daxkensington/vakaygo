@@ -62,6 +62,7 @@ export default function ExplorePage() {
   const [hasMore, setHasMore] = useState(true);
   const [activeIsland, setActiveIsland] = useState("");
   const [sortBy, setSortBy] = useState("recommended");
+  const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 24;
 
   useEffect(() => {
@@ -104,10 +105,20 @@ export default function ExplorePage() {
     return () => clearTimeout(debounce);
   }, [activeCategory, searchQuery, activeIsland, page, sortBy]);
 
-  // Reset page when filters change
+  // Reset page and fetch count when filters change
   useEffect(() => {
     setPage(0);
     setHasMore(true);
+
+    // Fetch total count
+    const countParams = new URLSearchParams();
+    if (activeCategory !== "all") countParams.set("type", activeCategory);
+    if (searchQuery) countParams.set("q", searchQuery);
+    if (activeIsland) countParams.set("island", activeIsland);
+    fetch(`/api/listings/count?${countParams}`)
+      .then((r) => r.json())
+      .then((d) => setTotalCount(d.count || 0))
+      .catch(() => {});
   }, [activeCategory, searchQuery, activeIsland, sortBy]);
 
   return (
@@ -187,7 +198,7 @@ export default function ExplorePage() {
           <div className="flex items-center justify-between mb-6">
             <p className="text-navy-400 text-sm">
               <span className="font-semibold text-navy-700">
-                {loading ? "..." : listings.length}
+                {loading && listings.length === 0 ? "..." : totalCount.toLocaleString()}
               </span>{" "}
               experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
             </p>
