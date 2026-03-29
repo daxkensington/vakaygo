@@ -30,7 +30,7 @@ type BookingWidgetProps = {
 
 export function BookingWidget({ listing }: BookingWidgetProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [guests, setGuests] = useState(1);
@@ -39,6 +39,11 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const [booked, setBooked] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const pricePerUnit = parseFloat(listing.priceAmount || "0");
 
@@ -60,9 +65,45 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
     includeInsurance,
   });
 
+  async function handleGuestCheckout(e: React.FormEvent) {
+    e.preventDefault();
+    setGuestLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: guestName,
+          email: guestEmail,
+          phone: guestPhone || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Something went wrong");
+        return;
+      }
+
+      // Refresh auth context so user is now logged in
+      await refresh();
+      setShowGuestForm(false);
+
+      // Proceed with booking
+      await handleBook();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setGuestLoading(false);
+    }
+  }
+
   async function handleBook() {
-    if (!user) {
-      router.push("/auth/signin");
+    if (!user && !showGuestForm) {
+      setShowGuestForm(true);
       return;
     }
     if (!startDate) {
@@ -247,6 +288,65 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           </div>
         </div>
 
+        {/* Guest Checkout Form */}
+        {showGuestForm && !user && (
+          <div className="mb-6 p-4 rounded-xl bg-cream-50 border border-cream-200">
+            <p className="text-sm font-semibold text-navy-700 mb-1">
+              Book as a guest
+            </p>
+            <p className="text-xs text-navy-400 mb-4">
+              We&apos;ll create an account for you so you can manage your booking.
+            </p>
+            <form onSubmit={handleGuestCheckout} className="space-y-3">
+              <input
+                type="text"
+                required
+                placeholder="Full name"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+              />
+              <input
+                type="email"
+                required
+                placeholder="Email address"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+              />
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={guestLoading}
+                className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2 text-sm"
+              >
+                {guestLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  "Continue & Book"
+                )}
+              </button>
+            </form>
+            <div className="flex items-center gap-3 mt-3">
+              <div className="flex-1 h-px bg-cream-200" />
+              <span className="text-xs text-navy-300">or</span>
+              <div className="flex-1 h-px bg-cream-200" />
+            </div>
+            <a
+              href="/auth/signin"
+              className="block text-center text-sm text-gold-500 font-semibold hover:text-gold-600 mt-3"
+            >
+              Sign in to your account
+            </a>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mb-4">
@@ -255,25 +355,29 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
         )}
 
         {/* Book Button */}
-        <button
-          onClick={handleBook}
-          disabled={loading}
-          className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : listing.isInstantBook ? (
-            <>
-              <Zap size={18} />
-              Book Now
-            </>
-          ) : (
-            "Request to Book"
-          )}
-        </button>
-        <p className="text-center text-navy-300 text-xs mt-3">
-          {user ? "You won't be charged yet" : "Sign in to book"}
-        </p>
+        {(!showGuestForm || user) && (
+          <>
+            <button
+              onClick={handleBook}
+              disabled={loading}
+              className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : listing.isInstantBook ? (
+                <>
+                  <Zap size={18} />
+                  Book Now
+                </>
+              ) : (
+                "Request to Book"
+              )}
+            </button>
+            <p className="text-center text-navy-300 text-xs mt-3">
+              {user ? "You won't be charged yet" : "Continue as guest or sign in"}
+            </p>
+          </>
+        )}
 
         {/* Trust Signals */}
         <div className="mt-6 pt-6 border-t border-cream-200 space-y-3">

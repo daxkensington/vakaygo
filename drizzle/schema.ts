@@ -392,3 +392,27 @@ export const waitlist = pgTable("waitlist", {
   source: varchar("source", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── MESSAGES (traveler <-> operator) ───────────────────────────
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => users.id),
+    receiverId: uuid("receiver_id")
+      .notNull()
+      .references(() => users.id),
+    listingId: uuid("listing_id").references(() => listings.id),
+    bookingId: uuid("booking_id").references(() => bookings.id),
+    content: text("content").notNull(),
+    isRead: boolean("is_read").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("messages_sender_idx").on(t.senderId),
+    index("messages_receiver_idx").on(t.receiverId),
+    index("messages_listing_idx").on(t.listingId),
+  ]
+);
