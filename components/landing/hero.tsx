@@ -150,7 +150,7 @@ export function Hero() {
         {/* Stats */}
         <div className="mt-14 flex flex-wrap justify-center gap-12 text-sm">
           {[
-            { value: "5,000+", label: "Listings" },
+            { value: "7,200+", label: "Listings" },
             { value: "21", label: "Islands" },
             { value: "6", label: "Categories" },
           ].map((stat) => (
