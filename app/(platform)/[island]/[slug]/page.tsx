@@ -11,6 +11,7 @@ import { ReviewSection } from "@/components/listings/review-section";
 import { ShareButton } from "@/components/listings/share-button";
 import { PhotoGallery } from "@/components/listings/photo-gallery";
 import { TrustBadges } from "@/components/listings/trust-badges";
+import { ContactOperator } from "@/components/listings/contact-operator";
 import {
   Star,
   MapPin,
@@ -399,6 +400,18 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Contact Operator */}
+              {!td.unclaimed && listing.operatorId && (
+                <div className="mt-8">
+                  <ContactOperator
+                    operatorId={listing.operatorId}
+                    operatorName={String(listing.operatorName || "Operator")}
+                    listingId={listing.id}
+                    listingTitle={listing.title}
+                  />
+                </div>
+              )}
 
               {/* Reviews */}
               <ReviewSection listingId={listing.id} />

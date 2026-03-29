@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, listings } from "@/drizzle/schema";
+import { bookings, listings, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
+import { sendBookingConfirmation, sendBookingNotificationToOperator } from "@/server/email";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -115,6 +116,44 @@ export async function POST(request: Request) {
         status: bookings.status,
         totalAmount: bookings.totalAmount,
       });
+
+    // Send confirmation emails (non-blocking)
+    const [traveler] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, travelerId))
+      .limit(1);
+
+    const [operator] = await db
+      .select({ email: users.email, name: users.name, businessName: users.businessName })
+      .from(users)
+      .where(eq(users.id, listing.operatorId))
+      .limit(1);
+
+    if (traveler?.email) {
+      sendBookingConfirmation({
+        to: traveler.email,
+        travelerName: traveler.name || "Traveler",
+        bookingNumber: booking.bookingNumber,
+        listingTitle: listing.title,
+        startDate,
+        guestCount,
+        totalAmount: pricing.total.toFixed(2),
+      }).catch(() => {});
+    }
+
+    if (operator?.email && !operator.email.includes("unclaimed")) {
+      sendBookingNotificationToOperator({
+        to: operator.email,
+        operatorName: operator.businessName || operator.name || "Operator",
+        bookingNumber: booking.bookingNumber,
+        listingTitle: listing.title,
+        travelerName: traveler?.name || "A traveler",
+        startDate,
+        guestCount,
+        subtotal: pricing.operatorEarnings.toFixed(2),
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       booking,
