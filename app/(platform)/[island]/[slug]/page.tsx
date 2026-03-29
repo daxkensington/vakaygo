@@ -10,6 +10,7 @@ import { ContactInfo } from "@/components/listings/contact-info";
 import { ReviewSection } from "@/components/listings/review-section";
 import { ShareButton } from "@/components/listings/share-button";
 import { PhotoGallery } from "@/components/listings/photo-gallery";
+import { TrustBadges } from "@/components/listings/trust-badges";
 import {
   Star,
   MapPin,
@@ -195,6 +196,17 @@ export default function ListingDetailPage() {
                     <Heart size={18} />
                   </button>
                 </div>
+              </div>
+
+              {/* Trust Badges */}
+              <div className="mt-4">
+                <TrustBadges
+                  isInstantBook={listing.isInstantBook}
+                  avgRating={listing.avgRating}
+                  reviewCount={listing.reviewCount}
+                  isFeatured={listing.isFeatured}
+                  type={listing.type}
+                />
               </div>
 
               {/* Headline */}

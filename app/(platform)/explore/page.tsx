@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { ListingCard } from "@/components/listings/listing-card";
+import { ListingSkeletonGrid } from "@/components/listings/listing-skeleton";
 import {
   Search,
   MapPin,
@@ -218,16 +219,21 @@ export default function ExplorePage() {
             </select>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 size={32} className="animate-spin text-gold-500" />
-            </div>
+          {loading && listings.length === 0 ? (
+            <ListingSkeletonGrid count={8} />
           ) : listings.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-navy-400 text-lg">No listings found</p>
-              <p className="text-navy-300 text-sm mt-2">
-                Try a different search or category
+              <Compass size={40} className="text-navy-200 mx-auto mb-4" />
+              <p className="text-navy-500 text-lg font-semibold">No listings found</p>
+              <p className="text-navy-400 text-sm mt-2 max-w-md mx-auto">
+                Try adjusting your filters, searching for something else, or exploring a different island.
               </p>
+              <button
+                onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); }}
+                className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
+              >
+                Clear All Filters
+              </button>
             </div>
           ) : (
             <>
