@@ -121,7 +121,7 @@ export function ListingCard(props: ListingCardProps) {
         {props.priceAmount && parseFloat(props.priceAmount) > 0 && (
           <p className="mt-2">
             <span className="font-bold text-navy-700">
-              ${parseFloat(props.priceAmount).toFixed(0)}
+              ${parseFloat(props.priceAmount).toFixed(2)}
             </span>
             <span className="text-navy-400 text-sm"> / {props.priceUnit}</span>
           </p>

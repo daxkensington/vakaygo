@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, MapPin, Calendar, ChevronDown } from "lucide-react";
+import { Search, MapPin, ChevronDown } from "lucide-react";
 
 const heroImages = [
   "/images/hero/caribbean-hero.jpg",
@@ -72,44 +72,80 @@ export function Hero() {
         </p>
 
         {/* Search Bar */}
-        <div className="mt-12 mx-auto max-w-3xl">
+        <form
+          className="mt-12 mx-auto max-w-3xl"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const dest = (form.elements.namedItem("destination") as HTMLSelectElement)?.value || "";
+            const q = (form.elements.namedItem("q") as HTMLInputElement)?.value || "";
+            const params = new URLSearchParams();
+            if (dest) params.set("island", dest);
+            if (q) params.set("q", q);
+            window.location.href = `/explore?${params}`;
+          }}
+        >
           <div className="bg-white/[0.07] backdrop-blur-xl rounded-2xl p-2 shadow-[0_8px_60px_rgba(0,0,0,0.3)] border border-white/10">
             <div className="flex flex-col md:flex-row gap-2">
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
                 <MapPin size={20} className="text-gold-500 shrink-0" />
-                <div className="text-left">
+                <div className="text-left w-full">
                   <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
                     Destination
                   </p>
-                  <input
-                    type="text"
-                    placeholder="Grenada, Caribbean"
-                    className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
-                    disabled
-                  />
+                  <select
+                    name="destination"
+                    className="w-full bg-transparent text-navy-700 outline-none text-sm font-medium mt-0.5 appearance-none cursor-pointer"
+                  >
+                    <option value="">All Caribbean Islands</option>
+                    <option value="grenada">🇬🇩 Grenada</option>
+                    <option value="trinidad-and-tobago">🇹🇹 Trinidad & Tobago</option>
+                    <option value="barbados">🇧🇧 Barbados</option>
+                    <option value="st-lucia">🇱🇨 St. Lucia</option>
+                    <option value="jamaica">🇯🇲 Jamaica</option>
+                    <option value="bahamas">🇧🇸 Bahamas</option>
+                    <option value="antigua">🇦🇬 Antigua</option>
+                    <option value="aruba">🇦🇼 Aruba</option>
+                    <option value="dominican-republic">🇩🇴 Dominican Republic</option>
+                    <option value="puerto-rico">🇵🇷 Puerto Rico</option>
+                    <option value="curacao">🇨🇼 Curaçao</option>
+                    <option value="cayman-islands">🇰🇾 Cayman Islands</option>
+                    <option value="us-virgin-islands">🇻🇮 USVI</option>
+                    <option value="dominica">🇩🇲 Dominica</option>
+                    <option value="st-vincent">🇻🇨 St. Vincent</option>
+                    <option value="st-kitts">🇰🇳 St. Kitts</option>
+                    <option value="turks-and-caicos">🇹🇨 Turks & Caicos</option>
+                    <option value="bonaire">Bonaire</option>
+                    <option value="martinique">🇲🇶 Martinique</option>
+                    <option value="guadeloupe">🇬🇵 Guadeloupe</option>
+                    <option value="british-virgin-islands">🇻🇬 BVI</option>
+                  </select>
                 </div>
               </div>
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
-                <Calendar size={20} className="text-gold-500 shrink-0" />
-                <div className="text-left">
+                <Search size={20} className="text-gold-500 shrink-0" />
+                <div className="text-left w-full">
                   <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
-                    Dates
+                    Search
                   </p>
                   <input
                     type="text"
-                    placeholder="Add your travel dates"
+                    name="q"
+                    placeholder="Hotels, tours, restaurants..."
                     className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
-                    disabled
                   />
                 </div>
               </div>
-              <button className="bg-gold-500 hover:bg-gold-600 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]">
+              <button
+                type="submit"
+                className="bg-gold-500 hover:bg-gold-600 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]"
+              >
                 <Search size={18} />
                 <span className="hidden md:inline">Explore</span>
               </button>
             </div>
           </div>
-        </div>
+        </form>
 
         {/* Stats */}
         <div className="mt-14 flex flex-wrap justify-center gap-12 text-sm">
