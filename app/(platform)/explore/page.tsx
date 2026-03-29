@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
-import Link from "next/link";
+import { ListingCard } from "@/components/listings/listing-card";
 import {
   Search,
   MapPin,
@@ -13,7 +13,6 @@ import {
   Music,
   Car,
   Users,
-  Star,
   Loader2,
 } from "lucide-react";
 
@@ -196,77 +195,7 @@ export default function ExplorePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {listings.map((listing) => (
-                <Link
-                  key={listing.id}
-                  href={`/${listing.islandSlug}/${listing.slug}`}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
-                >
-                  {/* Image */}
-                  <div className="relative h-52 overflow-hidden">
-                    {listing.image ? (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                        style={{ backgroundImage: `url(${listing.image})` }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-cream-200 flex items-center justify-center">
-                        <span className="text-navy-300">No image</span>
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3">
-                      <span
-                        className={`${typeColors[listing.type] || "bg-navy-500"} text-white text-xs font-semibold px-2.5 py-1 rounded-full`}
-                      >
-                        {listing.type.charAt(0).toUpperCase() +
-                          listing.type.slice(1)}
-                      </span>
-                    </div>
-                    {listing.isFeatured && (
-                      <div className="absolute top-3 right-3">
-                        <span className="bg-gold-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                          Featured
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-navy-400">
-                        {listing.parish}, {listing.islandName}
-                      </p>
-                      {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Star
-                            size={12}
-                            className="text-gold-500 fill-gold-500"
-                          />
-                          <span className="text-xs font-semibold text-navy-700">
-                            {parseFloat(listing.avgRating).toFixed(1)}
-                          </span>
-                          <span className="text-xs text-navy-300">
-                            ({listing.reviewCount})
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors">
-                      {listing.title}
-                    </h3>
-                    {listing.priceAmount && (
-                      <p className="mt-2">
-                        <span className="font-bold text-navy-700">
-                          ${parseFloat(listing.priceAmount).toFixed(0)}
-                        </span>
-                        <span className="text-navy-400 text-sm">
-                          {" "}
-                          / {listing.priceUnit}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                </Link>
+                <ListingCard key={listing.id} {...listing} />
               ))}
             </div>
           )}
