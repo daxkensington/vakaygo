@@ -9,6 +9,7 @@ import { BookingWidget } from "@/components/listings/booking-widget";
 import { ContactInfo } from "@/components/listings/contact-info";
 import { ReviewSection } from "@/components/listings/review-section";
 import { ShareButton } from "@/components/listings/share-button";
+import { PhotoGallery } from "@/components/listings/photo-gallery";
 import {
   Star,
   MapPin,
@@ -76,7 +77,6 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
     async function fetchListing() {
@@ -145,36 +145,7 @@ export default function ListingDetailPage() {
         </div>
 
         {/* Image Gallery */}
-        <div className="mx-auto max-w-7xl px-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            {/* Main image */}
-            <div
-              className="bg-cover bg-center bg-cream-200 cursor-pointer"
-              style={{
-                backgroundImage: images[activeImage]?.url
-                  ? `url(${images[activeImage].url})`
-                  : undefined,
-              }}
-            />
-            {/* Side images */}
-            <div className="hidden md:grid grid-cols-2 gap-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="bg-cover bg-center bg-cream-200 cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{
-                    backgroundImage: images[i]?.url
-                      ? `url(${images[i].url})`
-                      : images[0]?.url
-                      ? `url(${images[0].url})`
-                      : undefined,
-                  }}
-                  onClick={() => images[i] && setActiveImage(i)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <PhotoGallery photos={images} title={listing.title} />
 
         <div className="mx-auto max-w-7xl px-6 pb-20">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
