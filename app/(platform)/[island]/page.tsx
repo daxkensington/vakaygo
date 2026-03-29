@@ -47,15 +47,18 @@ const typeConfig = [
 ];
 
 const heroImages: Record<string, string> = {
-  grenada: "https://images.unsplash.com/photo-1580541631950-7282082b02f7?w=1200&q=80&auto=format",
-  barbados: "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=1200&q=80&auto=format",
-  jamaica: "https://images.unsplash.com/photo-1562932831-afcfe5b59a20?w=1200&q=80&auto=format",
-  "trinidad-and-tobago": "https://images.unsplash.com/photo-1590001155093-a3c66ab0c3ff?w=1200&q=80&auto=format",
-  "st-lucia": "https://images.unsplash.com/photo-1572726729207-a78d6feb18d7?w=1200&q=80&auto=format",
-  bahamas: "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=1200&q=80&auto=format",
-  aruba: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80&auto=format",
+  grenada: "/images/islands/grenada.jpg",
+  barbados: "/images/islands/barbados.jpg",
+  jamaica: "/images/islands/jamaica.jpg",
+  "trinidad-and-tobago": "/images/islands/trinidad.jpg",
+  "st-lucia": "/images/islands/st-lucia.jpg",
+  bahamas: "/images/islands/bahamas.jpg",
+  aruba: "/images/islands/aruba.jpg",
+  curacao: "/images/islands/curacao.jpg",
+  "dominican-republic": "/images/islands/dominican-republic.jpg",
+  antigua: "/images/islands/antigua.jpg",
 };
-const defaultHero = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80&auto=format";
+const defaultHero = "/images/hero/caribbean-hero.jpg";
 
 export default function IslandPage() {
   const params = useParams();
