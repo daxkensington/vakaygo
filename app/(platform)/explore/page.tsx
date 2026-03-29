@@ -111,6 +111,34 @@ export default function ExplorePage() {
                   className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                 />
               </div>
+              <select
+                value={activeIsland}
+                onChange={(e) => setActiveIsland(e.target.value)}
+                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors"
+              >
+                <option value="">All Islands</option>
+                <option value="grenada">🇬🇩 Grenada</option>
+                <option value="trinidad-and-tobago">🇹🇹 Trinidad & Tobago</option>
+                <option value="barbados">🇧🇧 Barbados</option>
+                <option value="st-lucia">🇱🇨 St. Lucia</option>
+                <option value="jamaica">🇯🇲 Jamaica</option>
+                <option value="bahamas">🇧🇸 Bahamas</option>
+                <option value="antigua">🇦🇬 Antigua</option>
+                <option value="dominica">🇩🇲 Dominica</option>
+                <option value="st-vincent">🇻🇨 St. Vincent</option>
+                <option value="aruba">🇦🇼 Aruba</option>
+                <option value="curacao">🇨🇼 Curaçao</option>
+                <option value="cayman-islands">🇰🇾 Cayman Islands</option>
+                <option value="puerto-rico">🇵🇷 Puerto Rico</option>
+                <option value="dominican-republic">🇩🇴 Dominican Republic</option>
+                <option value="turks-and-caicos">🇹🇨 Turks & Caicos</option>
+                <option value="us-virgin-islands">🇻🇮 USVI</option>
+                <option value="british-virgin-islands">🇻🇬 BVI</option>
+                <option value="st-kitts">🇰🇳 St. Kitts</option>
+                <option value="martinique">🇲🇶 Martinique</option>
+                <option value="guadeloupe">🇬🇵 Guadeloupe</option>
+                <option value="bonaire">Bonaire</option>
+              </select>
               <button className="flex items-center gap-2 px-4 py-3 rounded-xl bg-cream-50 text-navy-500 hover:bg-cream-100 transition-colors text-sm font-medium">
                 <SlidersHorizontal size={16} />
                 <span className="hidden sm:inline">Filters</span>
@@ -144,11 +172,13 @@ export default function ExplorePage() {
               <span className="font-semibold text-navy-700">
                 {loading ? "..." : listings.length}
               </span>{" "}
-              experiences in Grenada
+              experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
             </p>
             <div className="flex items-center gap-2">
               <MapPin size={14} className="text-gold-500" />
-              <span className="text-sm font-medium text-navy-600">Grenada</span>
+              <span className="text-sm font-medium text-navy-600">
+                {activeIsland ? activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "All Islands"}
+              </span>
             </div>
           </div>
 
