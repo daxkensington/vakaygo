@@ -51,7 +51,7 @@ export function Hero() {
       >
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
-          Now launching in Grenada
+          7,200+ listings across 21 Caribbean islands
         </div>
 
         <h1
