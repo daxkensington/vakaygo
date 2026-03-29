@@ -1,4 +1,5 @@
 import { Hero } from "@/components/landing/hero";
+import { StatsBar } from "@/components/landing/stats-bar";
 import { ValueProps } from "@/components/landing/value-props";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Categories } from "@/components/landing/categories";
@@ -14,6 +15,7 @@ export default function LandingPage() {
       <Header />
       <main>
         <Hero />
+        <StatsBar />
         <ValueProps />
         <HowItWorks />
         <Categories />

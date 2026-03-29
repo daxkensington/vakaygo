@@ -90,10 +90,37 @@ export default function NewListingPage() {
 
   async function handleSubmit() {
     setLoading(true);
-    // TODO: API call to create listing
-    await new Promise((r) => setTimeout(r, 1500));
-    setSubmitted(true);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/auth/session");
+      const session = await res.json();
+      if (!session.user) {
+        setLoading(false);
+        return;
+      }
+
+      const createRes = await fetch("/api/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operatorId: session.user.id,
+          type,
+          title,
+          description,
+          address,
+          priceAmount: price ? parseFloat(price) : null,
+          priceCurrency: "USD",
+          priceUnit,
+        }),
+      });
+
+      if (createRes.ok) {
+        setSubmitted(true);
+      }
+    } catch {
+      // handle error
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (submitted) {
