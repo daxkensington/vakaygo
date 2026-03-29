@@ -58,6 +58,14 @@ export function Header() {
             Islands
           </Link>
           <Link
+            href="/services"
+            className={`transition-colors duration-300 hover:text-gold-500 ${
+              scrolled || !isLanding ? "text-navy-500" : "text-white/80"
+            }`}
+          >
+            Services
+          </Link>
+          <Link
             href="/for-businesses"
             className={`transition-colors duration-300 hover:text-gold-500 ${
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
