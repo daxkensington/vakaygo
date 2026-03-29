@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands, media } from "@/drizzle/schema";
-import { eq, and, ilike, desc, asc, gte, lte } from "drizzle-orm";
+import { eq, and, ilike, desc, asc, gte, lte, inArray, sql } from "drizzle-orm";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -84,23 +84,19 @@ export async function GET(request: Request) {
       .limit(limit)
       .offset(offset);
 
-    // Get primary images for listings that have them
+    // Get primary images in a single query
     const listingIds = results.map((r) => r.id);
     const imageMap = new Map<string, string>();
 
     if (listingIds.length > 0) {
-      // Batch fetch in chunks to avoid query size issues
-      for (let i = 0; i < listingIds.length; i += 50) {
-        const chunk = listingIds.slice(i, i + 50);
-        for (const lid of chunk) {
-          const [img] = await db
-            .select({ url: media.url })
-            .from(media)
-            .where(and(eq(media.listingId, lid), eq(media.isPrimary, true)))
-            .limit(1);
-          if (img) imageMap.set(lid, img.url);
-        }
-      }
+      const images = await db
+        .select({ listingId: media.listingId, url: media.url })
+        .from(media)
+        .where(and(
+          inArray(media.listingId, listingIds),
+          eq(media.isPrimary, true)
+        ));
+      images.forEach((img) => imageMap.set(img.listingId, img.url));
     }
 
     const data = results.map((r) => ({

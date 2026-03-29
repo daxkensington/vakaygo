@@ -142,3 +142,24 @@
     font-family: var(--font-display);
   }
 }
+
+/* Hide scrollbar for category tabs */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth image loading */
+img {
+  transition: opacity 0.3s ease;
+}
+
+/* Mobile touch targets */
+@media (max-width: 768px) {
+  button, a {
+    min-height: 44px;
+  }
+}
