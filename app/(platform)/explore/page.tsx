@@ -19,10 +19,13 @@ import {
 const categoryTabs = [
   { id: "all", label: "All", icon: Search },
   { id: "stay", label: "Stays", icon: Home },
+  { id: "excursion", label: "Excursions", icon: Compass },
   { id: "tour", label: "Tours", icon: Compass },
   { id: "dining", label: "Dining", icon: UtensilsCrossed },
   { id: "event", label: "Events", icon: Music },
+  { id: "transfer", label: "Transfers", icon: Car },
   { id: "transport", label: "Transport", icon: Car },
+  { id: "vip", label: "VIP Services", icon: Users },
   { id: "guide", label: "Guides", icon: Users },
 ];
 

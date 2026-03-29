@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight } from "lucide-react";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight, Shield, Plane } from "lucide-react";
 
 const categories = [
   {
@@ -13,12 +13,21 @@ const categories = [
   },
   {
     icon: Compass,
+    name: "Excursions",
+    slug: "excursion",
+    count: 0,
+    description: "Boat trips, island hopping & adventure days",
+    image:
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
+  },
+  {
+    icon: Compass,
     name: "Tours",
     slug: "tour",
     count: 188,
-    description: "Sailing, hiking, snorkeling & more",
+    description: "Walking tours, sightseeing & cultural experiences",
     image:
-      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
+      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format",
   },
   {
     icon: UtensilsCrossed,
@@ -39,13 +48,31 @@ const categories = [
       "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80&auto=format",
   },
   {
+    icon: Plane,
+    name: "Airport Transfers",
+    slug: "transfer",
+    count: 0,
+    description: "Meet & greet, flight tracking, door-to-door",
+    image:
+      "https://images.unsplash.com/photo-1449965408869-ebd13bc9e5a8?w=600&q=80&auto=format",
+  },
+  {
     icon: Car,
     name: "Transport",
     slug: "transport",
     count: 48,
-    description: "Airport transfers & island tours",
+    description: "Car rental, taxi, water taxi & ferry",
     image:
       "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&q=80&auto=format",
+  },
+  {
+    icon: Shield,
+    name: "VIP Services",
+    slug: "vip",
+    count: 0,
+    description: "Security, concierge & luxury transfers",
+    image:
+      "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=600&q=80&auto=format",
   },
   {
     icon: Users,
@@ -70,7 +97,7 @@ export function Categories() {
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Six ways to explore
+            Nine ways to explore
           </h2>
           <p className="mt-4 text-navy-400 max-w-lg mx-auto text-lg">
             Everything a traveler needs. Everything a local business can offer.
@@ -108,7 +135,7 @@ export function Categories() {
               {/* Count + arrow */}
               <div className="absolute top-5 right-5 flex items-center gap-2">
                 <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                  {cat.count} listings
+                  {cat.count > 0 ? `${cat.count} listings` : "Coming soon"}
                 </span>
               </div>
 

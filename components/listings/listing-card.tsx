@@ -20,18 +20,24 @@ type ListingCardProps = {
 const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home }> = {
   stay: { color: "text-gold-600", bg: "bg-gold-50", icon: Home },
   tour: { color: "text-teal-600", bg: "bg-teal-50", icon: Compass },
+  excursion: { color: "text-teal-600", bg: "bg-teal-50", icon: Compass },
   dining: { color: "text-gold-600", bg: "bg-gold-50", icon: UtensilsCrossed },
   event: { color: "text-teal-600", bg: "bg-teal-50", icon: Music },
   transport: { color: "text-navy-600", bg: "bg-navy-50", icon: Car },
+  transfer: { color: "text-navy-600", bg: "bg-navy-50", icon: Car },
+  vip: { color: "text-gold-600", bg: "bg-gold-50", icon: Users },
   guide: { color: "text-gold-600", bg: "bg-gold-50", icon: Users },
 };
 
 const typeLabels: Record<string, string> = {
   stay: "Stay",
   tour: "Tour",
+  excursion: "Excursion",
   dining: "Dining",
   event: "Event",
   transport: "Transport",
+  transfer: "Transfer",
+  vip: "VIP",
   guide: "Guide",
 };
 
@@ -39,9 +45,12 @@ const typeLabels: Record<string, string> = {
 const typeFallbacks: Record<string, string> = {
   stay: "from-gold-400 to-gold-600",
   tour: "from-teal-400 to-teal-600",
+  excursion: "from-teal-500 to-teal-700",
   dining: "from-gold-500 to-gold-700",
   event: "from-teal-500 to-teal-700",
   transport: "from-navy-400 to-navy-600",
+  transfer: "from-navy-500 to-navy-700",
+  vip: "from-gold-500 to-gold-700",
   guide: "from-gold-400 to-teal-500",
 };
 

@@ -39,10 +39,13 @@ type IslandData = {
 
 const typeConfig = [
   { type: "stay", label: "Stays", icon: Home, color: "bg-gold-500" },
-  { type: "tour", label: "Tours", icon: Compass, color: "bg-teal-500" },
+  { type: "excursion", label: "Excursions", icon: Compass, color: "bg-teal-500" },
+  { type: "tour", label: "Tours", icon: Compass, color: "bg-teal-600" },
   { type: "dining", label: "Dining", icon: UtensilsCrossed, color: "bg-gold-600" },
   { type: "event", label: "Events", icon: Music, color: "bg-teal-600" },
-  { type: "transport", label: "Transport", icon: Car, color: "bg-navy-500" },
+  { type: "transfer", label: "Transfers", icon: Car, color: "bg-navy-500" },
+  { type: "transport", label: "Transport", icon: Car, color: "bg-navy-600" },
+  { type: "vip", label: "VIP", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Guides", icon: Users, color: "bg-gold-500" },
 ];
 
