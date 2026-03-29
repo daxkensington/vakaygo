@@ -17,8 +17,7 @@ const categories = [
     slug: "excursion",
     count: 0,
     description: "Boat trips, island hopping & adventure days",
-    image:
-      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80&auto=format",
+    image: "/images/categories/excursion.jpg",
   },
   {
     icon: Compass,
@@ -53,8 +52,7 @@ const categories = [
     slug: "transfer",
     count: 0,
     description: "Meet & greet, flight tracking, door-to-door",
-    image:
-      "https://images.unsplash.com/photo-1449965408869-ebd13bc9e5a8?w=600&q=80&auto=format",
+    image: "/images/categories/transfer.jpg",
   },
   {
     icon: Car,
@@ -71,8 +69,7 @@ const categories = [
     slug: "vip",
     count: 0,
     description: "Security, concierge & luxury transfers",
-    image:
-      "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=600&q=80&auto=format",
+    image: "/images/categories/vip.jpg",
   },
   {
     icon: Users,
