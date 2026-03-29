@@ -6,6 +6,9 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BookingWidget } from "@/components/listings/booking-widget";
+import { ContactInfo } from "@/components/listings/contact-info";
+import { ReviewSection } from "@/components/listings/review-section";
+import { ShareButton } from "@/components/listings/share-button";
 import {
   Star,
   MapPin,
@@ -15,7 +18,6 @@ import {
   Shield,
   ChevronLeft,
   Loader2,
-  Share2,
   Heart,
   Zap,
 } from "lucide-react";
@@ -214,9 +216,10 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-navy-400 hover:text-gold-500 transition-colors">
-                    <Share2 size={18} />
-                  </button>
+                  <ShareButton
+                    title={listing.title}
+                    url={typeof window !== "undefined" ? window.location.href : ""}
+                  />
                   <button className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-navy-400 hover:text-red-500 transition-colors">
                     <Heart size={18} />
                   </button>
@@ -264,6 +267,9 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Contact Info */}
+              <ContactInfo typeData={listing.typeData} />
 
               {/* Quick Info */}
               {listing.typeData && (
@@ -410,6 +416,9 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Reviews */}
+              <ReviewSection listingId={listing.id} />
             </div>
 
             {/* Right Sidebar — Booking Widget */}

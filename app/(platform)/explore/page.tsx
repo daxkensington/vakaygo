@@ -61,6 +61,7 @@ export default function ExplorePage() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [activeIsland, setActiveIsland] = useState("");
+  const [sortBy, setSortBy] = useState("recommended");
   const PAGE_SIZE = 24;
 
   useEffect(() => {
@@ -78,6 +79,7 @@ export default function ExplorePage() {
       if (activeCategory !== "all") params.set("type", activeCategory);
       if (searchQuery) params.set("q", searchQuery);
       if (activeIsland) params.set("island", activeIsland);
+      if (sortBy !== "recommended") params.set("sort", sortBy);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(page * PAGE_SIZE));
 
@@ -100,13 +102,13 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [activeCategory, searchQuery, activeIsland, page]);
+  }, [activeCategory, searchQuery, activeIsland, page, sortBy]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
     setHasMore(true);
-  }, [activeCategory, searchQuery, activeIsland]);
+  }, [activeCategory, searchQuery, activeIsland, sortBy]);
 
   return (
     <>
@@ -189,12 +191,17 @@ export default function ExplorePage() {
               </span>{" "}
               experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
             </p>
-            <div className="flex items-center gap-2">
-              <MapPin size={14} className="text-gold-500" />
-              <span className="text-sm font-medium text-navy-600">
-                {activeIsland ? activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "All Islands"}
-              </span>
-            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
+            >
+              <option value="recommended">Recommended</option>
+              <option value="rating">Highest Rated</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="newest">Newest</option>
+            </select>
           </div>
 
           {loading ? (
