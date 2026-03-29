@@ -67,10 +67,13 @@ type SimilarListing = {
 
 const typeLabels: Record<string, string> = {
   stay: "Stay",
+  excursion: "Excursion",
   tour: "Tour",
   dining: "Restaurant",
   event: "Event",
+  transfer: "Airport Transfer",
   transport: "Transport",
+  vip: "VIP Service",
   guide: "Local Guide",
 };
 
