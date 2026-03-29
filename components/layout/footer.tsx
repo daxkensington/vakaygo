@@ -40,9 +40,9 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-4">Company</h4>
             <ul className="space-y-3 text-sm text-cream-300">
-              <li><a href="#" className="hover:text-gold-400 transition-colors">About</a></li>
-              <li><a href="#" className="hover:text-gold-400 transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-gold-400 transition-colors">Terms of Service</a></li>
+              <li><a href="/about" className="hover:text-gold-400 transition-colors">About</a></li>
+              <li><a href="/privacy" className="hover:text-gold-400 transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="hover:text-gold-400 transition-colors">Terms of Service</a></li>
               <li><a href="mailto:hello@vakaygo.com" className="hover:text-gold-400 transition-colors">Contact</a></li>
             </ul>
           </div>
