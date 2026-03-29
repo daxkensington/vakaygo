@@ -58,8 +58,10 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [activeIsland, setActiveIsland] = useState("");
+  const PAGE_SIZE = 24;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -76,11 +78,19 @@ export default function ExplorePage() {
       if (activeCategory !== "all") params.set("type", activeCategory);
       if (searchQuery) params.set("q", searchQuery);
       if (activeIsland) params.set("island", activeIsland);
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(page * PAGE_SIZE));
 
       try {
         const res = await fetch(`/api/listings?${params}`);
         const data = await res.json();
-        setListings(data.listings || []);
+        const newListings = data.listings || [];
+        if (page === 0) {
+          setListings(newListings);
+        } else {
+          setListings((prev) => [...prev, ...newListings]);
+        }
+        setHasMore(newListings.length === PAGE_SIZE);
       } catch {
         setListings([]);
       } finally {
@@ -90,6 +100,12 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
+  }, [activeCategory, searchQuery, activeIsland, page]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+    setHasMore(true);
   }, [activeCategory, searchQuery, activeIsland]);
 
   return (
@@ -193,11 +209,24 @@ export default function ExplorePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {listings.map((listing) => (
-                <ListingCard key={listing.id} {...listing} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {listings.map((listing) => (
+                  <ListingCard key={listing.id} {...listing} />
+                ))}
+              </div>
+
+              {hasMore && listings.length > 0 && (
+                <div className="text-center mt-10">
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    className="bg-white hover:bg-cream-50 text-navy-600 px-8 py-3 rounded-xl font-semibold shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
