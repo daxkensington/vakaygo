@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, islands } from "@/drizzle/schema";
+import { listings, islands, media } from "@/drizzle/schema";
 import { eq, and, ilike, desc, asc, gte, lte } from "drizzle-orm";
 
 function getDb() {
@@ -84,10 +84,28 @@ export async function GET(request: Request) {
       .limit(limit)
       .offset(offset);
 
-    // Return without images for now — most imported listings don't have images anyway
+    // Get primary images for listings that have them
+    const listingIds = results.map((r) => r.id);
+    const imageMap = new Map<string, string>();
+
+    if (listingIds.length > 0) {
+      // Batch fetch in chunks to avoid query size issues
+      for (let i = 0; i < listingIds.length; i += 50) {
+        const chunk = listingIds.slice(i, i + 50);
+        for (const lid of chunk) {
+          const [img] = await db
+            .select({ url: media.url })
+            .from(media)
+            .where(and(eq(media.listingId, lid), eq(media.isPrimary, true)))
+            .limit(1);
+          if (img) imageMap.set(lid, img.url);
+        }
+      }
+    }
+
     const data = results.map((r) => ({
       ...r,
-      image: null,
+      image: imageMap.get(r.id) || null,
     }));
 
     return NextResponse.json({ listings: data });
