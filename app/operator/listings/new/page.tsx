@@ -14,6 +14,7 @@ import {
   Loader2,
   Check,
 } from "lucide-react";
+import { CATEGORY_RATES } from "@/lib/pricing";
 
 const listingTypes = [
   {
@@ -367,10 +368,10 @@ export default function NewListingPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-navy-400">
-                      VakayGo commission (15%)
+                      VakayGo commission ({((CATEGORY_RATES[type]?.operatorFee || 0.05) * 100).toFixed(0)}%)
                     </span>
                     <span className="text-navy-700 font-medium">
-                      -${(parseFloat(price || "0") * 0.15).toFixed(2)}
+                      -${(parseFloat(price || "0") * (CATEGORY_RATES[type]?.operatorFee || 0.05)).toFixed(2)}
                     </span>
                   </div>
                   <div className="border-t border-cream-200 pt-2 flex justify-between">
@@ -378,7 +379,7 @@ export default function NewListingPage() {
                       You earn
                     </span>
                     <span className="text-teal-600 font-bold">
-                      ${(parseFloat(price || "0") * 0.85).toFixed(2)}
+                      ${(parseFloat(price || "0") * (1 - (CATEGORY_RATES[type]?.operatorFee || 0.05))).toFixed(2)}
                     </span>
                   </div>
                 </div>

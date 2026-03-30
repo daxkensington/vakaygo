@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Save, Loader2, ArrowLeft, Eye, Trash2 } from "lucide-react";
+import { CATEGORY_RATES } from "@/lib/pricing";
 import Link from "next/link";
 
 type ListingData = {
@@ -265,12 +266,12 @@ export default function EditListingPage() {
                 <span className="text-navy-700 font-medium">${parseFloat(price || "0").toFixed(2)}</span>
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-navy-400">VakayGo commission (3%)</span>
-                <span className="text-navy-700">-${(parseFloat(price || "0") * 0.03).toFixed(2)}</span>
+                <span className="text-navy-400">VakayGo commission ({((CATEGORY_RATES[listing?.type || "tour"]?.operatorFee || 0.05) * 100).toFixed(0)}%)</span>
+                <span className="text-navy-700">-${(parseFloat(price || "0") * (CATEGORY_RATES[listing?.type || "tour"]?.operatorFee || 0.05)).toFixed(2)}</span>
               </div>
               <div className="flex justify-between mt-1 pt-2 border-t border-cream-200 font-semibold">
                 <span className="text-navy-700">You earn</span>
-                <span className="text-teal-600">${(parseFloat(price || "0") * 0.97).toFixed(2)}</span>
+                <span className="text-teal-600">${(parseFloat(price || "0") * (1 - (CATEGORY_RATES[listing?.type || "tour"]?.operatorFee || 0.05))).toFixed(2)}</span>
               </div>
             </div>
           )}
