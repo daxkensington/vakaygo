@@ -52,7 +52,7 @@ export function FeaturedListings() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex items-end justify-between mb-10">
           <div>
-            <p className="text-sm font-semibold text-gold-500 uppercase tracking-widest mb-3">
+            <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-3">
               Top Rated
             </p>
             <h2
@@ -64,7 +64,7 @@ export function FeaturedListings() {
           </div>
           <Link
             href="/explore?sort=rating"
-            className="hidden sm:flex items-center gap-2 text-gold-500 font-semibold hover:text-gold-600 transition-colors"
+            className="hidden sm:flex items-center gap-2 text-gold-700 font-semibold hover:text-gold-800 transition-colors"
           >
             View all <ArrowRight size={16} />
           </Link>
@@ -79,7 +79,7 @@ export function FeaturedListings() {
         <div className="sm:hidden text-center mt-8">
           <Link
             href="/explore?sort=rating"
-            className="inline-flex items-center gap-2 text-gold-500 font-semibold"
+            className="inline-flex items-center gap-2 text-gold-700 font-semibold"
           >
             View all top rated <ArrowRight size={16} />
           </Link>

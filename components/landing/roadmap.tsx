@@ -29,7 +29,7 @@ export function Roadmap() {
     <section className="py-24 md:py-32 bg-cream-50 relative overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-16">
-          <p className="text-sm font-semibold text-gold-500 uppercase tracking-widest mb-4">
+          <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
             Caribbean-Wide
           </p>
           <h2

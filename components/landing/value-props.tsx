@@ -40,7 +40,7 @@ export function ValueProps() {
     <section className="py-24 md:py-32 bg-cream-50 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-20">
-          <p className="text-sm font-semibold text-gold-500 uppercase tracking-widest mb-4">
+          <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
             Why VakayGo
           </p>
           <h2
@@ -95,7 +95,7 @@ export function ValueProps() {
                   <div className="mt-8">
                     <a
                       href="#waitlist"
-                      className="inline-flex items-center gap-2 text-gold-500 font-semibold group-hover:gap-3 transition-all"
+                      className="inline-flex items-center gap-2 text-gold-700 font-semibold group-hover:gap-3 transition-all"
                     >
                       Join the waitlist
                       <ArrowRight size={16} />

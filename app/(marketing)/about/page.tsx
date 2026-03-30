@@ -33,7 +33,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-4xl px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div>
-                <p className="text-sm font-semibold text-gold-500 uppercase tracking-widest mb-4">
+                <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
                   Our Mission
                 </p>
                 <h2

@@ -179,10 +179,10 @@ export function Hero() {
             key={i}
             onClick={() => setCurrentImage(i)}
             aria-label={`Show image ${i + 1}`}
-            className={`h-3 rounded-full transition-all duration-300 ${
+            className={`h-4 rounded-full transition-all duration-300 p-1 ${
               currentImage === i
-                ? "bg-gold-400 w-8"
-                : "bg-white/30 hover:bg-white/50 w-3"
+                ? "bg-gold-400 w-10"
+                : "bg-white/30 hover:bg-white/50 w-4"
             }`}
           />
         ))}

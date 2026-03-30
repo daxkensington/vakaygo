@@ -18,15 +18,15 @@ type ListingCardProps = {
 };
 
 const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home }> = {
-  stay: { color: "text-gold-600", bg: "bg-gold-50", icon: Home },
-  tour: { color: "text-teal-600", bg: "bg-teal-50", icon: Compass },
-  excursion: { color: "text-teal-600", bg: "bg-teal-50", icon: Compass },
-  dining: { color: "text-gold-600", bg: "bg-gold-50", icon: UtensilsCrossed },
-  event: { color: "text-teal-600", bg: "bg-teal-50", icon: Music },
-  transport: { color: "text-navy-600", bg: "bg-navy-50", icon: Car },
-  transfer: { color: "text-navy-600", bg: "bg-navy-50", icon: Car },
-  vip: { color: "text-gold-600", bg: "bg-gold-50", icon: Users },
-  guide: { color: "text-gold-600", bg: "bg-gold-50", icon: Users },
+  stay: { color: "text-gold-800", bg: "bg-gold-50", icon: Home },
+  tour: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass },
+  excursion: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass },
+  dining: { color: "text-gold-800", bg: "bg-gold-50", icon: UtensilsCrossed },
+  event: { color: "text-teal-800", bg: "bg-teal-50", icon: Music },
+  transport: { color: "text-navy-700", bg: "bg-navy-50", icon: Car },
+  transfer: { color: "text-navy-700", bg: "bg-navy-50", icon: Car },
+  vip: { color: "text-gold-800", bg: "bg-gold-50", icon: Users },
+  guide: { color: "text-gold-800", bg: "bg-gold-50", icon: Users },
 };
 
 const typeLabels: Record<string, string> = {
@@ -96,8 +96,9 @@ export function ListingCard(props: ListingCardProps) {
 
         {/* Save button */}
         <button
+          aria-label="Save listing"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="absolute bottom-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+          className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-navy-600">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
