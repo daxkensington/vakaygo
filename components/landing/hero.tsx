@@ -55,7 +55,7 @@ export function Hero() {
         </div>
 
         <h1
-          className="text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] tracking-tight"
+          className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.05] tracking-tight"
           style={{ fontFamily: "var(--font-display)" }}
         >
           Your Entire Trip.
@@ -73,7 +73,7 @@ export function Hero() {
 
         {/* Search Bar */}
         <form
-          className="mt-12 mx-auto max-w-3xl"
+          className="mt-8 md:mt-12 mx-auto max-w-3xl"
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.target as HTMLFormElement;

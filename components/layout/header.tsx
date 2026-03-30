@@ -28,10 +28,10 @@ export function Header() {
           : "bg-transparent"
       }`}
     >
-      <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-18">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 flex items-center justify-between h-16 md:h-18">
         <Link href="/" className="flex items-center gap-2">
           <span
-            className={`text-2xl font-bold tracking-tight transition-colors duration-300 ${
+            className={`text-xl md:text-2xl font-bold tracking-tight transition-colors duration-300 ${
               scrolled || !isLanding ? "text-navy-700" : "text-white"
             }`}
           >
