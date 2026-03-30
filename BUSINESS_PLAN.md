@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-VakayGo is a live, Caribbean-born travel platform that unifies all six pillars of trip planning — Stays, Tours & Excursions, Dining, Events, Transport, and Local Guides — into a single destination. The platform is already operational at vakaygo.com with 5,050 pre-populated listings across 21 Caribbean islands, 21,146 photos, and a fully built technology stack supporting bookings, operator dashboards, messaging, and automated outreach.
+VakayGo is a live, Caribbean-born travel platform that unifies all nine pillars of trip planning — Stays, Excursions, Tours, Dining, Events, Airport Transfers, Transport, VIP Services, and Local Guides — into a single destination. The platform is already operational at vakaygo.com with 7,230 pre-populated listings across 21 Caribbean islands, 21,000+ photos, and a fully built technology stack supporting bookings, operator dashboards, messaging, and automated outreach. The company will operate through a tax-optimized multi-entity structure incorporating in Barbados (5.5% corporate rate) with operations in Grenada, leveraging CARICOM treaties for Caribbean-wide operations.
 
 Caribbean tourism generates $60-70 billion annually from 31.5 million stayover arrivals, yet no dominant Caribbean-specific platform exists. Travelers currently juggle 8-12 apps per trip, and 67% wish they could plan everything in one place. Meanwhile, local operators — the backbone of Caribbean tourism — surrender 15-30% of revenue to global platforms that treat the region as an afterthought.
 
@@ -22,12 +22,12 @@ The company is founded in Grenada by a team with direct tourism operations exper
 
 | Metric | Value |
 |---|---|
-| Live listings | 5,050 |
+| Live listings | 7,230 |
 | Islands covered | 21 |
 | Photos indexed | 21,146 |
 | Phone numbers enriched | 4,086 |
 | Websites enriched | 3,445 |
-| Platform verticals | 6 |
+| Platform verticals | 9 |
 | Pages/routes built | 50+ |
 | API endpoints | 30+ |
 | Database tables | 19 |
@@ -544,7 +544,161 @@ VakayGo is well-positioned for non-dilutive funding:
 
 ---
 
-## 14. Risk Analysis & Mitigation
+## 14. Corporate Structure & Tax Strategy
+
+### Recommended Entity Structure
+
+VakayGo will operate through a multi-entity structure optimized for tax efficiency, regulatory compliance, and operational flexibility across the Caribbean.
+
+```
+┌──────────────────────────────────────────────┐
+│  FOUNDER                                      │
+│  Status Indian (Indian Act, Canada)           │
+│  Resident of Canada / Grenada                 │
+└────────────────┬─────────────────────────────┘
+                 │ Owns 100%
+                 ▼
+┌──────────────────────────────────────────────┐
+│  VakayGo Management Co.                      │
+│  (On-Reserve, Canada)                         │
+│                                               │
+│  - Management/consulting services to          │
+│    offshore entity                            │
+│  - Founder draws income from this entity      │
+│  - Section 87 Indian Act exemption applies    │
+│  - Personal income: TAX EXEMPT                │
+│  - Maintains Canadian benefits/status         │
+└────────────────┬─────────────────────────────┘
+                 │ Management fees
+                 ▼
+┌──────────────────────────────────────────────┐
+│  VakayGo International Ltd.                  │
+│  (BARBADOS - Holding/IP Company)             │
+│                                               │
+│  - Owns all IP, brand, domain, codebase      │
+│  - Receives all platform revenue              │
+│  - 5.5% effective corporate tax rate          │
+│  - Canada-Barbados Double Tax Treaty          │
+│  - CARICOM Treaty for Caribbean operations    │
+│  - 2-3 local employees (economic substance)   │
+│  - Board meetings held in Barbados            │
+└────────────────┬─────────────────────────────┘
+                 │ Owns 100%
+                 ▼
+┌──────────────────────────────────────────────┐
+│  VakayGo Caribbean Ltd.                      │
+│  (GRENADA - Operating Company)               │
+│                                               │
+│  - Day-to-day Caribbean operations            │
+│  - Operator relations, customer support       │
+│  - Local staff and office                     │
+│  - Pays license fees to Barbados entity       │
+│  - May qualify for GIDC tourism incentives    │
+│  - Reduced taxable income after transfers     │
+└──────────────────────────────────────────────┘
+```
+
+### Tax Efficiency Summary
+
+| Entity | Jurisdiction | Tax Rate | Purpose |
+|--------|-------------|----------|---------|
+| Management Co. | Canada (On-Reserve) | **0%** (Section 87) | Founder compensation |
+| VakayGo International | Barbados | **5.5%** | IP holding, revenue collection |
+| VakayGo Caribbean | Grenada | **28%** (reduced base) | Local operations |
+| **Effective Total** | | **~5-8%** | |
+
+**Compared to alternatives:**
+- Grenada-only structure: ~28% corporate + personal tax
+- Standard Canadian structure: ~26.5% corporate + personal tax
+- VakayGo optimized structure: **~5-8% total**
+
+### Section 87 Indian Act Exemption
+
+The founder holds Status Indian status under the Indian Act (Canada). Section 87 exempts personal property situated on a reserve from taxation, including business income with genuine reserve connections.
+
+**Connecting factors establishing reserve connection:**
+- Management company registered to reserve address
+- Business decisions and management performed from reserve
+- Home office situated on reserve
+- Band/Nation engagement and support
+
+This exemption allows the founder to draw management fees from the offshore entity through the on-reserve Canadian company at **0% Canadian personal income tax**, while maintaining full Canadian residency, healthcare, and benefits.
+
+### Payment Processing Structure
+
+VakayGo will use a dual-processor architecture for global payment collection and local Caribbean payouts:
+
+**Primary: Stripe Connect** (via US LLC subsidiary)
+- Accepts credit/debit cards from travelers worldwide (USD, CAD, GBP, EUR)
+- Marketplace split payments (automatic platform fee deduction)
+- Refund and chargeback management
+- Setup: Stripe Atlas US LLC ($500, 1-5 days)
+
+**Secondary: WiPay** (Caribbean payout processor)
+- Local currency payouts to Caribbean operators (XCD, TTD, BBD, JMD)
+- Operators receive funds in their local currency
+- Eliminates currency conversion losses for operators
+- Setup: 1-2 weeks
+
+**Payment flow per $100 booking:**
+
+| Component | Amount |
+|-----------|--------|
+| Traveler pays | $100.00 |
+| Stripe processing (~3.2%) | -$3.20 |
+| Platform 6% traveler fee | $6.00 |
+| Platform 3% operator commission | $2.82 |
+| **Total platform revenue** | **$8.82** |
+| **Net after processing** | **$5.62** |
+| Operator receives | ~$87.98 |
+
+### Key Jurisdictional Advantages
+
+**Barbados (Holding Company):**
+- 5.5% corporate tax on first BBD $1M (sliding to 1% above $30M)
+- Double tax treaty with Canada (critical for founder)
+- CARICOM treaty (0% withholding on intra-Caribbean payments)
+- 14+ international tax treaties
+- Strong banking infrastructure
+- Not on any EU/OECD blacklists
+
+**Grenada (Operating Company):**
+- CARICOM member for regional operations
+- GIDC tourism incentives (potential tax holiday up to 15 years)
+- Founder has established presence and local relationships
+- 0% personal income tax on foreign-source income for residents
+
+### Setup Costs
+
+| Item | Cost |
+|------|------|
+| Barbados incorporation + registered agent | $3,000-5,000 |
+| Grenada subsidiary incorporation | $2,000-3,000 |
+| Stripe Atlas US LLC | $500 |
+| Indigenous tax lawyer (structuring) | $5,000-10,000 |
+| Cross-border tax advisory | $5,000-10,000 |
+| First year Barbados substance costs | $30,000-50,000 |
+| **Total first year** | **$45,000-78,000** |
+
+### Compliance Requirements
+
+- Annual T1134 (Foreign Affiliate) and T1135 (Foreign Assets) filing with CRA
+- Barbados economic substance requirements (real office, local staff, board meetings)
+- Transfer pricing documentation for intercompany charges
+- AML/KYC procedures for marketplace operators
+- CARICOM treaty compliance for inter-island payments
+- CRS/FATCA reporting through financial institutions
+
+### Legal Counsel Required
+
+- Indigenous tax specialist (Section 87 structuring)
+- Cross-border Canada-Caribbean tax lawyer
+- Barbados corporate law firm
+- Grenada commercial lawyer
+
+---
+
+## 15. Risk Analysis & Mitigation
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
@@ -559,12 +713,12 @@ VakayGo is well-positioned for non-dilutive funding:
 
 ---
 
-## 15. Milestones & Timeline
+## 16. Milestones & Timeline
 
 ### Completed
 
 - [x] Platform built and live at vakaygo.com
-- [x] 5,050 listings across 21 islands
+- [x] 7,230 listings across 21 islands
 - [x] 21,146 photos indexed
 - [x] 4,086 phone numbers, 3,445 websites enriched
 - [x] Full booking flow, operator dashboard, messaging
@@ -598,7 +752,7 @@ VakayGo is well-positioned for non-dilutive funding:
 
 ---
 
-## 16. Team & Advisors
+## 17. Team & Advisors
 
 ### Founding Team
 
@@ -625,7 +779,7 @@ VakayGo is well-positioned for non-dilutive funding:
 
 ---
 
-## 17. Appendix
+## 18. Appendix
 
 ### A. Listing Coverage by Category
 
