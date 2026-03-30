@@ -133,7 +133,7 @@ export default function ForBusinessesPage() {
               <span className="text-gold-400">Keep your money.</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
-              List your stays, tours, restaurant, events, or services on VakayGo for free. We take just 3% — the lowest commission in the travel industry.
+              List your stays, tours, restaurants, events, or services on VakayGo for free. We charge just 3-5% operator commission — the lowest in the travel industry.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
               <Link

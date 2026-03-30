@@ -59,8 +59,8 @@ export default function AboutPage() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { icon: Globe, label: "21 Islands", sublabel: "Across the Caribbean" },
-                  { icon: Users, label: "5,000+", sublabel: "Local businesses" },
-                  { icon: Heart, label: "3%", sublabel: "Fair commission" },
+                  { icon: Users, label: "7,230+", sublabel: "Local businesses" },
+                  { icon: Heart, label: "3-5%", sublabel: "Fair commission" },
                   { icon: Shield, label: "100%", sublabel: "Verified operators" },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] text-center">

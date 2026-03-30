@@ -1,8 +1,8 @@
 const stats = [
-  { value: "7,200+", label: "Listings", sublabel: "Across the Caribbean" },
+  { value: "7,230+", label: "Listings", sublabel: "Across the Caribbean" },
   { value: "21", label: "Islands", sublabel: "And growing" },
   { value: "9", label: "Categories", sublabel: "Stays, tours, dining & more" },
-  { value: "3%", label: "Commission", sublabel: "Lowest in the industry" },
+  { value: "3-5%", label: "Operator Fee", sublabel: "Lowest in the industry" },
 ];
 
 export function StatsBar() {

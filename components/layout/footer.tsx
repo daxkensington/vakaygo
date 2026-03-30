@@ -15,10 +15,10 @@ export function Footer() {
               know it best.
             </p>
             <div className="flex gap-4 mt-6">
-              <a href="#" className="text-cream-300 hover:text-gold-400 transition-colors">
+              <a href="https://vakaygo.com" className="text-cream-300 hover:text-gold-400 transition-colors">
                 <Globe size={20} />
               </a>
-              <a href="#" className="text-cream-300 hover:text-gold-400 transition-colors">
+              <a href="https://wa.me/14734158665" className="text-cream-300 hover:text-gold-400 transition-colors" target="_blank" rel="noopener noreferrer">
                 <MessageCircle size={20} />
               </a>
               <a href="mailto:hello@vakaygo.com" className="text-cream-300 hover:text-gold-400 transition-colors">
@@ -30,10 +30,11 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-4">Platform</h4>
             <ul className="space-y-3 text-sm text-cream-300">
-              <li><a href="#how-it-works" className="hover:text-gold-400 transition-colors">How It Works</a></li>
-              <li><a href="#categories" className="hover:text-gold-400 transition-colors">Explore</a></li>
-              <li><a href="#for-businesses" className="hover:text-gold-400 transition-colors">For Businesses</a></li>
-              <li><a href="#waitlist" className="hover:text-gold-400 transition-colors">Join Waitlist</a></li>
+              <li><a href="/explore" className="hover:text-gold-400 transition-colors">Explore</a></li>
+              <li><a href="/islands" className="hover:text-gold-400 transition-colors">Islands</a></li>
+              <li><a href="/services" className="hover:text-gold-400 transition-colors">Services</a></li>
+              <li><a href="/for-businesses" className="hover:text-gold-400 transition-colors">For Businesses</a></li>
+              <li><a href="/for-restaurants" className="hover:text-gold-400 transition-colors">For Restaurants</a></li>
             </ul>
           </div>
 
