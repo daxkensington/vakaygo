@@ -90,10 +90,11 @@ export function Hero() {
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
                 <MapPin size={20} className="text-gold-500 shrink-0" />
                 <div className="text-left w-full">
-                  <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+                  <label htmlFor="hero-destination" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                     Destination
-                  </p>
+                  </label>
                   <select
+                    id="hero-destination"
                     name="destination"
                     aria-label="Select destination island"
                     className="w-full bg-transparent text-navy-700 outline-none text-sm font-medium mt-0.5 appearance-none cursor-pointer"
@@ -126,10 +127,11 @@ export function Hero() {
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
                 <Search size={20} className="text-gold-500 shrink-0" />
                 <div className="text-left w-full">
-                  <p className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider">
+                  <label htmlFor="hero-search" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                     Search
-                  </p>
+                  </label>
                   <input
+                    id="hero-search"
                     type="text"
                     name="q"
                     aria-label="Search listings"
@@ -140,6 +142,7 @@ export function Hero() {
               </div>
               <button
                 type="submit"
+                aria-label="Search and explore listings"
                 className="bg-gold-500 hover:bg-gold-600 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]"
               >
                 <Search size={18} />
@@ -176,10 +179,10 @@ export function Hero() {
             key={i}
             onClick={() => setCurrentImage(i)}
             aria-label={`Show image ${i + 1}`}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            className={`h-3 rounded-full transition-all duration-300 ${
               currentImage === i
-                ? "bg-gold-400 w-6"
-                : "bg-white/30 hover:bg-white/50"
+                ? "bg-gold-400 w-8"
+                : "bg-white/30 hover:bg-white/50 w-3"
             }`}
           />
         ))}

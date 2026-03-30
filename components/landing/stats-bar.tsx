@@ -18,7 +18,7 @@ export function StatsBar() {
               >
                 {stat.value}
               </p>
-              <p className="text-sm font-semibold text-gold-500 mt-1 uppercase tracking-wider">
+              <p className="text-sm font-semibold text-gold-700 mt-1 uppercase tracking-wider">
                 {stat.label}
               </p>
               <p className="text-xs text-navy-400 mt-1">{stat.sublabel}</p>

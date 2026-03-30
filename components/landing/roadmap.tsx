@@ -57,9 +57,9 @@ export function Roadmap() {
                 style={{ transitionDelay: `${i * 30}ms` }}
               >
                 <span className="text-2xl block">{island.flag}</span>
-                <h4 className="font-bold mt-2 text-xs leading-tight">
+                <p className="font-bold mt-2 text-xs leading-tight">
                   {island.name}
-                </h4>
+                </p>
                 <p className="text-[10px] mt-0.5 opacity-60">
                   {island.tagline}
                 </p>

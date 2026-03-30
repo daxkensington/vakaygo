@@ -113,6 +113,7 @@ export function Header() {
         </nav>
 
         <button
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className={`md:hidden p-2 transition-colors ${
             scrolled || !isLanding ? "text-navy-700" : "text-white"
           }`}

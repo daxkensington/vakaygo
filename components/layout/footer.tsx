@@ -15,20 +15,20 @@ export function Footer() {
               know it best.
             </p>
             <div className="flex gap-4 mt-6">
-              <a href="https://vakaygo.com" className="text-cream-300 hover:text-gold-400 transition-colors">
+              <a href="https://vakaygo.com" aria-label="VakayGo website" className="text-cream-300 hover:text-gold-400 transition-colors">
                 <Globe size={20} />
               </a>
-              <a href="https://wa.me/14734158665" className="text-cream-300 hover:text-gold-400 transition-colors" target="_blank" rel="noopener noreferrer">
+              <a href="https://wa.me/14734158665" aria-label="Contact us on WhatsApp" className="text-cream-300 hover:text-gold-400 transition-colors" target="_blank" rel="noopener noreferrer">
                 <MessageCircle size={20} />
               </a>
-              <a href="mailto:hello@vakaygo.com" className="text-cream-300 hover:text-gold-400 transition-colors">
+              <a href="mailto:hello@vakaygo.com" aria-label="Email us" className="text-cream-300 hover:text-gold-400 transition-colors">
                 <Mail size={20} />
               </a>
             </div>
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-4">Platform</h4>
+            <h3 className="font-semibold text-white mb-4">Platform</h3>
             <ul className="space-y-3 text-sm text-cream-300">
               <li><a href="/explore" className="hover:text-gold-400 transition-colors">Explore</a></li>
               <li><a href="/islands" className="hover:text-gold-400 transition-colors">Islands</a></li>
@@ -39,7 +39,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-4">Company</h4>
+            <h3 className="font-semibold text-white mb-4">Company</h3>
             <ul className="space-y-3 text-sm text-cream-300">
               <li><a href="/about" className="hover:text-gold-400 transition-colors">About</a></li>
               <li><a href="/privacy" className="hover:text-gold-400 transition-colors">Privacy Policy</a></li>
