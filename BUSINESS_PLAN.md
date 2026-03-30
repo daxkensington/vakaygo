@@ -467,43 +467,69 @@ The email outreach system is built and ready. Strategy:
 
 | | Year 1 | Year 2 | Year 3 | Year 4 | Year 5 |
 |---|---|---|---|---|---|
-| **Gross Bookings** | $2.2M | $17M | $47M | $111M | $222M+ |
+| **Gross Bookings** | $1.5M | $12M | $36M | $85M | $180M |
 | **Revenue** | | | | | |
-| Transaction fees (9%) | $100K | $750K | $2.1M | $5M | $10M |
-| Subscriptions | $15K | $208K | $600K | $1.4M | $3M |
-| Promoted listings | $10K | $140K | $400K | $1M | $2.5M |
-| Insurance (4% margin) | $5K | $52K | $150K | $400K | $900K |
-| Other | $20K | $50K | $250K | $1.2M | $3.6M |
-| **Total Revenue** | **$150K** | **$1.2M** | **$3.5M** | **$9M** | **$20M** |
+| Transaction fees (12.8% blended) | $192K | $1.54M | $4.6M | $10.9M | $23M |
+| Dining subscriptions | $10K | $96K | $290K | $720K | $1.5M |
+| Operator Pro/Business subs | $12K | $120K | $360K | $900K | $2M |
+| Promoted listings | $8K | $100K | $300K | $750K | $1.8M |
+| Trip insurance (4% margin) | $4K | $36K | $108K | $255K | $540K |
+| **Total Revenue** | **$226K** | **$1.89M** | **$5.66M** | **$13.5M** | **$28.8M** |
 | **Expenses** | | | | | |
-| Tech infrastructure | $15K | $50K | $120K | $250K | $500K |
-| Team (salaries) | $80K | $350K | $900K | $2M | $4.5M |
-| Marketing | $30K | $200K | $500K | $1.2M | $2.5M |
-| Operations | $10K | $80K | $200K | $500K | $1M |
-| Legal/Admin | $10K | $40K | $100K | $200K | $400K |
-| Payment processing | $5K | $30K | $80K | $200K | $500K |
-| **Total Expenses** | **$150K** | **$750K** | **$1.9M** | **$4.35M** | **$9.4M** |
-| **Net Income** | **$0** | **$450K** | **$1.6M** | **$4.65M** | **$10.6M** |
-| **Net Margin** | 0% | 38% | 46% | 52% | 53% |
+| Payment processing (3.2%) | $48K | $384K | $1.15M | $2.72M | $5.76M |
+| Corporate structure | $2K | $68K | $68K | $68K | $68K |
+| Tech infrastructure | $1K | $12K | $50K | $150K | $350K |
+| Team (salaries) | $0 | $200K | $600K | $1.5M | $3.5M |
+| Marketing | $20K | $200K | $600K | $1.5M | $3M |
+| Operations + support | $5K | $80K | $250K | $600K | $1.2M |
+| Legal/compliance | $5K | $40K | $80K | $150K | $300K |
+| Tax (5.5% Barbados) | $0 | $104K | $311K | $743K | $1.58M |
+| **Total Expenses** | **$81K** | **$1.09M** | **$3.11M** | **$7.43M** | **$15.76M** |
+| **Net Income** | **$145K** | **$800K** | **$2.55M** | **$6.07M** | **$13.04M** |
+| **Net Margin** | 64% | 42% | 45% | 45% | 45% |
 
-### Unit Economics
+### Unit Economics (Updated with Category-Specific Pricing)
 
 | Metric | Value |
 |---|---|
 | Average booking value | $150 |
-| Revenue per booking | $13.50 (9% take rate) |
+| Blended take rate | 12.8% (category-weighted average) |
+| Revenue per booking | $19.20 |
+| Payment processing cost | -$5.10 (Stripe ~3.2% + WiPay ~1%) |
+| Support/chargebacks | -$3.20 |
+| **Net revenue per booking** | **$10.90** |
 | Insurance attachment (15%) | +$0.90 effective per booking |
-| Blended revenue per booking | ~$14.40 |
+| **Blended net per booking** | **~$11.80** |
 | Customer acquisition cost (CAC) | $8-15 (Year 1), declining to $3-5 |
-| Lifetime value (LTV) per traveler | $60-120 (4-8 bookings over lifetime) |
-| LTV:CAC ratio | 8:1 to 15:1 |
+| Lifetime value (LTV) per traveler | $70-140 (4-8 bookings over lifetime) |
+| LTV:CAC ratio | 9:1 to 18:1 |
+
+**Revenue per $100 booking by vertical:**
+
+| Vertical | Take Rate | Gross | After Processing | After Tax (5.5%) | Net |
+|----------|-----------|-------|-----------------|-----------------|-----|
+| Stays | 12% | $12.00 | $8.64 | $8.16 | **$8.16** |
+| Excursions | 15% | $15.00 | $11.48 | $10.85 | **$10.85** |
+| Tours | 15% | $15.00 | $11.48 | $10.85 | **$10.85** |
+| Events | 8% | $8.00 | $4.64 | $4.38 | **$4.38** |
+| Transfers | 12% | $12.00 | $8.64 | $8.16 | **$8.16** |
+| Transport | 13% | $13.00 | $9.64 | $9.11 | **$9.11** |
+| VIP | 15% | $15.00 | $11.48 | $10.85 | **$10.85** |
+| Guides | 15% | $15.00 | $11.48 | $10.85 | **$10.85** |
+| Dining | Subscription | $39-79/mo per restaurant | ~95% margin | ~90% | **~90%** |
 
 ### Break-Even Analysis
 
-- **Monthly fixed costs (Year 1):** ~$12,500
-- **Revenue per transaction:** ~$14.40
-- **Break-even point:** ~870 bookings/month OR ~29 bookings/day
-- **Expected break-even:** Month 10-14 (mid Year 2)
+**Phase 1 (US LLC only — $150/month overhead):**
+- Net revenue per booking: ~$11.80
+- Break-even: **13 bookings/month** (~1 every 2 days)
+- Achievable within first month
+
+**Phase 3 (Full structure — $5,640/month overhead):**
+- Net revenue per booking: ~$11.80
+- Break-even: **478 bookings/month** (~16 per day)
+- Plus dining subscriptions accelerate break-even
+- Expected break-even: Month 8-12
 
 ---
 
@@ -598,21 +624,79 @@ VakayGo will operate through a multi-entity structure optimized for tax efficien
 └──────────────────────────────────────────────┘
 ```
 
-### Tax Efficiency Summary
+### Phased Corporate Structure
 
-| Entity | Jurisdiction | Tax Rate | Purpose |
-|--------|-------------|----------|---------|
-| Management Co. | Canada (On-Reserve) | **0%** (Section 87) | Founder compensation |
-| VakayGo International | Barbados | **5.5%** | IP holding, revenue collection |
-| VakayGo Caribbean | Grenada | **28%** (reduced base) | Local operations |
-| **Effective Total** | | **~5-8%** | |
+The corporate structure is designed to scale with revenue. No need to build the full structure before generating income.
 
-**Compared to alternatives:**
-- Grenada-only structure: ~28% corporate + personal tax
-- Standard Canadian structure: ~26.5% corporate + personal tax
-- VakayGo optimized structure: **~5-8% total**
+#### Phase 1: Launch (Revenue $0-$10K/month)
+**Cost: ~$150/month**
 
-### Section 87 Indian Act Exemption
+| Entity | Purpose | Cost |
+|--------|---------|------|
+| US LLC via Stripe Atlas (Delaware) | Payment processing only | $500 setup + $400/year |
+| Platform infrastructure (Vercel, Neon, Resend) | Hosting | $1,028/year |
+
+- Stripe Connect processes all payments through the US LLC
+- Single-member LLC owned by founder — pass-through entity
+- If founder is Grenada resident (non-Canadian tax resident): **0% tax** (foreign-source income, non-US person)
+- If founder retains Canadian residency: income taxed at Canadian rates unless Section 87 applies
+- US LLC files Form 5472 + pro-forma 1120 annually (~$1,000 CPA fee)
+
+#### Phase 2: Growing (Revenue $10K-$25K/month)
+**Add: On-reserve Canadian management company — ~$500/month additional**
+
+| Entity | Purpose | Cost |
+|--------|---------|------|
+| On-Reserve Management Co. (Canada) | Founder draws management fees | ~$6,000/year |
+
+- Founder's personal income drawn as management fees through on-reserve company
+- Section 87 Indian Act exemption: **0% Canadian personal income tax**
+- Maintains Canadian residency, healthcare, benefits
+- Requires genuine reserve connection (office, decision-making, Band support)
+
+#### Phase 3: Scaling (Revenue $25K+/month)
+**Add: Barbados holding company — ~$5,140/month additional**
+
+Full optimized structure as shown in the corporate diagram above.
+
+| Entity | Purpose | Annual Cost |
+|--------|---------|------------|
+| VakayGo International (Barbados) | IP holding, revenue collection | $26,750 |
+| VakayGo Caribbean (Grenada) | Local operations | $26,500 |
+| US LLC (Delaware) | Payment processing | $400 |
+| On-Reserve Management Co. (Canada) | Founder compensation | $6,000 |
+| Platform infrastructure | Hosting, APIs | $1,028 |
+| Professional services | Tax, legal, insurance | $7,000 |
+| **Total annual overhead** | | **$67,678** |
+| **Monthly overhead** | | **~$5,640** |
+
+### Tax Comparison by Structure
+
+| Structure | Revenue $250K | Revenue $500K | Revenue $1M | Revenue $5M |
+|-----------|-------------|-------------|------------|------------|
+| **Grenada company only (28%)** | $70,000 | $140,000 | $280,000 | $1,400,000 |
+| **Canadian company (26.5%)** | $66,250 | $132,500 | $265,000 | $1,325,000 |
+| **US LLC + Grenada resident** | $1,900 | $1,900 | $1,900 | $1,900 |
+| **Full optimized structure** | $81,428* | $95,178* | $122,678* | $342,678* |
+
+*Includes structure costs ($67,678) + Barbados tax (5.5% on revenue)
+
+**Break-even for Barbados structure: ~$500K/year revenue.** Below that, the US LLC alone is more cost-effective.
+
+### Grenada Tax Environment
+
+| Tax | Rate | Notes |
+|-----|------|-------|
+| Corporate income tax | 28% | On net profits of Grenada-incorporated companies |
+| VAT | 15% (10% for tourism) | Applied to goods and services |
+| Withholding on dividends | 15% | When distributing to foreign shareholders |
+| Personal income tax (foreign source) | **0%** | Grenada does NOT tax residents on foreign-source income |
+| Capital gains tax | **0%** | No capital gains tax in Grenada |
+| GIDC tourism incentives | Up to 15-year tax holiday | For qualifying tourism/tech enterprises |
+
+**Key insight:** Grenada's 0% personal tax on foreign-source income means a Grenada resident who owns an offshore company pays zero personal tax on dividends. The corporate level is where structuring matters.
+
+### Section 87 Indian Act Exemption (Canada)
 
 The founder holds Status Indian status under the Indian Act (Canada). Section 87 exempts personal property situated on a reserve from taxation, including business income with genuine reserve connections.
 
@@ -622,79 +706,112 @@ The founder holds Status Indian status under the Indian Act (Canada). Section 87
 - Home office situated on reserve
 - Band/Nation engagement and support
 
-This exemption allows the founder to draw management fees from the offshore entity through the on-reserve Canadian company at **0% Canadian personal income tax**, while maintaining full Canadian residency, healthcare, and benefits.
+**This exemption allows the founder to draw management fees at 0% Canadian personal income tax** while maintaining full Canadian residency, healthcare, and benefits. This applies regardless of where the operating company is incorporated.
 
-### Payment Processing Structure
+**Important:** CRA actively scrutinizes Section 87 claims for e-commerce businesses. The structure must be documented and defensible. Professional advice from an Indigenous tax specialist is required.
 
-VakayGo will use a dual-processor architecture for global payment collection and local Caribbean payouts:
+### Multi-Country Operations — Tax Implications
 
-**Primary: Stripe Connect** (via US LLC subsidiary)
-- Accepts credit/debit cards from travelers worldwide (USD, CAD, GBP, EUR)
-- Marketplace split payments (automatic platform fee deduction)
-- Refund and chargeback management
-- Setup: Stripe Atlas US LLC ($500, 1-5 days)
+VakayGo facilitates bookings across 21 Caribbean countries. The platform does NOT create tax obligations in countries where it has no physical presence.
 
-**Secondary: WiPay** (Caribbean payout processor)
-- Local currency payouts to Caribbean operators (XCD, TTD, BBD, JMD)
-- Operators receive funds in their local currency
+| Question | Answer |
+|----------|--------|
+| Tax obligation in Jamaica (no office there)? | **No** — no Permanent Establishment |
+| Tax obligation in Barbados (holding company)? | **Yes** — 5.5% corporate tax |
+| Tax obligation in Grenada (operating company)? | **Yes** — 28% on reduced profit base |
+| Tax obligation in USA (LLC)? | **$0** — pass-through, non-US owner, non-US source income |
+| Do Caribbean operators pay their own local taxes? | **Yes** — their responsibility |
+| CARICOM withholding on inter-island payments? | **0%** — CARICOM treaty eliminates withholding |
+| VAT/digital services tax in other islands? | **Not currently** — most Caribbean nations haven't implemented DST |
+
+### Payment Processing Architecture
+
+**Stripe Connect** (via US LLC — built and deployed):
+- Accepts Visa, Mastercard, Amex, Apple Pay, Google Pay
+- Marketplace split payments: platform fee deducted automatically, remainder to operator
+- Stripe Checkout handles 3D Secure, PCI compliance
+- Webhook-driven: payment success → booking confirmed → emails sent
+- Refund engine built for cancellations
+
+**WiPay** (planned — Caribbean local currency payouts):
+- Local bank payouts in XCD, TTD, BBD, JMD
 - Eliminates currency conversion losses for operators
-- Setup: 1-2 weeks
 
-**Payment flow per $100 booking:**
+**Payment flow per $100 booking (category-specific example — Tour at 15%):**
 
 | Component | Amount |
 |-----------|--------|
-| Traveler pays | $100.00 |
-| Stripe processing (~3.2%) | -$3.20 |
-| Platform 6% traveler fee | $6.00 |
-| Platform 3% operator commission | $2.82 |
-| **Total platform revenue** | **$8.82** |
-| **Net after processing** | **$5.62** |
-| Operator receives | ~$87.98 |
+| Traveler pays | $110.00 ($100 + 10% service fee) |
+| Stripe processing (~3.2%) | -$3.52 |
+| Platform receives | $106.48 |
+| Traveler service fee (10%) | $10.00 |
+| Operator commission (5%) | $5.00 |
+| **Total platform revenue** | **$15.00** |
+| **Net after processing** | **$11.48** |
+| Barbados tax (5.5%) | -$0.63 |
+| **Net profit per $100 booking** | **$10.85** |
+| Operator receives | $95.00 |
 
-### Key Jurisdictional Advantages
+### Category-Specific Pricing (Verified Against Competitors)
 
-**Barbados (Holding Company):**
-- 5.5% corporate tax on first BBD $1M (sliding to 1% above $30M)
-- Double tax treaty with Canada (critical for founder)
-- CARICOM treaty (0% withholding on intra-Caribbean payments)
-- 14+ international tax treaties
-- Strong banking infrastructure
-- Not on any EU/OECD blacklists
+| Vertical | Competitor Rate | VakayGo Rate | Operator Pays | Traveler Pays |
+|----------|----------------|-------------|--------------|--------------|
+| Stays | 15-19% (Airbnb/Booking) | **12%** | 3% | 9% |
+| Excursions | 25-30% (Viator) | **15%** | 5% | 10% |
+| Tours | 20-30% (Viator/GYG) | **15%** | 5% | 10% |
+| Dining | $149-499/mo + $1.50/cover (OpenTable) | **$0-79/mo, no cover fees** | Subscription | $0 |
+| Events | 9-12% (Eventbrite) | **8%** | 3% | 5% |
+| Transfers | No dominant player | **12%** | 4% | 8% |
+| Transport | 25-40% (Uber actual) | **13%** | 5% | 8% |
+| VIP | No dominant player | **15%** | 5% | 10% |
+| Guides | 20-25% (ToursByLocals) | **15%** | 5% | 10% |
 
-**Grenada (Operating Company):**
-- CARICOM member for regional operations
-- GIDC tourism incentives (potential tax holiday up to 15 years)
-- Founder has established presence and local relationships
-- 0% personal income tax on foreign-source income for residents
+**Blended average take rate: ~12.8%** — sustainable, competitive, research-validated.
 
-### Setup Costs
+### Setup Timeline
 
-| Item | Cost |
-|------|------|
-| Barbados incorporation + registered agent | $3,000-5,000 |
-| Grenada subsidiary incorporation | $2,000-3,000 |
-| Stripe Atlas US LLC | $500 |
-| Indigenous tax lawyer (structuring) | $5,000-10,000 |
-| Cross-border tax advisory | $5,000-10,000 |
-| First year Barbados substance costs | $30,000-50,000 |
-| **Total first year** | **$45,000-78,000** |
+| Week | Action | Cost |
+|------|--------|------|
+| 1 | Stripe Atlas application | $500 |
+| 1-2 | US LLC created + bank account + Stripe active | Included |
+| 2 | First paid booking processed | $0 |
+| 2-4 | Send claim invitation emails to Grenada operators | $0 |
+| 4-8 | Engage Barbados corporate services firm (when revenue justifies) | $3,000-5,000 |
+| 8-12 | Barbados entity operational | $26,750/year |
 
 ### Compliance Requirements
 
-- Annual T1134 (Foreign Affiliate) and T1135 (Foreign Assets) filing with CRA
-- Barbados economic substance requirements (real office, local staff, board meetings)
+**US LLC:**
+- Annual Form 5472 + pro-forma 1120 filing with IRS
+- Delaware annual franchise tax ($300)
+- Registered agent maintenance
+
+**Canadian (if applicable):**
+- T1134 (Foreign Affiliate Information Return) — mandatory, $2,500/month penalty for non-filing
+- T1135 (Foreign Income Verification Statement) — if foreign assets exceed $100K
+- Section 87 documentation and supporting evidence
+
+**Barbados (when established):**
+- Economic substance: real office, 1-2 local staff, board meetings in Barbados
 - Transfer pricing documentation for intercompany charges
+- Annual corporate filing and tax return
+- Bank account maintenance and reporting
+
+**Platform:**
 - AML/KYC procedures for marketplace operators
+- PCI compliance (handled by Stripe)
+- CRS/FATCA reporting (handled by financial institutions)
 - CARICOM treaty compliance for inter-island payments
-- CRS/FATCA reporting through financial institutions
 
 ### Legal Counsel Required
 
-- Indigenous tax specialist (Section 87 structuring)
-- Cross-border Canada-Caribbean tax lawyer
-- Barbados corporate law firm
-- Grenada commercial lawyer
+| Specialist | Purpose | Estimated Cost |
+|-----------|---------|---------------|
+| Indigenous tax lawyer (Canada) | Section 87 structuring, CRA compliance | $5,000-10,000 |
+| Cross-border tax advisor | Canada-Caribbean structure, transfer pricing | $5,000-10,000 |
+| Barbados corporate services firm | Incorporation, registered agent, substance | $3,000-5,000 setup |
+| Grenada commercial lawyer | Local operating entity, GIDC incentives | $2,000-3,000 |
+| US tax CPA | LLC annual filing (Form 5472) | $1,000/year |
 
 ---
 
