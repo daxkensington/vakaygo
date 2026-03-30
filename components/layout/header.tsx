@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, User, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 export function Header() {
   const { user } = useAuth();
@@ -73,6 +74,10 @@ export function Header() {
           >
             For Businesses
           </Link>
+
+          <div className={`transition-colors ${scrolled || !isLanding ? "text-navy-500" : "text-white/80"}`}>
+            <LanguageSwitcher />
+          </div>
 
           {user ? (
             <div className="flex items-center gap-3">
