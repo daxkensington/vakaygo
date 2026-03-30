@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BookingWidget } from "@/components/listings/booking-widget";
+import { DiningReservation } from "@/components/listings/dining-reservation";
+import { TransferBooking } from "@/components/listings/transfer-booking";
 import { ContactInfo } from "@/components/listings/contact-info";
 import { ReviewSection } from "@/components/listings/review-section";
 import { ShareButton } from "@/components/listings/share-button";
@@ -420,8 +422,32 @@ export default function ListingDetailPage() {
               <ReviewSection listingId={listing.id} />
             </div>
 
-            {/* Right Sidebar — Booking Widget */}
-            <BookingWidget listing={listing} />
+            {/* Right Sidebar — Type-Specific Booking Widget */}
+            {listing.type === "dining" ? (
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <DiningReservation
+                    listingId={listing.id}
+                    listingTitle={listing.title}
+                    operatorId={listing.operatorId}
+                  />
+                </div>
+              </div>
+            ) : listing.type === "transfer" ? (
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <TransferBooking
+                    listingId={listing.id}
+                    listingTitle={listing.title}
+                    priceAmount={listing.priceAmount}
+                    priceUnit={listing.priceUnit}
+                    typeData={listing.typeData}
+                  />
+                </div>
+              </div>
+            ) : (
+              <BookingWidget listing={listing} />
+            )}
           </div>
 
           {/* Similar Listings */}

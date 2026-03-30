@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, islands, media } from "@/drizzle/schema";
-import { eq, and, ilike, desc, asc, gte, lte, inArray, sql } from "drizzle-orm";
+import { listings, islands, media, availability } from "@/drizzle/schema";
+import { eq, and, ilike, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -16,12 +16,31 @@ export async function GET(request: Request) {
     const search = searchParams.get("q");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
+    const date = searchParams.get("date");
     const sort = searchParams.get("sort") || "recommended";
     const limit = parseInt(searchParams.get("limit") || "24");
     const offset = parseInt(searchParams.get("offset") || "0");
 
     const db = getDb();
     const conditions = [eq(listings.status, "active")];
+
+    // Date-based availability filtering
+    if (date) {
+      const unavailable = await db
+        .select({ listingId: availability.listingId })
+        .from(availability)
+        .where(
+          and(
+            eq(availability.date, new Date(date)),
+            sql`(${availability.isBlocked} = true OR ${availability.spotsRemaining} = 0)`
+          )
+        );
+
+      const unavailableIds = unavailable.map((r) => r.listingId);
+      if (unavailableIds.length > 0) {
+        conditions.push(notInArray(listings.id, unavailableIds));
+      }
+    }
 
     if (type && type !== "all") {
       conditions.push(
@@ -76,6 +95,8 @@ export async function GET(request: Request) {
         isFeatured: listings.isFeatured,
         islandSlug: islands.slug,
         islandName: islands.name,
+        latitude: listings.latitude,
+        longitude: listings.longitude,
       })
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))
