@@ -23,9 +23,9 @@ const benefits = [
   },
   {
     icon: BarChart3,
-    title: "3% Commission — The Lowest Around",
+    title: "Lowest Commissions in Travel",
     description:
-      "Viator takes 25%. Airbnb takes 15%. We take just 3%. You keep more of every booking. Period.",
+      "Viator takes 25-30%. Airbnb takes 15%. We charge 3-5% operator commission depending on category. You keep more of every booking.",
   },
   {
     icon: Globe,
@@ -55,7 +55,7 @@ const benefits = [
 
 const comparisons = [
   { feature: "Listing Fee", vakaygo: "Free", viator: "Free", airbnb: "Free" },
-  { feature: "Commission", vakaygo: "3%", viator: "20-30%", airbnb: "15%" },
+  { feature: "Commission", vakaygo: "3-5%", viator: "20-30%", airbnb: "15%" },
   { feature: "Payout Speed", vakaygo: "Weekly", viator: "Monthly", airbnb: "24h after check-in" },
   { feature: "Dashboard", vakaygo: "Full suite", viator: "Basic", airbnb: "Full suite" },
   { feature: "Multiple Verticals", vakaygo: "6 types", viator: "Tours only", airbnb: "Stays only" },

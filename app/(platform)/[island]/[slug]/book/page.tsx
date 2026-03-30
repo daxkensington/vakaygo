@@ -103,6 +103,7 @@ export default function BookingPage() {
   const pricing = calculateBookingPrice({
     pricePerUnit,
     quantity,
+    listingType: listing.type,
     currency: listing.priceCurrency || "USD",
     includeInsurance,
   });

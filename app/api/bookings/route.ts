@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     const pricing = calculateBookingPrice({
       pricePerUnit,
       quantity,
+      listingType: listing.type,
       currency: listing.priceCurrency || "USD",
       includeInsurance,
     });

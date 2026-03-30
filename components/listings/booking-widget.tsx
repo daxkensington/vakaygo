@@ -61,6 +61,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const pricing = calculateBookingPrice({
     pricePerUnit,
     quantity,
+    listingType: listing.type,
     currency: listing.priceCurrency || "USD",
     includeInsurance,
   });
@@ -400,7 +401,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <p className="text-xs text-navy-300 text-center">
             The operator earns {formatCurrency(pricing.operatorEarnings)} from this booking.
             <br />
-            VakayGo takes just 3% — the lowest in the industry.
+            {pricing.rateInfo}
           </p>
         </div>
       </div>
