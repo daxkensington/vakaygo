@@ -95,6 +95,7 @@ export function Hero() {
                   </p>
                   <select
                     name="destination"
+                    aria-label="Select destination island"
                     className="w-full bg-transparent text-navy-700 outline-none text-sm font-medium mt-0.5 appearance-none cursor-pointer"
                   >
                     <option value="">All Caribbean Islands</option>
@@ -131,6 +132,7 @@ export function Hero() {
                   <input
                     type="text"
                     name="q"
+                    aria-label="Search listings"
                     placeholder="Hotels, tours, restaurants..."
                     className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
                   />
@@ -173,6 +175,7 @@ export function Hero() {
           <button
             key={i}
             onClick={() => setCurrentImage(i)}
+            aria-label={`Show image ${i + 1}`}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
               currentImage === i
                 ? "bg-gold-400 w-6"
