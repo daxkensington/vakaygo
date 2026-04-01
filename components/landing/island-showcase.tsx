@@ -2,18 +2,27 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 
 const islands = [
-  { name: "Grenada", slug: "grenada", flag: "🇬🇩", listings: 1847 },
-  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹", listings: 412 },
-  { name: "Barbados", slug: "barbados", flag: "🇧🇧", listings: 639 },
-  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨", listings: 581 },
-  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲", listings: 724 },
-  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸", listings: 493 },
-  { name: "Aruba", slug: "aruba", flag: "🇦🇼", listings: 367 },
-  { name: "Curacao", slug: "curacao", flag: "🇨🇼", listings: 289 },
-  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴", listings: 518 },
+  { name: "Grenada", slug: "grenada", flag: "🇬🇩", listings: 503 },
+  { name: "Puerto Rico", slug: "puerto-rico", flag: "🇵🇷", listings: 426 },
+  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴", listings: 425 },
+  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲", listings: 412 },
+  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹", listings: 398 },
+  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸", listings: 389 },
+  { name: "Barbados", slug: "barbados", flag: "🇧🇧", listings: 376 },
+  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨", listings: 362 },
+  { name: "Aruba", slug: "aruba", flag: "🇦🇼", listings: 348 },
   { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬", listings: 341 },
-  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨", listings: 176 },
-  { name: "Dominica", slug: "dominica", flag: "🇩🇲", listings: 203 },
+  { name: "Curaçao", slug: "curacao", flag: "🇨🇼", listings: 329 },
+  { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾", listings: 318 },
+  { name: "USVI", slug: "us-virgin-islands", flag: "🇻🇮", listings: 305 },
+  { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨", listings: 294 },
+  { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳", listings: 276 },
+  { name: "Dominica", slug: "dominica", flag: "🇩🇲", listings: 258 },
+  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨", listings: 241 },
+  { name: "Martinique", slug: "martinique", flag: "🇲🇶", listings: 227 },
+  { name: "Guadeloupe", slug: "guadeloupe", flag: "🇬🇵", listings: 214 },
+  { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬", listings: 198 },
+  { name: "Bonaire", slug: "bonaire", flag: "🏝️", listings: 182 },
 ];
 
 const islandImages: Record<string, string> = {
@@ -27,6 +36,17 @@ const islandImages: Record<string, string> = {
   curacao: "/images/islands/curacao.jpg",
   "dominican-republic": "/images/islands/dominican-republic.jpg",
   antigua: "/images/islands/antigua.jpg",
+  "st-vincent": "/images/islands/st-vincent.jpg",
+  dominica: "/images/islands/dominica.jpg",
+  "turks-and-caicos": "/images/islands/turks-and-caicos.jpg",
+  "cayman-islands": "/images/islands/cayman-islands.jpg",
+  bonaire: "/images/islands/bonaire.jpg",
+  "st-kitts": "/images/islands/st-kitts.jpg",
+  martinique: "/images/islands/martinique.jpg",
+  guadeloupe: "/images/islands/guadeloupe.jpg",
+  "us-virgin-islands": "/images/islands/us-virgin-islands.jpg",
+  "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
+  "puerto-rico": "/images/islands/puerto-rico.jpg",
 };
 
 const defaultImage = "/images/hero/caribbean-hero.jpg";
@@ -106,9 +126,9 @@ export function IslandShowcase() {
         <div className="text-center mt-12">
           <Link
             href="/islands"
-            className="inline-flex items-center gap-2 text-gold-700 font-semibold hover:text-gold-800 transition-colors group"
+            className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] group"
           >
-            View all islands
+            Explore all islands
             <ArrowRight
               size={16}
               className="transition-transform group-hover:translate-x-1"

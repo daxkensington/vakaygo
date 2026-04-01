@@ -36,6 +36,17 @@ const islandImages: Record<string, string> = {
   curacao: "/images/islands/curacao.jpg",
   "dominican-republic": "/images/islands/dominican-republic.jpg",
   antigua: "/images/islands/antigua.jpg",
+  "st-vincent": "/images/islands/st-vincent.jpg",
+  dominica: "/images/islands/dominica.jpg",
+  "turks-and-caicos": "/images/islands/turks-and-caicos.jpg",
+  "cayman-islands": "/images/islands/cayman-islands.jpg",
+  bonaire: "/images/islands/bonaire.jpg",
+  "st-kitts": "/images/islands/st-kitts.jpg",
+  martinique: "/images/islands/martinique.jpg",
+  guadeloupe: "/images/islands/guadeloupe.jpg",
+  "us-virgin-islands": "/images/islands/us-virgin-islands.jpg",
+  "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
+  "puerto-rico": "/images/islands/puerto-rico.jpg",
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
