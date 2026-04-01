@@ -10,14 +10,46 @@ const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
 );
 
+function getRedirectUri(requestUrl: string): string {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || new URL(requestUrl).origin;
+  return `${baseUrl}/api/auth/google/callback`;
+}
+
 export async function GET(request: Request) {
+  const url = new URL(request.url);
+
   try {
-    const url = new URL(request.url);
+    // Guard: check required env vars before doing anything
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const databaseUrl = process.env.DATABASE_URL;
+
+    if (
+      !clientId ||
+      !clientSecret ||
+      clientId === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID" ||
+      clientSecret === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_SECRET"
+    ) {
+      console.error("Google OAuth credentials are not configured");
+      return NextResponse.redirect(
+        new URL("/auth/signin?error=oauth_not_configured", url.origin)
+      );
+    }
+
+    if (!databaseUrl) {
+      console.error("DATABASE_URL is not configured");
+      return NextResponse.redirect(
+        new URL("/auth/signin?error=server_error", url.origin)
+      );
+    }
+
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const errorParam = url.searchParams.get("error");
 
     if (errorParam) {
+      console.error("Google OAuth error:", errorParam);
       return NextResponse.redirect(
         new URL("/auth/signin?error=google_denied", url.origin)
       );
@@ -34,6 +66,10 @@ export async function GET(request: Request) {
     const storedState = cookieStore.get("oauth_state")?.value;
 
     if (!storedState || storedState !== state) {
+      console.error("OAuth state mismatch:", {
+        hasStoredState: !!storedState,
+        statesMatch: storedState === state,
+      });
       return NextResponse.redirect(
         new URL("/auth/signin?error=invalid_state", url.origin)
       );
@@ -42,21 +78,27 @@ export async function GET(request: Request) {
     // Clear the state cookie
     cookieStore.delete("oauth_state");
 
+    // Use the redirect URI from cookie (set during initial redirect) or derive it
+    const storedRedirectUri = cookieStore.get("oauth_redirect_uri")?.value;
+    const redirectUri = storedRedirectUri || getRedirectUri(request.url);
+    cookieStore.delete("oauth_redirect_uri");
+
     // Exchange code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: "https://vakaygo.com/api/auth/google/callback",
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
     });
 
     if (!tokenRes.ok) {
-      console.error("Google token exchange failed:", await tokenRes.text());
+      const errorBody = await tokenRes.text();
+      console.error("Google token exchange failed:", errorBody);
       return NextResponse.redirect(
         new URL("/auth/signin?error=token_exchange_failed", url.origin)
       );
@@ -80,13 +122,21 @@ export async function GET(request: Request) {
     }
 
     const profile = await profileRes.json();
+
+    if (!profile.email) {
+      console.error("Google profile missing email:", profile);
+      return NextResponse.redirect(
+        new URL("/auth/signin?error=no_email", url.origin)
+      );
+    }
+
     const googleEmail = (profile.email as string).toLowerCase();
     const googleName = profile.name as string;
     const googleAvatar = profile.picture as string | undefined;
     const googleId = profile.id as string;
 
     // Database operations
-    const sql = neon(process.env.DATABASE_URL!);
+    const sql = neon(databaseUrl);
     const db = drizzle(sql);
 
     // Check if user already exists with this email
@@ -141,6 +191,19 @@ export async function GET(request: Request) {
           scope: tokens.scope || null,
           idToken: tokens.id_token || null,
         });
+      } else {
+        // Update tokens on existing account
+        await db
+          .update(accounts)
+          .set({
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token || existingAccount.refreshToken,
+            expiresAt: tokens.expires_in
+              ? Math.floor(Date.now() / 1000) + tokens.expires_in
+              : existingAccount.expiresAt,
+            idToken: tokens.id_token || existingAccount.idToken,
+          })
+          .where(eq(accounts.id, existingAccount.id));
       }
     } else {
       // Create new user
@@ -187,6 +250,7 @@ export async function GET(request: Request) {
       role: user.role,
     })
       .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
       .setExpirationTime("7d")
       .sign(SECRET);
 
@@ -204,7 +268,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Google OAuth callback error:", error);
     return NextResponse.redirect(
-      new URL("/auth/signin?error=callback_failed", new URL(request.url).origin)
+      new URL("/auth/signin?error=callback_failed", url.origin)
     );
   }
 }

@@ -1,19 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  google_denied: "Google sign-in was cancelled or denied.",
+  invalid_callback: "Invalid OAuth callback. Please try again.",
+  invalid_state: "Session expired. Please try signing in again.",
+  token_exchange_failed: "Failed to complete Google sign-in. Please try again.",
+  profile_fetch_failed: "Could not retrieve your Google profile. Please try again.",
+  no_email: "No email address found on your Google account.",
+  callback_failed: "Something went wrong during sign-in. Please try again.",
+  oauth_not_configured: "Google sign-in is not available at this time.",
+  server_error: "A server error occurred. Please try again later.",
+};
+
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-500" /></div>}>
+      <SignInContent />
+    </Suspense>
+  );
+}
+
+function SignInContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      setError(
+        OAUTH_ERROR_MESSAGES[errorParam] ||
+          "Something went wrong. Please try again."
+      );
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

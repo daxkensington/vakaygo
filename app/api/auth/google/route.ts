@@ -2,12 +2,27 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
-export async function GET() {
+function getRedirectUri(requestUrl: string): string {
+  // Use NEXT_PUBLIC_APP_URL if set, otherwise derive from the request
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || new URL(requestUrl).origin;
+  return `${baseUrl}/api/auth/google/callback`;
+}
+
+export async function GET(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    return NextResponse.json(
-      { error: "Google OAuth is not configured" },
-      { status: 500 }
+
+  if (
+    !clientId ||
+    clientId === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID" ||
+    clientId.trim() === ""
+  ) {
+    console.error("GOOGLE_CLIENT_ID is not configured in environment variables");
+    return NextResponse.redirect(
+      new URL(
+        "/auth/signin?error=oauth_not_configured",
+        new URL(request.url).origin
+      )
     );
   }
 
@@ -23,9 +38,20 @@ export async function GET() {
     path: "/",
   });
 
+  const redirectUri = getRedirectUri(request.url);
+
+  // Store redirect URI in cookie so callback uses the same one
+  cookieStore.set("oauth_redirect_uri", redirectUri, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
+
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: "https://vakaygo.com/api/auth/google/callback",
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email profile",
     state,

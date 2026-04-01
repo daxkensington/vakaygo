@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { trips, tripItems, listings, islands, media } from "@/drizzle/schema";
 import { eq, and, inArray, asc } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -118,7 +119,7 @@ export async function GET(
         .where(and(inArray(media.listingId, listingIds), eq(media.isPrimary, true)));
 
       for (const img of images) {
-        imageMap.set(img.listingId, img.url);
+        imageMap.set(img.listingId, getImageUrl(img.url) || img.url);
       }
     }
 

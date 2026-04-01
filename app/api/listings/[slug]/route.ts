@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, media, islands, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -55,7 +56,7 @@ export async function GET(
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    const images = await db
+    const rawImages = await db
       .select({
         id: media.id,
         url: media.url,
@@ -66,6 +67,11 @@ export async function GET(
       .from(media)
       .where(eq(media.listingId, listing.id))
       .orderBy(media.sortOrder);
+
+    const images = rawImages.map((img) => ({
+      ...img,
+      url: getImageUrl(img.url) || img.url,
+    }));
 
     // Get similar listings (same type, same island)
     const similar = await db
@@ -103,7 +109,7 @@ export async function GET(
             .from(media)
             .where(and(eq(media.listingId, s.id), eq(media.isPrimary, true)))
             .limit(1);
-          return { ...s, image: img?.url || null };
+          return { ...s, image: getImageUrl(img?.url) || null };
         })
     );
 

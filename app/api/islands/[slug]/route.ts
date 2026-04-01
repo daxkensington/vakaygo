@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 export async function GET(
   _request: Request,
@@ -61,7 +62,7 @@ export async function GET(
           .from(media)
           .where(and(eq(media.listingId, f.id), eq(media.isPrimary, true)))
           .limit(1);
-        return { ...f, image: img?.url || null };
+        return { ...f, image: getImageUrl(img?.url) || null };
       })
     );
 

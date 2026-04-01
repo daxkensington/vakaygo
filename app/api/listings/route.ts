@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands, media, availability } from "@/drizzle/schema";
 import { eq, and, ilike, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -128,7 +129,7 @@ export async function GET(request: Request) {
 
     const data = results.map((r) => ({
       ...r,
-      image: imageMap.get(r.id) || null,
+      image: getImageUrl(imageMap.get(r.id)) || null,
     }));
 
     return NextResponse.json({ listings: data });

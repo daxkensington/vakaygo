@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { getImageUrl } from "@/lib/image-utils";
 
 type Photo = {
   id: string;
@@ -13,9 +14,15 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
   const [modalOpen, setModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  if (photos.length === 0) return null;
+  // Transform all photo URLs through the proxy
+  const proxiedPhotos = useMemo(
+    () => photos.map((p) => ({ ...p, url: getImageUrl(p.url) || p.url })),
+    [photos]
+  );
 
-  const displayPhotos = photos.length >= 5 ? photos.slice(0, 5) : photos;
+  if (proxiedPhotos.length === 0) return null;
+
+  const displayPhotos = proxiedPhotos.length >= 5 ? proxiedPhotos.slice(0, 5) : proxiedPhotos;
 
   function openModal(index: number) {
     setActiveIndex(index);
@@ -29,11 +36,11 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
   }
 
   function next() {
-    setActiveIndex((i) => (i + 1) % photos.length);
+    setActiveIndex((i) => (i + 1) % proxiedPhotos.length);
   }
 
   function prev() {
-    setActiveIndex((i) => (i - 1 + photos.length) % photos.length);
+    setActiveIndex((i) => (i - 1 + proxiedPhotos.length) % proxiedPhotos.length);
   }
 
   return (
@@ -54,10 +61,10 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
                 style={{ backgroundImage: `url(${photo.url})` }}
                 onClick={() => openModal(i + 1)}
               >
-                {i === 3 && photos.length > 5 && (
+                {i === 3 && proxiedPhotos.length > 5 && (
                   <div className="absolute inset-0 bg-navy-900/50 flex items-center justify-center">
                     <span className="text-white font-semibold text-lg">
-                      +{photos.length - 5} more
+                      +{proxiedPhotos.length - 5} more
                     </span>
                   </div>
                 )}
@@ -104,7 +111,7 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
 
           {/* Counter */}
           <div className="absolute top-4 left-4 text-white/60 text-sm z-10">
-            {activeIndex + 1} / {photos.length}
+            {activeIndex + 1} / {proxiedPhotos.length}
           </div>
 
           {/* Title */}
@@ -113,7 +120,7 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
           </div>
 
           {/* Previous */}
-          {photos.length > 1 && (
+          {proxiedPhotos.length > 1 && (
             <button
               onClick={prev}
               className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
@@ -125,14 +132,14 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
           {/* Image */}
           <div className="max-w-5xl max-h-[80vh] w-full mx-16">
             <img
-              src={photos[activeIndex].url}
-              alt={photos[activeIndex].alt || title}
+              src={proxiedPhotos[activeIndex].url}
+              alt={proxiedPhotos[activeIndex].alt || title}
               className="w-full h-full object-contain"
             />
           </div>
 
           {/* Next */}
-          {photos.length > 1 && (
+          {proxiedPhotos.length > 1 && (
             <button
               onClick={next}
               className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
@@ -142,9 +149,9 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
           )}
 
           {/* Thumbnail strip */}
-          {photos.length > 1 && (
+          {proxiedPhotos.length > 1 && (
             <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2 z-10 overflow-x-auto max-w-[80vw] pb-2">
-              {photos.map((photo, i) => (
+              {proxiedPhotos.map((photo, i) => (
                 <button
                   key={photo.id}
                   onClick={() => setActiveIndex(i)}

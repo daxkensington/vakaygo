@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock, X, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
 import { getRecentlyViewed, clearRecentlyViewed, type RecentListing } from "@/lib/recently-viewed";
+import { getImageUrl } from "@/lib/image-utils";
 
 const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home; label: string }> = {
   stay: { color: "text-gold-800", bg: "bg-gold-50", icon: Home, label: "Stay" },
@@ -74,7 +75,7 @@ export function RecentlyViewed() {
                 {item.image ? (
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: `url(${item.image})` }}
+                    style={{ backgroundImage: `url(${getImageUrl(item.image) || item.image})` }}
                   />
                 ) : (
                   <div className={`absolute inset-0 bg-gradient-to-br ${fallback} flex items-center justify-center`}>

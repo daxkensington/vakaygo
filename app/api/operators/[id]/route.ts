@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users, listings, islands, media, reviews } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 export async function GET(
   request: NextRequest,
@@ -79,9 +80,14 @@ export async function GET(
           ) / ratingsWithReviews.reduce((sum, l) => sum + (l.reviewCount ?? 1), 0)
         : 0;
 
+    const transformedListings = operatorListings.map((l) => ({
+      ...l,
+      image: getImageUrl(l.image) || null,
+    }));
+
     return NextResponse.json({
       operator,
-      listings: operatorListings,
+      listings: transformedListings,
       stats: {
         totalListings,
         totalReviews,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Star, MapPin, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
 import { useSaved } from "@/lib/use-saved";
 import { useCurrency } from "@/lib/currency";
+import { getImageUrl } from "@/lib/image-utils";
 
 type ListingCardProps = {
   id: string;
@@ -66,6 +67,7 @@ export function ListingCard(props: ListingCardProps) {
   const { isSaved, toggle } = useSaved();
   const { format } = useCurrency();
   const saved = isSaved(props.id);
+  const imageUrl = getImageUrl(props.image);
 
   return (
     <Link
@@ -74,10 +76,10 @@ export function ListingCard(props: ListingCardProps) {
     >
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
-        {props.image ? (
+        {imageUrl ? (
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-            style={{ backgroundImage: `url(${props.image})` }}
+            style={{ backgroundImage: `url(${imageUrl})` }}
           />
         ) : (
           <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
