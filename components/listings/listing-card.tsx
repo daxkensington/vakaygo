@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Star, MapPin, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
+import { useSaved } from "@/lib/use-saved";
 
 type ListingCardProps = {
   id: string;
@@ -59,6 +62,8 @@ export function ListingCard(props: ListingCardProps) {
   const TypeIcon = config.icon;
   const fallbackGradient = typeFallbacks[props.type] || "from-navy-400 to-navy-600";
   const rating = props.avgRating ? parseFloat(props.avgRating) : 0;
+  const { isSaved, toggle } = useSaved();
+  const saved = isSaved(props.id);
 
   return (
     <Link
@@ -96,11 +101,11 @@ export function ListingCard(props: ListingCardProps) {
 
         {/* Save button */}
         <button
-          aria-label="Save listing"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+          aria-label={saved ? "Unsave listing" : "Save listing"}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(props.id); }}
+          className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-navy-600">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={saved ? "text-red-500" : "text-navy-600"}>
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </button>

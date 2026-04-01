@@ -12,9 +12,43 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
 export default function LandingPage() {
+  const homepageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: "VakayGo — Caribbean Travel Platform",
+    description:
+      "Book stays, tours, dining, events, and transport across 21 Caribbean islands. The lowest commissions in the travel industry.",
+    url: "https://vakaygo.com",
+    isPartOf: { "@id": "https://vakaygo.com/#website" },
+    about: {
+      "@type": "TravelAgency",
+      name: "VakayGo",
+      areaServed: {
+        "@type": "Place",
+        name: "Caribbean",
+      },
+      priceRange: "$-$$$$",
+    },
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: "https://vakaygo.com",
+        },
+      ],
+    },
+  };
+
   return (
     <>
       <Header />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
+      />
       <main>
         <Hero />
         <StatsBar />

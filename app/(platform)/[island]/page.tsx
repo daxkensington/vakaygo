@@ -85,6 +85,52 @@ export default function IslandPage() {
     if (islandSlug) fetchIsland();
   }, [islandSlug]);
 
+  // SEO: Update document title and inject JSON-LD for island page
+  useEffect(() => {
+    if (!data) return;
+
+    document.title = `${data.name} — Caribbean Travel & Experiences | VakayGo`;
+
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const totalListings = Object.values(data.counts).reduce((a, b) => a + b, 0);
+    const desc =
+      data.description ||
+      `Explore ${totalListings} stays, tours, dining, and experiences in ${data.name}. Book with VakayGo.`;
+    if (metaDesc) {
+      metaDesc.setAttribute("content", desc.slice(0, 160));
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content = desc.slice(0, 160);
+      document.head.appendChild(meta);
+    }
+
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "TouristDestination",
+      name: data.name,
+      description: data.description || undefined,
+      url: `https://vakaygo.com/${islandSlug}`,
+      containedInPlace: {
+        "@type": "Place",
+        name: "Caribbean",
+      },
+    };
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(jsonLd);
+    script.id = "island-jsonld";
+    const existing = document.getElementById("island-jsonld");
+    if (existing) existing.remove();
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById("island-jsonld");
+      if (el) el.remove();
+    };
+  }, [data, islandSlug]);
+
   if (loading) {
     return (
       <>

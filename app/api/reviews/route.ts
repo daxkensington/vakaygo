@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { reviews, listings, users } from "@/drizzle/schema";
+import { sendNewReviewNotification } from "@/server/email";
 import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -96,6 +97,42 @@ export async function POST(request: Request) {
           reviewCount: ratingResult[0].count,
         })
         .where(eq(listings.id, listingId));
+    }
+
+    // Notify operator of new review (non-blocking)
+    try {
+      const [listing] = await db
+        .select({ operatorId: listings.operatorId, title: listings.title })
+        .from(listings)
+        .where(eq(listings.id, listingId))
+        .limit(1);
+
+      if (listing) {
+        const [operator] = await db
+          .select({ email: users.email, name: users.name, businessName: users.businessName })
+          .from(users)
+          .where(eq(users.id, listing.operatorId))
+          .limit(1);
+
+        const [traveler] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, travelerId))
+          .limit(1);
+
+        if (operator?.email && !operator.email.includes("unclaimed")) {
+          sendNewReviewNotification({
+            to: operator.email,
+            operatorName: operator.businessName || operator.name || "Operator",
+            listingTitle: listing.title,
+            rating,
+            travelerName: traveler?.name || "A traveler",
+            comment: comment || "",
+          }).catch(() => {});
+        }
+      }
+    } catch (_emailErr) {
+      // Email failure should not break the review response
     }
 
     return NextResponse.json({ review });

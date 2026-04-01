@@ -5,7 +5,8 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ListingCard } from "@/components/listings/listing-card";
 import { useAuth } from "@/lib/auth-context";
-import { Heart, Loader2 } from "lucide-react";
+import { useSaved } from "@/lib/use-saved";
+import { Heart, Loader2, X } from "lucide-react";
 import Link from "next/link";
 
 type SavedListing = {
@@ -25,6 +26,7 @@ type SavedListing = {
 
 export default function SavedPage() {
   const { user, loading: authLoading } = useAuth();
+  const { toggle } = useSaved();
   const [saved, setSaved] = useState<SavedListing[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,12 +56,19 @@ export default function SavedPage() {
       <Header />
       <main className="pt-20 bg-cream-50 min-h-screen">
         <div className="mx-auto max-w-7xl px-6 py-10">
-          <h1
-            className="text-3xl md:text-4xl font-bold text-navy-700"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Saved Listings
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1
+              className="text-3xl md:text-4xl font-bold text-navy-700"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Saved Listings
+            </h1>
+            {user && !loading && saved.length > 0 && (
+              <span className="bg-gold-100 text-gold-700 text-sm font-semibold px-3 py-1 rounded-full">
+                {saved.length}
+              </span>
+            )}
+          </div>
 
           {/* Auth gate */}
           {!authLoading && !user && (
@@ -114,22 +123,33 @@ export default function SavedPage() {
           {user && !loading && saved.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
               {saved.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  id={listing.id}
-                  title={listing.title}
-                  slug={listing.slug}
-                  type={listing.type}
-                  priceAmount={listing.priceAmount}
-                  priceUnit={listing.priceUnit}
-                  avgRating={listing.avgRating}
-                  reviewCount={listing.reviewCount}
-                  parish={listing.parish}
-                  islandSlug={listing.islandSlug}
-                  islandName={listing.islandName}
-                  image={null}
-                  isFeatured={listing.isFeatured}
-                />
+                <div key={listing.id} className="relative">
+                  <ListingCard
+                    id={listing.id}
+                    title={listing.title}
+                    slug={listing.slug}
+                    type={listing.type}
+                    priceAmount={listing.priceAmount}
+                    priceUnit={listing.priceUnit}
+                    avgRating={listing.avgRating}
+                    reviewCount={listing.reviewCount}
+                    parish={listing.parish}
+                    islandSlug={listing.islandSlug}
+                    islandName={listing.islandName}
+                    image={null}
+                    isFeatured={listing.isFeatured}
+                  />
+                  <button
+                    onClick={async () => {
+                      await toggle(listing.id);
+                      setSaved((prev) => prev.filter((l) => l.id !== listing.id));
+                    }}
+                    className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-navy-400 hover:text-red-500 hover:bg-white transition-colors shadow-sm"
+                    aria-label="Remove from saved"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               ))}
             </div>
           )}

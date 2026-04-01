@@ -100,6 +100,27 @@ export default function ExplorePage() {
     if (islandParam) setActiveIsland(islandParam);
   }, []);
 
+  // SEO: Update document title based on active filters
+  useEffect(() => {
+    const parts: string[] = [];
+    if (activeCategory !== "all") {
+      const label = categoryTabs.find((c) => c.id === activeCategory)?.label;
+      if (label) parts.push(label);
+    }
+    if (activeIsland) {
+      parts.push(
+        activeIsland
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase())
+      );
+    }
+    if (searchQuery) {
+      parts.push(`"${searchQuery}"`);
+    }
+    const suffix = parts.length > 0 ? parts.join(" in ") + " — " : "";
+    document.title = `${suffix}Explore Caribbean Experiences | VakayGo`;
+  }, [activeCategory, activeIsland, searchQuery]);
+
   useEffect(() => {
     async function fetchListings() {
       setLoading(true);

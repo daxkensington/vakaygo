@@ -14,6 +14,7 @@ import { ShareButton } from "@/components/listings/share-button";
 import { PhotoGallery } from "@/components/listings/photo-gallery";
 import { TrustBadges } from "@/components/listings/trust-badges";
 import { ContactOperator } from "@/components/listings/contact-operator";
+import { useSaved } from "@/lib/use-saved";
 import {
   Star,
   MapPin,
@@ -79,11 +80,24 @@ const typeLabels: Record<string, string> = {
   guide: "Local Guide",
 };
 
+const schemaTypeMap: Record<string, string> = {
+  stay: "LodgingBusiness",
+  excursion: "TouristAttraction",
+  tour: "TouristAttraction",
+  dining: "Restaurant",
+  event: "Event",
+  transfer: "TaxiService",
+  transport: "TaxiService",
+  vip: "LocalBusiness",
+  guide: "TouristInformationCenter",
+};
+
 export default function ListingDetailPage() {
   const params = useParams();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isSaved, toggle } = useSaved();
 
   useEffect(() => {
     async function fetchListing() {
@@ -101,6 +115,78 @@ export default function ListingDetailPage() {
     }
     if (params.slug) fetchListing();
   }, [params.slug]);
+
+  // SEO: Update document title and inject JSON-LD structured data
+  useEffect(() => {
+    if (!listing) return;
+
+    document.title = `${listing.title} — ${listing.islandName} | VakayGo`;
+
+    // Set meta description
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const desc = listing.description
+      ? listing.description.slice(0, 160)
+      : `${typeLabels[listing.type] || listing.type} in ${listing.parish}, ${listing.islandName}`;
+    if (metaDesc) {
+      metaDesc.setAttribute("content", desc);
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content = desc;
+      document.head.appendChild(meta);
+    }
+
+    // Build JSON-LD
+    const schemaType = schemaTypeMap[listing.type] || "LocalBusiness";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jsonLd: Record<string, any> = {
+      "@context": "https://schema.org",
+      "@type": schemaType,
+      name: listing.title,
+      description: listing.description || undefined,
+      url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: listing.parish || undefined,
+        addressCountry: listing.islandName,
+      },
+      image:
+        listing.images.length > 0
+          ? listing.images.map((img) => img.url)
+          : undefined,
+    };
+
+    if (listing.avgRating && listing.reviewCount && listing.reviewCount > 0) {
+      jsonLd.aggregateRating = {
+        "@type": "AggregateRating",
+        ratingValue: parseFloat(listing.avgRating).toFixed(1),
+        reviewCount: listing.reviewCount,
+        bestRating: "5",
+      };
+    }
+
+    if (listing.priceAmount) {
+      jsonLd.offers = {
+        "@type": "Offer",
+        price: listing.priceAmount,
+        priceCurrency: listing.priceCurrency || "XCD",
+        availability: "https://schema.org/InStock",
+      };
+    }
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(jsonLd);
+    script.id = "listing-jsonld";
+    const existing = document.getElementById("listing-jsonld");
+    if (existing) existing.remove();
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById("listing-jsonld");
+      if (el) el.remove();
+    };
+  }, [listing]);
 
   if (loading) {
     return (
@@ -198,8 +284,18 @@ export default function ListingDetailPage() {
                     title={listing.title}
                     url={typeof window !== "undefined" ? window.location.href : ""}
                   />
-                  <button className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-navy-400 hover:text-red-500 transition-colors">
-                    <Heart size={18} />
+                  <button
+                    onClick={() => listing && toggle(listing.id)}
+                    className={`w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center transition-colors ${
+                      listing && isSaved(listing.id)
+                        ? "text-red-500"
+                        : "text-navy-400 hover:text-red-500"
+                    }`}
+                  >
+                    <Heart
+                      size={18}
+                      fill={listing && isSaved(listing.id) ? "currentColor" : "none"}
+                    />
                   </button>
                 </div>
               </div>

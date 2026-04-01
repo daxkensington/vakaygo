@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createUser } from "@/server/auth";
+import { sendWelcomeEmail } from "@/server/email";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,14 @@ export async function POST(request: Request) {
     }
 
     const user = await createUser(email, password, name, role || "traveler");
+
+    // Send welcome email (non-blocking)
+    try {
+      sendWelcomeEmail({ to: email, name }).catch(() => {});
+    } catch (_emailErr) {
+      // Email failure should not break signup
+    }
+
     return NextResponse.json({ user });
   } catch (error: unknown) {
     const message =

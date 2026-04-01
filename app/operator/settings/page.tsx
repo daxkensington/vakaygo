@@ -1,23 +1,74 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, AlertCircle } from "lucide-react";
 
 export default function OperatorSettingsPage() {
   const { user } = useAuth();
-  const [businessName, setBusinessName] = useState(user?.businessName || "");
+  const [businessName, setBusinessName] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const res = await fetch("/api/operator/settings");
+        if (!res.ok) throw new Error("Failed to load settings");
+        const data = await res.json();
+        setBusinessName(data.settings.businessName);
+        setBusinessDescription(data.settings.businessDescription);
+        setBusinessPhone(data.settings.businessPhone);
+      } catch {
+        setError("Failed to load settings");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSettings();
+  }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    // TODO: API call to update profile
-    await new Promise((r) => setTimeout(r, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError("");
+    setSaved(false);
+
+    try {
+      const res = await fetch("/api/operator/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessName, businessDescription, businessPhone }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save settings");
+      }
+
+      const data = await res.json();
+      setBusinessName(data.settings.businessName);
+      setBusinessDescription(data.settings.businessDescription);
+      setBusinessPhone(data.settings.businessPhone);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-gold-500" />
+      </div>
+    );
   }
 
   return (
@@ -33,6 +84,13 @@ export default function OperatorSettingsPage() {
           Manage your business profile and account settings
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 flex items-center gap-2 bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="space-y-8">
         {/* Business Profile */}
@@ -57,6 +115,8 @@ export default function OperatorSettingsPage() {
               </label>
               <textarea
                 rows={4}
+                value={businessDescription}
+                onChange={(e) => setBusinessDescription(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 resize-none"
                 placeholder="Tell travelers about your business"
               />
@@ -68,6 +128,8 @@ export default function OperatorSettingsPage() {
                 </label>
                 <input
                   type="tel"
+                  value={businessPhone}
+                  onChange={(e) => setBusinessPhone(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
                   placeholder="+1 473 XXX XXXX"
                 />
