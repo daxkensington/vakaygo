@@ -169,7 +169,7 @@ export function Hero() {
           {[
             { value: "7,200+", label: "Listings" },
             { value: "21", label: "Islands" },
-            { value: "6", label: "Categories" },
+            { value: "9", label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gold-400">{stat.value}</p>
