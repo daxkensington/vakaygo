@@ -185,7 +185,8 @@ export default function ExplorePage() {
         <div className="bg-white shadow-sm sticky top-16 z-40">
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
-              <div className="flex-1 flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3">
+              {/* Search - full width on mobile */}
+              <div className="w-full md:w-auto md:flex-1 flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3">
                 <Search size={18} className="text-navy-300 shrink-0" />
                 <input
                   type="text"
@@ -195,13 +196,14 @@ export default function ExplorePage() {
                   className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                 />
               </div>
-              <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2">
+              {/* Date + Island row on mobile */}
+              <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent text-navy-700 text-sm font-medium outline-none cursor-pointer"
+                  className="bg-transparent text-navy-700 text-sm font-medium outline-none cursor-pointer min-w-[8rem]"
                   min={new Date().toISOString().split("T")[0]}
                   placeholder="Any date"
                 />
@@ -209,7 +211,7 @@ export default function ExplorePage() {
               <select
                 value={activeIsland}
                 onChange={(e) => setActiveIsland(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors"
+                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
               >
                 <option value="">All Islands</option>
                 <option value="grenada">🇬🇩 Grenada</option>
@@ -235,14 +237,14 @@ export default function ExplorePage() {
                 <option value="bonaire">Bonaire</option>
               </select>
               {/* Price Range */}
-              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2">
+              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <DollarSign size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="number"
                   placeholder="Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-16 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                  className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                   min="0"
                 />
                 <span className="text-navy-300 text-sm">-</span>
@@ -251,7 +253,7 @@ export default function ExplorePage() {
                   placeholder="Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-16 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                  className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                   min="0"
                 />
               </div>
@@ -259,7 +261,7 @@ export default function ExplorePage() {
               <select
                 value={minRating}
                 onChange={(e) => setMinRating(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors"
+                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
               >
                 <option value="">Any Rating</option>
                 <option value="3">3+ Stars</option>
@@ -267,7 +269,7 @@ export default function ExplorePage() {
                 <option value="4.5">4.5+ Stars</option>
               </select>
               {/* View Toggle */}
-              <div className="flex items-center bg-cream-50 rounded-xl overflow-hidden">
+              <div className="flex items-center bg-cream-50 rounded-xl overflow-hidden shrink-0">
                 <button
                   onClick={() => setViewMode("grid")}
                   className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${

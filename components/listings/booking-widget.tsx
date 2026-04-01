@@ -38,6 +38,10 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
+  const [paymentStep, setPaymentStep] = useState(false);
+  const [bookingId, setBookingId] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [directPayment, setDirectPayment] = useState(false);
   const [error, setError] = useState("");
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -135,13 +139,125 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
         return;
       }
 
-      setBooked(true);
+      setBookingId(data.booking.id);
       setBookingNumber(data.booking.bookingNumber);
+      setPaymentStep(true);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handlePayNow() {
+    setPaymentLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/payments/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+
+      const data = await res.json();
+
+      if (data.fallback) {
+        setError("");
+        setDirectPayment(true);
+        setPaymentStep(false);
+        setBooked(true);
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data.error || "Payment setup failed");
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  if (paymentStep) {
+    return (
+      <div className="lg:col-span-1">
+        <div className="sticky top-24 bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)]">
+          <div className="w-16 h-16 bg-gold-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield size={32} className="text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-navy-700 text-center">Complete Your Booking</h3>
+          <p className="text-navy-400 mt-2 text-center">
+            Booking #{bookingNumber}
+          </p>
+
+          {/* Booking Summary */}
+          <div className="mt-4 space-y-2 text-sm border-t border-cream-200 pt-4">
+            <div className="flex justify-between">
+              <span className="text-navy-400">Subtotal</span>
+              <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-navy-400">Service fee</span>
+              <span className="text-navy-700">{formatCurrency(pricing.serviceFee)}</span>
+            </div>
+            {includeInsurance && pricing.insuranceFee && (
+              <div className="flex justify-between">
+                <span className="text-navy-400">Trip protection</span>
+                <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
+              </div>
+            )}
+            <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
+              <span className="text-navy-700">Total</span>
+              <span className="text-navy-700">{formatCurrency(pricing.total)}</span>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mt-4">
+              {error}
+            </div>
+          )}
+
+          {/* Pay Now Button */}
+          <button
+            onClick={handlePayNow}
+            disabled={paymentLoading}
+            className="w-full mt-6 bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+          >
+            {paymentLoading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <>
+                <Shield size={18} />
+                Pay Now
+              </>
+            )}
+          </button>
+
+          {/* Pay Later Option */}
+          <button
+            onClick={() => {
+              setPaymentStep(false);
+              setBooked(true);
+            }}
+            disabled={paymentLoading}
+            className="w-full mt-3 bg-transparent hover:bg-cream-50 text-navy-400 hover:text-navy-600 py-3 rounded-xl font-medium transition-all text-sm"
+          >
+            Pay Later
+          </button>
+
+          <p className="text-center text-navy-300 text-xs mt-3">
+            Secure checkout powered by Stripe
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (booked) {
@@ -158,9 +274,16 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <p className="text-sm text-navy-400 mt-1">
             Total: {formatCurrency(pricing.total)}
           </p>
-          <p className="text-xs text-navy-300 mt-4">
-            Check your email for confirmation details.
-          </p>
+          {directPayment ? (
+            <p className="text-xs text-navy-300 mt-4">
+              This operator accepts direct payment. Your booking has been
+              submitted — the operator will confirm it shortly.
+            </p>
+          ) : (
+            <p className="text-xs text-navy-300 mt-4">
+              Check your email for confirmation details.
+            </p>
+          )}
         </div>
       </div>
     );

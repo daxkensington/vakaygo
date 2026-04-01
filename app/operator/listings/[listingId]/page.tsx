@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Save, Loader2, ArrowLeft, Eye, Trash2 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import Link from "next/link";
+import PhotoUploader from "@/components/operator/photo-uploader";
 
 type ListingData = {
   id: string;
@@ -19,6 +20,7 @@ type ListingData = {
   priceAmount: string | null;
   priceUnit: string | null;
   islandSlug: string;
+  images: { id: string; url: string; alt: string | null }[];
 };
 
 export default function EditListingPage() {
@@ -38,6 +40,7 @@ export default function EditListingPage() {
   const [price, setPrice] = useState("");
   const [priceUnit, setPriceUnit] = useState("");
   const [status, setStatus] = useState("");
+  const [images, setImages] = useState<{ id: string; url: string; alt: string | null }[]>([]);
 
   useEffect(() => {
     async function fetchListing() {
@@ -56,6 +59,7 @@ export default function EditListingPage() {
         setPrice(l.priceAmount || "");
         setPriceUnit(l.priceUnit || "");
         setStatus(l.status || "draft");
+        setImages(l.images || []);
       } catch {
         setListing(null);
       } finally {
@@ -198,6 +202,17 @@ export default function EditListingPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Photos */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <h2 className="font-bold text-navy-700 mb-4">Photos</h2>
+          <p className="text-sm text-navy-400 mb-4">Add photos to attract more bookings. The first photo will be your cover image.</p>
+          <PhotoUploader
+            listingId={listing.id}
+            existingPhotos={images}
+            onPhotosChange={setImages}
+          />
         </div>
 
         {/* Location */}
