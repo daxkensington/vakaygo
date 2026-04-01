@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import PhotoUploader from "@/components/operator/photo-uploader";
+import { AIDescriptionButton } from "@/components/operator/ai-description-button";
 
 const listingTypes = [
   {
@@ -271,9 +272,19 @@ export default function NewListingPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-navy-600 mb-1.5">
-                  Description
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-navy-600">
+                    Description
+                  </label>
+                  <AIDescriptionButton
+                    title={title}
+                    type={type}
+                    address={address}
+                    onGenerated={(desc) => {
+                      setDescription(desc);
+                    }}
+                  />
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

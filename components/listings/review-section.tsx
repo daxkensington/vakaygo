@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, MessageCircle, PenLine } from "lucide-react";
+import { Star, MessageCircle, PenLine, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ReviewModal } from "@/components/listings/review-modal";
 
@@ -53,6 +53,8 @@ export function ReviewSection({
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     async function fetchReviews() {
@@ -69,6 +71,23 @@ export function ReviewSection({
     }
     fetchReviews();
   }, [listingId]);
+
+  // Fetch AI summary when there are 3+ reviews
+  useEffect(() => {
+    if (loading || reviews.length < 3) return;
+    setSummaryLoading(true);
+    fetch("/api/ai/review-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.summary) setAiSummary(data.summary);
+      })
+      .catch(() => {})
+      .finally(() => setSummaryLoading(false));
+  }, [listingId, loading, reviews.length]);
 
   if (loading) return null;
 
@@ -114,7 +133,33 @@ export function ReviewSection({
         </div>
       ) : (
         <>
-          {/* Summary */}
+          {/* AI Summary */}
+          {(aiSummary || summaryLoading) && (
+            <div className="p-5 bg-gradient-to-r from-gold-50 to-gold-100/50 rounded-2xl shadow-[var(--shadow-card)] mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gold-500/15 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles size={16} className="text-gold-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {summaryLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gold-200/50 rounded-full w-3/4 animate-pulse" />
+                      <div className="h-3 bg-gold-200/50 rounded-full w-1/2 animate-pulse" />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-navy-700 text-sm leading-relaxed">{aiSummary}</p>
+                      <p className="text-xs text-navy-400 mt-2">
+                        AI-generated summary based on {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rating Summary */}
           <div className="p-6 bg-white rounded-2xl shadow-[var(--shadow-card)] mb-6">
             <div className="flex items-center gap-6">
               <div className="text-center">

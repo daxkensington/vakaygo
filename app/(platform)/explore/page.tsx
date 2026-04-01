@@ -24,6 +24,7 @@ import {
   X,
   Star,
   DollarSign,
+  Sparkles,
 } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/listings/map-view"), {
@@ -92,7 +93,52 @@ export default function ExplorePage() {
   const [minRating, setMinRating] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [aiSearchActive, setAiSearchActive] = useState(false);
+  const [aiSearchLoading, setAiSearchLoading] = useState(false);
   const PAGE_SIZE = 24;
+
+  // AI smart search keywords that trigger natural language parsing
+  const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
+
+  function isNaturalLanguageQuery(q: string): boolean {
+    if (q.length > 20) return true;
+    const lower = q.toLowerCase();
+    return AI_TRIGGER_WORDS.some((word) => lower.includes(word));
+  }
+
+  async function handleSmartSearch(query: string) {
+    if (!isNaturalLanguageQuery(query)) {
+      setAiSearchActive(false);
+      return;
+    }
+
+    setAiSearchLoading(true);
+    try {
+      const res = await fetch("/api/ai/smart-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!res.ok) return;
+
+      const { filters } = await res.json();
+      setAiSearchActive(true);
+
+      // Apply parsed filters
+      if (filters.type) setActiveCategory(filters.type);
+      if (filters.island) setActiveIsland(filters.island);
+      if (filters.minPrice) setMinPrice(String(filters.minPrice));
+      if (filters.maxPrice) setMaxPrice(String(filters.maxPrice));
+      if (filters.minRating) setMinRating(String(filters.minRating));
+      if (filters.q) setSearchQuery(filters.q);
+    } catch {
+      // Fall back to normal search
+      setAiSearchActive(false);
+    } finally {
+      setAiSearchLoading(false);
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -188,15 +234,34 @@ export default function ExplorePage() {
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
               {/* Search - full width on mobile */}
-              <div className="w-full md:w-auto md:flex-1 flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3">
-                <Search size={18} className="text-navy-300 shrink-0" />
+              <div className="w-full md:w-auto md:flex-1 flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3 relative">
+                {aiSearchLoading ? (
+                  <Loader2 size={18} className="text-gold-500 shrink-0 animate-spin" />
+                ) : aiSearchActive ? (
+                  <Sparkles size={18} className="text-gold-500 shrink-0" />
+                ) : (
+                  <Search size={18} className="text-navy-300 shrink-0" />
+                )}
                 <input
                   type="text"
-                  placeholder="Search stays, tours, dining, events..."
+                  placeholder="Search stays, tours, dining, events... or try &quot;romantic dinner in Grenada&quot;"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setAiSearchActive(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchQuery.trim()) {
+                      handleSmartSearch(searchQuery.trim());
+                    }
+                  }}
                   className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                 />
+                {aiSearchActive && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gold-600 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    AI-powered
+                  </span>
+                )}
               </div>
               {/* Date + Island row on mobile */}
               <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">

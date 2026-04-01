@@ -6,6 +6,7 @@ import { Save, Loader2, ArrowLeft, Eye, Trash2 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import Link from "next/link";
 import PhotoUploader from "@/components/operator/photo-uploader";
+import { AIDescriptionButton } from "@/components/operator/ai-description-button";
 
 type ListingData = {
   id: string;
@@ -193,7 +194,18 @@ export default function EditListingPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Description</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-navy-600">Description</label>
+                <AIDescriptionButton
+                  title={title}
+                  type={listing.type}
+                  address={address}
+                  onGenerated={(desc, hl) => {
+                    setDescription(desc);
+                    if (hl) setHeadline(hl);
+                  }}
+                />
+              </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

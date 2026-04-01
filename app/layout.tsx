@@ -5,6 +5,7 @@ import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
 import { PromoBanner } from "@/components/layout/promo-banner";
+import { AIConcierge } from "@/components/chat/ai-concierge";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -122,6 +123,7 @@ export default function RootLayout({
           }}
         />
         <AuthProvider><SavedProvider><CurrencyProvider><PromoBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
+        <AIConcierge />
         <Analytics />
       </body>
     </html>
