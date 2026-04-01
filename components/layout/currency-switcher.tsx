@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCurrency, CURRENCIES, CURRENCY_NAMES } from "@/lib/currency";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -17,12 +17,24 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 export function CurrencySwitcher() {
   const { currency, setCurrency } = useCurrency();
   const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        aria-label="Change currency"
+        aria-label="Select currency"
+        aria-expanded={open}
         className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-gold-500"
       >
         <span className="font-semibold">{CURRENCY_SYMBOLS[currency]}</span>

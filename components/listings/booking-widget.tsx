@@ -221,7 +221,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
 
           {/* Error */}
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mt-4">
+            <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mt-4">
               {error}
             </div>
           )}
@@ -269,7 +269,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check size={32} className="text-white" />
           </div>
-          <h3 className="text-xl font-bold text-navy-700">Booking Confirmed!</h3>
+          <h3 role="status" className="text-xl font-bold text-navy-700">Booking Confirmed!</h3>
           <p className="text-navy-400 mt-2">
             Booking #{bookingNumber}
           </p>
@@ -480,7 +480,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mb-4">
+          <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mb-4">
             {error}
           </div>
         )}

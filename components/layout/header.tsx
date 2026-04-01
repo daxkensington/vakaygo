@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, User, LayoutDashboard } from "lucide-react";
@@ -14,14 +15,26 @@ export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const isLanding = pathname === "/";
+
+  useFocusTrap(mobileMenuRef, mobileOpen);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [mobileOpen]);
 
   return (
     <header
@@ -43,9 +56,10 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link
             href="/explore"
+            aria-current={pathname === "/explore" ? "page" : undefined}
             className={`transition-colors duration-300 hover:text-gold-500 ${
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
             }`}
@@ -54,6 +68,7 @@ export function Header() {
           </Link>
           <Link
             href="/islands"
+            aria-current={pathname === "/islands" ? "page" : undefined}
             className={`transition-colors duration-300 hover:text-gold-500 ${
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
             }`}
@@ -63,6 +78,7 @@ export function Header() {
           {user && (
             <Link
               href="/trips"
+              aria-current={pathname === "/trips" ? "page" : undefined}
               className={`transition-colors duration-300 hover:text-gold-500 ${
                 scrolled || !isLanding ? "text-navy-500" : "text-white/80"
               }`}
@@ -72,6 +88,7 @@ export function Header() {
           )}
           <Link
             href="/services"
+            aria-current={pathname === "/services" ? "page" : undefined}
             className={`transition-colors duration-300 hover:text-gold-500 ${
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
             }`}
@@ -80,6 +97,7 @@ export function Header() {
           </Link>
           <Link
             href="/for-businesses"
+            aria-current={pathname === "/for-businesses" ? "page" : undefined}
             className={`transition-colors duration-300 hover:text-gold-500 ${
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
             }`}
@@ -135,6 +153,7 @@ export function Header() {
 
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
           className={`md:hidden p-2 transition-colors ${
             scrolled || !isLanding ? "text-navy-700" : "text-white"
           }`}
@@ -145,7 +164,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
+        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
           <Link href="/explore" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             Explore
           </Link>

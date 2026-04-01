@@ -14,7 +14,9 @@ import { ShareButton } from "@/components/listings/share-button";
 import { PhotoGallery } from "@/components/listings/photo-gallery";
 import { TrustBadges } from "@/components/listings/trust-badges";
 import { ContactOperator } from "@/components/listings/contact-operator";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { useSaved } from "@/lib/use-saved";
+import { addRecentlyViewed } from "@/lib/recently-viewed";
 import {
   Star,
   MapPin,
@@ -22,7 +24,6 @@ import {
   Users as UsersIcon,
   Check,
   Shield,
-  ChevronLeft,
   Loader2,
   Heart,
   Zap,
@@ -136,6 +137,21 @@ export default function ListingDetailPage() {
       body: JSON.stringify({ source }),
     }).catch(() => {});
   }, [params.slug, params.island]);
+
+  // Track recently viewed in localStorage
+  useEffect(() => {
+    if (!listing) return;
+    addRecentlyViewed({
+      id: listing.id,
+      title: listing.title,
+      slug: listing.slug,
+      type: listing.type,
+      priceAmount: listing.priceAmount,
+      priceUnit: listing.priceUnit,
+      islandSlug: listing.islandSlug,
+      image: listing.images.length > 0 ? listing.images[0].url : null,
+    });
+  }, [listing]);
 
   // SEO: Update document title and inject JSON-LD structured data
   useEffect(() => {
@@ -283,16 +299,13 @@ export default function ListingDetailPage() {
       <main className="pt-20 bg-cream-50 min-h-screen">
         {/* Breadcrumb */}
         <div className="mx-auto max-w-7xl px-6 py-4">
-          <div className="flex items-center gap-2 text-sm text-navy-400">
-            <Link href="/explore" className="hover:text-gold-500 flex items-center gap-1">
-              <ChevronLeft size={14} />
-              Explore
-            </Link>
-            <span>/</span>
-            <span className="capitalize">{listing.type}s</span>
-            <span>/</span>
-            <span className="text-navy-600">{listing.title}</span>
-          </div>
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/" },
+              { label: listing.islandName, href: `/${listing.islandSlug}` },
+              { label: listing.title },
+            ]}
+          />
         </div>
 
         {/* Image Gallery */}

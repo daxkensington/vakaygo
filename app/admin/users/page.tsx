@@ -12,6 +12,7 @@ import {
   Briefcase,
   UserCheck,
   Eye,
+  Download,
 } from "lucide-react";
 
 type User = {
@@ -202,6 +203,13 @@ export default function AdminUsersPage() {
             </p>
           )}
         </div>
+        <button
+          onClick={() => window.open("/api/admin/export?type=users", "_blank")}
+          className="inline-flex items-center gap-2 rounded-xl bg-navy-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy-800"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* Stats Row */}

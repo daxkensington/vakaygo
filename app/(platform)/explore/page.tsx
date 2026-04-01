@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Header } from "@/components/layout/header";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { RecentlyViewed } from "@/components/listings/recently-viewed";
 import { ListingCard } from "@/components/listings/listing-card";
 import { ListingSkeletonGrid } from "@/components/listings/listing-skeleton";
 import {
@@ -401,6 +403,19 @@ export default function ExplorePage() {
           </div>
         </div>
 
+        {/* Breadcrumbs */}
+        <div className="mx-auto max-w-7xl px-6 pt-4 pb-2">
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Explore", href: activeCategory !== "all" ? "/explore" : undefined },
+              ...(activeCategory !== "all"
+                ? [{ label: categoryTabs.find((c) => c.id === activeCategory)?.label || activeCategory }]
+                : []),
+            ]}
+          />
+        </div>
+
         {/* Results */}
         {viewMode === "map" ? (
           /* ── Map View ─────────────────────────────────────────── */
@@ -478,6 +493,11 @@ export default function ExplorePage() {
         ) : (
           /* ── Grid View ────────────────────────────────────────── */
           <div className="mx-auto max-w-7xl px-6 py-8">
+            {/* Recently Viewed — only when not filtering/searching */}
+            {activeCategory === "all" && !searchQuery && !activeIsland && !selectedDate && !minPrice && !maxPrice && !minRating && (
+              <RecentlyViewed />
+            )}
+
             <div className="flex items-center justify-between mb-6">
               <p className="text-navy-400 text-sm">
                 Showing{" "}

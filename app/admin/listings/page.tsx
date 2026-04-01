@@ -16,6 +16,9 @@ import {
   AlertTriangle,
   Loader2,
   ListPlus,
+  Download,
+  Trash2,
+  X,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -277,6 +280,8 @@ export default function AdminListingsPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Listing | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // Read filters from URL
   const status = searchParams.get("status") ?? "";
@@ -385,6 +390,62 @@ export default function AdminListingsPage() {
     }
   }
 
+  /* Bulk actions */
+  async function handleBulkAction(action: "approve" | "reject" | "pause" | "delete") {
+    if (selectedIds.size === 0) return;
+    if (action === "delete") {
+      const confirmed = window.confirm(
+        `Are you sure you want to permanently delete ${selectedIds.size} listing(s)? This cannot be undone.`
+      );
+      if (!confirmed) return;
+    }
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/admin/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, listingIds: Array.from(selectedIds) }),
+      });
+      if (res.ok) {
+        const { updated } = await res.json();
+        setToast(`Bulk ${action}: ${updated} listing(s) updated`);
+        setSelectedIds(new Set());
+        fetchListings();
+        fetchPendingCount();
+      } else {
+        setToast("Bulk action failed");
+      }
+    } catch {
+      setToast("Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!data) return;
+    const allIds = data.listings.map((l) => l.id);
+    const allSelected = allIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allIds));
+    }
+  }
+
+  function handleExport() {
+    window.open("/api/admin/export?type=listings", "_blank");
+  }
+
   /* Search debounce */
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   function handleSearchChange(value: string) {
@@ -411,19 +472,28 @@ export default function AdminListingsPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <ListPlus size={24} className="text-gold-500" />
-        <h1
-          className="text-2xl font-bold text-navy-800 md:text-3xl"
-          style={{ fontFamily: "var(--font-display)" }}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ListPlus size={24} className="text-gold-500" />
+          <h1
+            className="text-2xl font-bold text-navy-800 md:text-3xl"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Listings Management
+          </h1>
+          {data && (
+            <span className="rounded-full bg-gold-100 px-3 py-0.5 text-sm font-semibold text-gold-700">
+              {data.total.toLocaleString()}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 rounded-xl bg-navy-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy-800"
         >
-          Listings Management
-        </h1>
-        {data && (
-          <span className="rounded-full bg-gold-100 px-3 py-0.5 text-sm font-semibold text-gold-700">
-            {data.total.toLocaleString()}
-          </span>
-        )}
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* Pending review alert */}
@@ -498,6 +568,57 @@ export default function AdminListingsPage() {
         </div>
       </div>
 
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-navy-50 px-5 py-3 shadow-sm">
+          <span className="text-sm font-semibold text-navy-700">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleBulkAction("approve")}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+            >
+              <Check size={14} />
+              Approve
+            </button>
+            <button
+              onClick={() => handleBulkAction("reject")}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+            >
+              <XCircle size={14} />
+              Reject
+            </button>
+            <button
+              onClick={() => handleBulkAction("pause")}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            >
+              <Pause size={14} />
+              Pause
+            </button>
+            <button
+              onClick={() => handleBulkAction("delete")}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-800 disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-navy-500 transition-colors hover:text-navy-700"
+          >
+            <X size={14} />
+            Deselect All
+          </button>
+          {bulkLoading && <Loader2 size={16} className="animate-spin text-navy-500" />}
+        </div>
+      )}
+
       {/* Table card */}
       <div className="overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-card)]">
         {loading ? (
@@ -514,6 +635,18 @@ export default function AdminListingsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-cream-200 bg-cream-50/60">
+                  <th className="w-10 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={
+                        !!data &&
+                        data.listings.length > 0 &&
+                        data.listings.every((l) => selectedIds.has(l.id))
+                      }
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-cream-300 text-gold-500 focus:ring-gold-400"
+                    />
+                  </th>
                   <th className="whitespace-nowrap px-5 py-3 font-semibold text-navy-500">Listing</th>
                   <th className="whitespace-nowrap px-5 py-3 font-semibold text-navy-500">Operator</th>
                   <th className="whitespace-nowrap px-5 py-3 font-semibold text-navy-500">Island</th>
@@ -530,6 +663,16 @@ export default function AdminListingsPage() {
                     key={listing.id}
                     className="border-b border-cream-100 transition-colors last:border-0 hover:bg-cream-50"
                   >
+                    {/* Checkbox */}
+                    <td className="w-10 px-3 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(listing.id)}
+                        onChange={() => toggleSelect(listing.id)}
+                        className="h-4 w-4 rounded border-cream-300 text-gold-500 focus:ring-gold-400"
+                      />
+                    </td>
+
                     {/* Title + type badge */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">

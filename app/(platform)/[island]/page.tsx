@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import {
   Home,
   Compass,
@@ -207,6 +208,17 @@ export default function IslandPage() {
     <>
       <Header />
       <main className="bg-cream-50 min-h-screen">
+        {/* Breadcrumbs */}
+        <div className="mx-auto max-w-7xl px-6 pt-24 pb-2">
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Islands", href: "/explore" },
+              { label: data.name },
+            ]}
+          />
+        </div>
+
         {/* Hero */}
         <section className="relative h-[400px] md:h-[500px] flex items-end overflow-hidden">
           <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImg})` }} />

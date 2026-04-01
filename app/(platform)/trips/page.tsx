@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { useAuth } from "@/lib/auth-context";
 import {
   MapPin,
@@ -96,6 +97,16 @@ export default function TripsPage() {
       <Header />
       <main className="pt-20 bg-cream-50 min-h-screen">
         <div className="mx-auto max-w-7xl px-6 py-10">
+          {/* Breadcrumbs */}
+          <div className="mb-6">
+            <Breadcrumbs
+              items={[
+                { label: "Home", href: "/" },
+                { label: "My Trips" },
+              ]}
+            />
+          </div>
+
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>

@@ -79,6 +79,16 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Close dropdown on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open]);
+
   async function markAllRead() {
     try {
       await fetch("/api/notifications", {
@@ -120,6 +130,7 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
           scrolled || !isLanding ? "text-navy-500" : "text-white/80"
         }`}
         aria-label="Notifications"
+        aria-expanded={open}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -130,7 +141,7 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] max-h-96 overflow-hidden z-50 border border-cream-100">
+        <div role="menu" className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] max-h-96 overflow-hidden z-50 border border-cream-100">
           <div className="flex items-center justify-between px-4 py-3 border-b border-cream-100">
             <span className="text-sm font-semibold text-navy-700">
               Notifications
@@ -157,6 +168,7 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
                 return (
                   <button
                     key={n.id}
+                    role="menuitem"
                     onClick={() => handleClick(n)}
                     className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-cream-50 transition-colors ${
                       !n.isRead ? "bg-gold-50/30" : ""

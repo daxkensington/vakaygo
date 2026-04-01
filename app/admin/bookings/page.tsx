@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CalendarCheck, Loader2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { CalendarCheck, Loader2, ChevronLeft, ChevronRight, Search, Download } from "lucide-react";
 
 type Booking = {
   id: string;
@@ -111,6 +111,13 @@ export default function AdminBookingsPage() {
             </span>
           )}
         </div>
+        <button
+          onClick={() => window.open("/api/admin/export?type=bookings", "_blank")}
+          className="inline-flex items-center gap-2 rounded-xl bg-navy-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy-800"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* Status Tabs */}
