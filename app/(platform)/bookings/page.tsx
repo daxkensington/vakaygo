@@ -17,8 +17,10 @@ import {
   AlertCircle,
   Info,
   CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { ReviewModal } from "@/components/listings/review-modal";
+import { DisputeModal } from "@/components/disputes/dispute-modal";
 
 type Booking = {
   id: string;
@@ -60,6 +62,11 @@ function BookingsContent() {
   const [loading, setLoading] = useState(true);
   const [reviewModal, setReviewModal] = useState<{
     bookingId: string;
+    listingTitle: string;
+  } | null>(null);
+  const [disputeModal, setDisputeModal] = useState<{
+    bookingId: string;
+    bookingNumber: string;
     listingTitle: string;
   } | null>(null);
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
@@ -302,20 +309,56 @@ function BookingsContent() {
                     {/* Actions */}
                     {isPast && booking.status === "completed" && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
-                        <p className="text-sm text-navy-400 flex items-center gap-1">
+                        <div className="flex items-center gap-1">
                           <Star size={14} className="text-gold-500" />
-                          How was your experience?
-                        </p>
+                          <p className="text-sm text-navy-400">How was your experience?</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() =>
+                              setDisputeModal({
+                                bookingId: booking.id,
+                                bookingNumber: booking.bookingNumber,
+                                listingTitle: booking.listingTitle,
+                              })
+                            }
+                            className="text-sm font-semibold text-red-500 hover:text-red-600 flex items-center gap-1"
+                          >
+                            <AlertTriangle size={14} />
+                            Report Issue
+                          </button>
+                          <button
+                            onClick={() =>
+                              setReviewModal({
+                                bookingId: booking.id,
+                                listingTitle: booking.listingTitle,
+                              })
+                            }
+                            className="text-sm font-semibold text-gold-500 hover:text-gold-600"
+                          >
+                            Leave a Review
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {booking.status === "confirmed" && booking.paidAt && (
+                      <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Check size={14} className="text-teal-500" />
+                          <p className="text-sm text-navy-400">Confirmed and paid</p>
+                        </div>
                         <button
                           onClick={() =>
-                            setReviewModal({
+                            setDisputeModal({
                               bookingId: booking.id,
+                              bookingNumber: booking.bookingNumber,
                               listingTitle: booking.listingTitle,
                             })
                           }
-                          className="text-sm font-semibold text-gold-500 hover:text-gold-600"
+                          className="text-sm font-semibold text-red-500 hover:text-red-600 flex items-center gap-1"
                         >
-                          Leave a Review
+                          <AlertTriangle size={14} />
+                          Report Issue
                         </button>
                       </div>
                     )}
@@ -367,6 +410,17 @@ function BookingsContent() {
         listingTitle={reviewModal?.listingTitle ?? ""}
         onSubmitted={() => {
           // Optionally refresh bookings or mark as reviewed
+        }}
+      />
+
+      <DisputeModal
+        isOpen={!!disputeModal}
+        onClose={() => setDisputeModal(null)}
+        bookingId={disputeModal?.bookingId ?? ""}
+        bookingNumber={disputeModal?.bookingNumber ?? ""}
+        listingTitle={disputeModal?.listingTitle ?? ""}
+        onSubmitted={() => {
+          // Optionally refresh bookings
         }}
       />
     </>

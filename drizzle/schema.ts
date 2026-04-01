@@ -447,3 +447,50 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_idx").on(t.userId),
   index("notifications_user_read_idx").on(t.userId, t.isRead),
 ]);
+
+// ─── PLATFORM SETTINGS (CMS) ──────────────────────────────
+export const platformSettings = pgTable("platform_settings", {
+  key: varchar("key", { length: 128 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── DISPUTES ─────────────────────────────────────────────────
+export const disputeStatusEnum = pgEnum("dispute_status", [
+  "open", "under_review", "resolved_traveler", "resolved_operator", "closed"
+]);
+
+export const disputes = pgTable("disputes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => bookings.id),
+  filedBy: uuid("filed_by").notNull().references(() => users.id),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  status: disputeStatusEnum("status").default("open").notNull(),
+  reason: varchar("reason", { length: 64 }).notNull(),
+  description: text("description").notNull(),
+  adminNotes: text("admin_notes"),
+  resolution: text("resolution"),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("disputes_booking_idx").on(t.bookingId),
+  index("disputes_status_idx").on(t.status),
+]);
+
+// ─── AUDIT LOG ────────────────────────────────────────────────
+export const auditLog = pgTable("audit_log", {
+  id: serial("id").primaryKey(),
+  adminId: uuid("admin_id").notNull().references(() => users.id),
+  action: varchar("action", { length: 64 }).notNull(),
+  targetType: varchar("target_type", { length: 32 }).notNull(),
+  targetId: varchar("target_id", { length: 128 }),
+  details: json("details").$type<Record<string, unknown>>(),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("audit_log_admin_idx").on(t.adminId),
+  index("audit_log_created_idx").on(t.createdAt),
+]);

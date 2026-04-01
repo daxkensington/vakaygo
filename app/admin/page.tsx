@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   ListPlus,
@@ -16,6 +16,9 @@ import {
   UserPlus,
   Download,
   Clock,
+  RefreshCw,
+  Star,
+  Activity,
 } from "lucide-react";
 
 type Stats = {
@@ -41,6 +44,17 @@ type Revenue = {
   byType: { type: string; revenue: number; count: number }[];
 };
 
+type ActivityEvent = {
+  type: "signup" | "booking" | "review" | "listing_approved";
+  description: string;
+  createdAt: string;
+};
+
+type ActivityData = {
+  events: ActivityEvent[];
+  today: { users: number; bookings: number; listings: number; reviews: number };
+};
+
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   confirmed: "bg-green-100 text-green-700",
@@ -60,20 +74,43 @@ function formatCurrency(n: number) {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [s, r, a] = await Promise.all([
+        fetch("/api/admin/stats").then((r) => r.json()),
+        fetch("/api/admin/revenue").then((r) => r.json()),
+        fetch("/api/admin/activity").then((r) => r.json()),
+      ]);
+      setStats(s);
+      setRevenue(r);
+      setActivity(a);
+      setSecondsAgo(0);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/admin/stats").then((r) => r.json()),
-      fetch("/api/admin/revenue").then((r) => r.json()),
-    ])
-      .then(([s, r]) => {
-        setStats(s);
-        setRevenue(r);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(fetchAll, 30000);
+    const tickInterval = setInterval(() => {
+      setSecondsAgo((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(tickInterval);
+    };
+  }, [fetchAll]);
 
   if (loading) {
     return (
@@ -85,6 +122,8 @@ export default function AdminDashboard() {
 
   if (!stats || !revenue) return null;
 
+  const todayStats = activity?.today ?? { users: 0, bookings: 0, listings: 0, reviews: 0 };
+
   const statCards = [
     {
       label: "Total Listings",
@@ -92,6 +131,7 @@ export default function AdminDashboard() {
       icon: ListPlus,
       iconBg: "bg-gold-50",
       iconColor: "text-gold-600",
+      today: todayStats.listings,
     },
     {
       label: "Total Users",
@@ -99,6 +139,7 @@ export default function AdminDashboard() {
       icon: Users,
       iconBg: "bg-teal-50",
       iconColor: "text-teal-600",
+      today: todayStats.users,
     },
     {
       label: "Total Bookings",
@@ -106,6 +147,7 @@ export default function AdminDashboard() {
       icon: CalendarCheck,
       iconBg: "bg-gold-50",
       iconColor: "text-gold-600",
+      today: todayStats.bookings,
     },
     {
       label: "Waitlist Signups",
@@ -113,6 +155,7 @@ export default function AdminDashboard() {
       icon: Mail,
       iconBg: "bg-teal-50",
       iconColor: "text-teal-600",
+      today: 0,
     },
     {
       label: "Total Revenue",
@@ -120,6 +163,7 @@ export default function AdminDashboard() {
       icon: DollarSign,
       iconBg: "bg-gold-50",
       iconColor: "text-gold-600",
+      today: 0,
     },
     {
       label: "Platform Fees",
@@ -127,6 +171,7 @@ export default function AdminDashboard() {
       icon: Percent,
       iconBg: "bg-teal-50",
       iconColor: "text-teal-600",
+      today: 0,
     },
   ];
 
@@ -146,12 +191,18 @@ export default function AdminDashboard() {
   return (
     <div>
       {/* Page title */}
-      <h1
-        className="mb-8 text-3xl font-bold text-navy-700"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        Platform Dashboard
-      </h1>
+      <div className="mb-8 flex items-center justify-between">
+        <h1
+          className="text-3xl font-bold text-navy-700"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Platform Dashboard
+        </h1>
+        <div className="flex items-center gap-2 text-xs text-navy-400">
+          <RefreshCw size={12} className={secondsAgo < 2 ? "animate-spin" : ""} />
+          <span>Updated {secondsAgo}s ago</span>
+        </div>
+      </div>
 
       {/* ── Top Stats Row ── */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -169,9 +220,60 @@ export default function AdminDashboard() {
               <TrendingUp size={16} className="text-navy-200" />
             </div>
             <p className="text-2xl font-bold text-navy-700">{s.value}</p>
-            <p className="mt-1 text-sm text-navy-400">{s.label}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-sm text-navy-400">{s.label}</p>
+              {s.today > 0 && (
+                <span className="text-xs font-semibold text-green-600">+{s.today} today</span>
+              )}
+            </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Live Activity Feed ── */}
+      <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+        <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
+          <Activity size={18} className="text-gold-500" />
+          Live Activity
+        </h2>
+        {(!activity || activity.events.length === 0) ? (
+          <p className="text-sm text-navy-400">No recent activity</p>
+        ) : (
+          <div className="space-y-3">
+            {activity.events.map((event, i) => {
+              const iconMap: Record<string, { icon: typeof Users; bg: string; color: string }> = {
+                signup: { icon: UserPlus, bg: "bg-teal-50", color: "text-teal-600" },
+                booking: { icon: CalendarCheck, bg: "bg-gold-50", color: "text-gold-600" },
+                review: { icon: Star, bg: "bg-yellow-50", color: "text-yellow-600" },
+                listing_approved: { icon: CheckCircle, bg: "bg-green-50", color: "text-green-600" },
+              };
+              const config = iconMap[event.type] ?? iconMap.signup;
+              const EventIcon = config.icon;
+
+              const diff = Date.now() - new Date(event.createdAt).getTime();
+              const mins = Math.floor(diff / 60000);
+              const hrs = Math.floor(mins / 60);
+              const days = Math.floor(hrs / 24);
+              let timeAgo = "just now";
+              if (days > 0) timeAgo = `${days}d ago`;
+              else if (hrs > 0) timeAgo = `${hrs}h ago`;
+              else if (mins > 0) timeAgo = `${mins}m ago`;
+
+              return (
+                <div
+                  key={`${event.type}-${i}`}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-cream-50"
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${config.bg} ${config.color}`}>
+                    <EventIcon size={16} />
+                  </div>
+                  <p className="flex-1 text-sm text-navy-600">{event.description}</p>
+                  <span className="shrink-0 text-xs text-navy-400">{timeAgo}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Revenue Chart ── */}

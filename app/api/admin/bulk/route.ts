@@ -5,6 +5,7 @@ import { listings } from "@/drizzle/schema";
 import { inArray, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { logAdminAction } from "@/server/audit";
 
 const VALID_ACTIONS = ["approve", "reject", "pause", "delete"] as const;
 type BulkAction = (typeof VALID_ACTIONS)[number];
@@ -15,25 +16,26 @@ const STATUS_MAP: Record<Exclude<BulkAction, "delete">, string> = {
   pause: "paused",
 };
 
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
+async function verifyAdmin(_request: NextRequest): Promise<{ ok: boolean; adminId?: string }> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("auth_token")?.value;
-    if (!token) return false;
+    if (!token) return { ok: false };
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
     const { payload } = await jwtVerify(token, secret);
-    return payload.role === "admin";
+    if (payload.role !== "admin") return { ok: false };
+    return { ok: true, adminId: payload.sub as string };
   } catch {
-    return false;
+    return { ok: false };
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Verify admin auth
-    const isAdmin = await verifyAdmin(request);
-    if (!isAdmin) {
+    const { ok: isAdmin, adminId } = await verifyAdmin(request);
+    if (!isAdmin || !adminId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -88,6 +90,20 @@ export async function POST(request: NextRequest) {
         .returning({ id: listings.id });
       updated = result.length;
     }
+
+    // Fire-and-forget audit log
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined;
+    logAdminAction({
+      adminId,
+      action: `bulk_${action}`,
+      targetType: "listing",
+      targetId: listingIds.join(","),
+      details: {
+        listingCount: listingIds.length,
+        updatedCount: updated,
+      },
+      ipAddress: ip,
+    });
 
     return NextResponse.json({ updated, action });
   } catch (error) {

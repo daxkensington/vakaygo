@@ -3,6 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users, listings, bookings, islands } from "@/drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
+import { logAdminAction } from "@/server/audit";
 
 export async function GET(
   request: NextRequest,
@@ -139,6 +142,35 @@ export async function PATCH(
         role: users.role,
         updatedAt: users.updatedAt,
       });
+
+    // Fire-and-forget audit log
+    if (role !== undefined) {
+      let adminId: string | undefined;
+      try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get("auth_token")?.value;
+        if (token) {
+          const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
+          const { payload } = await jwtVerify(token, secret);
+          if (payload.sub) adminId = payload.sub as string;
+        }
+      } catch {}
+
+      if (adminId) {
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined;
+        logAdminAction({
+          adminId,
+          action: "change_role",
+          targetType: "user",
+          targetId: id,
+          details: {
+            newRole: role,
+            userEmail: updated.email,
+          },
+          ipAddress: ip,
+        });
+      }
+    }
 
     return NextResponse.json({ user: updated });
   } catch (error) {
