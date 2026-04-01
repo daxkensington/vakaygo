@@ -102,6 +102,46 @@ export async function sendBookingNotificationToOperator(params: {
   });
 }
 
+export async function sendBookingCancellation(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  reason?: string;
+}) {
+  const { to, travelerName, bookingNumber, listingTitle, reason } = params;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Booking Update — ${listingTitle}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#D94F4F;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+    <p style="color:white;font-size:14px;margin:0 0 8px">Booking Update</p>
+    <h1 style="color:white;font-size:22px;margin:0">${listingTitle}</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${travelerName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Unfortunately, your booking <strong>#${bookingNumber}</strong> for <strong>${listingTitle}</strong> has been declined by the operator.</p>
+    ${reason ? `<p style="color:#4A4F73;margin:0 0 16px;line-height:1.6"><strong>Reason:</strong> ${reason}</p>` : ""}
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">If you were charged, a full refund will be processed automatically. We encourage you to browse other options on VakayGo.</p>
+    <div style="text-align:center;margin:24px 0 16px">
+      <a href="https://vakaygo.com/explore" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Explore More</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
 export async function sendReviewRequest(params: {
   to: string;
   travelerName: string;

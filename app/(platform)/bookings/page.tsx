@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
@@ -14,6 +15,8 @@ import {
   MapPin,
   Star,
   AlertCircle,
+  Info,
+  CreditCard,
 } from "lucide-react";
 import { ReviewModal } from "@/components/listings/review-modal";
 
@@ -32,6 +35,7 @@ type Booking = {
   listingTitle: string;
   listingType: string;
   listingSlug: string;
+  paidAt: string | null;
 };
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -43,6 +47,14 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 export default function TravelerBookingsPage() {
+  return (
+    <Suspense fallback={<><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-500" /></div></>}>
+      <BookingsContent />
+    </Suspense>
+  );
+}
+
+function BookingsContent() {
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +62,71 @@ export default function TravelerBookingsPage() {
     bookingId: string;
     listingTitle: string;
   } | null>(null);
+  const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const paidBookingNumber = searchParams.get("paid");
+  const cancelledBookingNumber = searchParams.get("cancelled");
+
+  const [showSuccessBanner, setShowSuccessBanner] = useState(!!paidBookingNumber);
+  const [showCancelBanner, setShowCancelBanner] = useState(!!cancelledBookingNumber);
+
+  // Auto-dismiss success banner after 10s and clean URL
+  useEffect(() => {
+    if (paidBookingNumber) {
+      setShowSuccessBanner(true);
+      const timer = setTimeout(() => {
+        setShowSuccessBanner(false);
+      }, 10000);
+      // Clean URL params
+      const timeout = setTimeout(() => {
+        router.replace("/bookings", { scroll: false });
+      }, 500);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(timeout);
+      };
+    }
+  }, [paidBookingNumber, router]);
+
+  // Clean URL for cancel param
+  useEffect(() => {
+    if (cancelledBookingNumber) {
+      setShowCancelBanner(true);
+      const timeout = setTimeout(() => {
+        router.replace("/bookings", { scroll: false });
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [cancelledBookingNumber, router]);
+
+  const handlePayNow = useCallback(async (bookingId: string) => {
+    setPayingBookingId(bookingId);
+    try {
+      const res = await fetch("/api/payments/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Failed to start checkout");
+        setPayingBookingId(null);
+      }
+    } catch {
+      alert("Something went wrong. Please try again.");
+      setPayingBookingId(null);
+    }
+  }, []);
+
+  // Find the cancelled booking to enable "Try Again"
+  const cancelledBooking = cancelledBookingNumber
+    ? bookings.find((b) => b.bookingNumber === cancelledBookingNumber)
+    : null;
 
   useEffect(() => {
     if (!user) return;
@@ -105,6 +182,55 @@ export default function TravelerBookingsPage() {
             My Bookings
           </h1>
           <p className="text-navy-400 mt-1">Your upcoming and past trips</p>
+
+          {/* Payment success banner */}
+          {showSuccessBanner && paidBookingNumber && (
+            <div className="mt-6 flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <Check size={18} className="text-white" />
+              </div>
+              <p className="flex-1 text-green-800 font-medium">
+                Payment successful! Your booking <span className="font-bold">#{paidBookingNumber}</span> has been confirmed.
+              </p>
+              <button
+                onClick={() => setShowSuccessBanner(false)}
+                className="text-green-600 hover:text-green-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
+
+          {/* Payment cancelled banner */}
+          {showCancelBanner && cancelledBookingNumber && (
+            <div className="mt-6 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                <Info size={18} className="text-white" />
+              </div>
+              <p className="flex-1 text-amber-800 font-medium">
+                Payment was cancelled. Your booking <span className="font-bold">#{cancelledBookingNumber}</span> is still pending — you can pay later.
+              </p>
+              <div className="flex items-center gap-2">
+                {cancelledBooking && (
+                  <button
+                    onClick={() => {
+                      setShowCancelBanner(false);
+                      handlePayNow(cancelledBooking.id);
+                    }}
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
+                  >
+                    Try Again
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowCancelBanner(false)}
+                  className="text-amber-600 hover:text-amber-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -167,7 +293,9 @@ export default function TravelerBookingsPage() {
                         <p className="text-xl font-bold text-navy-700">
                           ${parseFloat(booking.totalAmount).toFixed(2)}
                         </p>
-                        <p className="text-xs text-navy-400">total paid</p>
+                        <p className="text-xs text-navy-400">
+                          {booking.paidAt ? "total paid" : "total due"}
+                        </p>
                       </div>
                     </div>
 
@@ -191,11 +319,35 @@ export default function TravelerBookingsPage() {
                         </button>
                       </div>
                     )}
-                    {booking.status === "pending" && (
+                    {(booking.status === "pending" || booking.status === "confirmed") && !booking.paidAt && (
+                      <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-yellow-500" />
+                          <p className="text-sm text-navy-400">
+                            {booking.status === "pending"
+                              ? "Waiting for operator confirmation"
+                              : "Payment required to finalize booking"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handlePayNow(booking.id)}
+                          disabled={payingBookingId === booking.id}
+                          className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {payingBookingId === booking.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <CreditCard size={14} />
+                          )}
+                          Pay Now
+                        </button>
+                      </div>
+                    )}
+                    {booking.status === "pending" && booking.paidAt && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center gap-2">
                         <Clock size={14} className="text-yellow-500" />
                         <p className="text-sm text-navy-400">
-                          Waiting for operator confirmation
+                          Paid — waiting for operator confirmation
                         </p>
                       </div>
                     )}

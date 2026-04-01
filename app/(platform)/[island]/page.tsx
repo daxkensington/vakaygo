@@ -49,6 +49,13 @@ const typeConfig = [
   { type: "guide", label: "Guides", icon: Users, color: "bg-gold-500" },
 ];
 
+const islandFlags: Record<string, string> = {
+  grenada: "\u{1F1EC}\u{1F1E9}", "trinidad-and-tobago": "\u{1F1F9}\u{1F1F9}", barbados: "\u{1F1E7}\u{1F1E7}",
+  "st-lucia": "\u{1F1F1}\u{1F1E8}", "st-vincent": "\u{1F1FB}\u{1F1E8}", antigua: "\u{1F1E6}\u{1F1EC}",
+  dominica: "\u{1F1E9}\u{1F1F2}", jamaica: "\u{1F1EF}\u{1F1F2}", bahamas: "\u{1F1E7}\u{1F1F8}",
+  aruba: "\u{1F1E6}\u{1F1FC}", curacao: "\u{1F1E8}\u{1F1FC}", "dominican-republic": "\u{1F1E9}\u{1F1F4}",
+};
+
 const heroImages: Record<string, string> = {
   grenada: "/images/islands/grenada.jpg",
   barbados: "/images/islands/barbados.jpg",
@@ -169,7 +176,7 @@ export default function IslandPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/30 to-transparent" />
           <div className="relative z-10 mx-auto max-w-7xl px-6 pb-12 w-full">
             <h1 className="text-4xl md:text-6xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-              {data.name}
+              {islandFlags[islandSlug] || "\u{1F3DD}\u{FE0F}"} {data.name}
             </h1>
             <p className="text-white/70 mt-2 max-w-2xl">{data.description}</p>
             <div className="flex items-center gap-6 mt-4 text-sm text-white/60">

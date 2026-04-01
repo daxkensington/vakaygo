@@ -202,6 +202,7 @@ export async function GET(request: Request) {
         listingTitle: listings.title,
         listingType: listings.type,
         listingSlug: listings.slug,
+        paidAt: bookings.paidAt,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))

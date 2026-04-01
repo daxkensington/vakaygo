@@ -15,6 +15,7 @@ import {
   Check,
 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
+import PhotoUploader from "@/components/operator/photo-uploader";
 
 const listingTypes = [
   {
@@ -101,6 +102,7 @@ export default function NewListingPage() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [createdListingId, setCreatedListingId] = useState("");
 
   const totalSteps = 4;
 
@@ -142,6 +144,8 @@ export default function NewListingPage() {
       });
 
       if (createRes.ok) {
+        const data = await createRes.json();
+        setCreatedListingId(data.listing?.id || "");
         setSubmitted(true);
       }
     } catch {
@@ -173,6 +177,15 @@ export default function NewListingPage() {
         >
           View My Listings
         </a>
+        {createdListingId && (
+          <div className="mt-8 max-w-2xl mx-auto text-left">
+            <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+              <h2 className="font-bold text-navy-700 mb-2">Add Photos</h2>
+              <p className="text-sm text-navy-400 mb-4">Great photos are the #1 factor in getting bookings.</p>
+              <PhotoUploader listingId={createdListingId} />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -288,23 +301,14 @@ export default function NewListingPage() {
         {/* Step 3: Photos */}
         {step === 3 && (
           <div>
-            <h2 className="text-xl font-bold text-navy-700 mb-2">
-              Add photos
-            </h2>
+            <h2 className="text-xl font-bold text-navy-700 mb-2">Photos</h2>
             <p className="text-navy-400 mb-6">
-              Great photos are the #1 factor in getting bookings. Add at least 5.
+              You&apos;ll be able to upload photos right after submitting your listing. Great photos are the #1 factor in getting bookings — plan to add at least 5.
             </p>
-            <div className="border-2 border-dashed border-cream-300 rounded-2xl p-12 text-center hover:border-gold-400 transition-colors cursor-pointer">
-              <Upload size={40} className="text-navy-300 mx-auto mb-4" />
-              <p className="font-semibold text-navy-700">
-                Drag and drop your photos here
-              </p>
-              <p className="text-sm text-navy-400 mt-2">
-                or click to browse. JPG, PNG up to 10MB each.
-              </p>
-              <button className="mt-6 bg-cream-100 hover:bg-cream-200 text-navy-600 px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
-                Choose Files
-              </button>
+            <div className="bg-cream-50 rounded-2xl p-8 text-center">
+              <Upload size={40} className="text-gold-400 mx-auto mb-4" />
+              <p className="font-semibold text-navy-700">Photo upload available after submission</p>
+              <p className="text-sm text-navy-400 mt-2">Continue to set your pricing, then you&apos;ll add photos on the next screen.</p>
             </div>
           </div>
         )}
