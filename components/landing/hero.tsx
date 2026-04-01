@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, MapPin, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { Search, MapPin, ChevronDown, Sparkles } from "lucide-react";
 
 const heroImages = [
   "/images/hero/caribbean-hero.jpg",
@@ -49,9 +50,20 @@ export function Hero() {
           loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-3">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
           7,200+ listings across 21 Caribbean islands
+        </div>
+        <div className="mb-8">
+          <Link
+            href="/trips"
+            className="inline-flex items-center gap-2 bg-gold-500/20 backdrop-blur-md text-gold-300 border border-gold-400/30 rounded-full px-5 py-2 text-sm font-medium hover:bg-gold-500/30 transition-all duration-300 group"
+          >
+            <span className="bg-gold-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">New</span>
+            <Sparkles size={14} className="text-gold-400" />
+            AI Trip Planner — plan your perfect island getaway
+            <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+          </Link>
         </div>
 
         <h1

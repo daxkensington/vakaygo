@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
+import { PromoBanner } from "@/components/layout/promo-banner";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -117,7 +118,7 @@ export default function RootLayout({
             }),
           }}
         />
-        <AuthProvider><SavedProvider><CurrencyProvider>{children}</CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><PromoBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
         <Analytics />
       </body>
     </html>

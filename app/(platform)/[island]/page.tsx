@@ -112,6 +112,43 @@ export default function IslandPage() {
       document.head.appendChild(meta);
     }
 
+    // Set Open Graph meta tags
+    const pageUrl = `https://vakaygo.com/${islandSlug}`;
+    const ogImageUrl = `/api/og?title=${encodeURIComponent(data.name)}&subtitle=${encodeURIComponent(`Explore ${totalListings} listings`)}`;
+
+    const ogTags: Record<string, string> = {
+      "og:title": `${data.name} — Caribbean Travel & Experiences | VakayGo`,
+      "og:description": desc.slice(0, 160),
+      "og:image": ogImageUrl,
+      "og:url": pageUrl,
+      "og:type": "website",
+      "og:site_name": "VakayGo",
+      "twitter:card": "summary_large_image",
+      "twitter:title": `${data.name} — Caribbean Travel & Experiences | VakayGo`,
+      "twitter:description": desc.slice(0, 160),
+      "twitter:image": ogImageUrl,
+    };
+
+    Object.entries(ogTags).forEach(([property, content]) => {
+      const isTwitter = property.startsWith("twitter:");
+      const selector = isTwitter
+        ? `meta[name="${property}"]`
+        : `meta[property="${property}"]`;
+      const existing = document.querySelector(selector);
+      if (existing) {
+        existing.setAttribute("content", content);
+      } else {
+        const meta = document.createElement("meta");
+        if (isTwitter) {
+          meta.setAttribute("name", property);
+        } else {
+          meta.setAttribute("property", property);
+        }
+        meta.setAttribute("content", content);
+        document.head.appendChild(meta);
+      }
+    });
+
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "TouristDestination",

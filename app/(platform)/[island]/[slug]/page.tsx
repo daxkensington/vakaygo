@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
@@ -98,6 +98,7 @@ export default function ListingDetailPage() {
   const [similar, setSimilar] = useState<SimilarListing[]>([]);
   const [loading, setLoading] = useState(true);
   const { isSaved, toggle } = useSaved();
+  const viewTracked = useRef(false);
 
   useEffect(() => {
     async function fetchListing() {
@@ -115,6 +116,26 @@ export default function ListingDetailPage() {
     }
     if (params.slug) fetchListing();
   }, [params.slug]);
+
+  // Track listing view (once per page load)
+  useEffect(() => {
+    if (!params.slug || viewTracked.current) return;
+    viewTracked.current = true;
+
+    const source = document.referrer.includes("/explore")
+      ? "explore"
+      : document.referrer.includes("/search")
+        ? "search"
+        : document.referrer.includes(`/${params.island}`)
+          ? "island"
+          : "direct";
+
+    fetch(`/api/listings/${params.slug}/view`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source }),
+    }).catch(() => {});
+  }, [params.slug, params.island]);
 
   // SEO: Update document title and inject JSON-LD structured data
   useEffect(() => {
@@ -135,6 +156,43 @@ export default function ListingDetailPage() {
       meta.content = desc;
       document.head.appendChild(meta);
     }
+
+    // Set Open Graph meta tags
+    const pageUrl = `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`;
+    const ogImageUrl = `/api/og?title=${encodeURIComponent(listing.title)}&subtitle=${encodeURIComponent(listing.islandName)}&type=${listing.type}&rating=${listing.avgRating || ""}&price=${listing.priceAmount || ""}`;
+
+    const ogTags: Record<string, string> = {
+      "og:title": `${listing.title} — ${listing.islandName} | VakayGo`,
+      "og:description": desc,
+      "og:image": ogImageUrl,
+      "og:url": pageUrl,
+      "og:type": "website",
+      "og:site_name": "VakayGo",
+      "twitter:card": "summary_large_image",
+      "twitter:title": `${listing.title} — ${listing.islandName} | VakayGo`,
+      "twitter:description": desc,
+      "twitter:image": ogImageUrl,
+    };
+
+    Object.entries(ogTags).forEach(([property, content]) => {
+      const isTwitter = property.startsWith("twitter:");
+      const selector = isTwitter
+        ? `meta[name="${property}"]`
+        : `meta[property="${property}"]`;
+      const existing = document.querySelector(selector);
+      if (existing) {
+        existing.setAttribute("content", content);
+      } else {
+        const meta = document.createElement("meta");
+        if (isTwitter) {
+          meta.setAttribute("name", property);
+        } else {
+          meta.setAttribute("property", property);
+        }
+        meta.setAttribute("content", content);
+        document.head.appendChild(meta);
+      }
+    });
 
     // Build JSON-LD
     const schemaType = schemaTypeMap[listing.type] || "LocalBusiness";

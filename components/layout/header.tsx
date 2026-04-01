@@ -60,6 +60,16 @@ export function Header() {
           >
             Islands
           </Link>
+          {user && (
+            <Link
+              href="/trips"
+              className={`transition-colors duration-300 hover:text-gold-500 ${
+                scrolled || !isLanding ? "text-navy-500" : "text-white/80"
+              }`}
+            >
+              Trips
+            </Link>
+          )}
           <Link
             href="/services"
             className={`transition-colors duration-300 hover:text-gold-500 ${
@@ -144,6 +154,9 @@ export function Header() {
           </Link>
           {user ? (
             <>
+              <Link href="/trips" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
+                Trip Planner
+              </Link>
               <Link href="/bookings" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 My Bookings
               </Link>

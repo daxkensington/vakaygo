@@ -420,6 +420,19 @@ export const messages = pgTable(
   ]
 );
 
+// ─── LISTING VIEWS (analytics) ────────────────────────────────
+export const listingViews = pgTable("listing_views", {
+  id: serial("id").primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  viewerIp: varchar("viewer_ip", { length: 64 }),
+  userId: uuid("user_id").references(() => users.id),
+  source: varchar("source", { length: 32 }), // explore, search, direct, island
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("listing_views_listing_idx").on(t.listingId),
+  index("listing_views_created_idx").on(t.createdAt),
+]);
+
 // ─── NOTIFICATIONS ─────────────────────────────────────────────
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),

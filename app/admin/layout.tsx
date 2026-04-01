@@ -10,6 +10,7 @@ import {
   Users,
   CalendarCheck,
   DollarSign,
+  BarChart3,
   MessageSquare,
   Settings,
   ArrowLeft,
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/admin/revenue", label: "Revenue", icon: DollarSign },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

@@ -87,6 +87,16 @@ export function ShareButton({ title, url }: ShareButtonProps) {
     setOpen(false);
   }
 
+  function shareTwitter() {
+    const text = encodeURIComponent(title);
+    const encoded = encodeURIComponent(url);
+    window.open(
+      `https://twitter.com/intent/tweet?url=${encoded}&text=${text}`,
+      "_blank"
+    );
+    setOpen(false);
+  }
+
   function shareEmail() {
     const subject = encodeURIComponent(`Check out: ${title}`);
     const body = encodeURIComponent(
@@ -162,6 +172,26 @@ export function ShareButton({ title, url }: ShareButtonProps) {
               />
             </svg>
             Facebook
+          </button>
+
+          <button
+            onClick={shareTwitter}
+            className="flex items-center gap-3 w-full px-4 py-3 text-sm text-navy-600 hover:bg-cream-50 transition-colors"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-navy-400"
+            >
+              <path
+                d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                fill="currentColor"
+              />
+            </svg>
+            X (Twitter)
           </button>
 
           <button
