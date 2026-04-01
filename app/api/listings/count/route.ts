@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands } from "@/drizzle/schema";
-import { eq, and, ilike, sql } from "drizzle-orm";
+import { eq, and, ilike, gte, lte, sql } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +10,9 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
     const island = searchParams.get("island");
     const search = searchParams.get("q");
+    const minPrice = searchParams.get("minPrice");
+    const maxPrice = searchParams.get("maxPrice");
+    const minRating = searchParams.get("minRating");
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const conditions = [eq(listings.status, "active")];
@@ -23,6 +26,15 @@ export async function GET(request: Request) {
     }
     if (search) {
       conditions.push(ilike(listings.title, `%${search}%`));
+    }
+    if (minPrice) {
+      conditions.push(gte(listings.priceAmount, minPrice));
+    }
+    if (maxPrice) {
+      conditions.push(lte(listings.priceAmount, maxPrice));
+    }
+    if (minRating) {
+      conditions.push(gte(listings.avgRating, minRating));
     }
 
     const [result] = await db

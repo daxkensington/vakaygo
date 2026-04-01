@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     const search = searchParams.get("q");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
+    const minRating = searchParams.get("minRating");
     const date = searchParams.get("date");
     const sort = searchParams.get("sort") || "recommended";
     const limit = parseInt(searchParams.get("limit") || "24");
@@ -67,6 +68,9 @@ export async function GET(request: Request) {
     if (maxPrice) {
       conditions.push(lte(listings.priceAmount, maxPrice));
     }
+    if (minRating) {
+      conditions.push(gte(listings.avgRating, minRating));
+    }
 
     const orderBy =
       sort === "price-asc"
@@ -77,7 +81,9 @@ export async function GET(request: Request) {
             ? desc(listings.avgRating)
             : sort === "newest"
               ? desc(listings.createdAt)
-              : desc(listings.isFeatured);
+              : sort === "most-reviews"
+                ? desc(listings.reviewCount)
+                : desc(listings.isFeatured);
 
     const results = await db
       .select({

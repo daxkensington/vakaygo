@@ -8,7 +8,7 @@ import { ListingSkeletonGrid } from "@/components/listings/listing-skeleton";
 import {
   Search,
   MapPin,
-  SlidersHorizontal,
+
   Home,
   Compass,
   UtensilsCrossed,
@@ -19,6 +19,9 @@ import {
   LayoutGrid,
   Map,
   Calendar,
+  X,
+  Star,
+  DollarSign,
 } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/listings/map-view"), {
@@ -82,6 +85,9 @@ export default function ExplorePage() {
   const [activeIsland, setActiveIsland] = useState("");
   const [sortBy, setSortBy] = useState("recommended");
   const [selectedDate, setSelectedDate] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minRating, setMinRating] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const PAGE_SIZE = 24;
@@ -102,6 +108,9 @@ export default function ExplorePage() {
       if (searchQuery) params.set("q", searchQuery);
       if (activeIsland) params.set("island", activeIsland);
       if (selectedDate) params.set("date", selectedDate);
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (minRating) params.set("minRating", minRating);
       if (sortBy !== "recommended") params.set("sort", sortBy);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(page * PAGE_SIZE));
@@ -125,7 +134,7 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, page, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, page, sortBy]);
 
   // Reset page and fetch count when filters change
   useEffect(() => {
@@ -138,11 +147,14 @@ export default function ExplorePage() {
     if (searchQuery) countParams.set("q", searchQuery);
     if (activeIsland) countParams.set("island", activeIsland);
     if (selectedDate) countParams.set("date", selectedDate);
+    if (minPrice) countParams.set("minPrice", minPrice);
+    if (maxPrice) countParams.set("maxPrice", maxPrice);
+    if (minRating) countParams.set("minRating", minRating);
     fetch(`/api/listings/count?${countParams}`)
       .then((r) => r.json())
       .then((d) => setTotalCount(d.count || 0))
       .catch(() => {});
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, sortBy]);
 
   return (
     <>
@@ -201,23 +213,150 @@ export default function ExplorePage() {
                 <option value="guadeloupe">🇬🇵 Guadeloupe</option>
                 <option value="bonaire">Bonaire</option>
               </select>
-              <button className="flex items-center gap-2 px-4 py-3 rounded-xl bg-cream-50 text-navy-500 hover:bg-cream-100 transition-colors text-sm font-medium">
-                <SlidersHorizontal size={16} />
-                <span className="hidden sm:inline">Filters</span>
-              </button>
-              <button
-                onClick={() => setViewMode(viewMode === "grid" ? "map" : "grid")}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                  viewMode === "map"
-                    ? "bg-navy-700 text-white"
-                    : "bg-cream-50 text-navy-500 hover:bg-cream-100"
-                }`}
-                title={viewMode === "grid" ? "Show map" : "Show grid"}
+              {/* Price Range */}
+              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2">
+                <DollarSign size={16} className="text-navy-300 shrink-0" />
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="w-16 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                  min="0"
+                />
+                <span className="text-navy-300 text-sm">-</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="w-16 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                  min="0"
+                />
+              </div>
+              {/* Rating Filter */}
+              <select
+                value={minRating}
+                onChange={(e) => setMinRating(e.target.value)}
+                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors"
               >
-                {viewMode === "grid" ? <Map size={16} /> : <LayoutGrid size={16} />}
-                <span className="hidden sm:inline">{viewMode === "grid" ? "Map" : "Grid"}</span>
-              </button>
+                <option value="">Any Rating</option>
+                <option value="3">3+ Stars</option>
+                <option value="4">4+ Stars</option>
+                <option value="4.5">4.5+ Stars</option>
+              </select>
+              {/* View Toggle */}
+              <div className="flex items-center bg-cream-50 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-navy-700 text-white"
+                      : "text-navy-500 hover:bg-cream-100"
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid size={16} />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+                <button
+                  onClick={() => setViewMode("map")}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
+                    viewMode === "map"
+                      ? "bg-navy-700 text-white"
+                      : "text-navy-500 hover:bg-cream-100"
+                  }`}
+                  title="Map view"
+                >
+                  <Map size={16} />
+                  <span className="hidden sm:inline">Map</span>
+                </button>
+              </div>
             </div>
+
+            {/* Active Filters Pills */}
+            {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating) && (
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="text-xs text-navy-400 font-medium">Active:</span>
+                {activeCategory !== "all" && (
+                  <button
+                    onClick={() => setActiveCategory("all")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    {categoryTabs.find((c) => c.id === activeCategory)?.label || activeCategory}
+                    <X size={12} />
+                  </button>
+                )}
+                {activeIsland && (
+                  <button
+                    onClick={() => setActiveIsland("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    {activeIsland.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                    <X size={12} />
+                  </button>
+                )}
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    &ldquo;{searchQuery}&rdquo;
+                    <X size={12} />
+                  </button>
+                )}
+                {selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    {selectedDate}
+                    <X size={12} />
+                  </button>
+                )}
+                {minPrice && (
+                  <button
+                    onClick={() => setMinPrice("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    Min ${minPrice}
+                    <X size={12} />
+                  </button>
+                )}
+                {maxPrice && (
+                  <button
+                    onClick={() => setMaxPrice("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    Max ${maxPrice}
+                    <X size={12} />
+                  </button>
+                )}
+                {minRating && (
+                  <button
+                    onClick={() => setMinRating("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    <Star size={10} className="fill-current" /> {minRating}+ Stars
+                    <X size={12} />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setActiveCategory("all");
+                    setSearchQuery("");
+                    setActiveIsland("");
+                    setSelectedDate("");
+                    setMinPrice("");
+                    setMaxPrice("");
+                    setMinRating("");
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gold-600 hover:text-gold-700 transition-colors underline"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
 
             {/* Category Tabs */}
             <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
@@ -245,6 +384,11 @@ export default function ExplorePage() {
           <div className="mx-auto max-w-[1600px] px-4 py-4">
             <div className="flex items-center justify-between mb-4 px-2">
               <p className="text-navy-400 text-sm">
+                Showing{" "}
+                <span className="font-semibold text-navy-700">
+                  {loading && listings.length === 0 ? "..." : listings.length.toLocaleString()}
+                </span>{" "}
+                of{" "}
                 <span className="font-semibold text-navy-700">
                   {loading && listings.length === 0 ? "..." : totalCount.toLocaleString()}
                 </span>{" "}
@@ -260,6 +404,7 @@ export default function ExplorePage() {
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="newest">Newest</option>
+                <option value="most-reviews">Most Reviews</option>
               </select>
             </div>
 
@@ -274,7 +419,7 @@ export default function ExplorePage() {
                     <Compass size={32} className="text-navy-200 mx-auto mb-3" />
                     <p className="text-navy-500 font-semibold">No listings found</p>
                     <button
-                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); }}
+                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); }}
                       className="mt-4 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
                     >
                       Clear Filters
@@ -312,6 +457,11 @@ export default function ExplorePage() {
           <div className="mx-auto max-w-7xl px-6 py-8">
             <div className="flex items-center justify-between mb-6">
               <p className="text-navy-400 text-sm">
+                Showing{" "}
+                <span className="font-semibold text-navy-700">
+                  {loading && listings.length === 0 ? "..." : listings.length.toLocaleString()}
+                </span>{" "}
+                of{" "}
                 <span className="font-semibold text-navy-700">
                   {loading && listings.length === 0 ? "..." : totalCount.toLocaleString()}
                 </span>{" "}
@@ -327,6 +477,7 @@ export default function ExplorePage() {
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="newest">Newest</option>
+                <option value="most-reviews">Most Reviews</option>
               </select>
             </div>
 
@@ -340,7 +491,7 @@ export default function ExplorePage() {
                   Try adjusting your filters, searching for something else, or exploring a different island.
                 </p>
                 <button
-                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); }}
+                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); }}
                   className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   Clear All Filters
