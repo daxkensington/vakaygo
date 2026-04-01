@@ -21,14 +21,32 @@ export default function TermsPage() {
 
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">2. For Travelers</h2>
-                <p>When you book on VakayGo, you enter into an agreement with the operator. A 6% service fee is added to your booking total. You are responsible for providing accurate information and meeting any requirements specified by the operator (age, fitness, documents).</p>
-                <p className="mt-3"><strong>Cancellation:</strong> Free cancellation is available up to 24 hours before your experience start time for a full refund. Cancellations within 24 hours may incur a 50% fee. Trip protection (optional add-on) covers cancellation for any reason.</p>
+                <p>When you book on VakayGo, you enter into an agreement with the operator. A service fee is added to your booking total, varying by category to keep rates competitive:</p>
+                <ul className="mt-3 space-y-1 list-disc list-inside text-navy-500">
+                  <li><strong>Stays:</strong> 9% service fee (saves 3-7% vs Booking.com/Airbnb)</li>
+                  <li><strong>Tours & Excursions:</strong> 10% service fee (saves 10-15% vs Viator)</li>
+                  <li><strong>Events:</strong> 5% service fee (cheaper than Eventbrite)</li>
+                  <li><strong>Transfers & Transport:</strong> 8% service fee (transparent, fixed pricing)</li>
+                  <li><strong>VIP & Guides:</strong> 10% service fee (premium positioning)</li>
+                  <li><strong>Dining:</strong> No booking fees — restaurants pay a flat subscription</li>
+                </ul>
+                <p className="mt-3">You are responsible for providing accurate information and meeting any requirements specified by the operator (age, fitness, documents).</p>
+                <p className="mt-3"><strong>Cancellation:</strong> Free cancellation is available up to 24 hours before your experience start time for a full refund. Cancellations within 24 hours may incur a 50% fee. Trip protection (optional 8% add-on) covers cancellation for any reason.</p>
+                <p className="mt-3"><strong>Currency:</strong> All prices are listed in USD by default. You can view prices in 8 currencies (USD, XCD, EUR, GBP, CAD, TTD, JMD, BBD) using the currency switcher. You will be charged in USD at checkout.</p>
               </section>
 
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">3. For Operators</h2>
-                <p>Listing on VakayGo is free. We charge a 3% commission on completed bookings — the lowest in the travel industry. Operators are responsible for the accuracy of their listings, the quality of their services, and honoring confirmed bookings.</p>
-                <p className="mt-3"><strong>Payouts:</strong> Operator earnings are paid weekly via bank transfer. VakayGo deducts the 3% commission before payout.</p>
+                <p>Listing on VakayGo is always free. We charge a small commission on completed bookings — the lowest rates in the travel industry:</p>
+                <ul className="mt-3 space-y-1 list-disc list-inside text-navy-500">
+                  <li><strong>Stays:</strong> 3% operator commission</li>
+                  <li><strong>Tours, Excursions, VIP, Guides:</strong> 5% operator commission</li>
+                  <li><strong>Events:</strong> 3% operator commission</li>
+                  <li><strong>Transfers & Transport:</strong> 4-5% operator commission</li>
+                  <li><strong>Dining:</strong> No commission — subscription-based ($0/mo Starter, $39/mo Essential, $79/mo Pro)</li>
+                </ul>
+                <p className="mt-3">Operators are responsible for the accuracy of their listings, the quality of their services, and honoring confirmed bookings.</p>
+                <p className="mt-3"><strong>Payouts:</strong> Operator earnings are paid weekly via Stripe. VakayGo deducts the applicable commission before payout. Funds typically arrive within 2-3 business days.</p>
               </section>
 
               <section>
