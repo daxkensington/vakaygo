@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Star, MapPin, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
 import { useSaved } from "@/lib/use-saved";
+import { useCurrency } from "@/lib/currency";
 
 type ListingCardProps = {
   id: string;
@@ -63,6 +64,7 @@ export function ListingCard(props: ListingCardProps) {
   const fallbackGradient = typeFallbacks[props.type] || "from-navy-400 to-navy-600";
   const rating = props.avgRating ? parseFloat(props.avgRating) : 0;
   const { isSaved, toggle } = useSaved();
+  const { format } = useCurrency();
   const saved = isSaved(props.id);
 
   return (
@@ -136,7 +138,7 @@ export function ListingCard(props: ListingCardProps) {
         {props.priceAmount && parseFloat(props.priceAmount) > 0 && (
           <p className="mt-2">
             <span className="font-bold text-navy-700">
-              ${parseFloat(props.priceAmount).toFixed(2)}
+              {format(parseFloat(props.priceAmount))}
             </span>
             <span className="text-navy-400 text-sm"> / {props.priceUnit}</span>
           </p>

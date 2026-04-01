@@ -419,3 +419,18 @@ export const messages = pgTable(
     index("messages_listing_idx").on(t.listingId),
   ]
 );
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────────
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 32 }).notNull(), // booking, review, message, system
+  title: varchar("title", { length: 256 }).notNull(),
+  body: text("body"),
+  link: varchar("link", { length: 512 }), // where to navigate on click
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("notifications_user_idx").on(t.userId),
+  index("notifications_user_read_idx").on(t.userId, t.isRead),
+]);

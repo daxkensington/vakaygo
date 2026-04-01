@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { reviews, listings, users } from "@/drizzle/schema";
 import { sendNewReviewNotification } from "@/server/email";
+import { createNotification } from "@/server/notifications";
 import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -130,6 +131,15 @@ export async function POST(request: Request) {
             comment: comment || "",
           }).catch(() => {});
         }
+
+        // In-app notification to operator about new review
+        createNotification({
+          userId: listing.operatorId,
+          type: "review",
+          title: `New ${rating}-star review from ${traveler?.name || "a traveler"}`,
+          body: `${listing.title}${comment ? ` — "${comment.slice(0, 80)}${comment.length > 80 ? "..." : ""}"` : ""}`,
+          link: `/operator/reviews`,
+        }).catch(() => {});
       }
     } catch (_emailErr) {
       // Email failure should not break the review response

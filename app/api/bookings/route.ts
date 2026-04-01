@@ -5,6 +5,7 @@ import { bookings, listings, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { sendBookingConfirmation, sendBookingNotificationToOperator } from "@/server/email";
+import { createNotification } from "@/server/notifications";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -155,6 +156,15 @@ export async function POST(request: Request) {
         subtotal: pricing.operatorEarnings.toFixed(2),
       }).catch(() => {});
     }
+
+    // In-app notification to operator about new booking
+    createNotification({
+      userId: listing.operatorId,
+      type: "booking",
+      title: `New booking from ${traveler?.name || "a traveler"}`,
+      body: `${listing.title} — ${booking.bookingNumber}`,
+      link: "/operator/bookings",
+    }).catch(() => {});
 
     return NextResponse.json({
       booking,

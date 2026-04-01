@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
+import { useCurrency } from "@/lib/currency";
 import {
   Star,
   Calendar,
@@ -31,6 +32,7 @@ type BookingWidgetProps = {
 export function BookingWidget({ listing }: BookingWidgetProps) {
   const router = useRouter();
   const { user, refresh } = useAuth();
+  const { currency, format: formatConverted } = useCurrency();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [guests, setGuests] = useState(1);
@@ -296,12 +298,17 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
         <div className="mb-6">
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-navy-700">
-              {formatCurrency(pricePerUnit)}
+              {formatConverted(pricePerUnit)}
             </span>
             <span className="text-navy-400">
               / {listing.priceUnit || "unit"}
             </span>
           </div>
+          {currency !== "USD" && (
+            <p className="text-xs text-navy-300 mt-1">
+              Prices shown in {currency}. You&apos;ll be charged in USD.
+            </p>
+          )}
           {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
             <div className="flex items-center gap-1 mt-2">
               <Star size={14} className="text-gold-500 fill-gold-500" />

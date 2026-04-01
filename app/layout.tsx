@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
+import { CurrencyProvider } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -116,7 +117,7 @@ export default function RootLayout({
             }),
           }}
         />
-        <AuthProvider><SavedProvider>{children}</SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider>{children}</CurrencyProvider></SavedProvider></AuthProvider>
         <Analytics />
       </body>
     </html>

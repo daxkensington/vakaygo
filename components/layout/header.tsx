@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { Menu, X, User, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { CurrencySwitcher } from "@/components/layout/currency-switcher";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 export function Header() {
   const { user } = useAuth();
@@ -76,6 +78,9 @@ export function Header() {
           </Link>
 
           <div className={`transition-colors ${scrolled || !isLanding ? "text-navy-500" : "text-white/80"}`}>
+            <CurrencySwitcher />
+          </div>
+          <div className={`transition-colors ${scrolled || !isLanding ? "text-navy-500" : "text-white/80"}`}>
             <LanguageSwitcher />
           </div>
 
@@ -90,6 +95,7 @@ export function Header() {
                   Dashboard
                 </Link>
               )}
+              <NotificationBell scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
                 className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-sm hover:bg-gold-200 transition-colors"

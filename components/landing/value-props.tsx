@@ -47,9 +47,9 @@ export function ValueProps() {
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight leading-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            The only travel platform
+            The travel platform
             <br />
-            <span className="text-teal-500">built by the Caribbean</span>
+            <span className="text-teal-500">powered by the Caribbean</span>
           </h2>
         </div>
 
@@ -94,10 +94,10 @@ export function ValueProps() {
                   </p>
                   <div className="mt-8">
                     <a
-                      href="#waitlist"
+                      href="/explore"
                       className="inline-flex items-center gap-2 text-gold-700 font-semibold group-hover:gap-3 transition-all"
                     >
-                      Join the waitlist
+                      Explore now
                       <ArrowRight size={16} />
                     </a>
                   </div>

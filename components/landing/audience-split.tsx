@@ -68,10 +68,10 @@ export function AudienceSplit() {
                 ))}
               </ul>
               <a
-                href="#waitlist"
+                href="/explore"
                 className="inline-flex items-center gap-2 mt-10 bg-white text-teal-700 px-8 py-3.5 rounded-full font-semibold hover:bg-cream-100 transition-colors group"
               >
-                Join as a Traveler
+                Start exploring
                 <ArrowRight
                   size={16}
                   className="group-hover:translate-x-1 transition-transform"
@@ -115,10 +115,10 @@ export function AudienceSplit() {
                 ))}
               </ul>
               <a
-                href="#waitlist"
+                href="/for-businesses"
                 className="inline-flex items-center gap-2 mt-10 bg-gold-500 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-600 transition-colors group"
               >
-                List Your Business
+                List your business
                 <ArrowRight
                   size={16}
                   className="group-hover:translate-x-1 transition-transform"

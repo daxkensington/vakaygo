@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email";
+import { createNotification } from "@/server/notifications";
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
@@ -77,6 +78,15 @@ export async function PATCH(
             });
           }
         }
+        // In-app notification to traveler about booking status change
+        const statusLabel = status === "confirmed" ? "confirmed" : "cancelled";
+        createNotification({
+          userId: updated.travelerId,
+          type: "booking",
+          title: `Booking ${statusLabel}: ${listing?.title || "your booking"}`,
+          body: `Your booking ${updated.bookingNumber} has been ${statusLabel}.`,
+          link: "/bookings",
+        }).catch(() => {});
       } catch (emailErr) {
         console.error("Failed to send booking status email:", emailErr);
         // Don't fail the request if email fails
