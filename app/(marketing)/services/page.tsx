@@ -231,7 +231,7 @@ export default function ServicesPage() {
             </h2>
             <p className="mt-4 text-white/80 max-w-xl mx-auto">
               Offer excursions, transfers, or VIP services? List for free, pay just
-              3% commission. The lowest in the industry.
+              3-5% commission. The lowest in the industry.
             </p>
             <Link
               href="/auth/signup"

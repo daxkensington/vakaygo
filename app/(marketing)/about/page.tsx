@@ -47,7 +47,7 @@ export default function AboutPage() {
                 <p className="mt-6 text-navy-500 leading-relaxed">
                   The big travel platforms take 20-30% from local businesses.
                   That&apos;s money that should stay in the communities travelers
-                  visit. VakayGo takes just 3% — because we believe technology
+                  visit. VakayGo takes just 3-5% — because we believe technology
                   should empower local economies, not extract from them.
                 </p>
                 <p className="mt-4 text-navy-500 leading-relaxed">
@@ -90,7 +90,7 @@ export default function AboutPage() {
                 {
                   title: "Local businesses should keep their money",
                   description:
-                    "Our 3% commission is the lowest in the industry. When a tour guide earns $100, they keep $97. On Viator, they'd keep $75. That difference changes lives.",
+                    "Our 3-5% commission is the lowest in the industry. When a tour guide earns $100, they keep $95-97. On Viator, they'd keep $75. That difference changes lives.",
                 },
                 {
                   title: "Travelers deserve authentic experiences",

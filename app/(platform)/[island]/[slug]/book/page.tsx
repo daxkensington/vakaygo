@@ -324,7 +324,7 @@ export default function BookingPage() {
                     <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-navy-400">Service fee (6%)</span>
+                    <span className="text-navy-400">Service fee</span>
                     <span className="text-navy-700">{formatCurrency(pricing.serviceFee)}</span>
                   </div>
                   {includeInsurance && pricing.insuranceFee && (

@@ -210,9 +210,9 @@ export default function OperatorPayoutsPage() {
         <div className="mt-4 p-4 bg-teal-50 rounded-xl">
           <p className="text-sm text-teal-700">
             <span className="font-semibold">
-              VakayGo takes just 3% commission
+              VakayGo takes just 3-5% commission
             </span>{" "}
-            -- the lowest in the travel industry. You keep 97% of every booking.
+            — the lowest in the travel industry. You keep 95-97% of every booking.
           </p>
         </div>
       </div>
