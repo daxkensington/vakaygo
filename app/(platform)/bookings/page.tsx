@@ -15,6 +15,7 @@ import {
   Star,
   AlertCircle,
 } from "lucide-react";
+import { ReviewModal } from "@/components/listings/review-modal";
 
 type Booking = {
   id: string;
@@ -45,6 +46,10 @@ export default function TravelerBookingsPage() {
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewModal, setReviewModal] = useState<{
+    bookingId: string;
+    listingTitle: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -173,7 +178,15 @@ export default function TravelerBookingsPage() {
                           <Star size={14} className="text-gold-500" />
                           How was your experience?
                         </p>
-                        <button className="text-sm font-semibold text-gold-500 hover:text-gold-600">
+                        <button
+                          onClick={() =>
+                            setReviewModal({
+                              bookingId: booking.id,
+                              listingTitle: booking.listingTitle,
+                            })
+                          }
+                          className="text-sm font-semibold text-gold-500 hover:text-gold-600"
+                        >
                           Leave a Review
                         </button>
                       </div>
@@ -194,6 +207,16 @@ export default function TravelerBookingsPage() {
         </div>
       </div>
       <Footer />
+
+      <ReviewModal
+        isOpen={!!reviewModal}
+        onClose={() => setReviewModal(null)}
+        bookingId={reviewModal?.bookingId ?? ""}
+        listingTitle={reviewModal?.listingTitle ?? ""}
+        onSubmitted={() => {
+          // Optionally refresh bookings or mark as reviewed
+        }}
+      />
     </>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, MessageCircle } from "lucide-react";
+import { Star, MessageCircle, PenLine } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { ReviewModal } from "@/components/listings/review-modal";
 
 type Review = {
   id: string;
@@ -40,9 +42,17 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function ReviewSection({ listingId }: { listingId: string }) {
+export function ReviewSection({
+  listingId,
+  listingTitle,
+}: {
+  listingId: string;
+  listingTitle?: string;
+}) {
+  const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     async function fetchReviews() {
@@ -77,12 +87,23 @@ export function ReviewSection({ listingId }: { listingId: string }) {
 
   return (
     <div className="mt-8">
-      <h2
-        className="text-xl font-bold text-navy-700 mb-6"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        Reviews
-      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2
+          className="text-xl font-bold text-navy-700"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Reviews
+        </h2>
+        {user && (
+          <button
+            onClick={() => setShowReviewModal(true)}
+            className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+          >
+            <PenLine size={14} />
+            Write a Review
+          </button>
+        )}
+      </div>
 
       {totalReviews === 0 ? (
         <div className="p-8 bg-white rounded-2xl shadow-[var(--shadow-card)] text-center">
@@ -185,6 +206,20 @@ export function ReviewSection({ listingId }: { listingId: string }) {
           </div>
         </>
       )}
+
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        bookingId=""
+        listingTitle={listingTitle || "This listing"}
+        onSubmitted={() => {
+          // Refresh reviews
+          fetch(`/api/reviews?listingId=${listingId}`)
+            .then((res) => res.json())
+            .then((data) => setReviews(data.reviews || []))
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }

@@ -419,7 +419,7 @@ export default function ListingDetailPage() {
               )}
 
               {/* Reviews */}
-              <ReviewSection listingId={listing.id} />
+              <ReviewSection listingId={listing.id} listingTitle={listing.title} />
             </div>
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
