@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  LayoutDashboard,
   ListPlus,
   Users,
   CalendarCheck,
@@ -11,6 +10,12 @@ import {
   Globe,
   TrendingUp,
   Loader2,
+  DollarSign,
+  Percent,
+  CheckCircle,
+  UserPlus,
+  Download,
+  Clock,
 } from "lucide-react";
 
 type Stats = {
@@ -27,139 +32,350 @@ type Stats = {
   }[];
 };
 
+type Revenue = {
+  totalRevenue: number;
+  platformFees: number;
+  avgBookingValue: number;
+  byMonth: { month: string; revenue: number; count: number }[];
+  byIsland: { name: string; revenue: number; count: number }[];
+  byType: { type: string; revenue: number; count: number }[];
+};
+
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+  completed: "bg-blue-100 text-blue-700",
+};
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/stats")
-      .then((r) => r.json())
-      .then(setStats)
+    Promise.all([
+      fetch("/api/admin/stats").then((r) => r.json()),
+      fetch("/api/admin/revenue").then((r) => r.json()),
+    ])
+      .then(([s, r]) => {
+        setStats(s);
+        setRevenue(r);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-50">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 size={40} className="animate-spin text-gold-500" />
       </div>
     );
   }
 
-  if (!stats) return null;
+  if (!stats || !revenue) return null;
 
   const statCards = [
-    { label: "Total Listings", value: stats.totals.listings.toLocaleString(), icon: ListPlus, color: "bg-gold-50 text-gold-600" },
-    { label: "Users", value: stats.totals.users.toLocaleString(), icon: Users, color: "bg-teal-50 text-teal-600" },
-    { label: "Bookings", value: stats.totals.bookings.toLocaleString(), icon: CalendarCheck, color: "bg-gold-50 text-gold-600" },
-    { label: "Waitlist", value: stats.totals.waitlist.toLocaleString(), icon: Mail, color: "bg-teal-50 text-teal-600" },
+    {
+      label: "Total Listings",
+      value: stats.totals.listings.toLocaleString(),
+      icon: ListPlus,
+      iconBg: "bg-gold-50",
+      iconColor: "text-gold-600",
+    },
+    {
+      label: "Total Users",
+      value: stats.totals.users.toLocaleString(),
+      icon: Users,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
+    },
+    {
+      label: "Total Bookings",
+      value: stats.totals.bookings.toLocaleString(),
+      icon: CalendarCheck,
+      iconBg: "bg-gold-50",
+      iconColor: "text-gold-600",
+    },
+    {
+      label: "Waitlist Signups",
+      value: stats.totals.waitlist.toLocaleString(),
+      icon: Mail,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
+    },
+    {
+      label: "Total Revenue",
+      value: formatCurrency(revenue.totalRevenue),
+      icon: DollarSign,
+      iconBg: "bg-gold-50",
+      iconColor: "text-gold-600",
+    },
+    {
+      label: "Platform Fees",
+      value: formatCurrency(revenue.platformFees),
+      icon: Percent,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
+    },
   ];
 
+  // Revenue chart calculations
+  const last12 = revenue.byMonth.slice(-12);
+  const maxRevenue = Math.max(...last12.map((m) => m.revenue), 1);
+
+  // Listings by type calculations
+  const totalListings = Math.max(stats.totals.listings, 1);
+
+  // Revenue by island calculations
+  const maxIslandRevenue = Math.max(...revenue.byIsland.map((i) => i.revenue), 1);
+
+  // Pending count for quick actions
+  const pendingBookings = stats.recentBookings.filter((b) => b.status === "pending").length;
+
   return (
-    <div className="min-h-screen bg-cream-50">
-      {/* Header */}
-      <header className="bg-navy-700 text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <LayoutDashboard size={20} />
-          <span className="text-lg font-bold">
-            Vakay<span className="text-gold-400">Go</span> Admin
-          </span>
-        </div>
-        <Link href="/" className="text-sm text-white/60 hover:text-white">
-          ← Back to site
-        </Link>
-      </header>
+    <div>
+      {/* Page title */}
+      <h1
+        className="mb-8 text-3xl font-bold text-navy-700"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
+        Platform Dashboard
+      </h1>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <h1 className="text-3xl font-bold text-navy-700 mb-8" style={{ fontFamily: "var(--font-display)" }}>
-          Platform Dashboard
-        </h1>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {statCards.map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
-                  <s.icon size={20} />
-                </div>
-                <TrendingUp size={16} className="text-navy-200" />
+      {/* ── Top Stats Row ── */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {statCards.map((s) => (
+          <div
+            key={s.label}
+            className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}
+              >
+                <s.icon size={20} />
               </div>
-              <p className="text-3xl font-bold text-navy-700">{s.value}</p>
-              <p className="text-sm text-navy-400 mt-1">{s.label}</p>
+              <TrendingUp size={16} className="text-navy-200" />
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Listings by Type */}
-          <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
-            <h2 className="font-bold text-navy-700 mb-4 flex items-center gap-2">
-              <ListPlus size={18} className="text-gold-500" />
-              Listings by Type
-            </h2>
-            <div className="space-y-3">
-              {stats.listingsByType.map((row) => {
-                const pct = Math.round((row.count / stats.totals.listings) * 100);
-                return (
-                  <div key={row.type}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium text-navy-600 capitalize">{row.type}</span>
-                      <span className="text-navy-400">{row.count} ({pct}%)</span>
-                    </div>
-                    <div className="h-2 bg-cream-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gold-500 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-2xl font-bold text-navy-700">{s.value}</p>
+            <p className="mt-1 text-sm text-navy-400">{s.label}</p>
           </div>
+        ))}
+      </div>
 
-          {/* Listings by Island */}
-          <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
-            <h2 className="font-bold text-navy-700 mb-4 flex items-center gap-2">
-              <Globe size={18} className="text-teal-500" />
-              Listings by Island
-            </h2>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {stats.listingsByIsland.map((row) => (
-                <div key={row.name} className="flex justify-between items-center py-1.5">
-                  <span className="text-sm font-medium text-navy-600">{row.name}</span>
-                  <span className="bg-cream-100 text-navy-500 px-3 py-1 rounded-full text-xs font-semibold">
-                    {row.count}
+      {/* ── Revenue Chart ── */}
+      <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+        <h2 className="mb-6 flex items-center gap-2 font-bold text-navy-700">
+          <DollarSign size={18} className="text-gold-500" />
+          Monthly Revenue
+        </h2>
+        {last12.length === 0 ? (
+          <p className="text-sm text-navy-400">No revenue data yet</p>
+        ) : (
+          <div className="flex items-end gap-2 overflow-x-auto pb-2" style={{ minHeight: 220 }}>
+            {last12.map((m) => {
+              const heightPct = Math.max((m.revenue / maxRevenue) * 100, 2);
+              return (
+                <div
+                  key={m.month}
+                  className="flex flex-1 min-w-[48px] flex-col items-center gap-1"
+                >
+                  <span className="text-xs font-semibold text-navy-600">
+                    {formatCurrency(m.revenue)}
+                  </span>
+                  <div
+                    className="w-full max-w-[40px] rounded-t-lg bg-gradient-to-t from-gold-500 to-gold-400 transition-all"
+                    style={{ height: `${heightPct * 1.6}px` }}
+                  />
+                  <span className="mt-1 text-[10px] font-medium text-navy-400">
+                    {m.month}
                   </span>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
+        )}
+      </div>
 
-          {/* Recent Bookings */}
-          <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] lg:col-span-2">
-            <h2 className="font-bold text-navy-700 mb-4 flex items-center gap-2">
-              <CalendarCheck size={18} className="text-gold-500" />
-              Recent Bookings
-            </h2>
-            {stats.recentBookings.length === 0 ? (
-              <p className="text-navy-400 text-sm">No bookings yet</p>
-            ) : (
-              <div className="space-y-3">
-                {stats.recentBookings.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between p-3 rounded-xl bg-cream-50">
-                    <div>
-                      <p className="font-medium text-navy-700 text-sm">{b.listingTitle}</p>
-                      <p className="text-xs text-navy-400">#{b.bookingNumber} · {new Date(b.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-navy-700">${parseFloat(b.totalAmount).toFixed(2)}</p>
-                      <p className="text-xs text-navy-400 capitalize">{b.status}</p>
-                    </div>
+      {/* ── Two-Column Grid ── */}
+      <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Listings by Type */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
+            <ListPlus size={18} className="text-gold-500" />
+            Listings by Type
+          </h2>
+          <div className="space-y-4">
+            {stats.listingsByType.map((row) => {
+              const pct = Math.round((row.count / totalListings) * 100);
+              return (
+                <div key={row.type}>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span className="font-medium capitalize text-navy-600">
+                      {row.type}
+                    </span>
+                    <span className="text-navy-400">
+                      {row.count} ({pct}%)
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-cream-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-gold-400 to-gold-500 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {stats.listingsByType.length === 0 && (
+              <p className="text-sm text-navy-400">No listings yet</p>
             )}
           </div>
+        </div>
+
+        {/* Revenue by Island */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
+            <Globe size={18} className="text-teal-500" />
+            Revenue by Island
+          </h2>
+          <div className="space-y-4">
+            {revenue.byIsland.map((row) => {
+              const pct = Math.round((row.revenue / maxIslandRevenue) * 100);
+              return (
+                <div key={row.name}>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span className="font-medium text-navy-600">{row.name}</span>
+                    <span className="text-navy-400">
+                      {formatCurrency(row.revenue)} ({row.count} bookings)
+                    </span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-cream-100">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {revenue.byIsland.length === 0 && (
+              <p className="text-sm text-navy-400">No revenue data yet</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Recent Bookings Table ── */}
+      <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+        <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
+          <CalendarCheck size={18} className="text-gold-500" />
+          Recent Bookings
+        </h2>
+        {stats.recentBookings.length === 0 ? (
+          <p className="text-sm text-navy-400">No bookings yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-cream-200">
+                  <th className="pb-3 pr-4 font-semibold text-navy-500">Booking #</th>
+                  <th className="pb-3 pr-4 font-semibold text-navy-500">Listing</th>
+                  <th className="pb-3 pr-4 font-semibold text-navy-500">Amount</th>
+                  <th className="pb-3 pr-4 font-semibold text-navy-500">Status</th>
+                  <th className="pb-3 font-semibold text-navy-500">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recentBookings.map((b) => (
+                  <tr
+                    key={b.id}
+                    className="border-b border-cream-100 last:border-0 hover:bg-cream-50 transition-colors"
+                  >
+                    <td className="py-3 pr-4 font-medium text-navy-700">
+                      #{b.bookingNumber}
+                    </td>
+                    <td className="py-3 pr-4 text-navy-600">
+                      <Link
+                        href={`/admin/bookings`}
+                        className="hover:text-gold-600 hover:underline"
+                      >
+                        {b.listingTitle}
+                      </Link>
+                    </td>
+                    <td className="py-3 pr-4 font-semibold text-navy-700">
+                      ${parseFloat(b.totalAmount).toFixed(2)}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span
+                        className={`inline-block rounded-full px-3 py-1 text-xs font-semibold capitalize ${
+                          statusColors[b.status] ?? "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {b.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-navy-400">
+                      {new Date(b.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Quick Actions ── */}
+      <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+        <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
+          <Clock size={18} className="text-gold-500" />
+          Quick Actions
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/admin/listings?status=pending"
+            className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+          >
+            <CheckCircle size={16} />
+            Approve Pending Listings
+            {pendingBookings > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/25 px-1.5 text-xs">
+                {pendingBookings}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/admin/users?sort=newest"
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-600"
+          >
+            <UserPlus size={16} />
+            View New Users
+          </Link>
+          <button
+            onClick={() => {
+              window.open("/api/admin/export", "_blank");
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-navy-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-navy-800"
+          >
+            <Download size={16} />
+            Export Data
+          </button>
         </div>
       </div>
     </div>
