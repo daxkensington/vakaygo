@@ -85,20 +85,85 @@ const FLYOVER_WAYPOINTS = [
 const CARIBBEAN_CENTER: [number, number] = [-66, 18];
 const CARIBBEAN_ZOOM = 5;
 
-// Per-island flyover waypoints — 4 camera angles around each island
-function getIslandFlyover(slug: string): typeof FLYOVER_WAYPOINTS {
+// Build flyover waypoints from actual top listings on an island
+function buildIslandFlyover(slug: string, listings: MapListing[]): typeof FLYOVER_WAYPOINTS {
   const island = islandCoords[slug];
   if (!island) return FLYOVER_WAYPOINTS;
-  const [lng, lat] = island.center;
-  const z = island.zoom;
-  return [
-    { center: island.center, zoom: z - 1, pitch: 30, bearing: 0, label: island.name },
-    { center: [lng - 0.08, lat + 0.05] as [number, number], zoom: z + 1, pitch: 55, bearing: -30, label: `North ${island.name}` },
-    { center: [lng + 0.06, lat - 0.03] as [number, number], zoom: z + 1, pitch: 55, bearing: 45, label: `South ${island.name}` },
-    { center: [lng - 0.04, lat - 0.06] as [number, number], zoom: z + 1, pitch: 60, bearing: 120, label: `West Coast` },
-    { center: [lng + 0.05, lat + 0.04] as [number, number], zoom: z + 1, pitch: 50, bearing: -60, label: `East Coast` },
-    { center: island.center, zoom: z, pitch: 40, bearing: 0, label: `${island.name} Overview` },
+
+  // Get top attractions: featured first, then highest rated, spread across types
+  const islandListings = listings.filter(
+    (l) => l.islandSlug === slug && l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!))
+  );
+
+  // Score each listing: featured bonus + rating + review count
+  const scored = islandListings.map((l) => ({
+    ...l,
+    score: (l.isFeatured ? 50 : 0) + (l.avgRating ? parseFloat(l.avgRating) * 10 : 0) + Math.min(l.reviewCount || 0, 20),
+  }));
+
+  // Sort by score, then pick top listings spread across different types
+  scored.sort((a, b) => b.score - a.score);
+
+  // Pick up to 8 attractions, preferring variety in type
+  const picked: typeof scored = [];
+  const usedTypes = new Set<string>();
+  // First pass: one per type
+  for (const l of scored) {
+    if (picked.length >= 8) break;
+    if (!usedTypes.has(l.type)) {
+      usedTypes.add(l.type);
+      picked.push(l);
+    }
+  }
+  // Second pass: fill remaining with best overall
+  for (const l of scored) {
+    if (picked.length >= 8) break;
+    if (!picked.find((p) => p.id === l.id)) {
+      picked.push(l);
+    }
+  }
+
+  if (picked.length === 0) {
+    // Fallback: just fly around the island center
+    return [
+      { center: island.center, zoom: island.zoom, pitch: 40, bearing: 0, label: island.name },
+    ];
+  }
+
+  // Build waypoints: start with island overview, then zoom into each attraction
+  const waypoints: typeof FLYOVER_WAYPOINTS = [
+    { center: island.center, zoom: island.zoom, pitch: 35, bearing: 0, label: `Welcome to ${island.name}` },
   ];
+
+  const typeLabels: Record<string, string> = {
+    stay: "🏨", tour: "🗺️", excursion: "🚤", dining: "🍽️",
+    event: "🎉", transport: "🚗", transfer: "✈️", vip: "💎", guide: "🧭",
+  };
+
+  picked.forEach((l, i) => {
+    // Alternate bearing for visual variety
+    const bearing = [-25, 30, -45, 15, -10, 40, -35, 20][i % 8];
+    const pitch = [55, 60, 50, 58, 52, 62, 48, 56][i % 8];
+
+    waypoints.push({
+      center: [parseFloat(l.longitude!), parseFloat(l.latitude!)] as [number, number],
+      zoom: 15.5,
+      pitch,
+      bearing,
+      label: `${typeLabels[l.type] || "📍"} ${l.title}`,
+    });
+  });
+
+  // End with island overview
+  waypoints.push({
+    center: island.center,
+    zoom: island.zoom,
+    pitch: 40,
+    bearing: 0,
+    label: `${island.name} — ${islandListings.length} listings`,
+  });
+
+  return waypoints;
 }
 
 // ─── Create listing marker ──────────────────────────────────────
@@ -497,11 +562,14 @@ export default function CaribbeanMap({
     const map = mapRef.current;
     if (!map) return;
     setIsFlyover(true);
+    setSelected(null);
     flyoverIndexRef.current = 0;
 
-    // Read from ref to avoid stale closure
+    // Build waypoints from actual top listings for this island
     const island = activeIslandRef.current;
-    const waypoints = island ? getIslandFlyover(island) : FLYOVER_WAYPOINTS;
+    const waypoints = island
+      ? buildIslandFlyover(island, listings)
+      : FLYOVER_WAYPOINTS;
 
     const flyNext = () => {
       const idx = flyoverIndexRef.current;
@@ -512,20 +580,25 @@ export default function CaribbeanMap({
       }
       const wp = waypoints[idx];
       setFlyoverLabel(wp.label);
+
+      // First waypoint (overview) is faster, attraction zoom-ins are slower and more cinematic
+      const isOverview = idx === 0 || idx === waypoints.length - 1;
       map.flyTo({
         center: wp.center,
         zoom: wp.zoom,
         pitch: wp.pitch,
         bearing: wp.bearing,
-        duration: idx === 0 ? 2000 : 3500,
+        duration: isOverview ? 2500 : 4000,
         essential: true,
       });
+
       flyoverIndexRef.current++;
-      flyoverTimeoutRef.current = setTimeout(flyNext, idx === 0 ? 2500 : 4500);
+      // Linger on attractions longer so user can see them
+      flyoverTimeoutRef.current = setTimeout(flyNext, isOverview ? 3000 : 5500);
     };
 
     flyNext();
-  }, []);
+  }, [listings]);
 
   const stopFlyover = useCallback(() => {
     if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
