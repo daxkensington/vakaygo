@@ -306,17 +306,20 @@ export default function CaribbeanMap({
     }
   }, [activeIsland, mapReady]);
 
-  // ── Place markers ──
+  // Store listings as a lookup for click events
+  const listingsMapRef = useRef<Map<string, MapListing>>(new Map());
+
+  // ── Place markers using GeoJSON clustering ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    // Clear old markers
+    // Clear old individual markers
     markersRef.current.forEach((entry) => entry.marker.remove());
     markersRef.current.clear();
 
     const mappable = listings.filter(
-      (l) => l.latitude && l.longitude && parseFloat(l.latitude!) !== 0 && activeCategories.has(l.type)
+      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
     );
 
     // Search filter
@@ -328,60 +331,154 @@ export default function CaribbeanMap({
         )
       : mappable;
 
-    filtered.forEach((listing) => {
-      const { wrapper, pin } = createListingMarker(listing);
+    // Store for click lookup
+    const lMap = new Map<string, MapListing>();
+    filtered.forEach((l) => lMap.set(l.id, l));
+    listingsMapRef.current = lMap;
 
-      pin.addEventListener("mouseenter", () => {
-        if (selectedRef.current?.id !== listing.id) {
-          pin.style.transform = "scale(1.15)";
-          pin.style.zIndex = "5";
-        }
-      });
-      pin.addEventListener("mouseleave", () => {
-        if (selectedRef.current?.id !== listing.id) {
-          pin.style.transform = "scale(1)";
-          pin.style.zIndex = "1";
-        }
-      });
+    // Build GeoJSON
+    const geojson: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: filtered.map((l) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
+        },
+        properties: {
+          id: l.id,
+          title: l.title,
+          type: l.type,
+          price: l.priceAmount ? parseFloat(l.priceAmount) : null,
+          color: categoryConfig[l.type]?.color || "#D4A017",
+        },
+      })),
+    };
 
-      wrapper.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const wasSelected = selectedRef.current?.id === listing.id;
-        setSelected(wasSelected ? null : listing);
-
-        if (!wasSelected) {
-          map.flyTo({
-            center: [parseFloat(listing.longitude!), parseFloat(listing.latitude!)],
-            zoom: Math.max(map.getZoom(), 13),
-            pitch: 55,
-            duration: 1200,
-          });
-        }
-      });
-
-      const marker = new mapboxgl.Marker({ element: wrapper, anchor: "bottom" })
-        .setLngLat([parseFloat(listing.longitude!), parseFloat(listing.latitude!)])
-        .addTo(map);
-
-      markersRef.current.set(listing.id, { marker, element: pin });
+    // Remove old layers/source if they exist
+    ["clusters", "cluster-count", "unclustered-point", "unclustered-label"].forEach((id) => {
+      if (map.getLayer(id)) map.removeLayer(id);
     });
-  }, [listings, activeCategories, searchQuery, mapReady]);
+    if (map.getSource("listings")) map.removeSource("listings");
 
-  // ── Update marker styles on selection ──
-  useEffect(() => {
-    markersRef.current.forEach((entry, id) => {
-      const el = entry.element;
-      if (id === selected?.id) {
-        el.style.transform = "scale(1.2)";
-        el.style.boxShadow = "0 0 0 4px rgba(212,160,23,0.5), 0 6px 20px rgba(0,0,0,0.4)";
-        el.style.zIndex = "10";
-      } else {
-        el.style.transform = "scale(1)";
-        el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.35)";
-        el.style.zIndex = "1";
+    // Add clustered source
+    map.addSource("listings", {
+      type: "geojson",
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 60,
+    });
+
+    // Cluster circles
+    map.addLayer({
+      id: "clusters",
+      type: "circle",
+      source: "listings",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": [
+          "step", ["get", "point_count"],
+          "#D4A017",    // gold < 20
+          20, "#14B8A6", // teal 20-100
+          100, "#1E3A5F", // navy 100+
+        ],
+        "circle-radius": [
+          "step", ["get", "point_count"],
+          22,     // < 20
+          20, 28, // 20-100
+          100, 36, // 100+
+        ],
+        "circle-stroke-width": 3,
+        "circle-stroke-color": "#fff",
+        "circle-opacity": 0.9,
+      },
+    });
+
+    // Cluster count labels
+    map.addLayer({
+      id: "cluster-count",
+      type: "symbol",
+      source: "listings",
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": "{point_count_abbreviated}",
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
+        "text-size": 13,
+      },
+      paint: {
+        "text-color": "#ffffff",
+      },
+    });
+
+    // Individual unclustered points
+    map.addLayer({
+      id: "unclustered-point",
+      type: "circle",
+      source: "listings",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": ["get", "color"],
+        "circle-radius": 8,
+        "circle-stroke-width": 2.5,
+        "circle-stroke-color": "#fff",
+      },
+    });
+
+    // Price labels on unclustered points (visible at zoom 12+)
+    map.addLayer({
+      id: "unclustered-label",
+      type: "symbol",
+      source: "listings",
+      filter: ["all", ["!", ["has", "point_count"]], ["has", "price"]],
+      minzoom: 12,
+      layout: {
+        "text-field": ["concat", "$", ["to-string", ["round", ["get", "price"]]]],
+        "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
+        "text-size": 11,
+        "text-offset": [0, -1.8],
+        "text-anchor": "bottom",
+      },
+      paint: {
+        "text-color": "#1E3A5F",
+        "text-halo-color": "#fff",
+        "text-halo-width": 2,
+      },
+    });
+
+    // Click on cluster → zoom in
+    map.on("click", "clusters", (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+      if (!features.length) return;
+      const clusterId = features[0].properties?.cluster_id;
+      const source = map.getSource("listings") as mapboxgl.GeoJSONSource;
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err) return;
+        const coords = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+        map.flyTo({ center: coords, zoom: zoom!, pitch: 45, duration: 800 });
+      });
+    });
+
+    // Click on unclustered point → select listing
+    map.on("click", "unclustered-point", (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ["unclustered-point"] });
+      if (!features.length) return;
+      const id = features[0].properties?.id;
+      const listing = listingsMapRef.current.get(id);
+      if (listing) {
+        setSelected(listing);
+        const coords = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+        map.flyTo({ center: coords, zoom: Math.max(map.getZoom(), 14), pitch: 50, duration: 1000 });
       }
     });
-  }, [selected]);
+
+    // Pointer cursors
+    map.on("mouseenter", "clusters", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
+    map.on("mouseenter", "unclustered-point", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "unclustered-point", () => { map.getCanvas().style.cursor = ""; });
+
+  }, [listings, activeCategories, searchQuery, mapReady]);
 
   // ── Flyover ──
   const startFlyover = useCallback(() => {
