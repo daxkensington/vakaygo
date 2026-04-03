@@ -1,6 +1,7 @@
 import { createDb } from "@/server/db";
 import { listings, islands, media, reviews, availability, users } from "@/drizzle/schema";
 import { eq, and, sql, gte, lte, ilike, desc, asc } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 // ─── Types ──────────────────────────────────────────────────────
 type SearchParams = {
@@ -147,7 +148,7 @@ export async function searchListings(params: SearchParams) {
     reviewCount: r.reviewCount || 0,
     parish: r.parish,
     headline: r.headline,
-    image: imageMap[r.id] || null,
+    image: getImageUrl(imageMap[r.id]) || null,
     url: `/${r.islandSlug}/${r.slug}`,
     isFeatured: r.isFeatured,
     isInstantBook: r.isInstantBook,
@@ -242,7 +243,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     cancellationPolicy: listing.cancellationPolicy,
     maxGuests: listing.maxGuests,
     typeData: listing.typeData,
-    images: images.map((i) => i.url),
+    images: images.map((i) => getImageUrl(i.url)).filter(Boolean),
     url: `/${listing.islandSlug}/${listing.slug}`,
     recentReviews: recentReviews.map((r) => ({
       rating: r.rating,
