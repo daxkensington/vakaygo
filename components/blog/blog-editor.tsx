@@ -59,6 +59,16 @@ function slugify(text: string) {
     .replace(/^-|-$/g, "");
 }
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/\bon\w+\s*=/gi, "data-removed=")
+    .replace(/<embed\b[^>]*>/gi, "")
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 // Simple markdown to HTML for preview
 function markdownToHtml(md: string): string {
   if (/<[a-z][\s\S]*>/i.test(md)) return md;
@@ -150,7 +160,7 @@ export function BlogEditor({
     [slugManual]
   );
 
-  const previewHtml = useMemo(() => markdownToHtml(form.content), [form.content]);
+  const previewHtml = useMemo(() => sanitizeHtml(markdownToHtml(form.content)), [form.content]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

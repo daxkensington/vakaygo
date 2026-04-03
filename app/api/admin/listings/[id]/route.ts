@@ -7,10 +7,32 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
 
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-change-in-production"
+);
+
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    if (payload.role !== "admin") return null;
+    return payload.id as string;
+  } catch {
+    return null;
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const verifiedAdminId = await verifyAdmin();
+  if (!verifiedAdminId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const { id } = await params;
@@ -60,16 +82,7 @@ export async function PATCH(
       });
 
     // Fire-and-forget audit log
-    let adminId: string | undefined;
-    try {
-      const cookieStore = await cookies();
-      const token = cookieStore.get("auth_token")?.value;
-      if (token) {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
-        const { payload } = await jwtVerify(token, secret);
-        if (payload.sub) adminId = payload.sub as string;
-      }
-    } catch {}
+    const adminId = verifiedAdminId;
 
     if (adminId) {
       const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined;

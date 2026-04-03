@@ -85,6 +85,16 @@ function injectHeadingIds(html: string) {
   });
 }
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/\bon\w+\s*=/gi, "data-removed=")
+    .replace(/<embed\b[^>]*>/gi, "")
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 // Simple markdown to HTML for common patterns
 function markdownToHtml(md: string): string {
   // If content already has HTML tags, return as-is with heading IDs injected
@@ -154,7 +164,7 @@ export function BlogPostDetail({
   related: RelatedPost[];
 }) {
   const [copied, setCopied] = useState(false);
-  const contentHtml = useMemo(() => markdownToHtml(post.content), [post.content]);
+  const contentHtml = useMemo(() => sanitizeHtml(markdownToHtml(post.content)), [post.content]);
   const headings = useMemo(() => extractHeadings(contentHtml), [contentHtml]);
 
   const postUrl = `https://vakaygo.com/guides/${post.slug}`;

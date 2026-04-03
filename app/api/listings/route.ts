@@ -23,8 +23,8 @@ export async function GET(request: Request) {
     const amenities = searchParams.get("amenities");
     const duration = searchParams.get("duration");
     const sort = searchParams.get("sort") || "recommended";
-    const limit = parseInt(searchParams.get("limit") || "24");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24")));
+    const offset = Math.max(0, parseInt(searchParams.get("offset") || "0"));
 
     const db = getDb();
     const conditions = [eq(listings.status, "active")];

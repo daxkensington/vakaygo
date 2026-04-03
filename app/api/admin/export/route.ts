@@ -1,9 +1,29 @@
 import { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, users, bookings, islands } from "@/drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { jwtVerify } from "jose";
+import { cookies } from "next/headers";
+
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-change-in-production"
+);
+
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    if (payload.role !== "admin") return null;
+    return payload.id as string;
+  } catch {
+    return null;
+  }
+}
 
 function escapeCsv(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -23,6 +43,11 @@ function toCsv(headers: string[], rows: Record<string, unknown>[], keys: string[
 }
 
 export async function GET(request: NextRequest) {
+  const adminId = await verifyAdmin();
+  if (!adminId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const { searchParams } = new URL(request.url);

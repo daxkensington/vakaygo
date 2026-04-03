@@ -6,16 +6,19 @@ import { eq, sql, and, gte, lte, count } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-change-in-production"
+);
+
 async function verifyAdmin(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
+    const token = cookieStore.get("session")?.value;
     if (!token) return null;
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, SECRET);
     if (payload.role !== "admin") return null;
-    return payload.sub as string;
+    return payload.id as string;
   } catch {
     return null;
   }

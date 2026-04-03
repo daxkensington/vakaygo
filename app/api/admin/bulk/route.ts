@@ -16,16 +16,19 @@ const STATUS_MAP: Record<Exclude<BulkAction, "delete">, string> = {
   pause: "paused",
 };
 
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-change-in-production"
+);
+
 async function verifyAdmin(_request: NextRequest): Promise<{ ok: boolean; adminId?: string }> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
+    const token = cookieStore.get("session")?.value;
     if (!token) return { ok: false };
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, SECRET);
     if (payload.role !== "admin") return { ok: false };
-    return { ok: true, adminId: payload.sub as string };
+    return { ok: true, adminId: payload.id as string };
   } catch {
     return { ok: false };
   }

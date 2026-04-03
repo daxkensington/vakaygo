@@ -3,8 +3,32 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { platformSettings, users } from "@/drizzle/schema";
 import { eq, sql } from "drizzle-orm";
+import { jwtVerify } from "jose";
+import { cookies } from "next/headers";
+
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-change-in-production"
+);
+
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    if (payload.role !== "admin") return null;
+    return payload.id as string;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET() {
+  const adminId = await verifyAdmin();
+  if (!adminId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -35,6 +59,11 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const adminId = await verifyAdmin();
+  if (!adminId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const body = await req.json();
