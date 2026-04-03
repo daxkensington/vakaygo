@@ -98,6 +98,32 @@ const CARIBBEAN_ZOOM = 5;
 // Attraction keywords — these are real places tourists visit, not businesses
 const ATTRACTION_KEYWORDS = /waterfall|falls|beach|bay|reef|volcano|mountain|peak|hill|lake|spring|cave|fort|castle|ruins|park|garden|botanical|trail|forest|rainforest|museum|temple|church|cathedral|market|harbor|harbour|port|island|plantation|estate|distillery|brewery|chocolate|sculpture|monument|lighthouse|viewpoint|lookout|sanctuary|reserve|lagoon|crater|canyon|gorge|bridge|pier|dock|marina|stadium|arena|zoo|aquarium|gallery|palace|tower|dam|pool|cenote|sinkhole|blowhole|cliff|rock|arch|canyon/i;
 
+// Must-see iconic attractions per island — these always appear in flyover regardless of review count
+// Partial title matches (case-insensitive) so "Grand Anse Beach" matches "grand anse beach"
+const ICONIC_ATTRACTIONS: Record<string, string[]> = {
+  grenada: ["grand anse beach", "annandale waterfall", "grand etang", "underwater sculpture", "concord falls", "seven sisters", "fort george", "river antoine", "magazine beach", "levera beach"],
+  barbados: ["crane beach", "bathsheba", "harrison's cave", "animal flower cave", "carlisle bay", "bottom bay", "st. nicholas abbey", "hunte's garden", "bridgetown", "garrison"],
+  jamaica: ["dunn's river falls", "blue lagoon", "seven mile beach", "bob marley museum", "blue mountain", "doctor's cave", "rick's cafe", "port royal", "devon house", "mystic mountain"],
+  "st-lucia": ["pitons", "sulphur springs", "marigot bay", "reduit beach", "diamond falls", "sugar beach", "anse chastanet", "pigeon island", "toraille waterfall", "tet paul"],
+  "trinidad-and-tobago": ["maracas bay", "pigeon point", "nylon pool", "caroni swamp", "argyle waterfall", "fort king george", "buccoo reef", "store bay", "temple in the sea", "asa wright"],
+  antigua: ["nelson's dockyard", "shirley heights", "devil's bridge", "half moon bay", "jolly beach", "stingray city", "ffryes beach", "darkwood beach", "pillars of hercules", "fort james"],
+  bahamas: ["atlantis paradise", "pig beach", "dean's blue hole", "thunderball grotto", "blue lagoon island", "junkanoo beach", "exuma cays", "nassau straw market", "fort charlotte", "clifton heritage"],
+  aruba: ["eagle beach", "natural bridge", "baby beach", "arikok national park", "california lighthouse", "flamingo beach", "natural pool", "alto vista chapel", "casibari rock", "palm beach"],
+  "dominican-republic": ["punta cana beach", "los haitises", "27 charcos", "hoyo azul", "saona island", "playa rincon", "bahia de las aguilas", "zona colonial", "el limon waterfall", "lago enriquillo"],
+  "puerto-rico": ["el yunque", "flamenco beach", "old san juan", "bioluminescent bay", "condado beach", "castillo san felipe", "cueva ventana", "crash boat beach", "la parguera", "camuy caves"],
+  curacao: ["playa kenepa", "shete boka", "hato caves", "queen emma bridge", "playa lagun", "cas abao beach", "christoffel park", "klein curacao", "handelskade", "blue room"],
+  "cayman-islands": ["seven mile beach", "stingray city", "rum point", "hell", "starfish point", "smith's cove", "crystal caves", "cayman turtle centre", "pedro st james", "barkers national park"],
+  dominica: ["boiling lake", "trafalgar falls", "champagne reef", "emerald pool", "titou gorge", "indian river", "morne trois pitons", "scotts head", "cabrits", "victoria falls"],
+  "st-vincent": ["tobago cays", "la soufriere", "dark view falls", "black point tunnel", "fort charlotte", "botanical garden", "bequia", "princess margaret beach", "mustique", "owia salt pond"],
+  "st-kitts": ["brimstone hill", "timothy hill", "south friars bay", "romney manor", "black rocks", "frigate bay", "pinneys beach", "nevis peak", "basseterre", "caribelle batik"],
+  "turks-and-caicos": ["grace bay", "chalk sound", "sapodilla bay", "smith's reef", "mudjin harbour", "conch bar caves", "northwest point", "grand turk lighthouse", "gibbs cay", "half moon bay"],
+  bonaire: ["lac bay", "1000 steps", "pink beach", "donkey sanctuary", "washington slagbaai", "salt flats", "klein bonaire", "goto lake", "rincon", "boca slagbaai"],
+  martinique: ["les salines", "mount pelee", "anse couleuvre", "jardin de balata", "diamond rock", "saint-pierre", "anse dufour", "presqu'ile de la caravelle", "habitation clement", "gorges de la falaise"],
+  guadeloupe: ["plage de la perle", "chutes du carbet", "la soufriere", "iles de la petite terre", "plage de grande anse", "pointe des chateaux", "parc national", "sainte-anne beach", "terre-de-haut", "porte d'enfer"],
+  "us-virgin-islands": ["trunk bay", "magens bay", "cinnamon bay", "coral world", "blackbeard's castle", "annaberg ruins", "sapphire beach", "buck island", "cruz bay", "caneel bay"],
+  "british-virgin-islands": ["the baths", "white bay", "smuggler's cove", "savannah bay", "spring bay", "devil's bay", "anegada beach", "loblolly bay", "cane garden bay", "norman island"],
+};
+
 // Generic business patterns to exclude from flyover
 const BUSINESS_PATTERNS = /taxi|car rental|auto rental|transport|shuttle|transfer|security|cleaning|laundry|insurance|pharmacy|clinic|hospital|dentist|bank|atm|gas station|mechanic|plumber|lawyer|accountant|storage|moving|printing|courier|staffing|consulting/i;
 
@@ -109,28 +135,34 @@ function buildIslandFlyover(slug: string, listings: MapListing[]): FlyoverWaypoi
     (l) => l.islandSlug === slug && l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!))
   );
 
-  // Score listings to find real attractions (not businesses)
+  // Check if title matches any iconic attraction for this island
+  const iconicList = ICONIC_ATTRACTIONS[slug] || [];
+  const isIconic = (title: string) =>
+    iconicList.some((keyword) => title.toLowerCase().includes(keyword));
+
+  // Score listings to find real attractions
   const scored = islandListings.map((l) => {
+    const iconic = isIconic(l.title);
     const isAttraction = ATTRACTION_KEYWORDS.test(l.title);
     const isBusiness = BUSINESS_PATTERNS.test(l.title);
     const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
     const reviews = l.reviewCount || 0;
 
-    // Attractions with lots of reviews are the real tourist spots
     const score =
-      (isAttraction ? 100 : 0) +        // Huge bonus for real attractions
+      (iconic ? 500 : 0) +              // Iconic must-see = always on top
+      (isAttraction ? 100 : 0) +         // Real attraction bonus
       (isBusiness ? -200 : 0) +          // Kill generic businesses
       (rating * 5) +                     // Rating matters
-      Math.min(reviews, 500) * 0.1 +     // More reviews = more popular
-      (l.isFeatured ? 20 : 0) +          // Featured bonus
-      (l.image ? 5 : 0);                 // Has image
+      Math.min(reviews, 500) * 0.1 +     // Popular = real attraction
+      (l.isFeatured ? 20 : 0) +
+      (l.image ? 5 : 0);
 
     return { ...l, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick top 10 attractions, skip businesses
+  // Pick top 10, skip businesses
   const picked = scored
     .filter((l) => !BUSINESS_PATTERNS.test(l.title))
     .slice(0, 10);
