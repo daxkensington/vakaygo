@@ -85,7 +85,7 @@ export function Hero() {
 
         {/* Search Bar */}
         <form
-          className="mt-8 md:mt-12 mx-auto max-w-3xl"
+          className="mt-8 md:mt-12 mx-auto max-w-5xl"
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.target as HTMLFormElement;
