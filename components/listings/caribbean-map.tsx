@@ -68,8 +68,18 @@ const islandCoords: Record<string, { center: [number, number]; zoom: number; nam
   bonaire:                { center: [-68.2655, 12.1443], zoom: 12, name: "Bonaire" },
 };
 
+// Flyover waypoint type
+type FlyoverWaypoint = {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  label: string;
+  listing?: MapListing;
+};
+
 // Flyover waypoints — hit the highlights across the Caribbean
-const FLYOVER_WAYPOINTS = [
+const FLYOVER_WAYPOINTS: FlyoverWaypoint[] = [
   { center: [-66, 18] as [number, number], zoom: 5, pitch: 30, bearing: 0, label: "The Caribbean" },
   { center: [-61.75, 12.05] as [number, number], zoom: 11, pitch: 55, bearing: -20, label: "Grenada" },
   { center: [-60.98, 13.91] as [number, number], zoom: 11, pitch: 50, bearing: 15, label: "St. Lucia" },
@@ -85,64 +95,74 @@ const FLYOVER_WAYPOINTS = [
 const CARIBBEAN_CENTER: [number, number] = [-66, 18];
 const CARIBBEAN_ZOOM = 5;
 
-// Build flyover waypoints from actual top listings on an island
-function buildIslandFlyover(slug: string, listings: MapListing[]): typeof FLYOVER_WAYPOINTS {
+// Type priority for flyover — real attractions first, generic services last
+const TYPE_PRIORITY: Record<string, number> = {
+  stay: 30, dining: 28, excursion: 25, event: 22,
+  tour: 15, guide: 12, vip: 10, transfer: 3, transport: 2,
+};
+
+// Taxi/generic service title patterns to deprioritize
+const GENERIC_PATTERNS = /taxi|car rental|auto rental|transport|shuttle|transfer|security|cleaning/i;
+
+function buildIslandFlyover(slug: string, listings: MapListing[]): FlyoverWaypoint[] {
   const island = islandCoords[slug];
   if (!island) return FLYOVER_WAYPOINTS;
 
-  // Get top attractions: featured first, then highest rated, spread across types
   const islandListings = listings.filter(
     (l) => l.islandSlug === slug && l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!))
   );
 
-  // Score each listing: featured bonus + rating + review count
-  const scored = islandListings.map((l) => ({
-    ...l,
-    score: (l.isFeatured ? 50 : 0) + (l.avgRating ? parseFloat(l.avgRating) * 10 : 0) + Math.min(l.reviewCount || 0, 20),
-  }));
+  // Smart scoring: type priority + rating + reviews - generic penalty
+  const scored = islandListings.map((l) => {
+    const typePriority = TYPE_PRIORITY[l.type] || 5;
+    const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
+    const reviews = Math.min(l.reviewCount || 0, 30);
+    const genericPenalty = GENERIC_PATTERNS.test(l.title) ? -40 : 0;
+    const featuredBonus = l.isFeatured ? 20 : 0;
+    const hasImage = l.image ? 5 : 0;
 
-  // Sort by score, then pick top listings spread across different types
+    return {
+      ...l,
+      score: typePriority + (rating * 8) + (reviews * 0.3) + genericPenalty + featuredBonus + hasImage,
+    };
+  });
+
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick up to 8 attractions, preferring variety in type
+  // Pick up to 8, one per type first for variety
   const picked: typeof scored = [];
   const usedTypes = new Set<string>();
-  // First pass: one per type
-  for (const l of scored) {
+
+  // First pass: best of each interesting type
+  const priorityTypes = ["stay", "dining", "excursion", "event", "tour", "guide", "vip"];
+  for (const type of priorityTypes) {
     if (picked.length >= 8) break;
-    if (!usedTypes.has(l.type)) {
-      usedTypes.add(l.type);
-      picked.push(l);
+    const best = scored.find((l) => l.type === type && !GENERIC_PATTERNS.test(l.title));
+    if (best && !picked.find((p) => p.id === best.id)) {
+      usedTypes.add(type);
+      picked.push(best);
     }
   }
-  // Second pass: fill remaining with best overall
+
+  // Second pass: fill with top remaining
   for (const l of scored) {
     if (picked.length >= 8) break;
-    if (!picked.find((p) => p.id === l.id)) {
+    if (!picked.find((p) => p.id === l.id) && !GENERIC_PATTERNS.test(l.title)) {
       picked.push(l);
     }
   }
 
   if (picked.length === 0) {
-    // Fallback: just fly around the island center
-    return [
-      { center: island.center, zoom: island.zoom, pitch: 40, bearing: 0, label: island.name },
-    ];
+    return [{ center: island.center, zoom: island.zoom, pitch: 40, bearing: 0, label: island.name }];
   }
 
-  // Build waypoints: start with island overview, then zoom into each attraction
-  const waypoints: typeof FLYOVER_WAYPOINTS = [
+  // Build waypoints
+  const waypoints: FlyoverWaypoint[] = [
     { center: island.center, zoom: island.zoom, pitch: 35, bearing: 0, label: `Welcome to ${island.name}` },
   ];
 
-  const typeLabels: Record<string, string> = {
-    stay: "🏨", tour: "🗺️", excursion: "🚤", dining: "🍽️",
-    event: "🎉", transport: "🚗", transfer: "✈️", vip: "💎", guide: "🧭",
-  };
-
   picked.forEach((l, i) => {
-    // Alternate bearing for visual variety
-    const bearing = [-25, 30, -45, 15, -10, 40, -35, 20][i % 8];
+    const bearing = [-25, 35, -45, 20, -15, 50, -35, 25][i % 8];
     const pitch = [55, 60, 50, 58, 52, 62, 48, 56][i % 8];
 
     waypoints.push({
@@ -150,17 +170,17 @@ function buildIslandFlyover(slug: string, listings: MapListing[]): typeof FLYOVE
       zoom: 15.5,
       pitch,
       bearing,
-      label: `${typeLabels[l.type] || "📍"} ${l.title}`,
+      label: l.title,
+      listing: l,
     });
   });
 
-  // End with island overview
   waypoints.push({
     center: island.center,
     zoom: island.zoom,
     pitch: 40,
     bearing: 0,
-    label: `${island.name} — ${islandListings.length} listings`,
+    label: `${island.name} — ${islandListings.length} listings to explore`,
   });
 
   return waypoints;
@@ -240,6 +260,7 @@ export default function CaribbeanMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFlyover, setIsFlyover] = useState(false);
   const [flyoverLabel, setFlyoverLabel] = useState("");
+  const [flyoverListing, setFlyoverListing] = useState<MapListing | null>(null);
   const [mapStyle, setMapStyle] = useState<"satellite" | "outdoors" | "dark">("satellite");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -576,12 +597,13 @@ export default function CaribbeanMap({
       if (idx >= waypoints.length) {
         setIsFlyover(false);
         setFlyoverLabel("");
+        setFlyoverListing(null);
         return;
       }
       const wp = waypoints[idx];
       setFlyoverLabel(wp.label);
+      setFlyoverListing(wp.listing || null);
 
-      // First waypoint (overview) is faster, attraction zoom-ins are slower and more cinematic
       const isOverview = idx === 0 || idx === waypoints.length - 1;
       map.flyTo({
         center: wp.center,
@@ -593,7 +615,6 @@ export default function CaribbeanMap({
       });
 
       flyoverIndexRef.current++;
-      // Linger on attractions longer so user can see them
       flyoverTimeoutRef.current = setTimeout(flyNext, isOverview ? 3000 : 5500);
     };
 
@@ -604,6 +625,7 @@ export default function CaribbeanMap({
     if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
     setIsFlyover(false);
     setFlyoverLabel("");
+    setFlyoverListing(null);
   }, []);
 
   // ── GPS Location ──
@@ -815,12 +837,57 @@ export default function CaribbeanMap({
         </div>
       </div>
 
-      {/* Flyover label */}
+      {/* Flyover card */}
       {isFlyover && flyoverLabel && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20">
-          <div className="bg-black/70 backdrop-blur-md text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl">
-            {flyoverLabel}
-          </div>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 transition-all duration-500">
+          {flyoverListing ? (
+            // Listing card during attraction flyover
+            <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden flex w-[360px] max-w-[90vw]">
+              {flyoverListing.image && (
+                <div
+                  className="w-28 h-28 bg-cover bg-center flex-shrink-0"
+                  style={{ backgroundImage: `url(${flyoverListing.image})` }}
+                />
+              )}
+              <div className="flex-1 p-3 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span
+                    className="text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: categoryConfig[flyoverListing.type]?.color || "#D4A017" }}
+                  >
+                    {categoryConfig[flyoverListing.type]?.emoji} {categoryConfig[flyoverListing.type]?.label}
+                  </span>
+                </div>
+                <h3 className="text-sm font-semibold text-navy-700 line-clamp-2 leading-snug">
+                  {flyoverListing.title}
+                </h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {flyoverListing.avgRating && parseFloat(flyoverListing.avgRating) > 0 && (
+                    <span className="flex items-center gap-0.5 text-xs">
+                      <Star size={11} className="text-gold-500 fill-gold-500" />
+                      <span className="font-semibold text-navy-700">{parseFloat(flyoverListing.avgRating).toFixed(1)}</span>
+                      {flyoverListing.reviewCount ? <span className="text-navy-400">({flyoverListing.reviewCount})</span> : null}
+                    </span>
+                  )}
+                  {flyoverListing.priceAmount && parseFloat(flyoverListing.priceAmount) > 0 && (
+                    <span className="text-xs font-bold text-navy-700">
+                      ${parseFloat(flyoverListing.priceAmount).toFixed(0)}
+                      {flyoverListing.priceUnit && <span className="font-normal text-navy-400">/{flyoverListing.priceUnit}</span>}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-navy-400 mt-1 flex items-center gap-0.5">
+                  <MapPin size={9} />
+                  {flyoverListing.parish ? `${flyoverListing.parish}, ` : ""}{flyoverListing.islandName}
+                </p>
+              </div>
+            </div>
+          ) : (
+            // Simple label for overview waypoints
+            <div className="bg-black/70 backdrop-blur-md text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl">
+              {flyoverLabel}
+            </div>
+          )}
         </div>
       )}
 
