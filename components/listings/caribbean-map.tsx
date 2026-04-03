@@ -413,6 +413,64 @@ export default function CaribbeanMap({
   useEffect(() => { selectedRef.current = selected; }, [selected]);
   useEffect(() => { activeIslandRef.current = activeIsland; }, [activeIsland]);
 
+  // Popup ref
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+
+  // ── Show Mapbox popup over pin when listing is selected ──
+  useEffect(() => {
+    const map = mapRef.current;
+
+    // Remove old popup
+    if (popupRef.current) {
+      popupRef.current.remove();
+      popupRef.current = null;
+    }
+
+    if (!map || !selected || !selected.latitude || !selected.longitude) return;
+
+    const r = selected.avgRating ? parseFloat(selected.avgRating) : 0;
+    const price = selected.priceAmount && parseFloat(selected.priceAmount) > 0
+      ? `$${parseFloat(selected.priceAmount).toFixed(0)}${selected.priceUnit ? `<span style="font-weight:400;color:#8896a7">/${selected.priceUnit}</span>` : ""}`
+      : "";
+    const cfg = categoryConfig[selected.type] || categoryConfig.stay;
+
+    const html = `
+      <div style="width:260px;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;border-radius:12px;">
+        ${selected.image ? `<div style="height:130px;background:url(${selected.image}) center/cover;"></div>` : ""}
+        <div style="padding:12px;">
+          <div style="margin-bottom:6px;">
+            <span style="background:${cfg.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${cfg.emoji} ${cfg.label}</span>
+            ${selected.isFeatured ? '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;">Featured</span>' : ""}
+          </div>
+          <h3 style="font-size:14px;font-weight:600;color:#1e293b;line-height:1.3;margin:0 0 4px;">${selected.title}</h3>
+          <p style="font-size:11px;color:#8896a7;margin:0 0 8px;">📍 ${selected.parish ? selected.parish + ", " : ""}${selected.islandName}</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            ${price ? `<span style="font-weight:700;color:#1e293b;font-size:14px;">${price}</span>` : ""}
+            ${r > 0 ? `<span style="font-size:12px;color:#1e293b;">⭐ <strong>${r.toFixed(1)}</strong>${selected.reviewCount ? ` <span style="color:#8896a7">(${selected.reviewCount})</span>` : ""}</span>` : ""}
+          </div>
+          <a href="/${selected.islandSlug}/${selected.slug}" style="display:block;text-align:center;background:#D4A017;color:#fff;padding:8px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">View Details →</a>
+        </div>
+      </div>
+    `;
+
+    const popup = new mapboxgl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      maxWidth: "280px",
+      offset: 15,
+      className: "vakaygo-popup",
+    })
+      .setLngLat([parseFloat(selected.longitude!), parseFloat(selected.latitude!)])
+      .setHTML(html)
+      .addTo(map);
+
+    popup.on("close", () => {
+      setSelected(null);
+    });
+
+    popupRef.current = popup;
+  }, [selected]);
+
   // ── Fly to island on change ──
   useEffect(() => {
     const map = mapRef.current;
@@ -734,8 +792,6 @@ export default function CaribbeanMap({
     );
   }
 
-  const rating = selected?.avgRating ? parseFloat(selected.avgRating) : 0;
-
   return (
     <div className="relative w-full h-full">
       {/* Map */}
@@ -906,79 +962,41 @@ export default function CaribbeanMap({
         </div>
       )}
 
-      {/* ── Selected listing panel ── */}
-      {selected && (
-        <div className="absolute top-3 right-14 z-20 w-72 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] overflow-hidden">
-          <button
-            onClick={() => setSelected(null)}
-            className="absolute top-2 right-2 z-10 w-7 h-7 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-          >
-            <X size={14} />
-          </button>
+      {/* Selected listing popup is rendered via Mapbox Popup (see useEffect below) */}
 
-          {selected.image && (
-            <div
-              className="h-36 w-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${selected.image})` }}
-            />
-          )}
-
-          <div className="p-3.5">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span
-                className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: categoryConfig[selected.type]?.color || "#1E3A5F" }}
-              >
-                {categoryConfig[selected.type]?.emoji} {categoryConfig[selected.type]?.label || selected.type}
-              </span>
-              {selected.isFeatured && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold-100 text-gold-700">Featured</span>
-              )}
-            </div>
-
-            <h3 className="font-semibold text-sm text-navy-700 leading-snug line-clamp-2 mb-1">
-              {selected.title}
-            </h3>
-
-            <p className="text-[11px] text-navy-400 flex items-center gap-1 mb-2">
-              <MapPin size={10} />
-              {selected.parish ? `${selected.parish}, ` : ""}
-              {selected.islandName}
-            </p>
-
-            <div className="flex items-center justify-between mb-3">
-              {selected.priceAmount && parseFloat(selected.priceAmount) > 0 && (
-                <span className="font-bold text-navy-700">
-                  ${parseFloat(selected.priceAmount).toFixed(0)}
-                  <span className="font-normal text-navy-400 text-xs">
-                    {selected.priceUnit ? ` / ${selected.priceUnit}` : ""}
-                  </span>
-                </span>
-              )}
-              {rating > 0 && (
-                <span className="flex items-center gap-1 text-xs">
-                  <Star size={12} className="text-gold-500 fill-gold-500" />
-                  <span className="font-semibold text-navy-700">{rating.toFixed(1)}</span>
-                  {selected.reviewCount ? <span className="text-navy-300">({selected.reviewCount})</span> : null}
-                </span>
-              )}
-            </div>
-
-            <Link
-              href={`/${selected.islandSlug}/${selected.slug}`}
-              className="flex items-center justify-center gap-1.5 w-full py-2 bg-gold-500 text-white text-sm font-semibold rounded-lg hover:bg-gold-600 transition-colors"
-            >
-              View Details <ChevronRight size={14} />
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Pulse animation for GPS marker */}
+      {/* Popup + animation styles */}
       <style>{`
         @keyframes pulse {
           0%, 100% { box-shadow: 0 0 0 6px rgba(59,130,246,0.3), 0 2px 8px rgba(0,0,0,0.3); }
           50% { box-shadow: 0 0 0 12px rgba(59,130,246,0.1), 0 2px 8px rgba(0,0,0,0.3); }
+        }
+        .vakaygo-popup .mapboxgl-popup-content {
+          padding: 0 !important;
+          border-radius: 12px !important;
+          overflow: hidden;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
+        }
+        .vakaygo-popup .mapboxgl-popup-close-button {
+          font-size: 18px;
+          color: white;
+          right: 6px;
+          top: 6px;
+          background: rgba(0,0,0,0.3);
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          line-height: 1;
+          backdrop-filter: blur(4px);
+        }
+        .vakaygo-popup .mapboxgl-popup-close-button:hover {
+          background: rgba(0,0,0,0.5);
+        }
+        .vakaygo-popup .mapboxgl-popup-tip {
+          border-top-color: white !important;
         }
       `}</style>
     </div>
