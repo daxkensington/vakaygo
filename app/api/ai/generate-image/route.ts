@@ -46,10 +46,9 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${process.env.GROK_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "grok-2-image",
+        model: "grok-imagine-image",
         prompt: fullPrompt,
         n: 1,
-        size: "1024x1024",
       }),
     });
 
