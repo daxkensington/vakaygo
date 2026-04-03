@@ -52,6 +52,11 @@ export async function PATCH(
     if (body.priceUnit) updateData.priceUnit = body.priceUnit;
     if (body.typeData) updateData.typeData = body.typeData;
     if (body.status) updateData.status = body.status;
+    if (body.cancellationPolicy !== undefined) updateData.cancellationPolicy = body.cancellationPolicy;
+    if (body.minStay !== undefined) updateData.minStay = body.minStay;
+    if (body.maxStay !== undefined) updateData.maxStay = body.maxStay;
+    if (body.advanceNotice !== undefined) updateData.advanceNotice = body.advanceNotice;
+    if (body.maxGuests !== undefined) updateData.maxGuests = body.maxGuests;
 
     await db.update(listings).set(updateData).where(eq(listings.id, listing.id));
 

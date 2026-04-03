@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, listings, users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { bookings, listings, users, promoCodes, promoCodeUses } from "@/drizzle/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { sendBookingConfirmation, sendBookingNotificationToOperator } from "@/server/email";
 import { createNotification } from "@/server/notifications";
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       guestNotes,
       includeInsurance = false,
       paymentMethod = "card",
+      promoCode,
     } = body;
 
     if (!listingId || !startDate) {
@@ -63,6 +64,10 @@ export async function POST(request: Request) {
         priceUnit: listings.priceUnit,
         type: listings.type,
         title: listings.title,
+        minStay: listings.minStay,
+        maxStay: listings.maxStay,
+        advanceNotice: listings.advanceNotice,
+        maxGuests: listings.maxGuests,
       })
       .from(listings)
       .where(eq(listings.id, listingId))
@@ -70,6 +75,46 @@ export async function POST(request: Request) {
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    }
+
+    // Enforce booking rules
+    if (listing.maxGuests && guestCount > listing.maxGuests) {
+      return NextResponse.json(
+        { error: `Maximum ${listing.maxGuests} guests allowed for this listing` },
+        { status: 400 }
+      );
+    }
+
+    if (listing.advanceNotice && listing.advanceNotice > 0) {
+      const bookingStart = new Date(startDate);
+      const now = new Date();
+      const hoursUntilStart = (bookingStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (hoursUntilStart < listing.advanceNotice) {
+        return NextResponse.json(
+          { error: `This listing requires at least ${listing.advanceNotice} hours advance notice` },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (listing.type === "stay" && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (listing.minStay && nights < listing.minStay) {
+        return NextResponse.json(
+          { error: `Minimum stay is ${listing.minStay} night${listing.minStay > 1 ? "s" : ""}` },
+          { status: 400 }
+        );
+      }
+
+      if (listing.maxStay && nights > listing.maxStay) {
+        return NextResponse.json(
+          { error: `Maximum stay is ${listing.maxStay} night${listing.maxStay > 1 ? "s" : ""}` },
+          { status: 400 }
+        );
+      }
     }
 
     const pricePerUnit = parseFloat(listing.priceAmount || "0");
@@ -93,6 +138,73 @@ export async function POST(request: Request) {
       includeInsurance,
     });
 
+    // Promo code validation and discount calculation
+    let discountAmount = 0;
+    let promoCodeId: string | null = null;
+
+    if (promoCode) {
+      const [promo] = await db
+        .select()
+        .from(promoCodes)
+        .where(eq(promoCodes.code, promoCode.toUpperCase().trim()))
+        .limit(1);
+
+      if (promo && promo.isActive) {
+        const now = new Date();
+        const withinDates = now >= promo.validFrom && now <= promo.validUntil;
+        const notExhausted = promo.maxUses === null || (promo.currentUses || 0) < promo.maxUses;
+
+        // Check per-user limit
+        let userCanUse = true;
+        if (promo.maxUsesPerUser) {
+          const [userUsage] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(promoCodeUses)
+            .where(
+              and(
+                eq(promoCodeUses.promoCodeId, promo.id),
+                eq(promoCodeUses.userId, travelerId)
+              )
+            );
+          if (userUsage && userUsage.count >= promo.maxUsesPerUser) {
+            userCanUse = false;
+          }
+        }
+
+        // Check applicable types
+        let typeMatches = true;
+        if (promo.applicableTypes && promo.applicableTypes.length > 0) {
+          typeMatches = promo.applicableTypes.includes(listing.type);
+        }
+
+        // Check min order
+        let meetsMinimum = true;
+        if (promo.minOrderAmount) {
+          meetsMinimum = pricing.total >= parseFloat(promo.minOrderAmount);
+        }
+
+        if (withinDates && notExhausted && userCanUse && typeMatches && meetsMinimum) {
+          promoCodeId = promo.id;
+
+          if (promo.discountType === "percentage") {
+            discountAmount = Math.round(pricing.total * parseFloat(promo.discountValue) / 100 * 100) / 100;
+          } else {
+            discountAmount = parseFloat(promo.discountValue);
+          }
+
+          // Cap at max discount if set
+          if (promo.maxDiscountAmount) {
+            discountAmount = Math.min(discountAmount, parseFloat(promo.maxDiscountAmount));
+          }
+
+          // Never discount more than the total
+          discountAmount = Math.min(discountAmount, pricing.total);
+        }
+      }
+    }
+
+    const finalTotal = Math.max(0, pricing.total - discountAmount);
+
     // Create booking
     const [booking] = await db
       .insert(bookings)
@@ -107,10 +219,12 @@ export async function POST(request: Request) {
         guestCount,
         subtotal: pricing.subtotal.toFixed(2),
         serviceFee: pricing.serviceFee.toFixed(2),
-        totalAmount: pricing.total.toFixed(2),
+        totalAmount: finalTotal.toFixed(2),
         currency: pricing.currency,
         paymentMethod,
         guestNotes,
+        promoCodeId,
+        discountAmount: discountAmount.toFixed(2),
       })
       .returning({
         id: bookings.id,
@@ -118,6 +232,20 @@ export async function POST(request: Request) {
         status: bookings.status,
         totalAmount: bookings.totalAmount,
       });
+
+    // Record promo code use and increment counter
+    if (promoCodeId) {
+      await db.insert(promoCodeUses).values({
+        promoCodeId,
+        userId: travelerId,
+        bookingId: booking.id,
+        discountApplied: discountAmount.toFixed(2),
+      });
+      await db
+        .update(promoCodes)
+        .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
+        .where(eq(promoCodes.id, promoCodeId));
+    }
 
     // Send confirmation emails (non-blocking)
     const [traveler] = await db
@@ -168,7 +296,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       booking,
-      pricing,
+      pricing: { ...pricing, discountAmount, finalTotal },
       listing: { title: listing.title, type: listing.type },
     });
   } catch (error) {

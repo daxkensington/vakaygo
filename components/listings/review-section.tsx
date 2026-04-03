@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Star, MessageCircle, PenLine, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ReviewModal } from "@/components/listings/review-modal";
+import { ReviewPhotoGallery, type ReviewPhoto } from "@/components/reviews/review-photo-gallery";
 
 type Review = {
   id: string;
@@ -14,6 +15,7 @@ type Review = {
   createdAt: string;
   travelerName: string | null;
   travelerAvatar: string | null;
+  photos: ReviewPhoto[];
 };
 
 function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
@@ -230,6 +232,11 @@ export function ReviewSection({
                         <p className="mt-1 text-navy-500 text-sm leading-relaxed">
                           {review.comment}
                         </p>
+                      )}
+
+                      {/* Review photos */}
+                      {review.photos && review.photos.length > 0 && (
+                        <ReviewPhotoGallery photos={review.photos} />
                       )}
 
                       {/* Operator reply */}

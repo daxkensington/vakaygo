@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { reviews, listings, users } from "@/drizzle/schema";
+import { reviews, listings, users, reviewPhotos } from "@/drizzle/schema";
 import { sendNewReviewNotification } from "@/server/email";
 import { createNotification } from "@/server/notifications";
-import { eq, and, sql } from "drizzle-orm";
+import { awardReviewPoints } from "@/server/loyalty";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -39,7 +40,40 @@ export async function GET(request: Request) {
       .where(and(eq(reviews.listingId, listingId), eq(reviews.isPublished, true)))
       .orderBy(reviews.createdAt);
 
-    return NextResponse.json({ reviews: result });
+    // Fetch photos for all reviews in one query
+    const reviewIds = result.map((r) => r.id);
+    let photosMap: Record<string, { id: string; url: string; alt: string | null; width: number | null; height: number | null }[]> = {};
+    if (reviewIds.length > 0) {
+      const photos = await db
+        .select({
+          id: reviewPhotos.id,
+          reviewId: reviewPhotos.reviewId,
+          url: reviewPhotos.url,
+          alt: reviewPhotos.alt,
+          width: reviewPhotos.width,
+          height: reviewPhotos.height,
+        })
+        .from(reviewPhotos)
+        .where(inArray(reviewPhotos.reviewId, reviewIds));
+
+      for (const photo of photos) {
+        if (!photosMap[photo.reviewId]) photosMap[photo.reviewId] = [];
+        photosMap[photo.reviewId].push({
+          id: photo.id,
+          url: photo.url,
+          alt: photo.alt,
+          width: photo.width,
+          height: photo.height,
+        });
+      }
+    }
+
+    const reviewsWithPhotos = result.map((r) => ({
+      ...r,
+      photos: photosMap[r.id] || [],
+    }));
+
+    return NextResponse.json({ reviews: reviewsWithPhotos });
   } catch (error) {
     console.error("Reviews error:", error);
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
@@ -57,7 +91,7 @@ export async function POST(request: Request) {
     const { payload } = await jwtVerify(token, SECRET);
     const travelerId = payload.id as string;
 
-    const { bookingId, listingId, rating, title, comment } = await request.json();
+    const { bookingId, listingId, rating, title, comment, photoUrls } = await request.json();
 
     if (!bookingId || !listingId || !rating) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -81,6 +115,18 @@ export async function POST(request: Request) {
       })
       .returning({ id: reviews.id });
 
+    // Insert review photos if provided
+    if (Array.isArray(photoUrls) && photoUrls.length > 0) {
+      const photoRecords = photoUrls.slice(0, 5).map((p: { url: string; alt?: string; width?: number; height?: number }) => ({
+        reviewId: review.id,
+        url: p.url,
+        alt: p.alt || null,
+        width: p.width || null,
+        height: p.height || null,
+      }));
+      await db.insert(reviewPhotos).values(photoRecords);
+    }
+
     // Update listing avg rating
     const ratingResult = await db
       .select({
@@ -99,6 +145,11 @@ export async function POST(request: Request) {
         })
         .where(eq(listings.id, listingId));
     }
+
+    // Award loyalty points for leaving a review (non-blocking)
+    awardReviewPoints(travelerId, bookingId).catch((err) => {
+      console.error("Failed to award review points:", err);
+    });
 
     // Notify operator of new review (non-blocking)
     try {

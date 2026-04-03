@@ -29,6 +29,8 @@ export async function GET(
         businessPhone: users.businessPhone,
         emailVerified: users.emailVerified,
         onboardingComplete: users.onboardingComplete,
+        isSuperhost: users.isSuperhost,
+        superhostSince: users.superhostSince,
         islandId: users.islandId,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
@@ -106,7 +108,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const { role } = body as { role?: string };
+    const { role, isSuperhost } = body as { role?: string; isSuperhost?: boolean };
 
     // Verify user exists
     const [existing] = await db
@@ -131,6 +133,11 @@ export async function PATCH(
       updateData.role = role;
     }
 
+    if (isSuperhost !== undefined) {
+      updateData.isSuperhost = isSuperhost;
+      updateData.superhostSince = isSuperhost ? sql`now()` : null;
+    }
+
     const [updated] = await db
       .update(users)
       .set(updateData)
@@ -144,7 +151,7 @@ export async function PATCH(
       });
 
     // Fire-and-forget audit log
-    if (role !== undefined) {
+    if (role !== undefined || isSuperhost !== undefined) {
       let adminId: string | undefined;
       try {
         const cookieStore = await cookies();
@@ -158,15 +165,17 @@ export async function PATCH(
 
       if (adminId) {
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || undefined;
+        const action = isSuperhost !== undefined ? "toggle_superhost" : "change_role";
+        const details: Record<string, unknown> = { userEmail: updated.email };
+        if (role !== undefined) details.newRole = role;
+        if (isSuperhost !== undefined) details.isSuperhost = isSuperhost;
+
         logAdminAction({
           adminId,
-          action: "change_role",
+          action,
           targetType: "user",
           targetId: id,
-          details: {
-            newRole: role,
-            userEmail: updated.email,
-          },
+          details,
           ipAddress: ip,
         });
       }

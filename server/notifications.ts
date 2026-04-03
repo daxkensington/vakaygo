@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { notifications } from "@/drizzle/schema";
+import { sendPushNotification } from "@/server/push";
 
 export async function createNotification(params: {
   userId: string;
@@ -18,4 +19,12 @@ export async function createNotification(params: {
     body: params.body,
     link: params.link,
   });
+
+  // Also send push notification (best-effort, don't block)
+  sendPushNotification({
+    userId: params.userId,
+    title: params.title,
+    body: params.body || "",
+    url: params.link,
+  }).catch((err) => console.error("Push notification failed:", err));
 }

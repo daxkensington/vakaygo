@@ -14,6 +14,9 @@ import {
   Check,
   Loader2,
   ShieldCheck,
+  Tag,
+  X,
+  ChevronDown,
 } from "lucide-react";
 
 type BookingWidgetProps = {
@@ -50,6 +53,17 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestLoading, setGuestLoading] = useState(false);
+  const [showPromo, setShowPromo] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: string;
+    maxDiscount: string | null;
+    description: string | null;
+  } | null>(null);
 
   const pricePerUnit = parseFloat(listing.priceAmount || "0");
 
@@ -71,6 +85,62 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
     currency: listing.priceCurrency || "USD",
     includeInsurance,
   });
+
+  // Calculate promo discount
+  let promoDiscount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.discountType === "percentage") {
+      promoDiscount = Math.round(pricing.total * parseFloat(appliedPromo.discountValue) / 100 * 100) / 100;
+    } else {
+      promoDiscount = parseFloat(appliedPromo.discountValue);
+    }
+    if (appliedPromo.maxDiscount) {
+      promoDiscount = Math.min(promoDiscount, parseFloat(appliedPromo.maxDiscount));
+    }
+    promoDiscount = Math.min(promoDiscount, pricing.total);
+  }
+  const finalTotal = pricing.total - promoDiscount;
+
+  async function handleApplyPromo() {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    try {
+      const res = await fetch("/api/promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: promoCode,
+          listingType: listing.type,
+          orderAmount: pricing.total,
+        }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedPromo({
+          code: data.code,
+          discountType: data.discountType,
+          discountValue: data.discountValue,
+          maxDiscount: data.maxDiscount,
+          description: data.description,
+        });
+        setPromoError("");
+      } else {
+        setPromoError(data.reason || "Invalid promo code");
+        setAppliedPromo(null);
+      }
+    } catch {
+      setPromoError("Failed to validate promo code");
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
+  function handleRemovePromo() {
+    setAppliedPromo(null);
+    setPromoCode("");
+    setPromoError("");
+  }
 
   async function handleGuestCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -131,6 +201,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           endDate: endDate || null,
           guestCount: guests,
           includeInsurance,
+          promoCode: appliedPromo?.code || undefined,
         }),
       });
 
@@ -213,9 +284,15 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
                 <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
               </div>
             )}
+            {promoDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Promo discount</span>
+                <span>-{formatCurrency(promoDiscount)}</span>
+              </div>
+            )}
             <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
               <span className="text-navy-700">Total</span>
-              <span className="text-navy-700">{formatCurrency(pricing.total)}</span>
+              <span className="text-navy-700">{formatCurrency(finalTotal)}</span>
             </div>
           </div>
 
@@ -394,6 +471,64 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <ShieldCheck size={18} className="text-teal-500" />
         </label>
 
+        {/* Promo Code */}
+        <div className="mb-6">
+          {!appliedPromo ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowPromo(!showPromo)}
+                className="flex items-center gap-1.5 text-sm text-navy-400 hover:text-navy-600 font-medium transition-colors"
+              >
+                <Tag size={14} />
+                Have a promo code?
+                <ChevronDown size={14} className={`transition-transform ${showPromo ? "rotate-180" : ""}`} />
+              </button>
+              {showPromo && (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="flex-1 px-3 py-2 rounded-lg bg-cream-50 border border-cream-300 text-navy-700 placeholder:text-navy-300 outline-none focus:border-gold-500 text-sm font-mono tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    disabled={promoLoading || !promoCode.trim()}
+                    className="px-4 py-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    {promoLoading ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
+                  </button>
+                </div>
+              )}
+              {promoError && (
+                <p className="mt-2 text-xs text-red-500">{promoError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between bg-green-50 px-3 py-2.5 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Tag size={14} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-semibold text-green-700">{appliedPromo.code}</p>
+                  {appliedPromo.description && (
+                    <p className="text-xs text-green-600">{appliedPromo.description}</p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemovePromo}
+                className="p-1 hover:bg-green-100 rounded-full transition-colors"
+              >
+                <X size={14} className="text-green-600" />
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Price Breakdown */}
         <div className="space-y-2 mb-6 text-sm">
           <div className="flex justify-between">
@@ -413,9 +548,24 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
             </div>
           )}
+          {promoDiscount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Promo discount</span>
+              <span>-{formatCurrency(promoDiscount)}</span>
+            </div>
+          )}
           <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
             <span className="text-navy-700">Total</span>
-            <span className="text-navy-700">{formatCurrency(pricing.total)}</span>
+            <span className="text-navy-700">
+              {promoDiscount > 0 ? (
+                <>
+                  <span className="line-through text-navy-300 mr-1 font-normal text-xs">{formatCurrency(pricing.total)}</span>
+                  {formatCurrency(finalTotal)}
+                </>
+              ) : (
+                formatCurrency(pricing.total)
+              )}
+            </span>
           </div>
         </div>
 

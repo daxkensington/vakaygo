@@ -150,17 +150,57 @@ export default function IslandPage() {
       }
     });
 
-    const jsonLd = {
+    const islandGeo: Record<string, { lat: number; lng: number }> = {
+      grenada: { lat: 12.1165, lng: -61.679 },
+      "trinidad-and-tobago": { lat: 10.6918, lng: -61.2225 },
+      barbados: { lat: 13.1939, lng: -59.5432 },
+      "st-lucia": { lat: 13.9094, lng: -60.9789 },
+      "st-vincent": { lat: 13.2528, lng: -61.1971 },
+      antigua: { lat: 17.0608, lng: -61.7964 },
+      dominica: { lat: 15.415, lng: -61.371 },
+      jamaica: { lat: 18.1096, lng: -77.2975 },
+      bahamas: { lat: 25.0343, lng: -77.3963 },
+      "turks-and-caicos": { lat: 21.694, lng: -71.7979 },
+      "cayman-islands": { lat: 19.3133, lng: -81.2546 },
+      aruba: { lat: 12.5211, lng: -69.9683 },
+      curacao: { lat: 12.1696, lng: -68.99 },
+      bonaire: { lat: 12.1443, lng: -68.2655 },
+      "st-kitts": { lat: 17.3578, lng: -62.783 },
+      martinique: { lat: 14.6415, lng: -61.0242 },
+      guadeloupe: { lat: 16.265, lng: -61.551 },
+      "us-virgin-islands": { lat: 18.3358, lng: -64.8963 },
+      "british-virgin-islands": { lat: 18.4207, lng: -64.64 },
+      "puerto-rico": { lat: 18.2208, lng: -66.5901 },
+      "dominican-republic": { lat: 18.7357, lng: -70.1627 },
+    };
+
+    const heroImgUrl = heroImages[islandSlug]
+      ? `https://vakaygo.com${heroImages[islandSlug]}`
+      : `https://vakaygo.com${defaultHero}`;
+
+    const geo = islandGeo[islandSlug];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jsonLd: Record<string, any> = {
       "@context": "https://schema.org",
       "@type": "TouristDestination",
       name: data.name,
       description: data.description || undefined,
       url: `https://vakaygo.com/${islandSlug}`,
+      image: heroImgUrl,
       containedInPlace: {
         "@type": "Place",
         name: "Caribbean",
       },
     };
+
+    if (geo) {
+      jsonLd.geo = {
+        "@type": "GeoCoordinates",
+        latitude: geo.lat,
+        longitude: geo.lng,
+      };
+    }
 
     const script = document.createElement("script");
     script.type = "application/ld+json";

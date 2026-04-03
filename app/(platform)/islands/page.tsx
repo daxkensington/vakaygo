@@ -62,6 +62,47 @@ export default function IslandsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Inject TouristDestination + ItemList JSON-LD
+  useEffect(() => {
+    if (islands.length === 0) return;
+
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "TouristDestination",
+      name: "Caribbean Islands",
+      description: `Explore ${islands.length} Caribbean islands and thousands of stays, tours, dining, and experiences on VakayGo.`,
+      url: "https://vakaygo.com/islands",
+      image: "https://vakaygo.com/images/hero/caribbean-hero.jpg",
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: 15.0,
+        longitude: -65.0,
+      },
+      containedInPlace: {
+        "@type": "Place",
+        name: "Caribbean",
+      },
+      includesAttraction: islands.map((island) => ({
+        "@type": "TouristDestination",
+        name: island.name,
+        url: `https://vakaygo.com/${island.slug}`,
+      })),
+    };
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(jsonLd);
+    script.id = "islands-jsonld";
+    const existing = document.getElementById("islands-jsonld");
+    if (existing) existing.remove();
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById("islands-jsonld");
+      if (el) el.remove();
+    };
+  }, [islands]);
+
   const totalListings = islands.reduce((sum, i) => sum + i.listingCount, 0);
 
   return (

@@ -19,6 +19,9 @@ export async function GET(request: Request) {
     const maxPrice = searchParams.get("maxPrice");
     const minRating = searchParams.get("minRating");
     const date = searchParams.get("date");
+    const guests = searchParams.get("guests");
+    const amenities = searchParams.get("amenities");
+    const duration = searchParams.get("duration");
     const sort = searchParams.get("sort") || "recommended";
     const limit = parseInt(searchParams.get("limit") || "24");
     const offset = parseInt(searchParams.get("offset") || "0");
@@ -71,6 +74,68 @@ export async function GET(request: Request) {
     }
     if (minRating) {
       conditions.push(gte(listings.avgRating, minRating));
+    }
+
+    // Guest count filter — checks typeData JSON for capacity fields
+    if (guests) {
+      const guestCount = parseInt(guests);
+      if (!isNaN(guestCount) && guestCount > 0) {
+        conditions.push(
+          sql`(
+            (${listings.type} = 'stay' AND (${listings.typeData}->>'maxGuests')::int >= ${guestCount})
+            OR (${listings.type} IN ('tour', 'excursion') AND (
+              ${listings.typeData}->>'groupSize' IS NULL
+              OR (${listings.typeData}->>'groupSize')::int >= ${guestCount}
+            ))
+            OR (${listings.type} = 'dining' AND (
+              ${listings.typeData}->>'partySize' IS NULL
+              OR (${listings.typeData}->>'partySize')::int >= ${guestCount}
+            ))
+            OR (${listings.type} NOT IN ('stay', 'tour', 'excursion', 'dining'))
+          )`
+        );
+      }
+    }
+
+    // Amenity filter — checks typeData.amenities array contains all selected amenities
+    if (amenities) {
+      const amenityList = amenities.split(",").filter(Boolean);
+      for (const amenity of amenityList) {
+        conditions.push(
+          sql`${listings.typeData}->'amenities' @> ${JSON.stringify([amenity])}::jsonb`
+        );
+      }
+    }
+
+    // Duration filter — checks typeData.duration for time ranges
+    if (duration) {
+      switch (duration) {
+        case "under-2":
+          conditions.push(
+            sql`(${listings.typeData}->>'durationMinutes')::int < 120`
+          );
+          break;
+        case "2-4":
+          conditions.push(
+            sql`(${listings.typeData}->>'durationMinutes')::int >= 120 AND (${listings.typeData}->>'durationMinutes')::int <= 240`
+          );
+          break;
+        case "4-8":
+          conditions.push(
+            sql`(${listings.typeData}->>'durationMinutes')::int > 240 AND (${listings.typeData}->>'durationMinutes')::int <= 480`
+          );
+          break;
+        case "full-day":
+          conditions.push(
+            sql`(${listings.typeData}->>'durationMinutes')::int > 480 AND (${listings.typeData}->>'isMultiDay')::boolean IS NOT TRUE`
+          );
+          break;
+        case "multi-day":
+          conditions.push(
+            sql`(${listings.typeData}->>'isMultiDay')::boolean = true`
+          );
+          break;
+      }
     }
 
     const orderBy =
@@ -159,6 +224,11 @@ export async function POST(request: Request) {
       typeData,
       latitude,
       longitude,
+      cancellationPolicy,
+      minStay,
+      maxStay,
+      advanceNotice,
+      maxGuests,
     } = body;
 
     if (!operatorId || !title || !type) {
@@ -192,6 +262,11 @@ export async function POST(request: Request) {
         typeData,
         latitude,
         longitude,
+        cancellationPolicy: cancellationPolicy || "moderate",
+        minStay: minStay || null,
+        maxStay: maxStay || null,
+        advanceNotice: advanceNotice || null,
+        maxGuests: maxGuests || null,
       })
       .returning({ id: listings.id, slug: listings.slug });
 

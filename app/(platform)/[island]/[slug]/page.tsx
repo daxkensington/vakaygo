@@ -14,6 +14,9 @@ import { ShareButton } from "@/components/listings/share-button";
 import { PhotoGallery } from "@/components/listings/photo-gallery";
 import { TrustBadges } from "@/components/listings/trust-badges";
 import { ContactOperator } from "@/components/listings/contact-operator";
+import { CancellationPolicy } from "@/components/listings/cancellation-policy";
+import { WhatsIncluded } from "@/components/listings/whats-included";
+import { SuperhostBadge } from "@/components/shared/superhost-badge";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { useSaved } from "@/lib/use-saved";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
@@ -52,6 +55,12 @@ type ListingDetail = {
   operatorName: string | null;
   operatorAvatar: string | null;
   operatorId: string;
+  operatorSuperhost?: boolean;
+  cancellationPolicy: string | null;
+  minStay: number | null;
+  maxStay: number | null;
+  advanceNotice: number | null;
+  maxGuests: number | null;
   images: { id: string; url: string; alt: string | null }[];
 };
 
@@ -236,15 +245,28 @@ export default function ListingDetailPage() {
         ratingValue: parseFloat(listing.avgRating).toFixed(1),
         reviewCount: listing.reviewCount,
         bestRating: "5",
+        worstRating: "1",
       };
     }
 
     if (listing.priceAmount) {
+      jsonLd.priceRange = `$${parseFloat(listing.priceAmount).toFixed(0)}`;
       jsonLd.offers = {
         "@type": "Offer",
         price: listing.priceAmount,
         priceCurrency: listing.priceCurrency || "XCD",
         availability: "https://schema.org/InStock",
+      };
+    }
+
+    // Add geo coordinates if available in typeData
+    const lat = td.latitude || td.lat;
+    const lng = td.longitude || td.lng || td.lon;
+    if (lat && lng) {
+      jsonLd.geo = {
+        "@type": "GeoCoordinates",
+        latitude: lat,
+        longitude: lng,
       };
     }
 
@@ -411,9 +433,14 @@ export default function ListingDetailPage() {
                     {String(listing.operatorName || "V").charAt(0)}
                   </div>
                   <div>
-                    <p className="font-semibold text-navy-700">
-                      {String(listing.operatorName || "Local Operator")}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-navy-700">
+                        {String(listing.operatorName || "Local Operator")}
+                      </p>
+                      {listing.operatorSuperhost && (
+                        <SuperhostBadge variant="small" />
+                      )}
+                    </div>
                     <p className="text-sm text-navy-400">
                       Verified VakayGo operator
                     </p>
@@ -494,8 +521,11 @@ export default function ListingDetailPage() {
                 </p>
               </div>
 
-              {/* What's Included */}
-              {td.includes && (
+              {/* What's Included / Excluded (tour types) */}
+              <WhatsIncluded typeData={listing.typeData} listingType={listing.type} />
+
+              {/* Legacy: What's Included (simple list from td.includes) */}
+              {td.includes && !td.included && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">
                     What&apos;s Included
@@ -509,6 +539,47 @@ export default function ListingDetailPage() {
                         <span className="text-navy-600">{item}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Booking Rules */}
+              {(listing.minStay || listing.maxStay || listing.advanceNotice || listing.maxGuests) && (
+                <div className="mt-8">
+                  <h2 className="text-xl font-bold text-navy-700 mb-4">Booking Rules</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {listing.minStay && listing.minStay > 0 && (
+                      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+                        <Clock size={16} className="text-gold-500" />
+                        <span className="text-sm font-medium text-navy-600">
+                          Minimum stay: {listing.minStay} night{listing.minStay > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
+                    {listing.maxStay && listing.maxStay > 0 && (
+                      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+                        <Clock size={16} className="text-gold-500" />
+                        <span className="text-sm font-medium text-navy-600">
+                          Maximum stay: {listing.maxStay} night{listing.maxStay > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
+                    {listing.advanceNotice && listing.advanceNotice > 0 && (
+                      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+                        <Clock size={16} className="text-gold-500" />
+                        <span className="text-sm font-medium text-navy-600">
+                          Book at least {listing.advanceNotice} hour{listing.advanceNotice > 1 ? "s" : ""} in advance
+                        </span>
+                      </div>
+                    )}
+                    {listing.maxGuests && listing.maxGuests > 0 && (
+                      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+                        <UsersIcon size={16} className="text-gold-500" />
+                        <span className="text-sm font-medium text-navy-600">
+                          Up to {listing.maxGuests} guest{listing.maxGuests > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -552,25 +623,8 @@ export default function ListingDetailPage() {
               )}
 
               {/* Cancellation Policy */}
-              <div className="mt-8 p-6 bg-white rounded-2xl shadow-[var(--shadow-card)]">
-                <h2 className="text-lg font-bold text-navy-700 mb-3">
-                  Cancellation Policy
-                </h2>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-teal-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                    <Check size={14} className="text-teal-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-navy-700">
-                      Free cancellation up to 24 hours before
-                    </p>
-                    <p className="text-sm text-navy-400 mt-1">
-                      Cancel for free up to 24 hours before the start date for a
-                      full refund. Cancellations made less than 24 hours in
-                      advance are subject to a 50% fee.
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-8">
+                <CancellationPolicy policy={listing.cancellationPolicy} />
               </div>
 
               {/* Contact Operator */}

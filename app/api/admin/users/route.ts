@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         businessName: users.businessName,
         emailVerified: users.emailVerified,
         onboardingComplete: users.onboardingComplete,
+        isSuperhost: users.isSuperhost,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         listingCount: sql<number>`(

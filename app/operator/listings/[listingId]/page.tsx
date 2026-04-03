@@ -21,6 +21,13 @@ type ListingData = {
   priceAmount: string | null;
   priceUnit: string | null;
   islandSlug: string;
+  cancellationPolicy: string | null;
+  minStay: number | null;
+  maxStay: number | null;
+  advanceNotice: number | null;
+  maxGuests: number | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  typeData: Record<string, any> | null;
   images: { id: string; url: string; alt: string | null }[];
 };
 
@@ -41,6 +48,16 @@ export default function EditListingPage() {
   const [price, setPrice] = useState("");
   const [priceUnit, setPriceUnit] = useState("");
   const [status, setStatus] = useState("");
+  const [cancellationPolicy, setCancellationPolicy] = useState("moderate");
+  const [minStay, setMinStay] = useState("");
+  const [maxStay, setMaxStay] = useState("");
+  const [advanceNotice, setAdvanceNotice] = useState("");
+  const [maxGuests, setMaxGuests] = useState("");
+  const [includedItems, setIncludedItems] = useState<string[]>([]);
+  const [excludedItems, setExcludedItems] = useState<string[]>([]);
+  const [newIncluded, setNewIncluded] = useState("");
+  const [newExcluded, setNewExcluded] = useState("");
+  const [meetingPoint, setMeetingPoint] = useState("");
   const [images, setImages] = useState<{ id: string; url: string; alt: string | null }[]>([]);
 
   useEffect(() => {
@@ -60,6 +77,15 @@ export default function EditListingPage() {
         setPrice(l.priceAmount || "");
         setPriceUnit(l.priceUnit || "");
         setStatus(l.status || "draft");
+        setCancellationPolicy(l.cancellationPolicy || "moderate");
+        setMinStay(l.minStay ? String(l.minStay) : "");
+        setMaxStay(l.maxStay ? String(l.maxStay) : "");
+        setAdvanceNotice(l.advanceNotice ? String(l.advanceNotice) : "");
+        setMaxGuests(l.maxGuests ? String(l.maxGuests) : "");
+        const td = l.typeData || {};
+        setIncludedItems((td.included as string[]) || []);
+        setExcludedItems((td.excluded as string[]) || []);
+        setMeetingPoint((td.meetingPoint as string) || "");
         setImages(l.images || []);
       } catch {
         setListing(null);
@@ -88,6 +114,17 @@ export default function EditListingPage() {
           priceAmount: price ? parseFloat(price) : null,
           priceUnit,
           status,
+          cancellationPolicy,
+          minStay: minStay ? parseInt(minStay) : null,
+          maxStay: maxStay ? parseInt(maxStay) : null,
+          advanceNotice: advanceNotice ? parseInt(advanceNotice) : null,
+          maxGuests: maxGuests ? parseInt(maxGuests) : null,
+          typeData: {
+            ...(listing?.typeData || {}),
+            included: includedItems.length > 0 ? includedItems : undefined,
+            excluded: excludedItems.length > 0 ? excludedItems : undefined,
+            meetingPoint: meetingPoint || undefined,
+          },
         }),
       });
 
@@ -303,6 +340,205 @@ export default function EditListingPage() {
             </div>
           )}
         </div>
+
+        {/* Cancellation Policy */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <h2 className="font-bold text-navy-700 mb-4">Cancellation Policy</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { value: "flexible", label: "Flexible", desc: "Free cancel 24h before" },
+              { value: "moderate", label: "Moderate", desc: "Free cancel 7 days before" },
+              { value: "strict", label: "Strict", desc: "50% refund 14 days before" },
+              { value: "non_refundable", label: "Non-Refundable", desc: "No refunds" },
+            ].map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setCancellationPolicy(p.value)}
+                className={`p-3 rounded-xl text-left transition-all border-2 ${
+                  cancellationPolicy === p.value
+                    ? "border-gold-500 bg-gold-50"
+                    : "border-cream-200 hover:border-cream-300"
+                }`}
+              >
+                <p className="text-sm font-semibold text-navy-700">{p.label}</p>
+                <p className="text-xs text-navy-400 mt-0.5">{p.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Booking Rules */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <h2 className="font-bold text-navy-700 mb-4">Booking Rules</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {listing?.type === "stay" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Min. Nights</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={minStay}
+                    onChange={(e) => setMinStay(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="No minimum"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Max. Nights</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={maxStay}
+                    onChange={(e) => setMaxStay(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="No maximum"
+                  />
+                </div>
+              </>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-navy-600 mb-1.5">Advance Notice (hours)</label>
+              <input
+                type="number"
+                min="0"
+                value={advanceNotice}
+                onChange={(e) => setAdvanceNotice(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="No requirement"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy-600 mb-1.5">Max. Guests</label>
+              <input
+                type="number"
+                min="1"
+                value={maxGuests}
+                onChange={(e) => setMaxGuests(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="Unlimited"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* What's Included / Excluded (tour types) */}
+        {["tour", "excursion", "vip", "guide"].includes(listing?.type || "") && (
+          <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+            <h2 className="font-bold text-navy-700 mb-4">What&apos;s Included / Excluded</h2>
+
+            {/* Included */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-navy-600 mb-2">Included</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {includedItems.map((item, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 text-sm px-3 py-1.5 rounded-full">
+                    {item}
+                    <button
+                      type="button"
+                      onClick={() => setIncludedItems(includedItems.filter((_, idx) => idx !== i))}
+                      className="text-teal-400 hover:text-teal-600"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newIncluded}
+                  onChange={(e) => setNewIncluded(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newIncluded.trim()) {
+                        setIncludedItems([...includedItems, newIncluded.trim()]);
+                        setNewIncluded("");
+                      }
+                    }
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+                  placeholder="e.g. Hotel pickup, Lunch, Equipment"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newIncluded.trim()) {
+                      setIncludedItems([...includedItems, newIncluded.trim()]);
+                      setNewIncluded("");
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-semibold hover:bg-teal-600 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Excluded */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-navy-600 mb-2">Not Included</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {excludedItems.map((item, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 text-sm px-3 py-1.5 rounded-full">
+                    {item}
+                    <button
+                      type="button"
+                      onClick={() => setExcludedItems(excludedItems.filter((_, idx) => idx !== i))}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newExcluded}
+                  onChange={(e) => setNewExcluded(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newExcluded.trim()) {
+                        setExcludedItems([...excludedItems, newExcluded.trim()]);
+                        setNewExcluded("");
+                      }
+                    }
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+                  placeholder="e.g. Gratuities, Alcoholic beverages"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newExcluded.trim()) {
+                      setExcludedItems([...excludedItems, newExcluded.trim()]);
+                      setNewExcluded("");
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-red-400 text-white rounded-xl text-sm font-semibold hover:bg-red-500 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Meeting Point */}
+            <div>
+              <label className="block text-sm font-semibold text-navy-600 mb-2">Meeting Point</label>
+              <input
+                type="text"
+                value={meetingPoint}
+                onChange={(e) => setMeetingPoint(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="e.g. St. George's Cruise Port, Grenada"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Save */}
         <div className="flex items-center justify-between">

@@ -101,11 +101,21 @@ export default function NewListingPage() {
   const [price, setPrice] = useState("");
   const [priceUnit, setPriceUnit] = useState("night");
   const [address, setAddress] = useState("");
+  const [cancellationPolicy, setCancellationPolicy] = useState("moderate");
+  const [maxGuests, setMaxGuests] = useState("");
+  const [advanceNotice, setAdvanceNotice] = useState("");
+  const [minStay, setMinStay] = useState("");
+  const [includedItems, setIncludedItems] = useState<string[]>([]);
+  const [excludedItems, setExcludedItems] = useState<string[]>([]);
+  const [newIncluded, setNewIncluded] = useState("");
+  const [newExcluded, setNewExcluded] = useState("");
+  const [meetingPoint, setMeetingPoint] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [createdListingId, setCreatedListingId] = useState("");
 
-  const totalSteps = 4;
+  const isTourType = ["tour", "excursion", "vip", "guide"].includes(type);
+  const totalSteps = 5;
 
   const priceUnits: Record<string, string[]> = {
     stay: ["night", "week", "month"],
@@ -141,6 +151,15 @@ export default function NewListingPage() {
           priceAmount: price ? parseFloat(price) : null,
           priceCurrency: "USD",
           priceUnit,
+          cancellationPolicy,
+          minStay: minStay ? parseInt(minStay) : null,
+          maxGuests: maxGuests ? parseInt(maxGuests) : null,
+          advanceNotice: advanceNotice ? parseInt(advanceNotice) : null,
+          typeData: isTourType ? {
+            included: includedItems.length > 0 ? includedItems : undefined,
+            excluded: excludedItems.length > 0 ? excludedItems : undefined,
+            meetingPoint: meetingPoint || undefined,
+          } : undefined,
         }),
       });
 
@@ -399,6 +418,157 @@ export default function NewListingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Rules & Policies */}
+        {step === 5 && (
+          <div>
+            <h2 className="text-xl font-bold text-navy-700 mb-2">
+              Rules & Policies
+            </h2>
+            <p className="text-navy-400 mb-6">
+              Set cancellation policy and booking rules
+            </p>
+            <div className="space-y-6">
+              {/* Cancellation Policy */}
+              <div>
+                <label className="block text-sm font-semibold text-navy-600 mb-3">
+                  Cancellation Policy
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: "flexible", label: "Flexible", desc: "Free cancel 24h before" },
+                    { value: "moderate", label: "Moderate", desc: "Free cancel 7 days before" },
+                    { value: "strict", label: "Strict", desc: "50% refund 14 days before" },
+                    { value: "non_refundable", label: "Non-Refundable", desc: "No refunds" },
+                  ].map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setCancellationPolicy(p.value)}
+                      className={`p-3 rounded-xl text-left transition-all border-2 ${
+                        cancellationPolicy === p.value
+                          ? "border-gold-500 bg-gold-50"
+                          : "border-cream-200 hover:border-cream-300"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-navy-700">{p.label}</p>
+                      <p className="text-xs text-navy-400 mt-0.5">{p.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Booking Rules */}
+              <div className="grid grid-cols-2 gap-4">
+                {type === "stay" && (
+                  <div>
+                    <label className="block text-sm font-medium text-navy-600 mb-1.5">Min. Nights</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={minStay}
+                      onChange={(e) => setMinStay(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                      placeholder="No minimum"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Advance Notice (hours)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={advanceNotice}
+                    onChange={(e) => setAdvanceNotice(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="No requirement"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Max. Guests</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxGuests}
+                    onChange={(e) => setMaxGuests(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="Unlimited"
+                  />
+                </div>
+              </div>
+
+              {/* Included / Excluded (tour types) */}
+              {isTourType && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-navy-600 mb-2">What&apos;s Included</label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {includedItems.map((item, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 text-sm px-3 py-1.5 rounded-full">
+                          {item}
+                          <button type="button" onClick={() => setIncludedItems(includedItems.filter((_, idx) => idx !== i))} className="text-teal-400 hover:text-teal-600">&times;</button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newIncluded}
+                        onChange={(e) => setNewIncluded(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (newIncluded.trim()) { setIncludedItems([...includedItems, newIncluded.trim()]); setNewIncluded(""); }
+                          }
+                        }}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+                        placeholder="e.g. Hotel pickup, Lunch"
+                      />
+                      <button type="button" onClick={() => { if (newIncluded.trim()) { setIncludedItems([...includedItems, newIncluded.trim()]); setNewIncluded(""); } }} className="px-4 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-semibold hover:bg-teal-600 transition-colors">Add</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-navy-600 mb-2">Not Included</label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {excludedItems.map((item, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 text-sm px-3 py-1.5 rounded-full">
+                          {item}
+                          <button type="button" onClick={() => setExcludedItems(excludedItems.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600">&times;</button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newExcluded}
+                        onChange={(e) => setNewExcluded(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (newExcluded.trim()) { setExcludedItems([...excludedItems, newExcluded.trim()]); setNewExcluded(""); }
+                          }
+                        }}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
+                        placeholder="e.g. Gratuities, Alcoholic beverages"
+                      />
+                      <button type="button" onClick={() => { if (newExcluded.trim()) { setExcludedItems([...excludedItems, newExcluded.trim()]); setNewExcluded(""); } }} className="px-4 py-2.5 bg-red-400 text-white rounded-xl text-sm font-semibold hover:bg-red-500 transition-colors">Add</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-navy-600 mb-2">Meeting Point</label>
+                    <input
+                      type="text"
+                      value={meetingPoint}
+                      onChange={(e) => setMeetingPoint(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                      placeholder="e.g. St. George's Cruise Port"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

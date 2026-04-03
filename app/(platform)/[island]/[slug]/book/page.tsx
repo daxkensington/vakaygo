@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { useAuth } from "@/lib/auth-context";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
+import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import {
   Calendar,
   Users as UsersIcon,
@@ -29,6 +30,7 @@ type ListingInfo = {
   islandSlug: string;
   islandName: string;
   operatorName: string | null;
+  cancellationPolicy: string | null;
 };
 
 export default function BookingPage() {
@@ -48,6 +50,9 @@ export default function BookingPage() {
   const [booked, setBooked] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
+  const [usePoints, setUsePoints] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
   useEffect(() => {
     async function fetchListing() {
@@ -64,6 +69,17 @@ export default function BookingPage() {
     }
     if (params.slug) fetchListing();
   }, [params.slug]);
+
+  // Fetch user's loyalty points for redemption
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/loyalty")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.points) setUserPoints(data.points);
+      })
+      .catch(() => {});
+  }, [user]);
 
   if (!user) {
     return (
@@ -279,6 +295,54 @@ export default function BookingPage() {
                   </div>
                 </label>
 
+                {/* Loyalty Points */}
+                {userPoints >= 500 && (
+                  <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+                    <label className="flex items-center gap-4 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={usePoints}
+                        onChange={(e) => {
+                          setUsePoints(e.target.checked);
+                          if (e.target.checked) {
+                            // Calculate max redeemable: min of user points or total price * 100
+                            const maxPoints = Math.min(userPoints, Math.floor(pricing.total * 100));
+                            // Round down to nearest 500
+                            setPointsToRedeem(Math.floor(maxPoints / 500) * 500);
+                          } else {
+                            setPointsToRedeem(0);
+                          }
+                        }}
+                        className="w-5 h-5 accent-gold-500"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gold-500">{"\u2B50"}</span>
+                          <span className="font-semibold text-navy-700">Use Reward Points</span>
+                        </div>
+                        <p className="text-sm text-navy-400 mt-1">
+                          You have {userPoints.toLocaleString()} points (${(userPoints / 100).toFixed(2)} credit)
+                        </p>
+                      </div>
+                    </label>
+                    {usePoints && pointsToRedeem > 0 && (
+                      <div className="mt-3 ml-9 bg-gold-50 rounded-xl px-4 py-3 text-sm">
+                        <p className="text-gold-700 font-medium">
+                          Applying {pointsToRedeem.toLocaleString()} points = ${(pointsToRedeem / 100).toFixed(2)} discount
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Points you will earn */}
+                <div className="bg-teal-50 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <span className="text-teal-600 text-lg">{"\u2B50"}</span>
+                  <p className="text-sm text-teal-700">
+                    You will earn <strong>{Math.floor(pricing.total * 10).toLocaleString()} points</strong> from this booking
+                  </p>
+                </div>
+
                 {error && (
                   <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
                 )}
@@ -299,9 +363,13 @@ export default function BookingPage() {
                   )}
                 </button>
 
-                <div className="flex items-center justify-center gap-4 text-xs text-navy-300">
+                <div className="mt-4">
+                  <CancellationPolicy policy={listing.cancellationPolicy} compact />
+                </div>
+
+                <div className="flex items-center justify-center gap-4 text-xs text-navy-300 mt-3">
                   <div className="flex items-center gap-1"><Lock size={12} /> Secure payment</div>
-                  <div className="flex items-center gap-1"><Shield size={12} /> Free cancellation 24h</div>
+                  <div className="flex items-center gap-1"><Shield size={12} /> Verified operator</div>
                 </div>
               </form>
             </div>
@@ -333,9 +401,17 @@ export default function BookingPage() {
                       <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
                     </div>
                   )}
+                  {usePoints && pointsToRedeem > 0 && (
+                    <div className="flex justify-between text-gold-600">
+                      <span>Points discount ({pointsToRedeem.toLocaleString()} pts)</span>
+                      <span>-{formatCurrency(pointsToRedeem / 100)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-3 border-t border-cream-200 font-semibold text-base">
                     <span className="text-navy-700">Total</span>
-                    <span className="text-navy-700">{formatCurrency(pricing.total)}</span>
+                    <span className="text-navy-700">
+                      {formatCurrency(pricing.total - (usePoints ? pointsToRedeem / 100 : 0))}
+                    </span>
                   </div>
                 </div>
 

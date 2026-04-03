@@ -255,3 +255,40 @@ export async function sendWelcomeEmail(params: {
 </body></html>`.trim(),
   });
 }
+
+export async function sendVerificationEmail(params: {
+  to: string;
+  name: string;
+  token: string;
+}) {
+  const { to, name, token } = params;
+  const verifyUrl = `https://vakaygo.com/api/auth/verify-email/confirm?token=${token}`;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: "Verify your email — VakayGo",
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:linear-gradient(135deg,#1A6B6A,#1C2333);border-radius:16px;padding:40px 32px;text-align:center;margin-bottom:24px">
+    <h1 style="color:white;font-size:24px;margin:0">Verify Your Email</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Please verify your email address to unlock all features on VakayGo, including bookings, messaging, and trip planning.</p>
+    <div style="text-align:center;margin-bottom:16px">
+      <a href="${verifyUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Verify Email</a>
+    </div>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 24 hours. If you didn't create an account on VakayGo, you can safely ignore this email.</p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}

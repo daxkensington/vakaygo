@@ -18,6 +18,7 @@ import {
   Info,
   CreditCard,
   AlertTriangle,
+  QrCode,
 } from "lucide-react";
 import { ReviewModal } from "@/components/listings/review-modal";
 import { DisputeModal } from "@/components/disputes/dispute-modal";
@@ -314,6 +315,13 @@ function BookingsContent() {
                           <p className="text-sm text-navy-400">How was your experience?</p>
                         </div>
                         <div className="flex items-center gap-3">
+                          <Link
+                            href={`/bookings/${booking.id}/voucher`}
+                            className="text-sm font-semibold text-teal-500 hover:text-teal-600 flex items-center gap-1"
+                          >
+                            <QrCode size={14} />
+                            Voucher
+                          </Link>
                           <button
                             onClick={() =>
                               setDisputeModal({
@@ -347,19 +355,28 @@ function BookingsContent() {
                           <Check size={14} className="text-teal-500" />
                           <p className="text-sm text-navy-400">Confirmed and paid</p>
                         </div>
-                        <button
-                          onClick={() =>
-                            setDisputeModal({
-                              bookingId: booking.id,
-                              bookingNumber: booking.bookingNumber,
-                              listingTitle: booking.listingTitle,
-                            })
-                          }
-                          className="text-sm font-semibold text-red-500 hover:text-red-600 flex items-center gap-1"
-                        >
-                          <AlertTriangle size={14} />
-                          Report Issue
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/bookings/${booking.id}/voucher`}
+                            className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                          >
+                            <QrCode size={14} />
+                            View Voucher
+                          </Link>
+                          <button
+                            onClick={() =>
+                              setDisputeModal({
+                                bookingId: booking.id,
+                                bookingNumber: booking.bookingNumber,
+                                listingTitle: booking.listingTitle,
+                              })
+                            }
+                            className="text-sm font-semibold text-red-500 hover:text-red-600 flex items-center gap-1"
+                          >
+                            <AlertTriangle size={14} />
+                            Report Issue
+                          </button>
+                        </div>
                       </div>
                     )}
                     {(booking.status === "pending" || booking.status === "confirmed") && !booking.paidAt && (

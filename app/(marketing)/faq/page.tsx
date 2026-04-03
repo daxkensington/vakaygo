@@ -133,6 +133,22 @@ function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: bool
   );
 }
 
+// Build FAQ JSON-LD structured data from all FAQ items
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: Object.values(FAQ_DATA)
+    .flat()
+    .map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+};
+
 export default function FaqPage() {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -151,6 +167,10 @@ export default function FaqPage() {
   return (
     <>
       <Header />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <main>
         {/* Hero */}
         <section className="relative pt-32 pb-20 overflow-hidden">

@@ -7,10 +7,10 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { RecentlyViewed } from "@/components/listings/recently-viewed";
 import { ListingCard } from "@/components/listings/listing-card";
 import { ListingSkeletonGrid } from "@/components/listings/listing-skeleton";
+import { SearchAutocomplete } from "@/components/search/search-autocomplete";
 import {
   Search,
   MapPin,
-
   Home,
   Compass,
   UtensilsCrossed,
@@ -25,6 +25,18 @@ import {
   Star,
   DollarSign,
   Sparkles,
+  UserPlus,
+  Minus,
+  Plus,
+  Clock,
+  Wifi,
+  Waves,
+  Wind,
+  ChefHat,
+  ParkingCircle,
+  Palmtree,
+  Eye,
+  PawPrint,
 } from "lucide-react";
 
 const MapView = dynamic(() => import("@/components/listings/map-view"), {
@@ -57,6 +69,25 @@ const typeColors: Record<string, string> = {
   transport: "bg-navy-500",
   guide: "bg-gold-500",
 };
+
+const amenityOptions = [
+  { id: "wifi", label: "WiFi", icon: Wifi },
+  { id: "pool", label: "Pool", icon: Waves },
+  { id: "ac", label: "AC", icon: Wind },
+  { id: "kitchen", label: "Kitchen", icon: ChefHat },
+  { id: "parking", label: "Parking", icon: ParkingCircle },
+  { id: "beach-access", label: "Beach Access", icon: Palmtree },
+  { id: "ocean-view", label: "Ocean View", icon: Eye },
+  { id: "pet-friendly", label: "Pet Friendly", icon: PawPrint },
+];
+
+const durationOptions = [
+  { id: "under-2", label: "Under 2 hours" },
+  { id: "2-4", label: "2-4 hours" },
+  { id: "4-8", label: "4-8 hours" },
+  { id: "full-day", label: "Full day (8+)" },
+  { id: "multi-day", label: "Multi-day" },
+];
 
 type Listing = {
   id: string;
@@ -92,6 +123,9 @@ export default function ExplorePage() {
   const [maxPrice, setMaxPrice] = useState("");
   const [minRating, setMinRating] = useState("");
   const [totalCount, setTotalCount] = useState(0);
+  const [guestCount, setGuestCount] = useState("");
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const [aiSearchLoading, setAiSearchLoading] = useState(false);
@@ -180,6 +214,9 @@ export default function ExplorePage() {
       if (minPrice) params.set("minPrice", minPrice);
       if (maxPrice) params.set("maxPrice", maxPrice);
       if (minRating) params.set("minRating", minRating);
+      if (guestCount) params.set("guests", guestCount);
+      if (selectedAmenities.length > 0) params.set("amenities", selectedAmenities.join(","));
+      if (selectedDuration) params.set("duration", selectedDuration);
       if (sortBy !== "recommended") params.set("sort", sortBy);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(page * PAGE_SIZE));
@@ -203,7 +240,7 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, page, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, page, sortBy]);
 
   // Reset page and fetch count when filters change
   useEffect(() => {
@@ -219,11 +256,14 @@ export default function ExplorePage() {
     if (minPrice) countParams.set("minPrice", minPrice);
     if (maxPrice) countParams.set("maxPrice", maxPrice);
     if (minRating) countParams.set("minRating", minRating);
+    if (guestCount) countParams.set("guests", guestCount);
+    if (selectedAmenities.length > 0) countParams.set("amenities", selectedAmenities.join(","));
+    if (selectedDuration) countParams.set("duration", selectedDuration);
     fetch(`/api/listings/count?${countParams}`)
       .then((r) => r.json())
       .then((d) => setTotalCount(d.count || 0))
       .catch(() => {});
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, sortBy]);
 
   return (
     <>
@@ -233,36 +273,18 @@ export default function ExplorePage() {
         <div className="bg-white shadow-sm sticky top-16 z-40">
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
-              {/* Search - full width on mobile */}
-              <div className="w-full md:w-auto md:flex-1 flex items-center gap-3 bg-cream-50 rounded-xl px-4 py-3 relative">
-                {aiSearchLoading ? (
-                  <Loader2 size={18} className="text-gold-500 shrink-0 animate-spin" />
-                ) : aiSearchActive ? (
-                  <Sparkles size={18} className="text-gold-500 shrink-0" />
-                ) : (
-                  <Search size={18} className="text-navy-300 shrink-0" />
-                )}
-                <input
-                  type="text"
-                  placeholder="Search stays, tours, dining, events... or try &quot;romantic dinner in Grenada&quot;"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setAiSearchActive(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchQuery.trim()) {
-                      handleSmartSearch(searchQuery.trim());
-                    }
-                  }}
-                  className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
-                />
-                {aiSearchActive && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gold-600 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    AI-powered
-                  </span>
-                )}
-              </div>
+              {/* Search with Autocomplete - full width on mobile */}
+              <SearchAutocomplete
+                value={searchQuery}
+                onChange={(val) => {
+                  setSearchQuery(val);
+                  setAiSearchActive(false);
+                }}
+                onEnter={(val) => handleSmartSearch(val)}
+                aiSearchLoading={aiSearchLoading}
+                aiSearchActive={aiSearchActive}
+                className="w-full md:w-auto md:flex-1"
+              />
               {/* Date + Island row on mobile */}
               <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
@@ -335,6 +357,33 @@ export default function ExplorePage() {
                 <option value="4">4+ Stars</option>
                 <option value="4.5">4.5+ Stars</option>
               </select>
+              {/* Guest Count */}
+              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 shrink-0">
+                <Users size={16} className="text-navy-300 shrink-0" />
+                <button
+                  onClick={() => setGuestCount((prev) => {
+                    const n = parseInt(prev || "0");
+                    return n > 1 ? String(n - 1) : "";
+                  })}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-cream-200 transition-colors text-navy-500"
+                  aria-label="Decrease guests"
+                >
+                  <Minus size={12} />
+                </button>
+                <span className="text-sm font-medium text-navy-700 min-w-[3rem] text-center">
+                  {guestCount ? `${guestCount} guest${parseInt(guestCount) !== 1 ? "s" : ""}` : "Guests"}
+                </span>
+                <button
+                  onClick={() => setGuestCount((prev) => {
+                    const n = parseInt(prev || "0");
+                    return n < 20 ? String(n + 1) : prev;
+                  })}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-cream-200 transition-colors text-navy-500"
+                  aria-label="Increase guests"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
               {/* View Toggle */}
               <div className="flex items-center bg-cream-50 rounded-xl overflow-hidden shrink-0">
                 <button
@@ -365,7 +414,7 @@ export default function ExplorePage() {
             </div>
 
             {/* Active Filters Pills */}
-            {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating) && (
+            {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration) && (
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <span className="text-xs text-navy-400 font-medium">Active:</span>
                 {activeCategory !== "all" && (
@@ -431,6 +480,34 @@ export default function ExplorePage() {
                     <X size={12} />
                   </button>
                 )}
+                {guestCount && (
+                  <button
+                    onClick={() => setGuestCount("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    {guestCount} Guest{parseInt(guestCount) !== 1 ? "s" : ""}
+                    <X size={12} />
+                  </button>
+                )}
+                {selectedAmenities.map((amenity) => (
+                  <button
+                    key={amenity}
+                    onClick={() => setSelectedAmenities((prev) => prev.filter((a) => a !== amenity))}
+                    className="flex items-center gap-1 px-3 py-1 bg-teal-600 text-white text-xs font-medium rounded-full hover:bg-teal-500 transition-colors"
+                  >
+                    {amenityOptions.find((a) => a.id === amenity)?.label || amenity}
+                    <X size={12} />
+                  </button>
+                ))}
+                {selectedDuration && (
+                  <button
+                    onClick={() => setSelectedDuration("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    <Clock size={10} /> {durationOptions.find((d) => d.id === selectedDuration)?.label || selectedDuration}
+                    <X size={12} />
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveCategory("all");
@@ -440,6 +517,9 @@ export default function ExplorePage() {
                     setMinPrice("");
                     setMaxPrice("");
                     setMinRating("");
+                    setGuestCount("");
+                    setSelectedAmenities([]);
+                    setSelectedDuration("");
                   }}
                   className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gold-600 hover:text-gold-700 transition-colors underline"
                 >
@@ -453,7 +533,12 @@ export default function ExplorePage() {
               {categoryTabs.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    // Clear context-specific filters when switching categories
+                    if (cat.id !== "stay") setSelectedAmenities([]);
+                    if (cat.id !== "tour" && cat.id !== "excursion") setSelectedDuration("");
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     activeCategory === cat.id
                       ? "bg-navy-700 text-white"
@@ -465,6 +550,59 @@ export default function ExplorePage() {
                 </button>
               ))}
             </div>
+
+            {/* Amenity Filters — visible when Stays selected */}
+            {activeCategory === "stay" && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                {amenityOptions.map((amenity) => {
+                  const isSelected = selectedAmenities.includes(amenity.id);
+                  return (
+                    <button
+                      key={amenity.id}
+                      onClick={() =>
+                        setSelectedAmenities((prev) =>
+                          isSelected
+                            ? prev.filter((a) => a !== amenity.id)
+                            : [...prev, amenity.id]
+                        )
+                      }
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                        isSelected
+                          ? "bg-teal-600 text-white shadow-sm"
+                          : "bg-cream-100 text-navy-500 hover:bg-cream-200"
+                      }`}
+                    >
+                      <amenity.icon size={13} />
+                      {amenity.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Duration Filter — visible when Tours or Excursions selected */}
+            {(activeCategory === "tour" || activeCategory === "excursion") && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                <Clock size={14} className="text-navy-400 shrink-0 mt-1" />
+                {durationOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() =>
+                      setSelectedDuration((prev) =>
+                        prev === opt.id ? "" : opt.id
+                      )
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                      selectedDuration === opt.id
+                        ? "bg-teal-600 text-white shadow-sm"
+                        : "bg-cream-100 text-navy-500 hover:bg-cream-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -522,7 +660,7 @@ export default function ExplorePage() {
                     <Compass size={32} className="text-navy-200 mx-auto mb-3" />
                     <p className="text-navy-500 font-semibold">No listings found</p>
                     <button
-                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); }}
+                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); }}
                       className="mt-4 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
                     >
                       Clear Filters
@@ -559,7 +697,7 @@ export default function ExplorePage() {
           /* ── Grid View ────────────────────────────────────────── */
           <div className="mx-auto max-w-7xl px-6 py-8">
             {/* Recently Viewed — only when not filtering/searching */}
-            {activeCategory === "all" && !searchQuery && !activeIsland && !selectedDate && !minPrice && !maxPrice && !minRating && (
+            {activeCategory === "all" && !searchQuery && !activeIsland && !selectedDate && !minPrice && !maxPrice && !minRating && !guestCount && selectedAmenities.length === 0 && !selectedDuration && (
               <RecentlyViewed />
             )}
 
@@ -599,7 +737,7 @@ export default function ExplorePage() {
                   Try adjusting your filters, searching for something else, or exploring a different island.
                 </p>
                 <button
-                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); }}
+                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); }}
                   className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   Clear All Filters

@@ -74,6 +74,7 @@ export async function getUserById(id: string) {
       businessName: users.businessName,
       islandId: users.islandId,
       onboardingComplete: users.onboardingComplete,
+      emailVerified: users.emailVerified,
     })
     .from(users)
     .where(eq(users.id, id))

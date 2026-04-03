@@ -9,6 +9,7 @@ type User = {
   role: "traveler" | "operator" | "admin";
   avatarUrl: string | null;
   businessName: string | null;
+  emailVerified: boolean | null;
 };
 
 type AuthContextType = {

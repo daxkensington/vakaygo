@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, Home, Compass } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff, Loader2, Home, Compass, Gift } from "lucide-react";
 
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-teal-600" /></div>}>
+      <SignUpContent />
+    </Suspense>
+  );
+}
+
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<"role" | "details">("role");
   const [role, setRole] = useState<"traveler" | "operator">("traveler");
   const [name, setName] = useState("");
@@ -15,6 +24,25 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [referrerName, setReferrerName] = useState("");
+
+  // Check for referral code in URL
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferralCode(ref);
+      // Validate referral code
+      fetch(`/api/referrals/${ref}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.valid) {
+            setReferrerName(data.referrerName);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +53,7 @@ export default function SignUpPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, role }),
+        body: JSON.stringify({ email, password, name, role, referralCode: referralCode || undefined }),
       });
 
       const data = await res.json();
@@ -69,6 +97,15 @@ export default function SignUpPage() {
               : `Signing up as a ${role === "operator" ? "business operator" : "traveler"}`}
           </p>
         </div>
+
+        {referrerName && (
+          <div className="bg-teal-50 rounded-2xl p-4 mb-4 flex items-center gap-3">
+            <Gift size={20} className="text-teal-600 shrink-0" />
+            <p className="text-sm text-teal-700">
+              <strong>{referrerName}</strong> invited you! Sign up and earn <strong>500 bonus points</strong> on your first booking.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)]">
           {step === "role" ? (

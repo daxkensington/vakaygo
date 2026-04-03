@@ -5,6 +5,7 @@ import { Star, MapPin, Home, Compass, UtensilsCrossed, Music, Car, Users } from 
 import { useSaved } from "@/lib/use-saved";
 import { useCurrency } from "@/lib/currency";
 import { getImageUrl } from "@/lib/image-utils";
+import { SuperhostBadge } from "@/components/shared/superhost-badge";
 
 type ListingCardProps = {
   id: string;
@@ -20,6 +21,7 @@ type ListingCardProps = {
   islandName: string;
   image: string | null;
   isFeatured: boolean | null;
+  operatorSuperhost?: boolean;
 };
 
 const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home }> = {
@@ -134,9 +136,12 @@ export function ListingCard(props: ListingCardProps) {
             </div>
           )}
         </div>
-        <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors">
-          {props.title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors flex-1">
+            {props.title}
+          </h3>
+          {props.operatorSuperhost && <SuperhostBadge variant="card" />}
+        </div>
         {props.priceAmount && parseFloat(props.priceAmount) > 0 && (
           <p className="mt-2">
             <span className="font-bold text-navy-700">

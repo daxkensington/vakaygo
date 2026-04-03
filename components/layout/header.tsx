@@ -4,11 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, User, LayoutDashboard } from "lucide-react";
+import { Menu, X, User, LayoutDashboard, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { CurrencySwitcher } from "@/components/layout/currency-switcher";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { MessageBadge } from "@/components/layout/message-badge";
 
 export function Header() {
   const { user } = useAuth();
@@ -75,6 +76,15 @@ export function Header() {
           >
             Islands
           </Link>
+          <Link
+            href="/guides"
+            aria-current={pathname.startsWith("/guides") ? "page" : undefined}
+            className={`transition-colors duration-300 hover:text-gold-500 ${
+              scrolled || !isLanding ? "text-navy-500" : "text-white/80"
+            }`}
+          >
+            Guides
+          </Link>
           {user && (
             <Link
               href="/trips"
@@ -123,6 +133,14 @@ export function Header() {
                   Dashboard
                 </Link>
               )}
+              <Link
+                href="/rewards"
+                className="flex items-center gap-1 text-gold-500 hover:text-gold-600 transition-colors"
+              >
+                <Star size={14} className="fill-gold-500" />
+                Rewards
+              </Link>
+              <MessageBadge scrolled={scrolled} isLanding={isLanding} />
               <NotificationBell scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
@@ -168,6 +186,9 @@ export function Header() {
           <Link href="/explore" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             Explore
           </Link>
+          <Link href="/guides" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
+            Guides
+          </Link>
           <Link href="/for-businesses" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             For Businesses
           </Link>
@@ -176,8 +197,15 @@ export function Header() {
               <Link href="/trips" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 Trip Planner
               </Link>
+              <Link href="/messages" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
+                Messages
+              </Link>
               <Link href="/bookings" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 My Bookings
+              </Link>
+              <Link href="/rewards" className="block text-gold-500 font-medium py-2 flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+                <Star size={16} className="fill-gold-500" />
+                Rewards
               </Link>
               <Link href="/profile" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 Profile

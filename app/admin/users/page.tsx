@@ -13,6 +13,7 @@ import {
   UserCheck,
   Eye,
   Download,
+  Star,
 } from "lucide-react";
 
 type User = {
@@ -22,6 +23,7 @@ type User = {
   role: string;
   avatarUrl: string | null;
   businessName: string | null;
+  isSuperhost: boolean;
   createdAt: string;
   listingCount: number;
   bookingCount: number;
@@ -484,6 +486,44 @@ export default function AdminUsersPage() {
                 </span>
               </div>
             </div>
+
+            {/* Superhost Toggle (operators only) */}
+            {detailUser.role === "operator" && (
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-cream-200 p-4">
+                <div className="flex items-center gap-3">
+                  <Star size={18} className={detailUser.isSuperhost ? "text-amber-500 fill-amber-500" : "text-navy-300"} />
+                  <div>
+                    <p className="text-sm font-semibold text-navy-700">Superhost Status</p>
+                    <p className="text-xs text-navy-400">4.8+ rating, 10+ bookings, &lt;5% cancellation</p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = !detailUser.isSuperhost;
+                    try {
+                      const res = await fetch(`/api/admin/users/${detailUser.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ isSuperhost: newVal }),
+                      });
+                      if (res.ok) {
+                        setDetailUser({ ...detailUser, isSuperhost: newVal });
+                        fetchUsers();
+                      }
+                    } catch {}
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    detailUser.isSuperhost ? "bg-amber-500" : "bg-cream-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      detailUser.isSuperhost ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             <button
               onClick={() => setDetailUser(null)}

@@ -10,6 +10,7 @@ import { Roadmap } from "@/components/landing/roadmap";
 import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { PersonalizedHome } from "@/components/landing/personalized-home";
 
 export default function LandingPage() {
   const homepageJsonLd = {
@@ -51,6 +52,7 @@ export default function LandingPage() {
       />
       <main>
         <Hero />
+        <PersonalizedHome />
         <StatsBar />
         <FeaturedListings />
         <ValueProps />

@@ -17,6 +17,13 @@ import {
   Users,
   Calendar,
   ChevronDown,
+  Link2,
+  Copy,
+  Check,
+  RefreshCw,
+  ExternalLink,
+  Download,
+  Upload,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -113,6 +120,18 @@ export default function OperatorCalendarPage() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  /* iCal sync */
+  const [icalToken, setIcalToken] = useState<string | null>(null);
+  const [icalImportUrl, setIcalImportUrl] = useState("");
+  const [icalImportInput, setIcalImportInput] = useState("");
+  const [icalLastSync, setIcalLastSync] = useState<string | null>(null);
+  const [icalLoading, setIcalLoading] = useState(false);
+  const [icalSyncing, setIcalSyncing] = useState(false);
+  const [icalCopied, setIcalCopied] = useState(false);
+  const [icalError, setIcalError] = useState("");
+  const [icalSyncResult, setIcalSyncResult] = useState<string | null>(null);
+  const [icalSectionOpen, setIcalSectionOpen] = useState(false);
+
   /* ── Fetch listings ── */
   useEffect(() => {
     async function fetchListings() {
@@ -171,6 +190,82 @@ export default function OperatorCalendarPage() {
   useEffect(() => {
     if (listing) fetchAvailability();
   }, [fetchAvailability, listing]);
+
+  /* ── Fetch iCal settings ── */
+  const fetchIcalSettings = useCallback(async () => {
+    setIcalLoading(true);
+    try {
+      const res = await fetch(`/api/operator/listings/${listingId}/ical`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIcalToken(data.icalToken);
+        setIcalImportUrl(data.icalImportUrl || "");
+        setIcalImportInput(data.icalImportUrl || "");
+        setIcalLastSync(data.icalLastSync);
+      }
+    } catch {
+      /* silent — iCal is optional */
+    } finally {
+      setIcalLoading(false);
+    }
+  }, [listingId]);
+
+  useEffect(() => {
+    if (listing && icalSectionOpen && !icalToken) {
+      fetchIcalSettings();
+    }
+  }, [listing, icalSectionOpen, icalToken, fetchIcalSettings]);
+
+  /* ── iCal import handler ── */
+  async function handleIcalImport() {
+    if (!icalImportInput.trim()) return;
+    setIcalSyncing(true);
+    setIcalError("");
+    setIcalSyncResult(null);
+    try {
+      const res = await fetch(`/api/operator/listings/${listingId}/ical/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: icalImportInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setIcalError(data.error || "Import failed");
+      } else {
+        setIcalImportUrl(icalImportInput.trim());
+        setIcalLastSync(data.lastSync);
+        setIcalSyncResult(
+          `Synced! Found ${data.eventsFound} events, blocked ${data.datesBlocked} new dates.`
+        );
+        await fetchAvailability();
+        setTimeout(() => setIcalSyncResult(null), 5000);
+      }
+    } catch {
+      setIcalError("Failed to connect to server");
+    } finally {
+      setIcalSyncing(false);
+    }
+  }
+
+  function copyIcalUrl() {
+    if (!icalToken) return;
+    const url = `${window.location.origin}/api/operator/listings/${listingId}/ical?token=${icalToken}`;
+    navigator.clipboard.writeText(url);
+    setIcalCopied(true);
+    setTimeout(() => setIcalCopied(false), 2000);
+  }
+
+  function getTimeSince(dateStr: string | null): string {
+    if (!dateStr) return "Never synced";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1) return "Less than 1 hour ago";
+    if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days > 1 ? "s" : ""} ago`;
+  }
 
   /* ── Month navigation ── */
   function prevMonth() {
@@ -637,6 +732,193 @@ export default function OperatorCalendarPage() {
               <li>Use the side panel to set pricing, spots, or block dates in bulk</li>
               <li>Dates without availability records use your base price and unlimited spots</li>
             </ul>
+          </div>
+
+          {/* iCal Sync Section */}
+          <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] mt-4 overflow-hidden">
+            <button
+              onClick={() => setIcalSectionOpen(!icalSectionOpen)}
+              className="w-full flex items-center justify-between p-5 hover:bg-cream-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Link2 size={20} className="text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-sm font-semibold text-navy-700">
+                    iCal Calendar Sync
+                  </h3>
+                  <p className="text-xs text-navy-400">
+                    Sync with Airbnb, Booking.com, Google Calendar
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                size={18}
+                className={`text-navy-400 transition-transform ${
+                  icalSectionOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {icalSectionOpen && (
+              <div className="px-5 pb-5 space-y-5 border-t border-cream-200">
+                {icalLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 size={20} className="animate-spin text-gold-500" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Export Section */}
+                    <div className="pt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Download size={14} className="text-navy-500" />
+                        <h4 className="text-xs font-semibold text-navy-600 uppercase tracking-wide">
+                          Export Calendar
+                        </h4>
+                      </div>
+                      <p className="text-xs text-navy-400 mb-3">
+                        Add this URL to Google Calendar, Airbnb, or any calendar app to
+                        see your VakayGo bookings and blocked dates.
+                      </p>
+                      {icalToken && (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/api/operator/listings/${listingId}/ical?token=${icalToken}`}
+                            className="flex-1 px-3 py-2 rounded-xl border border-cream-300 text-xs text-navy-600 bg-cream-50 truncate"
+                          />
+                          <button
+                            onClick={copyIcalUrl}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                              icalCopied
+                                ? "bg-teal-50 text-teal-700"
+                                : "bg-gold-50 text-gold-700 hover:bg-gold-100"
+                            }`}
+                          >
+                            {icalCopied ? (
+                              <>
+                                <Check size={12} />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Import Section */}
+                    <div className="pt-2 border-t border-cream-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Upload size={14} className="text-navy-500" />
+                        <h4 className="text-xs font-semibold text-navy-600 uppercase tracking-wide">
+                          Import Calendar
+                        </h4>
+                      </div>
+                      <p className="text-xs text-navy-400 mb-3">
+                        Paste your Airbnb, Booking.com, or other calendar URL here.
+                        Events will be imported as blocked dates.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={icalImportInput}
+                          onChange={(e) => setIcalImportInput(e.target.value)}
+                          placeholder="https://www.airbnb.com/calendar/ical/..."
+                          className="flex-1 px-3 py-2 rounded-xl border border-cream-300 text-xs text-navy-600 focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none transition-all"
+                        />
+                        <button
+                          onClick={handleIcalImport}
+                          disabled={icalSyncing || !icalImportInput.trim()}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gold-500 hover:bg-gold-600 text-white transition-colors disabled:opacity-50"
+                        >
+                          {icalSyncing ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <RefreshCw size={12} />
+                          )}
+                          Sync
+                        </button>
+                      </div>
+
+                      {/* Error / Success messages */}
+                      {icalError && (
+                        <p className="text-xs text-red-500 mt-2">{icalError}</p>
+                      )}
+                      {icalSyncResult && (
+                        <p className="text-xs text-teal-600 mt-2">{icalSyncResult}</p>
+                      )}
+
+                      {/* Sync status */}
+                      <div className="flex items-center gap-2 mt-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            icalLastSync
+                              ? Date.now() - new Date(icalLastSync).getTime() <
+                                86400000
+                                ? "bg-teal-500"
+                                : "bg-amber-500"
+                              : "bg-amber-400"
+                          }`}
+                        />
+                        <span className="text-xs text-navy-400">
+                          {icalLastSync
+                            ? `Last synced ${getTimeSince(icalLastSync)}`
+                            : "Never synced"}
+                        </span>
+                        {icalImportUrl && (
+                          <span className="text-xs text-navy-300 ml-auto">
+                            Auto-syncs daily
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Setup Links */}
+                    <div className="pt-2 border-t border-cream-200">
+                      <h4 className="text-xs font-semibold text-navy-600 uppercase tracking-wide mb-3">
+                        Quick Setup Guides
+                      </h4>
+                      <div className="space-y-2">
+                        <a
+                          href="https://www.airbnb.com/help/article/99"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs text-navy-500 hover:text-gold-600 transition-colors"
+                        >
+                          <ExternalLink size={12} />
+                          Sync with Airbnb
+                        </a>
+                        <a
+                          href="https://partner.booking.com/en-gb/help/rates-availability/how-do-i-export-my-calendar"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs text-navy-500 hover:text-gold-600 transition-colors"
+                        >
+                          <ExternalLink size={12} />
+                          Sync with Booking.com
+                        </a>
+                        <a
+                          href="https://support.google.com/calendar/answer/37118"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs text-navy-500 hover:text-gold-600 transition-colors"
+                        >
+                          <ExternalLink size={12} />
+                          Sync with Google Calendar
+                        </a>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

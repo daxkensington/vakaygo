@@ -5,7 +5,9 @@ import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
 import { PromoBanner } from "@/components/layout/promo-banner";
+import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
 import { AIConcierge } from "@/components/chat/ai-concierge";
+import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -43,6 +45,18 @@ export const metadata: Metadata = {
     "Caribbean excursions",
     "VIP Caribbean",
   ],
+  alternates: {
+    canonical: "https://vakaygo.com",
+    languages: {
+      "en": "https://vakaygo.com",
+      "es": "https://vakaygo.com",
+      "fr": "https://vakaygo.com",
+      "pt": "https://vakaygo.com",
+      "nl": "https://vakaygo.com",
+      "de": "https://vakaygo.com",
+      "x-default": "https://vakaygo.com",
+    },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -77,6 +91,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1A6B6A" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className="min-h-screen flex flex-col">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-gold-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-xl focus:font-semibold">
           Skip to content
@@ -122,8 +142,9 @@ export default function RootLayout({
             }),
           }}
         />
-        <AuthProvider><SavedProvider><CurrencyProvider><PromoBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><PromoBanner /><EmailVerificationBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
+        <ServiceWorkerRegister />
         <Analytics />
       </body>
     </html>

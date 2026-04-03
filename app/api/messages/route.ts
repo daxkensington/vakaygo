@@ -52,9 +52,12 @@ export async function GET(request: Request) {
           content: messages.content,
           senderId: messages.senderId,
           receiverId: messages.receiverId,
+          attachmentUrl: messages.attachmentUrl,
+          attachmentType: messages.attachmentType,
           isRead: messages.isRead,
           createdAt: messages.createdAt,
           senderName: users.name,
+          senderAvatar: users.avatarUrl,
         })
         .from(messages)
         .innerJoin(users, eq(messages.senderId, users.id))
@@ -148,10 +151,10 @@ export async function POST(request: Request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { receiverId, content, listingId, bookingId } = await request.json();
+    const { receiverId, content, listingId, bookingId, attachmentUrl, attachmentType } = await request.json();
 
-    if (!receiverId || !content) {
-      return NextResponse.json({ error: "receiverId and content required" }, { status: 400 });
+    if (!receiverId || (!content && !attachmentUrl)) {
+      return NextResponse.json({ error: "receiverId and content (or attachment) required" }, { status: 400 });
     }
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -161,9 +164,11 @@ export async function POST(request: Request) {
       .values({
         senderId: user.id,
         receiverId,
-        content,
+        content: content || "",
         listingId: listingId || null,
         bookingId: bookingId || null,
+        attachmentUrl: attachmentUrl || null,
+        attachmentType: attachmentType || null,
       })
       .returning({ id: messages.id, createdAt: messages.createdAt });
 

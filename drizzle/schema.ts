@@ -88,6 +88,8 @@ export const users = pgTable(
     role: userRoleEnum("role").default("traveler").notNull(),
     passwordHash: text("password_hash"),
     emailVerified: boolean("email_verified").default(false),
+    emailVerificationToken: varchar("email_verification_token", { length: 128 }),
+    emailVerificationExpires: timestamp("email_verification_expires"),
     businessName: varchar("business_name", { length: 256 }),
     businessDescription: text("business_description"),
     businessPhone: varchar("business_phone", { length: 20 }),
@@ -95,6 +97,12 @@ export const users = pgTable(
     islandId: integer("island_id").references(() => islands.id),
     digipayMerchantId: varchar("digipay_merchant_id", { length: 128 }),
     onboardingComplete: boolean("onboarding_complete").default(false),
+    isSuperhost: boolean("is_superhost").default(false),
+    superhostSince: timestamp("superhost_since"),
+    loyaltyPoints: integer("loyalty_points").default(0),
+    loyaltyTier: varchar("loyalty_tier", { length: 16 }).default("explorer"), // explorer, adventurer, voyager, captain
+    referralCode: varchar("referral_code", { length: 16 }),
+    referredBy: uuid("referred_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -175,6 +183,13 @@ export const listings = pgTable(
     priceFrom: boolean("price_from").default(false),
     // Type-specific data stored as JSON
     typeData: json("type_data").$type<Record<string, unknown>>(),
+    // Cancellation policy: flexible, moderate, strict, non_refundable
+    cancellationPolicy: varchar("cancellation_policy", { length: 32 }).default("moderate"),
+    // Booking rules
+    minStay: integer("min_stay"),
+    maxStay: integer("max_stay"),
+    advanceNotice: integer("advance_notice"),
+    maxGuests: integer("max_guests"),
     avgRating: decimal("avg_rating", { precision: 3, scale: 2 }).default(
       "0.00"
     ),
@@ -183,6 +198,10 @@ export const listings = pgTable(
     isInstantBook: boolean("is_instant_book").default(false),
     metaTitle: varchar("meta_title", { length: 256 }),
     metaDescription: varchar("meta_description", { length: 512 }),
+    // iCal sync
+    icalToken: varchar("ical_token", { length: 128 }),
+    icalImportUrl: text("ical_import_url"),
+    icalLastSync: timestamp("ical_last_sync"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -280,6 +299,11 @@ export const bookings = pgTable(
     guestNotes: text("guest_notes"),
     operatorNotes: text("operator_notes"),
     cancellationReason: text("cancellation_reason"),
+    verificationToken: varchar("verification_token", { length: 128 }),
+    checkedIn: boolean("checked_in").default(false),
+    checkedInAt: timestamp("checked_in_at"),
+    promoCodeId: uuid("promo_code_id"),
+    discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -316,6 +340,19 @@ export const reviews = pgTable(
   },
   (t) => [index("reviews_listing_idx").on(t.listingId)]
 );
+
+// ─── REVIEW PHOTOS ─────────────────────────────────────────────
+export const reviewPhotos = pgTable("review_photos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reviewId: uuid("review_id").notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  alt: varchar("alt", { length: 256 }),
+  width: integer("width"),
+  height: integer("height"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("review_photos_review_idx").on(t.reviewId),
+]);
 
 // ─── PAYOUTS ────────────────────────────────────────────────────
 export const payouts = pgTable("payouts", {
@@ -410,6 +447,8 @@ export const messages = pgTable(
     listingId: uuid("listing_id").references(() => listings.id),
     bookingId: uuid("booking_id").references(() => bookings.id),
     content: text("content").notNull(),
+    attachmentUrl: text("attachment_url"),
+    attachmentType: varchar("attachment_type", { length: 16 }), // image, file
     isRead: boolean("is_read").default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -448,6 +487,18 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_read_idx").on(t.userId, t.isRead),
 ]);
 
+// ─── PUSH SUBSCRIPTIONS ──────────────────────────────────────
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("push_sub_user_idx").on(t.userId),
+]);
+
 // ─── PLATFORM SETTINGS (CMS) ──────────────────────────────
 export const platformSettings = pgTable("platform_settings", {
   key: varchar("key", { length: 128 }).primaryKey(),
@@ -480,6 +531,33 @@ export const disputes = pgTable("disputes", {
   index("disputes_status_idx").on(t.status),
 ]);
 
+// ─── BLOG POSTS ──────────────────────────────────────────────
+export const blogPostStatusEnum = pgEnum("blog_post_status", ["draft", "published", "archived"]);
+
+export const blogPosts = pgTable("blog_posts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slug: varchar("slug", { length: 300 }).notNull().unique(),
+  title: varchar("title", { length: 256 }).notNull(),
+  excerpt: text("excerpt"),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  authorId: uuid("author_id").notNull().references(() => users.id),
+  islandId: integer("island_id").references(() => islands.id),
+  category: varchar("category", { length: 64 }).notNull(),
+  tags: json("tags").$type<string[]>(),
+  status: blogPostStatusEnum("status").default("draft").notNull(),
+  metaTitle: varchar("meta_title", { length: 256 }),
+  metaDescription: varchar("meta_description", { length: 512 }),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("blog_posts_slug_idx").on(t.slug),
+  index("blog_posts_status_idx").on(t.status),
+  index("blog_posts_island_idx").on(t.islandId),
+  index("blog_posts_category_idx").on(t.category),
+]);
+
 // ─── AUDIT LOG ────────────────────────────────────────────────
 export const auditLog = pgTable("audit_log", {
   id: serial("id").primaryKey(),
@@ -493,4 +571,74 @@ export const auditLog = pgTable("audit_log", {
 }, (t) => [
   index("audit_log_admin_idx").on(t.adminId),
   index("audit_log_created_idx").on(t.createdAt),
+]);
+
+// ─── LOYALTY TRANSACTIONS ─────────────────────────────────────
+export const loyaltyTransactions = pgTable("loyalty_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 32 }).notNull(), // "earned_booking", "earned_review", "earned_referral", "redeemed", "expired", "bonus"
+  points: integer("points").notNull(), // positive for earned, negative for redeemed
+  description: text("description"),
+  bookingId: uuid("booking_id").references(() => bookings.id),
+  referralId: uuid("referral_id"),
+  expiresAt: timestamp("expires_at"), // points expire after 12 months
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("loyalty_user_idx").on(t.userId),
+  index("loyalty_created_idx").on(t.createdAt),
+]);
+
+// ─── REFERRALS ────────────────────────────────────────────────
+export const referrals = pgTable("referrals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  referrerId: uuid("referrer_id").notNull().references(() => users.id),
+  referredId: uuid("referred_id").references(() => users.id), // null until they sign up
+  referredEmail: varchar("referred_email", { length: 320 }),
+  code: varchar("code", { length: 16 }).notNull().unique(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(), // pending, signed_up, first_booking, rewarded
+  referrerReward: integer("referrer_reward").default(500), // points
+  referredReward: integer("referred_reward").default(500), // points
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (t) => [
+  index("referrals_referrer_idx").on(t.referrerId),
+  index("referrals_code_idx").on(t.code),
+]);
+
+// ─── PROMO CODES ──────────────────────────────────────────────
+export const promoCodes = pgTable("promo_codes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  description: text("description"),
+  discountType: varchar("discount_type", { length: 16 }).notNull(), // "percentage" or "fixed"
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("XCD"),
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
+  maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }),
+  maxUses: integer("max_uses"),
+  currentUses: integer("current_uses").default(0),
+  maxUsesPerUser: integer("max_uses_per_user").default(1),
+  validFrom: timestamp("valid_from").notNull(),
+  validUntil: timestamp("valid_until").notNull(),
+  applicableTypes: json("applicable_types").$type<string[]>(),
+  applicableIslands: json("applicable_islands").$type<number[]>(),
+  isActive: boolean("is_active").default(true),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("promo_codes_code_idx").on(t.code),
+]);
+
+// ─── PROMO CODE USES ─────────────────────────────────────────
+export const promoCodeUses = pgTable("promo_code_uses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  promoCodeId: uuid("promo_code_id").notNull().references(() => promoCodes.id),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  bookingId: uuid("booking_id").references(() => bookings.id),
+  discountApplied: decimal("discount_applied", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("promo_code_uses_promo_idx").on(t.promoCodeId),
+  index("promo_code_uses_user_idx").on(t.userId),
 ]);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Star, X, Check, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Star, X, Check, Loader2, ImagePlus, Trash2 } from "lucide-react";
+import Image from "next/image";
 
 type ReviewModalProps = {
   isOpen: boolean;
@@ -25,10 +26,71 @@ export function ReviewModal({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [photos, setPhotos] = useState<{ file: File; preview: string; uploading: boolean; url?: string }[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_PHOTOS = 5;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   if (!isOpen) return null;
 
   const isValid = rating > 0 && comment.trim().length >= 10;
+
+  function addPhotos(files: FileList | File[]) {
+    const fileArray = Array.from(files);
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) return;
+
+    const validFiles = fileArray.slice(0, remaining).filter((f) => {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        setError("Only JPEG, PNG, and WebP images are allowed");
+        return false;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        setError("Each photo must be under 5MB");
+        return false;
+      }
+      return true;
+    });
+
+    const newPhotos = validFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: false,
+    }));
+
+    setPhotos((prev) => [...prev, ...newPhotos]);
+    if (validFiles.length > 0) setError("");
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((prev) => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files) addPhotos(e.dataTransfer.files);
+  }
+
+  async function uploadPhoto(file: File): Promise<{ url: string } | null> {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return { url: data.url };
+    } catch {
+      return null;
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +100,17 @@ export function ReviewModal({
     setError("");
 
     try {
+      // Upload all photos first
+      let photoUrls: { url: string; alt?: string }[] = [];
+      if (photos.length > 0) {
+        const uploadResults = await Promise.all(
+          photos.map((p) => uploadPhoto(p.file))
+        );
+        photoUrls = uploadResults
+          .filter((r): r is { url: string } => r !== null)
+          .map((r) => ({ url: r.url }));
+      }
+
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,6 +119,7 @@ export function ReviewModal({
           rating,
           title: title.trim() || null,
           comment: comment.trim(),
+          photoUrls,
         }),
       });
 
@@ -75,6 +149,9 @@ export function ReviewModal({
     setSubmitting(false);
     setSuccess(false);
     setError("");
+    photos.forEach((p) => URL.revokeObjectURL(p.preview));
+    setPhotos([]);
+    setDragOver(false);
     onClose();
   }
 
@@ -85,7 +162,7 @@ export function ReviewModal({
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-auto relative">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-auto relative max-h-[90vh] overflow-y-auto">
         {/* Close button */}
         <button
           onClick={handleClose}
@@ -188,6 +265,83 @@ export function ReviewModal({
                   <p className="text-xs text-red-500 mt-1">
                     Please write at least 10 characters
                   </p>
+                )}
+              </div>
+
+              {/* Photo upload */}
+              <div>
+                <label className="text-sm font-medium text-navy-600 mb-2 block">
+                  Photos{" "}
+                  <span className="text-navy-300 font-normal">
+                    (optional, up to {MAX_PHOTOS})
+                  </span>
+                </label>
+
+                {/* Photo previews */}
+                {photos.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {photos.map((photo, i) => (
+                      <div
+                        key={i}
+                        className="relative w-[72px] h-[72px] rounded-lg overflow-hidden bg-cream-100 group"
+                      >
+                        <Image
+                          src={photo.preview}
+                          alt={`Upload ${i + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="72px"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={10} className="text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Drop zone / upload button */}
+                {photos.length < MAX_PHOTOS && (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl px-4 py-4 text-center cursor-pointer transition-colors ${
+                      dragOver
+                        ? "border-gold-500 bg-gold-50"
+                        : "border-cream-200 hover:border-gold-400 hover:bg-cream-50"
+                    }`}
+                  >
+                    <ImagePlus
+                      size={20}
+                      className="mx-auto mb-1.5 text-navy-300"
+                    />
+                    <p className="text-xs text-navy-400">
+                      Drag & drop or click to add photos
+                    </p>
+                    <p className="text-[10px] text-navy-300 mt-0.5">
+                      JPEG, PNG, WebP - Max 5MB each
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) addPhotos(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
                 )}
               </div>
 

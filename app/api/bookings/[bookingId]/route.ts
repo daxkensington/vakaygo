@@ -7,6 +7,7 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email";
 import { createNotification } from "@/server/notifications";
+import { awardBookingPoints } from "@/server/loyalty";
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
@@ -42,6 +43,18 @@ export async function PATCH(
 
     if (!updated) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Award loyalty points when booking is completed
+    if (status === "completed") {
+      try {
+        const totalAmount = parseFloat(updated.totalAmount);
+        awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
+          console.error("Failed to award booking points:", err);
+        });
+      } catch (loyaltyErr) {
+        console.error("Loyalty error:", loyaltyErr);
+      }
     }
 
     // Send email notifications on status change

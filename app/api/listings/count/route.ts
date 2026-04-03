@@ -13,6 +13,9 @@ export async function GET(request: Request) {
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
     const minRating = searchParams.get("minRating");
+    const guests = searchParams.get("guests");
+    const amenities = searchParams.get("amenities");
+    const duration = searchParams.get("duration");
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const conditions = [eq(listings.status, "active")];
@@ -35,6 +38,58 @@ export async function GET(request: Request) {
     }
     if (minRating) {
       conditions.push(gte(listings.avgRating, minRating));
+    }
+
+    // Guest count filter
+    if (guests) {
+      const guestCount = parseInt(guests);
+      if (!isNaN(guestCount) && guestCount > 0) {
+        conditions.push(
+          sql`(
+            (${listings.type} = 'stay' AND (${listings.typeData}->>'maxGuests')::int >= ${guestCount})
+            OR (${listings.type} IN ('tour', 'excursion') AND (
+              ${listings.typeData}->>'groupSize' IS NULL
+              OR (${listings.typeData}->>'groupSize')::int >= ${guestCount}
+            ))
+            OR (${listings.type} = 'dining' AND (
+              ${listings.typeData}->>'partySize' IS NULL
+              OR (${listings.typeData}->>'partySize')::int >= ${guestCount}
+            ))
+            OR (${listings.type} NOT IN ('stay', 'tour', 'excursion', 'dining'))
+          )`
+        );
+      }
+    }
+
+    // Amenity filter
+    if (amenities) {
+      const amenityList = amenities.split(",").filter(Boolean);
+      for (const amenity of amenityList) {
+        conditions.push(
+          sql`${listings.typeData}->'amenities' @> ${JSON.stringify([amenity])}::jsonb`
+        );
+      }
+    }
+
+    // Duration filter
+    if (duration) {
+      switch (duration) {
+        case "under-2":
+          conditions.push(sql`(${listings.typeData}->>'durationMinutes')::int < 120`);
+          break;
+        case "2-4":
+          conditions.push(sql`(${listings.typeData}->>'durationMinutes')::int >= 120 AND (${listings.typeData}->>'durationMinutes')::int <= 240`);
+          break;
+        case "4-8":
+          conditions.push(sql`(${listings.typeData}->>'durationMinutes')::int > 240 AND (${listings.typeData}->>'durationMinutes')::int <= 480`);
+          break;
+        case "full-day":
+          conditions.push(sql`(${listings.typeData}->>'durationMinutes')::int > 480 AND (${listings.typeData}->>'isMultiDay')::boolean IS NOT TRUE`);
+          break;
+        case "multi-day":
+          conditions.push(sql`(${listings.typeData}->>'isMultiDay')::boolean = true`);
+          break;
+      }
     }
 
     const [result] = await db

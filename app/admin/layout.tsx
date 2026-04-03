@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   ShieldAlert,
   Loader2,
+  BookOpen,
+  Tag,
 } from "lucide-react";
 
 const navItems = [
@@ -30,8 +32,10 @@ const navItems = [
   { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/admin/revenue", label: "Revenue", icon: DollarSign },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/promos", label: "Promo Codes", icon: Tag },
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle },
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
+  { href: "/admin/blog", label: "Blog", icon: BookOpen },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/content", label: "Content", icon: FileText },
   { href: "/admin/audit", label: "Audit Log", icon: ClipboardList },

@@ -39,12 +39,18 @@ export async function GET(
         reviewCount: listings.reviewCount,
         isFeatured: listings.isFeatured,
         isInstantBook: listings.isInstantBook,
+        cancellationPolicy: listings.cancellationPolicy,
+        minStay: listings.minStay,
+        maxStay: listings.maxStay,
+        advanceNotice: listings.advanceNotice,
+        maxGuests: listings.maxGuests,
         createdAt: listings.createdAt,
         islandSlug: islands.slug,
         islandName: islands.name,
         operatorName: users.businessName,
         operatorAvatar: users.avatarUrl,
         operatorId: users.id,
+        operatorSuperhost: users.isSuperhost,
       })
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))
