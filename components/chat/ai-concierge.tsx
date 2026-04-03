@@ -32,14 +32,64 @@ interface ConciergeContext {
 }
 
 // ─── Personalities ─────────────────────────────────────────────
+// Voice gender preference per personality — used to select the right TTS voice
+type VoiceGender = "female" | "male";
+
 const PERSONALITIES = [
-  { id: "coral", name: "Coral", emoji: "🐚", desc: "Warm & knowledgeable", color: "from-gold-400 to-gold-600" },
-  { id: "captain", name: "Captain Jack", emoji: "⚓", desc: "Salty island captain", color: "from-blue-500 to-blue-700" },
-  { id: "luxe", name: "Luxe", emoji: "✨", desc: "Premium concierge", color: "from-purple-400 to-purple-600" },
-  { id: "backpacker", name: "Ziggy", emoji: "🎒", desc: "Budget adventurer", color: "from-green-400 to-green-600" },
-  { id: "local", name: "Auntie Mae", emoji: "🌺", desc: "Caribbean insider", color: "from-orange-400 to-orange-600" },
-  { id: "party", name: "DJ Tropic", emoji: "🎶", desc: "Nightlife expert", color: "from-pink-400 to-pink-600" },
+  { id: "coral", name: "Coral", emoji: "🐚", desc: "Warm & knowledgeable", color: "from-gold-400 to-gold-600", voiceGender: "female" as VoiceGender, voicePitch: 1.0, voiceRate: 1.0 },
+  { id: "captain", name: "Captain Jack", emoji: "⚓", desc: "Salty island captain", color: "from-blue-500 to-blue-700", voiceGender: "male" as VoiceGender, voicePitch: 0.85, voiceRate: 0.95 },
+  { id: "luxe", name: "Luxe", emoji: "✨", desc: "Premium concierge", color: "from-purple-400 to-purple-600", voiceGender: "female" as VoiceGender, voicePitch: 1.05, voiceRate: 0.95 },
+  { id: "backpacker", name: "Ziggy", emoji: "🎒", desc: "Budget adventurer", color: "from-green-400 to-green-600", voiceGender: "male" as VoiceGender, voicePitch: 1.1, voiceRate: 1.1 },
+  { id: "local", name: "Auntie Mae", emoji: "🌺", desc: "Caribbean insider", color: "from-orange-400 to-orange-600", voiceGender: "female" as VoiceGender, voicePitch: 0.95, voiceRate: 0.9 },
+  { id: "party", name: "DJ Tropic", emoji: "🎶", desc: "Nightlife expert", color: "from-pink-400 to-pink-600", voiceGender: "male" as VoiceGender, voicePitch: 1.0, voiceRate: 1.05 },
 ];
+
+// Language code map for TTS and STT
+const LOCALE_TO_LANG: Record<string, string> = {
+  en: "en-US",
+  es: "es-ES",
+  fr: "fr-FR",
+  pt: "pt-BR",
+  nl: "nl-NL",
+  de: "de-DE",
+};
+
+// Select the best voice for a personality and language
+function selectVoice(voices: SpeechSynthesisVoice[], gender: VoiceGender, lang: string): SpeechSynthesisVoice | null {
+  // Filter to the target language
+  const langVoices = voices.filter(v => v.lang.startsWith(lang.split("-")[0]));
+  const pool = langVoices.length > 0 ? langVoices : voices.filter(v => v.lang.startsWith("en"));
+
+  if (pool.length === 0) return null;
+
+  // Prefer high-quality / neural / natural voices
+  const qualityKeywords = ["Natural", "Neural", "Premium", "Enhanced", "Online"];
+  const qualityVoices = pool.filter(v => qualityKeywords.some(k => v.name.includes(k)));
+
+  // Gender detection heuristics based on common voice names
+  const femaleNames = ["Samantha", "Karen", "Moira", "Tessa", "Victoria", "Zira", "Aria", "Jenny", "Sara", "Neerja", "Fiona", "Allison"];
+  const maleNames = ["Daniel", "James", "Tom", "Alex", "Fred", "David", "Mark", "Aaron", "Guy", "Reed", "Ralph"];
+
+  const genderFilter = (v: SpeechSynthesisVoice) => {
+    const name = v.name;
+    if (gender === "female") return femaleNames.some(n => name.includes(n)) || name.includes("Female");
+    return maleNames.some(n => name.includes(n)) || name.includes("Male");
+  };
+
+  // Best: quality + right gender
+  const best = qualityVoices.filter(genderFilter);
+  if (best.length > 0) return best[0];
+
+  // Good: right gender any quality
+  const genderMatch = pool.filter(genderFilter);
+  if (genderMatch.length > 0) return genderMatch[0];
+
+  // Fallback: quality voice any gender
+  if (qualityVoices.length > 0) return qualityVoices[0];
+
+  // Last resort: first voice in language
+  return pool[0];
+}
 
 const WELCOME_MESSAGES: Record<string, string> = {
   coral: "Hey! I'm Coral, your AI travel concierge. I can search real listings, check availability, compare options, and help plan your Caribbean adventure. What are you looking for?",
@@ -461,21 +511,39 @@ export function AIConcierge({
 
   // ─── Speech Functions ─────────────────────────────────────────
 
+  // Get the user's locale from the cookie or default to en
+  const getUserLocale = useCallback((): string => {
+    if (typeof document === "undefined") return "en";
+    const match = document.cookie.match(/(?:^|;\s*)locale=([^;]*)/);
+    return match?.[1] || "en";
+  }, []);
+
   const speakText = useCallback((text: string, onDone?: () => void) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       onDone?.();
       return;
     }
     window.speechSynthesis.cancel();
-    // Strip markdown for speech
-    const clean = text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/[#*_~`]/g, "");
+    // Strip markdown for cleaner speech
+    const clean = text
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/[#*_~`]/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip markdown links
+      .replace(/https?:\/\/\S+/g, ""); // strip URLs
+
+    const locale = getUserLocale();
+    const ttsLang = LOCALE_TO_LANG[locale] || "en-US";
+
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.lang = "en-US";
+    utterance.rate = currentPersonality.voiceRate;
+    utterance.pitch = currentPersonality.voicePitch;
+    utterance.lang = ttsLang;
+
+    // Select a voice locked to this personality's gender and the user's language
     const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")) || voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
+    const selectedVoice = selectVoice(voices, currentPersonality.voiceGender, ttsLang);
+    if (selectedVoice) utterance.voice = selectedVoice;
+
     utterance.onstart = () => {
       setIsSpeaking(true);
       setVoiceState("speaking");
@@ -491,7 +559,7 @@ export function AIConcierge({
       onDone?.();
     };
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [currentPersonality, getUserLocale]);
 
   const stopSpeaking = useCallback(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -509,7 +577,8 @@ export function AIConcierge({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
+    const locale = getUserLocale();
+    recognition.lang = LOCALE_TO_LANG[locale] || "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
@@ -571,6 +640,7 @@ export function AIConcierge({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
             context: buildContext(),
             personality,
+            locale: getUserLocale(),
           }),
         });
 
@@ -626,7 +696,7 @@ export function AIConcierge({
         setLoadingLabel(undefined);
       }
     },
-    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening]
+    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening, getUserLocale]
   );
 
   const handleSubmit = (e: React.FormEvent) => {

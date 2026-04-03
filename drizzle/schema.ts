@@ -642,3 +642,26 @@ export const promoCodeUses = pgTable("promo_code_uses", {
   index("promo_code_uses_promo_idx").on(t.promoCodeId),
   index("promo_code_uses_user_idx").on(t.userId),
 ]);
+
+// ─── CONCIERGE MEMORY ──────────────────────────────────────────
+// Persistent memory for AI concierge — stores learned facts about users
+// so agents get smarter with every interaction
+export const conciergeMemory = pgTable("concierge_memory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Category of memory: preference, trip_history, interaction, personal
+  category: varchar("category", { length: 32 }).notNull(),
+  // The learned fact (e.g. "prefers budget stays", "traveling with toddler")
+  fact: text("fact").notNull(),
+  // Source context (what conversation led to this memory)
+  source: text("source"),
+  // Confidence score 0-1 (inferred vs explicitly stated)
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("0.80").notNull(),
+  // Last time this memory was relevant/used
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("concierge_memory_user_idx").on(t.userId),
+  index("concierge_memory_category_idx").on(t.category),
+]);
