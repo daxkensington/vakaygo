@@ -66,12 +66,21 @@
       letter-spacing: 0.05em;
       z-index: 2;
     }
-    .card-img {
+    .card-img-wrap {
       width: 100%;
       aspect-ratio: 16/9;
-      object-fit: contain;
       background: #fff;
       padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+    .card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      mix-blend-mode: multiply;
     }
     .card-body {
       padding: 20px;
@@ -176,7 +185,7 @@
 
   <div class="grid" id="grid">
     <div class="card" onclick="select(1)">
-      <img class="card-img" src="/images/logo-concepts/concept-1.jpg" alt="Concept 1">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-1.jpg" alt="Concept 1"></div>
       <div class="card-body">
         <span class="card-num">Concept 1</span>
         <h3 class="card-title">Wave Serif + Palm Leaf</h3>
@@ -190,7 +199,7 @@
     </div>
 
     <div class="card" onclick="select(2)">
-      <img class="card-img" src="/images/logo-concepts/concept-2.jpg" alt="Concept 2">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-2.jpg" alt="Concept 2"></div>
       <div class="card-body">
         <span class="card-num">Concept 2</span>
         <h3 class="card-title">Compass Rose</h3>
@@ -204,7 +213,7 @@
     </div>
 
     <div class="card" onclick="select(3)">
-      <img class="card-img" src="/images/logo-concepts/concept-3.jpg" alt="Concept 3">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-3.jpg" alt="Concept 3"></div>
       <div class="card-body">
         <span class="card-num">Concept 3</span>
         <h3 class="card-title">Palm Tree V + Wave</h3>
@@ -218,7 +227,7 @@
     </div>
 
     <div class="card" onclick="select(4)">
-      <img class="card-img" src="/images/logo-concepts/concept-4.jpg" alt="Concept 4">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-4.jpg" alt="Concept 4"></div>
       <div class="card-body">
         <span class="card-num">Concept 4</span>
         <h3 class="card-title">Refined Wave + Palm</h3>
@@ -232,7 +241,7 @@
     </div>
 
     <div class="card" onclick="select(5)">
-      <img class="card-img" src="/images/logo-concepts/concept-5.jpg" alt="Concept 5">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-5.jpg" alt="Concept 5"></div>
       <div class="card-body">
         <span class="card-num">Concept 5</span>
         <h3 class="card-title">Gold Emblem + Sailboat</h3>
@@ -246,7 +255,7 @@
     </div>
 
     <div class="card" onclick="select(6)">
-      <img class="card-img" src="/images/logo-concepts/concept-6.jpg" alt="Concept 6">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-6.jpg" alt="Concept 6"></div>
       <div class="card-body">
         <span class="card-num">Concept 6</span>
         <h3 class="card-title">Palm + Sunburst</h3>
@@ -260,7 +269,7 @@
     </div>
 
     <div class="card" onclick="select(7)">
-      <img class="card-img" src="/images/logo-concepts/concept-7.jpg" alt="Concept 7">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-7.jpg" alt="Concept 7"></div>
       <div class="card-body">
         <span class="card-num">Concept 7</span>
         <h3 class="card-title">VG Wave Monogram</h3>
@@ -274,7 +283,7 @@
     </div>
 
     <div class="card" onclick="select(8)">
-      <img class="card-img" src="/images/logo-concepts/concept-8.jpg" alt="Concept 8">
+      <div class="card-img-wrap"><img class="card-img" src="/images/logo-concepts/concept-8.jpg" alt="Concept 8"></div>
       <div class="card-body">
         <span class="card-num">Concept 8</span>
         <h3 class="card-title">Script + Seashells</h3>
@@ -307,9 +316,8 @@
       document.getElementById('vote-label').textContent = 'Concept ' + num;
     }
     function setBg(color, btn) {
-      document.querySelectorAll('.card-img').forEach(function(img) {
-        img.style.backgroundColor = color;
-        img.style.background = color;
+      document.querySelectorAll('.card-img-wrap').forEach(function(wrap) {
+        wrap.style.backgroundColor = color;
       });
       document.querySelectorAll('.preview-toggle button').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
