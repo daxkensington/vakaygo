@@ -276,6 +276,8 @@ export default function CaribbeanMap({
   const [isFlyover, setIsFlyover] = useState(false);
   const [flyoverLabel, setFlyoverLabel] = useState("");
   const [flyoverListing, setFlyoverListing] = useState<MapListing | null>(null);
+  const [flyoverProgress, setFlyoverProgress] = useState({ current: 0, total: 0 });
+  const flyoverWaypointsRef = useRef<FlyoverWaypoint[]>([]);
   const [mapStyle, setMapStyle] = useState<"satellite" | "outdoors" | "dark">("satellite");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -320,7 +322,7 @@ export default function CaribbeanMap({
     map.addControl(new mapboxgl.ScaleControl({ maxWidth: 150 }), "bottom-left");
 
     map.on("style.load", () => {
-      // 3D terrain
+      // 3D terrain — dramatic mountains
       if (!map.getSource("mapbox-dem")) {
         map.addSource("mapbox-dem", {
           type: "raster-dem",
@@ -328,21 +330,32 @@ export default function CaribbeanMap({
           tileSize: 512,
           maxzoom: 14,
         });
-        map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+        map.setTerrain({ source: "mapbox-dem", exaggeration: 2.2 });
       }
 
-      // Sky atmosphere
+      // Atmospheric sky with golden hour sun
       if (!map.getLayer("sky")) {
         map.addLayer({
           id: "sky",
           type: "sky",
           paint: {
             "sky-type": "atmosphere",
-            "sky-atmosphere-sun": [0.0, 0.0],
-            "sky-atmosphere-sun-intensity": 15,
+            "sky-atmosphere-sun": [220, 70],
+            "sky-atmosphere-sun-intensity": 8,
+            "sky-atmosphere-color": "rgba(135, 206, 235, 1)",
+            "sky-atmosphere-halo-color": "rgba(255, 200, 100, 0.4)",
           },
         });
       }
+
+      // Ocean fog for depth
+      map.setFog({
+        color: "rgba(186, 210, 235, 0.4)",
+        "high-color": "rgba(100, 160, 220, 0.3)",
+        "horizon-blend": 0.08,
+        "space-color": "rgba(15, 23, 42, 1)",
+        "star-intensity": 0.15,
+      });
 
       // 3D buildings at close zoom
       const layers = map.getStyle().layers;
@@ -360,14 +373,56 @@ export default function CaribbeanMap({
             type: "fill-extrusion",
             minzoom: 14,
             paint: {
-              "fill-extrusion-color": "#aaa",
+              "fill-extrusion-color": "#ddd",
               "fill-extrusion-height": ["get", "height"],
               "fill-extrusion-base": ["get", "min_height"],
-              "fill-extrusion-opacity": 0.6,
+              "fill-extrusion-opacity": 0.7,
             },
           },
           labelLayerId
         );
+      }
+
+      // Island labels with listing counts (visible at low zoom)
+      if (!map.getSource("island-labels")) {
+        const islandFeatures = Object.entries(islandCoords).map(([slug, data]) => ({
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: data.center },
+          properties: { name: data.name, slug },
+        }));
+
+        map.addSource("island-labels", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: islandFeatures },
+        });
+
+        map.addLayer({
+          id: "island-labels",
+          type: "symbol",
+          source: "island-labels",
+          maxzoom: 8,
+          layout: {
+            "text-field": ["get", "name"],
+            "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
+            "text-size": 13,
+            "text-transform": "uppercase",
+            "text-letter-spacing": 0.1,
+            "text-allow-overlap": false,
+          },
+          paint: {
+            "text-color": "#ffffff",
+            "text-halo-color": "rgba(0,0,0,0.6)",
+            "text-halo-width": 2,
+          },
+        });
+
+        // Click island label to select it
+        map.on("click", "island-labels", (e) => {
+          const slug = e.features?.[0]?.properties?.slug;
+          if (slug && onIslandChange) onIslandChange(slug);
+        });
+        map.on("mouseenter", "island-labels", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "island-labels", () => { map.getCanvas().style.cursor = ""; });
       }
 
       setMapReady(true);
@@ -599,11 +654,49 @@ export default function CaribbeanMap({
       }
     });
 
-    // Pointer cursors
+    // Hover preview popup on unclustered pins
+    const hoverPopup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 12,
+      className: "vakaygo-hover-popup",
+      maxWidth: "240px",
+    });
+
+    map.on("mouseenter", "unclustered-point", (e) => {
+      map.getCanvas().style.cursor = "pointer";
+      const f = e.features?.[0];
+      if (!f) return;
+      const props = f.properties;
+      const coords = (f.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+      const listing = listingsMapRef.current.get(props?.id);
+      if (!listing) return;
+
+      const cfg = categoryConfig[listing.type] || categoryConfig.stay;
+      const r = listing.avgRating ? parseFloat(listing.avgRating).toFixed(1) : "";
+
+      hoverPopup.setLngLat(coords).setHTML(`
+        <div style="display:flex;gap:8px;align-items:center;padding:8px;font-family:system-ui,sans-serif;">
+          ${listing.image ? `<img src="${listing.image}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:56px;height:56px;border-radius:8px;background:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${cfg.emoji}</div>`}
+          <div style="min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:#1e293b;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${listing.title}</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+              ${r ? `<span style="font-size:11px;color:#1e293b;">⭐ ${r}</span>` : ""}
+              <span style="font-size:10px;color:${cfg.color};font-weight:600;">${cfg.emoji} ${cfg.label}</span>
+            </div>
+          </div>
+        </div>
+      `).addTo(map);
+    });
+
+    map.on("mouseleave", "unclustered-point", () => {
+      map.getCanvas().style.cursor = "";
+      hoverPopup.remove();
+    });
+
+    // Pointer cursors for clusters
     map.on("mouseenter", "clusters", () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
-    map.on("mouseenter", "unclustered-point", () => { map.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", "unclustered-point", () => { map.getCanvas().style.cursor = ""; });
   }, [mapReady]);
 
   // ── Update GeoJSON data when filters/listings change ──
@@ -652,54 +745,79 @@ export default function CaribbeanMap({
   }, [listings, activeCategories, searchQuery, mapReady]);
 
   // ── Flyover ──
+  // Flyover: fly to a specific waypoint index
+  const flyToWaypoint = useCallback((waypoints: FlyoverWaypoint[], idx: number) => {
+    const map = mapRef.current;
+    if (!map || idx >= waypoints.length) {
+      setIsFlyover(false);
+      setFlyoverLabel("");
+      setFlyoverListing(null);
+      setFlyoverProgress({ current: 0, total: 0 });
+      return;
+    }
+    const wp = waypoints[idx];
+    setFlyoverLabel(wp.label);
+    setFlyoverListing(wp.listing || null);
+    setFlyoverProgress({ current: idx + 1, total: waypoints.length });
+
+    const isOverview = idx === 0 || idx === waypoints.length - 1;
+    map.flyTo({
+      center: wp.center,
+      zoom: wp.zoom,
+      pitch: wp.pitch,
+      bearing: wp.bearing,
+      duration: isOverview ? 2500 : 4000,
+      essential: true,
+    });
+
+    flyoverIndexRef.current = idx + 1;
+    flyoverTimeoutRef.current = setTimeout(
+      () => flyToWaypoint(waypoints, idx + 1),
+      isOverview ? 3000 : 5500
+    );
+  }, []);
+
   const startFlyover = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
-    setIsFlyover(true);
-    setSelected(null);
-    flyoverIndexRef.current = 0;
 
-    // Build waypoints from actual top listings for this island
     const island = activeIslandRef.current;
     const waypoints = island
       ? buildIslandFlyover(island, listings)
       : FLYOVER_WAYPOINTS;
 
-    const flyNext = () => {
-      const idx = flyoverIndexRef.current;
-      if (idx >= waypoints.length) {
-        setIsFlyover(false);
-        setFlyoverLabel("");
-        setFlyoverListing(null);
-        return;
-      }
-      const wp = waypoints[idx];
-      setFlyoverLabel(wp.label);
-      setFlyoverListing(wp.listing || null);
-
-      const isOverview = idx === 0 || idx === waypoints.length - 1;
-      map.flyTo({
-        center: wp.center,
-        zoom: wp.zoom,
-        pitch: wp.pitch,
-        bearing: wp.bearing,
-        duration: isOverview ? 2500 : 4000,
-        essential: true,
-      });
-
-      flyoverIndexRef.current++;
-      flyoverTimeoutRef.current = setTimeout(flyNext, isOverview ? 3000 : 5500);
-    };
-
-    flyNext();
-  }, [listings]);
+    flyoverWaypointsRef.current = waypoints;
+    setIsFlyover(true);
+    setSelected(null);
+    flyoverIndexRef.current = 0;
+    flyToWaypoint(waypoints, 0);
+  }, [listings, flyToWaypoint]);
 
   const stopFlyover = useCallback(() => {
     if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
     setIsFlyover(false);
     setFlyoverLabel("");
     setFlyoverListing(null);
+    setFlyoverProgress({ current: 0, total: 0 });
   }, []);
+
+  const skipToNext = useCallback(() => {
+    if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
+    const waypoints = flyoverWaypointsRef.current;
+    const nextIdx = flyoverIndexRef.current;
+    if (nextIdx < waypoints.length) {
+      flyToWaypoint(waypoints, nextIdx);
+    } else {
+      stopFlyover();
+    }
+  }, [flyToWaypoint, stopFlyover]);
+
+  const skipToPrev = useCallback(() => {
+    if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
+    const waypoints = flyoverWaypointsRef.current;
+    const prevIdx = Math.max(0, flyoverIndexRef.current - 2);
+    flyToWaypoint(waypoints, prevIdx);
+  }, [flyToWaypoint]);
 
   // ── GPS Location ──
   const locateUser = useCallback(() => {
@@ -908,16 +1026,16 @@ export default function CaribbeanMap({
         </div>
       </div>
 
-      {/* Flyover card */}
+      {/* Flyover HUD */}
       {isFlyover && flyoverLabel && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 transition-all duration-500">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
+          {/* Listing card or overview label */}
           {flyoverListing ? (
-            // Listing card during attraction flyover
-            <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden flex w-[360px] max-w-[90vw]">
+            <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden flex w-[380px] max-w-[90vw]">
               {flyoverListing.image && (
                 <div
-                  className="w-28 h-28 bg-cover bg-center flex-shrink-0"
-                  style={{ backgroundImage: `url(${flyoverListing.image})` }}
+                  className="w-32 bg-cover bg-center flex-shrink-0"
+                  style={{ backgroundImage: `url(${flyoverListing.image})`, minHeight: "110px" }}
                 />
               )}
               <div className="flex-1 p-3 min-w-0">
@@ -929,7 +1047,7 @@ export default function CaribbeanMap({
                     {categoryConfig[flyoverListing.type]?.emoji} {categoryConfig[flyoverListing.type]?.label}
                   </span>
                 </div>
-                <h3 className="text-sm font-semibold text-navy-700 line-clamp-2 leading-snug">
+                <h3 className="text-[13px] font-semibold text-navy-700 line-clamp-2 leading-snug">
                   {flyoverListing.title}
                 </h3>
                 <div className="flex items-center gap-2 mt-1.5">
@@ -954,11 +1072,40 @@ export default function CaribbeanMap({
               </div>
             </div>
           ) : (
-            // Simple label for overview waypoints
             <div className="bg-black/70 backdrop-blur-md text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl">
               {flyoverLabel}
             </div>
           )}
+
+          {/* Progress bar + controls */}
+          <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 shadow-xl">
+            <button onClick={skipToPrev} className="text-white/70 hover:text-white transition-colors" title="Previous">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: flyoverProgress.total }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === flyoverProgress.current - 1
+                      ? "w-5 h-2 bg-gold-400"
+                      : i < flyoverProgress.current - 1
+                      ? "w-2 h-2 bg-white/50"
+                      : "w-2 h-2 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+            <button onClick={skipToNext} className="text-white/70 hover:text-white transition-colors" title="Next">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+            <span className="text-white/50 text-[10px] font-medium ml-1">
+              {flyoverProgress.current}/{flyoverProgress.total}
+            </span>
+            <button onClick={stopFlyover} className="text-white/50 hover:text-red-400 transition-colors ml-1" title="Stop">
+              <X size={14} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -996,6 +1143,15 @@ export default function CaribbeanMap({
           background: rgba(0,0,0,0.5);
         }
         .vakaygo-popup .mapboxgl-popup-tip {
+          border-top-color: white !important;
+        }
+        .vakaygo-hover-popup .mapboxgl-popup-content {
+          padding: 0 !important;
+          border-radius: 12px !important;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+        }
+        .vakaygo-hover-popup .mapboxgl-popup-tip {
           border-top-color: white !important;
         }
       `}</style>
