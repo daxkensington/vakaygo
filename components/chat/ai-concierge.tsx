@@ -32,19 +32,18 @@ interface ConciergeContext {
 }
 
 // ─── Personalities ─────────────────────────────────────────────
-// Voice gender preference per personality — used to select the right TTS voice
-type VoiceGender = "female" | "male";
-
+// Personality definitions — voice is handled server-side via OpenAI TTS API
+// Each personality maps to a distinct OpenAI voice (nova, onyx, shimmer, echo, fable, alloy)
 const PERSONALITIES = [
-  { id: "coral", name: "Coral", emoji: "🐚", desc: "Warm & knowledgeable", color: "from-gold-400 to-gold-600", voiceGender: "female" as VoiceGender, voicePitch: 1.0, voiceRate: 1.0 },
-  { id: "captain", name: "Captain Jack", emoji: "⚓", desc: "Salty island captain", color: "from-blue-500 to-blue-700", voiceGender: "male" as VoiceGender, voicePitch: 0.85, voiceRate: 0.95 },
-  { id: "luxe", name: "Luxe", emoji: "✨", desc: "Premium concierge", color: "from-purple-400 to-purple-600", voiceGender: "female" as VoiceGender, voicePitch: 1.05, voiceRate: 0.95 },
-  { id: "backpacker", name: "Ziggy", emoji: "🎒", desc: "Budget adventurer", color: "from-green-400 to-green-600", voiceGender: "male" as VoiceGender, voicePitch: 1.1, voiceRate: 1.1 },
-  { id: "local", name: "Auntie Mae", emoji: "🌺", desc: "Caribbean insider", color: "from-orange-400 to-orange-600", voiceGender: "female" as VoiceGender, voicePitch: 0.95, voiceRate: 0.9 },
-  { id: "party", name: "DJ Tropic", emoji: "🎶", desc: "Nightlife expert", color: "from-pink-400 to-pink-600", voiceGender: "male" as VoiceGender, voicePitch: 1.0, voiceRate: 1.05 },
+  { id: "coral", name: "Coral", emoji: "🐚", desc: "Warm & knowledgeable", color: "from-gold-400 to-gold-600" },
+  { id: "captain", name: "Captain Jack", emoji: "⚓", desc: "Salty island captain", color: "from-blue-500 to-blue-700" },
+  { id: "luxe", name: "Luxe", emoji: "✨", desc: "Premium concierge", color: "from-purple-400 to-purple-600" },
+  { id: "backpacker", name: "Ziggy", emoji: "🎒", desc: "Budget adventurer", color: "from-green-400 to-green-600" },
+  { id: "local", name: "Auntie Mae", emoji: "🌺", desc: "Caribbean insider", color: "from-orange-400 to-orange-600" },
+  { id: "party", name: "DJ Tropic", emoji: "🎶", desc: "Nightlife expert", color: "from-pink-400 to-pink-600" },
 ];
 
-// Language code map for TTS and STT
+// Language code map for STT (speech recognition)
 const LOCALE_TO_LANG: Record<string, string> = {
   en: "en-US",
   es: "es-ES",
@@ -53,43 +52,6 @@ const LOCALE_TO_LANG: Record<string, string> = {
   nl: "nl-NL",
   de: "de-DE",
 };
-
-// Select the best voice for a personality and language
-function selectVoice(voices: SpeechSynthesisVoice[], gender: VoiceGender, lang: string): SpeechSynthesisVoice | null {
-  // Filter to the target language
-  const langVoices = voices.filter(v => v.lang.startsWith(lang.split("-")[0]));
-  const pool = langVoices.length > 0 ? langVoices : voices.filter(v => v.lang.startsWith("en"));
-
-  if (pool.length === 0) return null;
-
-  // Prefer high-quality / neural / natural voices
-  const qualityKeywords = ["Natural", "Neural", "Premium", "Enhanced", "Online"];
-  const qualityVoices = pool.filter(v => qualityKeywords.some(k => v.name.includes(k)));
-
-  // Gender detection heuristics based on common voice names
-  const femaleNames = ["Samantha", "Karen", "Moira", "Tessa", "Victoria", "Zira", "Aria", "Jenny", "Sara", "Neerja", "Fiona", "Allison"];
-  const maleNames = ["Daniel", "James", "Tom", "Alex", "Fred", "David", "Mark", "Aaron", "Guy", "Reed", "Ralph"];
-
-  const genderFilter = (v: SpeechSynthesisVoice) => {
-    const name = v.name;
-    if (gender === "female") return femaleNames.some(n => name.includes(n)) || name.includes("Female");
-    return maleNames.some(n => name.includes(n)) || name.includes("Male");
-  };
-
-  // Best: quality + right gender
-  const best = qualityVoices.filter(genderFilter);
-  if (best.length > 0) return best[0];
-
-  // Good: right gender any quality
-  const genderMatch = pool.filter(genderFilter);
-  if (genderMatch.length > 0) return genderMatch[0];
-
-  // Fallback: quality voice any gender
-  if (qualityVoices.length > 0) return qualityVoices[0];
-
-  // Last resort: first voice in language
-  return pool[0];
-}
 
 const WELCOME_MESSAGES: Record<string, string> = {
   coral: "Hey! I'm Coral, your AI travel concierge. I can search real listings, check availability, compare options, and help plan your Caribbean adventure. What are you looking for?",
@@ -410,22 +372,10 @@ export function AIConcierge({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const router = useRouter();
   const params = useParams();
 
   const currentPersonality = PERSONALITIES.find((p) => p.id === personality) || PERSONALITIES[0];
-
-  // Preload speech synthesis voices (Chrome loads them async)
-  useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const loadVoices = () => {
-      voicesRef.current = window.speechSynthesis.getVoices();
-    };
-    loadVoices();
-    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-  }, []);
 
   // Keep ref in sync
   useEffect(() => {
@@ -518,55 +468,78 @@ export function AIConcierge({
     return match?.[1] || "en";
   }, []);
 
-  const speakText = useCallback((text: string, onDone?: () => void) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+  // Audio element ref for API-based TTS playback
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  const speakText = useCallback(async (text: string, onDone?: () => void) => {
+    if (typeof window === "undefined" || !text.trim()) {
       onDone?.();
       return;
     }
-    window.speechSynthesis.cancel();
-    // Strip markdown for cleaner speech
-    const clean = text
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/[#*_~`]/g, "")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip markdown links
-      .replace(/https?:\/\/\S+/g, ""); // strip URLs
 
-    const locale = getUserLocale();
-    const ttsLang = LOCALE_TO_LANG[locale] || "en-US";
+    setIsSpeaking(true);
+    setVoiceState("speaking");
 
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = currentPersonality.voiceRate;
-    utterance.pitch = currentPersonality.voicePitch;
-    utterance.lang = ttsLang;
+    try {
+      // Call our TTS API which uses OpenAI's HD voices
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          personality: personality,
+        }),
+      });
 
-    // Select a voice locked to this personality's gender and the user's language
-    const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
-    const selectedVoice = selectVoice(voices, currentPersonality.voiceGender, ttsLang);
-    if (selectedVoice) utterance.voice = selectedVoice;
+      if (!res.ok) throw new Error("TTS failed");
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setVoiceState("speaking");
-    };
-    utterance.onend = () => {
+      const audioBlob = await res.blob();
+
+      // Clean up previous audio URL
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl;
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        setVoiceState("idle");
+        onDone?.();
+      };
+
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        setVoiceState("idle");
+        onDone?.();
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error("TTS playback error:", err);
       setIsSpeaking(false);
       setVoiceState("idle");
       onDone?.();
-    };
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      setVoiceState("idle");
-      onDone?.();
-    };
-    window.speechSynthesis.speak(utterance);
-  }, [currentPersonality, getUserLocale]);
+    }
+  }, [personality]);
 
   const stopSpeaking = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setVoiceState("idle");
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setIsSpeaking(false);
+    setVoiceState("idle");
   }, []);
 
   // Start listening (used by both manual mic button and voice mode loop)

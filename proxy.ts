@@ -18,6 +18,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.tile.openstreetmap.org https://*.vercel-storage.com",
     "font-src 'self' data:",
+    "media-src 'self' blob:",
     "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com",
     "frame-ancestors 'none'",
   ].join("; "),
