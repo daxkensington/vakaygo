@@ -169,9 +169,9 @@
   </div>
 
   <div class="preview-toggle">
-    <button class="active" onclick="setBg('white')">White Background</button>
-    <button onclick="setBg('#0f172a')">Dark Background</button>
-    <button onclick="setBg('#f8fafc')">Light Gray</button>
+    <button class="active" onclick="setBg('white', this)">White Background</button>
+    <button onclick="setBg('#0f172a', this)">Dark Background</button>
+    <button onclick="setBg('#f8fafc', this)">Light Gray</button>
   </div>
 
   <div class="grid" id="grid">
@@ -306,10 +306,13 @@
       document.getElementById('vote-bar').style.display = 'flex';
       document.getElementById('vote-label').textContent = 'Concept ' + num;
     }
-    function setBg(color) {
-      document.querySelectorAll('.card-img').forEach(img => img.style.background = color);
-      document.querySelectorAll('.preview-toggle button').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
+    function setBg(color, btn) {
+      document.querySelectorAll('.card-img').forEach(function(img) {
+        img.style.backgroundColor = color;
+        img.style.background = color;
+      });
+      document.querySelectorAll('.preview-toggle button').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
     }
   </script>
 </body>
