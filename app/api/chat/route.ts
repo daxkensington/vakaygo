@@ -389,10 +389,11 @@ function extractListings(toolResults: { name: string; result: any }[]): ListingC
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { messages, context, personality, locale } = body as {
+    const { messages, context, personality, locale, voiceMode } = body as {
       messages: { role: "user" | "assistant"; content: string }[];
       personality?: string;
       locale?: string;
+      voiceMode?: boolean;
       context?: {
         island?: string;
         type?: string;
@@ -429,6 +430,11 @@ export async function POST(request: Request) {
       systemPrompt += `\n\nCurrent page URL: ${context.pageUrl}`;
     }
 
+    // Voice mode: shorter responses for lower latency
+    if (voiceMode) {
+      systemPrompt += `\n\nKeep your response very short (1-2 sentences max) since the user is in voice mode and listening.`;
+    }
+
     // Build tool list — include memory tool only for logged-in users
     const tools = userId ? [...TOOLS, MEMORY_TOOL] : TOOLS;
 
@@ -453,7 +459,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 1024,
+          max_tokens: voiceMode ? 300 : 1024,
           system: systemPrompt,
           messages: apiMessages,
           tools,

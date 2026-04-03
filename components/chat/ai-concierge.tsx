@@ -616,6 +616,7 @@ export function AIConcierge({
             context: buildContext(),
             personality,
             locale: getUserLocale(),
+            voiceMode: isVoice || voiceModeRef.current,
           }),
         });
 

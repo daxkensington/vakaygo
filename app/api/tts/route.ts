@@ -48,11 +48,11 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "tts-1-hd",      // HD model for better quality
+        model: "tts-1",           // Standard model — much faster for voice chat
         voice: config.voice,
         input: clean,
         speed: config.speed,
-        response_format: "mp3",
+        response_format: "opus", // Smaller & faster than mp3
       }),
     });
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "audio/mpeg",
+        "Content-Type": "audio/ogg",
         "Content-Length": String(audioBuffer.byteLength),
         "Cache-Control": "no-store",
       },
