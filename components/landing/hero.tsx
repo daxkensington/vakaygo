@@ -46,7 +46,7 @@ export function Hero() {
 
       {/* Content */}
       <div
-        className={`relative z-10 mx-auto max-w-6xl px-6 text-center transition-all duration-1000 ${
+        className={`relative z-10 mx-auto max-w-7xl px-6 text-center transition-all duration-1000 ${
           loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
@@ -85,7 +85,7 @@ export function Hero() {
 
         {/* Search Bar */}
         <form
-          className="mt-8 md:mt-12 mx-auto max-w-5xl"
+          className="mt-8 md:mt-12 mx-auto max-w-6xl"
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.target as HTMLFormElement;
