@@ -2,20 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
+const ALLOWED_HOSTS = [
+  "googleapis.com",
+  "images.unsplash.com",
+  "imgen.x.ai",
+];
+
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
-  if (!url || !url.includes("googleapis.com")) {
+  if (!url) {
+    return NextResponse.json({ error: "Missing url param" }, { status: 400 });
+  }
+
+  let parsedHost: string;
+  try {
+    parsedHost = new URL(url).hostname;
+  } catch {
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+  if (!ALLOWED_HOSTS.some((h) => parsedHost.endsWith(h))) {
+    return NextResponse.json({ error: "Host not allowed" }, { status: 400 });
   }
 
-  // Always append current API key (getImageUrl strips any stale key from stored URLs)
-  const separator = url.includes("?") ? "&" : "?";
-  const fullUrl = url.includes("key=") ? url : `${url}${separator}key=${apiKey}`;
+  // For Google Places, append the API key
+  let fullUrl = url;
+  if (url.includes("googleapis.com")) {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+    }
+    const separator = url.includes("?") ? "&" : "?";
+    fullUrl = url.includes("key=") ? url : `${url}${separator}key=${apiKey}`;
+  }
 
   try {
     const imageRes = await fetch(fullUrl, {
