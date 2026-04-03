@@ -23,7 +23,9 @@ export async function GET(request: Request) {
     const amenities = searchParams.get("amenities");
     const duration = searchParams.get("duration");
     const sort = searchParams.get("sort") || "recommended";
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24")));
+    const rawLimit = parseInt(searchParams.get("limit") || "24");
+    const maxLimit = searchParams.get("limit") && rawLimit > 100 ? 2000 : 100;
+    const limit = Math.min(maxLimit, Math.max(1, rawLimit));
     const offset = Math.max(0, parseInt(searchParams.get("offset") || "0"));
 
     const db = getDb();

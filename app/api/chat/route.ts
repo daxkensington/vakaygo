@@ -9,7 +9,7 @@ import {
 } from "@/server/concierge-tools";
 import { createDb } from "@/server/db";
 import { conciergeMemory } from "@/drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 
 // ─── Auth Helper ───────────────────────────────────────────────
@@ -137,15 +137,11 @@ async function loadMemories(userId: string): Promise<string> {
     if (grouped.interaction) memoryPrompt += `**Past Interactions:** ${grouped.interaction.join(". ")}.\n`;
     memoryPrompt += "\nUse this knowledge naturally — reference what you know when relevant but don't dump it all at once. Build on past conversations.\n";
 
-    // Touch lastUsedAt for retrieved memories
-    const memoryIds = memories.map(() => userId);
-    if (memoryIds.length > 0) {
-      await db
-        .update(conciergeMemory)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(conciergeMemory.userId, userId))
-        .catch(() => {}); // non-blocking
-    }
+    // Touch lastUsedAt for this user's memories (non-blocking)
+    db.update(conciergeMemory)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(conciergeMemory.userId, userId))
+      .catch((e) => console.error("Memory touch error:", e));
 
     return memoryPrompt;
   } catch (e) {
@@ -179,16 +175,22 @@ async function saveMemory(userId: string, category: string, fact: string, source
   const db = createDb();
   try {
     // Check for duplicate/similar memory
+    // Check for duplicates within the same category
     const existing = await db
-      .select()
+      .select({ fact: conciergeMemory.fact })
       .from(conciergeMemory)
-      .where(eq(conciergeMemory.userId, userId))
-      .limit(50);
+      .where(
+        sql`${conciergeMemory.userId} = ${userId} AND ${conciergeMemory.category} = ${category}`
+      )
+      .limit(20);
 
-    const isDuplicate = existing.some(m =>
-      m.fact.toLowerCase().includes(fact.toLowerCase().slice(0, 30)) ||
-      fact.toLowerCase().includes(m.fact.toLowerCase().slice(0, 30))
-    );
+    const factLower = fact.toLowerCase();
+    const isDuplicate = existing.some(m => {
+      const existingLower = m.fact.toLowerCase();
+      return existingLower === factLower ||
+        existingLower.includes(factLower.slice(0, 40)) ||
+        factLower.includes(existingLower.slice(0, 40));
+    });
 
     if (isDuplicate) {
       return { saved: false };
@@ -199,7 +201,6 @@ async function saveMemory(userId: string, category: string, fact: string, source
       category,
       fact,
       source,
-      confidence: "0.85",
     });
 
     return { saved: true };

@@ -372,6 +372,8 @@ export function AIConcierge({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
+  const pendingVoiceTranscriptRef = useRef<string | null>(null);
+  const sendMessageRef = useRef<((content: string, isVoice?: boolean) => Promise<void>) | null>(null);
   const router = useRouter();
   const params = useParams();
 
@@ -642,11 +644,7 @@ export function AIConcierge({
                   if (transcript.trim()) {
                     // We need to call sendMessage but can't recurse directly here
                     // Instead, set a flag that triggers send
-                    setInput(transcript);
-                    setTimeout(() => {
-                      const form = document.getElementById("concierge-form") as HTMLFormElement;
-                      form?.requestSubmit();
-                    }, 100);
+                    voiceSend(transcript);
                   }
                 });
               }, 500);
@@ -670,6 +668,20 @@ export function AIConcierge({
       }
     },
     [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening, getUserLocale]
+  );
+
+  // Keep sendMessage ref in sync so voice callbacks can call it without stale closures
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  // Voice auto-send: call sendMessage directly via ref (no form hack)
+  const voiceSend = useCallback((transcript: string) => {
+    if (!transcript.trim()) return;
+    setLastTranscript(transcript);
+    // Use ref to avoid stale closure
+    sendMessageRef.current?.(transcript, true);
+  }, []
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -726,6 +738,13 @@ export function AIConcierge({
   }, [stopSpeaking]);
 
   const handlePersonalityChange = (id: string) => {
+    // Stop any ongoing speech/listening before switching
+    stopSpeaking();
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setIsListening(false);
+    setIsSpeaking(false);
+    setVoiceState("idle");
+    // Switch personality
     setPersonality(id);
     savePersonality(id);
     setShowPersonalities(false);
@@ -1009,7 +1028,7 @@ export function AIConcierge({
 
           {/* Footer: Input + Powered by (hidden in voice mode) */}
           <div className={`border-t border-cream-200 bg-white ${voiceMode ? "hidden" : ""}`}>
-            <form id="concierge-form" onSubmit={handleSubmit} className="px-4 py-3">
+            <form onSubmit={handleSubmit} className="px-4 py-3">
               <div className="flex items-center gap-2">
                 {hasSpeechApi && (
                   <button
@@ -1050,12 +1069,7 @@ export function AIConcierge({
             </div>
           </div>
 
-          {/* Voice mode form (hidden but functional) */}
-          {voiceMode && (
-            <form id="concierge-form" onSubmit={handleSubmit} className="hidden">
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} />
-            </form>
-          )}
+          {/* Voice mode no longer needs a hidden form — voiceSend calls sendMessage directly */}
         </div>
       )}
 
