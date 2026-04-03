@@ -360,10 +360,22 @@ export function AIConcierge({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const router = useRouter();
   const params = useParams();
 
   const currentPersonality = PERSONALITIES.find((p) => p.id === personality) || PERSONALITIES[0];
+
+  // Preload speech synthesis voices (Chrome loads them async)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const loadVoices = () => {
+      voicesRef.current = window.speechSynthesis.getVoices();
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   // Keep ref in sync
   useEffect(() => {
@@ -461,7 +473,7 @@ export function AIConcierge({
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.lang = "en-US";
-    const voices = window.speechSynthesis.getVoices();
+    const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
     const preferred = voices.find(v => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")) || voices.find(v => v.lang.startsWith("en"));
     if (preferred) utterance.voice = preferred;
     utterance.onstart = () => {
