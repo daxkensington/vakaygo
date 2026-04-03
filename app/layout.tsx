@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { PromoBanner } from "@/components/layout/promo-banner";
 import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
 import { AIConcierge } from "@/components/chat/ai-concierge";
@@ -146,6 +147,7 @@ export default function RootLayout({
         <AIConcierge />
         <ServiceWorkerRegister />
         <Analytics />
+        <GoogleAnalytics />
       </body>
     </html>
   );

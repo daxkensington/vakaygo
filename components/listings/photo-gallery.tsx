@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
 
 type Photo = {
   id: string;
@@ -10,7 +11,7 @@ type Photo = {
   alt: string | null;
 };
 
-export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string }) {
+export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]; title: string; type?: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -49,16 +50,20 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
       <div className="mx-auto max-w-7xl px-6 mb-8">
         {displayPhotos.length >= 5 ? (
           <div className="grid grid-cols-4 grid-rows-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div
-              className="col-span-2 row-span-2 bg-cover bg-center bg-cream-200 cursor-pointer hover:opacity-95 transition-opacity"
-              style={{ backgroundImage: `url(${displayPhotos[0].url})` }}
+            <ImageWithFallback
+              src={displayPhotos[0].url || null}
+              type={type}
+              className="col-span-2 row-span-2 cursor-pointer hover:opacity-95 transition-opacity"
+              iconSize={56}
               onClick={() => openModal(0)}
             />
             {displayPhotos.slice(1, 5).map((photo, i) => (
-              <div
+              <ImageWithFallback
                 key={photo.id}
-                className="bg-cover bg-center bg-cream-200 cursor-pointer hover:opacity-90 transition-opacity relative"
-                style={{ backgroundImage: `url(${photo.url})` }}
+                src={photo.url || null}
+                type={type}
+                className="cursor-pointer hover:opacity-90 transition-opacity relative"
+                iconSize={32}
                 onClick={() => openModal(i + 1)}
               >
                 {i === 3 && proxiedPhotos.length > 5 && (
@@ -68,31 +73,37 @@ export function PhotoGallery({ photos, title }: { photos: Photo[]; title: string
                     </span>
                   </div>
                 )}
-              </div>
+              </ImageWithFallback>
             ))}
           </div>
         ) : displayPhotos.length >= 2 ? (
           <div className="grid grid-cols-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div
-              className="bg-cover bg-center bg-cream-200 cursor-pointer hover:opacity-95 transition-opacity"
-              style={{ backgroundImage: `url(${displayPhotos[0].url})` }}
+            <ImageWithFallback
+              src={displayPhotos[0].url || null}
+              type={type}
+              className="cursor-pointer hover:opacity-95 transition-opacity"
+              iconSize={56}
               onClick={() => openModal(0)}
             />
             <div className="grid grid-rows-2 gap-2">
               {displayPhotos.slice(1, 3).map((photo, i) => (
-                <div
+                <ImageWithFallback
                   key={photo.id}
-                  className="bg-cover bg-center bg-cream-200 cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{ backgroundImage: `url(${photo.url})` }}
+                  src={photo.url || null}
+                  type={type}
+                  className="cursor-pointer hover:opacity-90 transition-opacity"
+                  iconSize={32}
                   onClick={() => openModal(i + 1)}
                 />
               ))}
             </div>
           </div>
         ) : (
-          <div
-            className="rounded-3xl overflow-hidden h-[400px] md:h-[480px] bg-cover bg-center bg-cream-200 cursor-pointer"
-            style={{ backgroundImage: `url(${displayPhotos[0].url})` }}
+          <ImageWithFallback
+            src={displayPhotos[0].url || null}
+            type={type}
+            className="rounded-3xl overflow-hidden h-[400px] md:h-[480px] cursor-pointer"
+            iconSize={56}
             onClick={() => openModal(0)}
           />
         )}

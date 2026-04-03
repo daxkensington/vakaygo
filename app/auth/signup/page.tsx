@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { analytics } from "@/lib/analytics";
 import { Eye, EyeOff, Loader2, Home, Compass, Gift } from "lucide-react";
 
 export default function SignUpPage() {
@@ -62,6 +63,8 @@ function SignUpContent() {
         setError(data.error || "Something went wrong");
         return;
       }
+
+      analytics.signUp("email");
 
       // Auto sign in after signup
       await fetch("/api/auth/signin", {

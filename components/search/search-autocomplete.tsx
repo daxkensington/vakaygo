@@ -14,6 +14,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { getIslandFlag } from "@/lib/island-flags";
 
 type ListingSuggestion = {
   title: string;
@@ -286,7 +287,7 @@ export function SearchAutocomplete({
                     }
                     onMouseEnter={() => setActiveIndex(flatIdx)}
                   >
-                    <MapPin size={16} className="text-teal-500 shrink-0" />
+                    <span className="text-base shrink-0">{getIslandFlag(island.slug)}</span>
                     <span className="text-sm font-medium text-navy-700">
                       {island.name}
                     </span>
@@ -329,7 +330,7 @@ export function SearchAutocomplete({
                         {listing.title}
                       </p>
                       <p className="text-xs text-navy-400 truncate">
-                        {listing.island}
+                        {getIslandFlag(listing.islandSlug)} {listing.island}
                       </p>
                     </div>
                     <span

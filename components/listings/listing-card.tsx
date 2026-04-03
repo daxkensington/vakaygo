@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Star, MapPin, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
+import { Star, MapPin } from "lucide-react";
 import { useSaved } from "@/lib/use-saved";
 import { useCurrency } from "@/lib/currency";
 import { getImageUrl } from "@/lib/image-utils";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getIslandFlag } from "@/lib/island-flags";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";
 
 type ListingCardProps = {
@@ -24,16 +26,16 @@ type ListingCardProps = {
   operatorSuperhost?: boolean;
 };
 
-const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home }> = {
-  stay: { color: "text-gold-800", bg: "bg-gold-50", icon: Home },
-  tour: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass },
-  excursion: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass },
-  dining: { color: "text-gold-800", bg: "bg-gold-50", icon: UtensilsCrossed },
-  event: { color: "text-teal-800", bg: "bg-teal-50", icon: Music },
-  transport: { color: "text-navy-700", bg: "bg-navy-50", icon: Car },
-  transfer: { color: "text-navy-700", bg: "bg-navy-50", icon: Car },
-  vip: { color: "text-gold-800", bg: "bg-gold-50", icon: Users },
-  guide: { color: "text-gold-800", bg: "bg-gold-50", icon: Users },
+const typeConfig: Record<string, { color: string; bg: string }> = {
+  stay: { color: "text-gold-800", bg: "bg-gold-50" },
+  tour: { color: "text-teal-800", bg: "bg-teal-50" },
+  excursion: { color: "text-teal-800", bg: "bg-teal-50" },
+  dining: { color: "text-gold-800", bg: "bg-gold-50" },
+  event: { color: "text-teal-800", bg: "bg-teal-50" },
+  transport: { color: "text-navy-700", bg: "bg-navy-50" },
+  transfer: { color: "text-navy-700", bg: "bg-navy-50" },
+  vip: { color: "text-gold-800", bg: "bg-gold-50" },
+  guide: { color: "text-gold-800", bg: "bg-gold-50" },
 };
 
 const typeLabels: Record<string, string> = {
@@ -48,23 +50,9 @@ const typeLabels: Record<string, string> = {
   guide: "Guide",
 };
 
-// Fallback gradients per type when no image
-const typeFallbacks: Record<string, string> = {
-  stay: "from-gold-400 to-gold-600",
-  tour: "from-teal-400 to-teal-600",
-  excursion: "from-teal-500 to-teal-700",
-  dining: "from-gold-500 to-gold-700",
-  event: "from-teal-500 to-teal-700",
-  transport: "from-navy-400 to-navy-600",
-  transfer: "from-navy-500 to-navy-700",
-  vip: "from-gold-500 to-gold-700",
-  guide: "from-gold-400 to-teal-500",
-};
 
 export function ListingCard(props: ListingCardProps) {
   const config = typeConfig[props.type] || typeConfig.tour;
-  const TypeIcon = config.icon;
-  const fallbackGradient = typeFallbacks[props.type] || "from-navy-400 to-navy-600";
   const rating = props.avgRating ? parseFloat(props.avgRating) : 0;
   const { isSaved, toggle } = useSaved();
   const { format } = useCurrency();
@@ -78,16 +66,11 @@ export function ListingCard(props: ListingCardProps) {
     >
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
-        {imageUrl ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-            style={{ backgroundImage: `url(${imageUrl})` }}
-          />
-        ) : (
-          <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
-            <TypeIcon size={40} className="text-white/30" />
-          </div>
-        )}
+        <ImageWithFallback
+          src={imageUrl}
+          type={props.type}
+          className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+        />
 
         {/* Type badge */}
         <div className="absolute top-3 left-3">
@@ -122,7 +105,7 @@ export function ListingCard(props: ListingCardProps) {
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs text-navy-400 flex items-center gap-1 truncate">
             <MapPin size={10} className="shrink-0" />
-            {props.parish ? `${props.parish}, ` : ""}{props.islandName}
+            {props.parish ? `${props.parish}, ` : ""}{getIslandFlag(props.islandSlug)} {props.islandName}
           </p>
           {rating > 0 && (
             <div className="flex items-center gap-1 shrink-0 ml-2">

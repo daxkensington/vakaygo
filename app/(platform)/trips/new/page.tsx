@@ -41,6 +41,7 @@ import {
   Leaf,
   Zap,
 } from "lucide-react";
+import { getIslandFlag } from "@/lib/island-flags";
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -484,7 +485,7 @@ export default function NewTripPage() {
                           }`}
                         >
                           <span className="block font-semibold text-sm truncate">
-                            {island.name}
+                            {getIslandFlag(island.slug)} {island.name}
                           </span>
                           <span
                             className={`block text-xs mt-1 ${

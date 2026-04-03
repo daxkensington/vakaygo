@@ -2,32 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Clock, X, Home, Compass, UtensilsCrossed, Music, Car, Users } from "lucide-react";
+import { Clock, X } from "lucide-react";
 import { getRecentlyViewed, clearRecentlyViewed, type RecentListing } from "@/lib/recently-viewed";
 import { getImageUrl } from "@/lib/image-utils";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
 
-const typeConfig: Record<string, { color: string; bg: string; icon: typeof Home; label: string }> = {
-  stay: { color: "text-gold-800", bg: "bg-gold-50", icon: Home, label: "Stay" },
-  tour: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass, label: "Tour" },
-  excursion: { color: "text-teal-800", bg: "bg-teal-50", icon: Compass, label: "Excursion" },
-  dining: { color: "text-gold-800", bg: "bg-gold-50", icon: UtensilsCrossed, label: "Dining" },
-  event: { color: "text-teal-800", bg: "bg-teal-50", icon: Music, label: "Event" },
-  transport: { color: "text-navy-700", bg: "bg-navy-50", icon: Car, label: "Transport" },
-  transfer: { color: "text-navy-700", bg: "bg-navy-50", icon: Car, label: "Transfer" },
-  vip: { color: "text-gold-800", bg: "bg-gold-50", icon: Users, label: "VIP" },
-  guide: { color: "text-gold-800", bg: "bg-gold-50", icon: Users, label: "Guide" },
-};
-
-const typeFallbacks: Record<string, string> = {
-  stay: "from-gold-400 to-gold-600",
-  tour: "from-teal-400 to-teal-600",
-  excursion: "from-teal-500 to-teal-700",
-  dining: "from-gold-500 to-gold-700",
-  event: "from-teal-500 to-teal-700",
-  transport: "from-navy-400 to-navy-600",
-  transfer: "from-navy-500 to-navy-700",
-  vip: "from-gold-500 to-gold-700",
-  guide: "from-gold-400 to-teal-500",
+const typeConfig: Record<string, { color: string; bg: string; label: string }> = {
+  stay: { color: "text-gold-800", bg: "bg-gold-50", label: "Stay" },
+  tour: { color: "text-teal-800", bg: "bg-teal-50", label: "Tour" },
+  excursion: { color: "text-teal-800", bg: "bg-teal-50", label: "Excursion" },
+  dining: { color: "text-gold-800", bg: "bg-gold-50", label: "Dining" },
+  event: { color: "text-teal-800", bg: "bg-teal-50", label: "Event" },
+  transport: { color: "text-navy-700", bg: "bg-navy-50", label: "Transport" },
+  transfer: { color: "text-navy-700", bg: "bg-navy-50", label: "Transfer" },
+  vip: { color: "text-gold-800", bg: "bg-gold-50", label: "VIP" },
+  guide: { color: "text-gold-800", bg: "bg-gold-50", label: "Guide" },
 };
 
 export function RecentlyViewed() {
@@ -62,8 +51,6 @@ export function RecentlyViewed() {
       <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
         {items.map((item) => {
           const config = typeConfig[item.type] || typeConfig.tour;
-          const TypeIcon = config.icon;
-          const fallback = typeFallbacks[item.type] || "from-navy-400 to-navy-600";
 
           return (
             <Link
@@ -72,16 +59,12 @@ export function RecentlyViewed() {
               className="group flex-shrink-0 w-[180px] snap-start bg-white rounded-xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-0.5"
             >
               <div className="relative h-24 overflow-hidden">
-                {item.image ? (
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: `url(${getImageUrl(item.image) || item.image})` }}
-                  />
-                ) : (
-                  <div className={`absolute inset-0 bg-gradient-to-br ${fallback} flex items-center justify-center`}>
-                    <TypeIcon size={24} className="text-white/30" />
-                  </div>
-                )}
+                <ImageWithFallback
+                  src={getImageUrl(item.image)}
+                  type={item.type}
+                  className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+                  iconSize={24}
+                />
                 <div className="absolute top-2 left-2">
                   <span className={`${config.bg} ${config.color} text-[10px] font-semibold px-2 py-0.5 rounded-full`}>
                     {config.label}

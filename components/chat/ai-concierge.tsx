@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { analytics } from "@/lib/analytics";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface ListingCard {
@@ -349,6 +350,8 @@ export function AIConcierge({
   const [showPulse, setShowPulse] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -473,12 +476,38 @@ export function AIConcierge({
     setIsListening(true);
   }, [isListening]);
 
+  // Text-to-speech for assistant responses
+  const speakText = useCallback((text: string) => {
+    if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+    // Prefer a natural-sounding voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")) || voices.find(v => v.lang.startsWith("en"));
+    if (preferred) utterance.voice = preferred;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  }, [voiceEnabled]);
+
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
+
   // Send message
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim() || isLoading) return;
 
       const userMessage: Message = { role: "user", content: content.trim() };
+      analytics.useConcierge(content.trim());
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       setInput("");
@@ -517,6 +546,11 @@ export function AIConcierge({
 
         setMessages((prev) => [...prev, assistantMessage]);
 
+        // Speak the response if voice is enabled
+        if (voiceEnabled && data.message) {
+          speakText(data.message);
+        }
+
         if (!isOpen) {
           setHasUnread(true);
         }
@@ -534,7 +568,7 @@ export function AIConcierge({
         setLoadingLabel(undefined);
       }
     },
-    [messages, isLoading, isOpen, buildContext]
+    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -595,13 +629,34 @@ export function AIConcierge({
                 AI
               </span>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg hover:bg-white/20 transition-colors"
-              aria-label="Close chat"
-            >
-              <CloseIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setVoiceEnabled((v) => {
+                    if (v) stopSpeaking();
+                    return !v;
+                  });
+                }}
+                className={`p-1.5 rounded-lg transition-colors ${voiceEnabled ? "bg-white/30" : "hover:bg-white/20"}`}
+                aria-label={voiceEnabled ? "Disable voice" : "Enable voice"}
+                title={voiceEnabled ? "Voice responses ON" : "Voice responses OFF"}
+              >
+                {isSpeaking ? (
+                  <svg className="w-4 h-4 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+                ) : voiceEnabled ? (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+                ) : (
+                  <svg className="w-4 h-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                )}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20 transition-colors"
+                aria-label="Close chat"
+              >
+                <CloseIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}

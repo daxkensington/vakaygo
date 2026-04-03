@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "API key not configured" }, { status: 500 });
   }
 
-  const fullUrl = url.includes("key=") ? url : `${url}&key=${apiKey}`;
+  // Always append current API key (getImageUrl strips any stale key from stored URLs)
+  const separator = url.includes("?") ? "&" : "?";
+  const fullUrl = url.includes("key=") ? url : `${url}${separator}key=${apiKey}`;
 
   try {
     const imageRes = await fetch(fullUrl, {

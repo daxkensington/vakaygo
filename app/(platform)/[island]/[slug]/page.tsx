@@ -17,9 +17,13 @@ import { ContactOperator } from "@/components/listings/contact-operator";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { WhatsIncluded } from "@/components/listings/whats-included";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { useSaved } from "@/lib/use-saved";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
+import { getImageUrl } from "@/lib/image-utils";
+import { getIslandFlag } from "@/lib/island-flags";
+import { analytics } from "@/lib/analytics";
 import {
   Star,
   MapPin,
@@ -151,6 +155,7 @@ export default function ListingDetailPage() {
   // Track recently viewed in localStorage
   useEffect(() => {
     if (!listing) return;
+    analytics.viewListing(listing.title, listing.type);
     addRecentlyViewed({
       id: listing.id,
       title: listing.title,
@@ -261,8 +266,9 @@ export default function ListingDetailPage() {
     }
 
     // Add geo coordinates if available in typeData
-    const lat = td.latitude || td.lat;
-    const lng = td.longitude || td.lng || td.lon;
+    const typeDataGeo = listing.typeData || {};
+    const lat = typeDataGeo.latitude || typeDataGeo.lat;
+    const lng = typeDataGeo.longitude || typeDataGeo.lng || typeDataGeo.lon;
     if (lat && lng) {
       jsonLd.geo = {
         "@type": "GeoCoordinates",
@@ -325,14 +331,14 @@ export default function ListingDetailPage() {
           <Breadcrumbs
             items={[
               { label: "Home", href: "/" },
-              { label: listing.islandName, href: `/${listing.islandSlug}` },
+              { label: `${getIslandFlag(listing.islandSlug)} ${listing.islandName}`, href: `/${listing.islandSlug}` },
               { label: listing.title },
             ]}
           />
         </div>
 
         {/* Image Gallery */}
-        <PhotoGallery photos={images} title={listing.title} />
+        <PhotoGallery photos={images} title={listing.title} type={listing.type} />
 
         <div className="mx-auto max-w-7xl px-6 pb-20">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -360,7 +366,7 @@ export default function ListingDetailPage() {
                   <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-navy-400">
                     <div className="flex items-center gap-1">
                       <MapPin size={14} className="text-gold-500" />
-                      {listing.parish}, {listing.islandName}
+                      {listing.parish}, {getIslandFlag(listing.islandSlug)} {listing.islandName}
                     </div>
                     {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
                       <div className="flex items-center gap-1">
@@ -713,14 +719,11 @@ export default function ListingDetailPage() {
                     className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
                   >
                     <div className="relative h-44 overflow-hidden">
-                      {item.image ? (
-                        <div
-                          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                          style={{ backgroundImage: `url(${item.image})` }}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-cream-200" />
-                      )}
+                      <ImageWithFallback
+                        src={getImageUrl(item.image)}
+                        type={item.type}
+                        className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+                      />
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-navy-400">{item.parish}</p>

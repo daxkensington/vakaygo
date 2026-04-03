@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { getIslandFlag } from "@/lib/island-flags";
 
 type Island = {
   id: number;
@@ -12,17 +13,6 @@ type Island = {
   name: string;
   country: string;
   listingCount: number;
-};
-
-const islandFlags: Record<string, string> = {
-  grenada: "🇬🇩", "trinidad-and-tobago": "🇹🇹", barbados: "🇧🇧",
-  "st-lucia": "🇱🇨", "st-vincent": "🇻🇨", antigua: "🇦🇬",
-  dominica: "🇩🇲", jamaica: "🇯🇲", bahamas: "🇧🇸",
-  "turks-and-caicos": "🇹🇨", "cayman-islands": "🇰🇾", aruba: "🇦🇼",
-  curacao: "🇨🇼", bonaire: "🏝️", "st-kitts": "🇰🇳",
-  martinique: "🇲🇶", guadeloupe: "🇬🇵", "us-virgin-islands": "🇻🇮",
-  "british-virgin-islands": "🇻🇬", "puerto-rico": "🇵🇷",
-  "dominican-republic": "🇩🇴",
 };
 
 const islandImages: Record<string, string> = {
@@ -133,7 +123,7 @@ export default function IslandsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {islands.map((island) => {
-                const flag = islandFlags[island.slug] || "🏝️";
+                const flag = getIslandFlag(island.slug);
                 const image = islandImages[island.slug] || defaultImage;
 
                 return (

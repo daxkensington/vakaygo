@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { analytics } from "@/lib/analytics";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { RecentlyViewed } from "@/components/listings/recently-viewed";
@@ -270,6 +271,7 @@ export default function ExplorePage() {
         const newListings = data.listings || [];
         if (page === 0) {
           setListings(newListings);
+          if (searchQuery) analytics.search(searchQuery);
         } else {
           setListings((prev) => [...prev, ...newListings]);
         }
@@ -329,7 +331,7 @@ export default function ExplorePage() {
                 onEnter={(val) => handleSmartSearch(val)}
                 aiSearchLoading={aiSearchLoading}
                 aiSearchActive={aiSearchActive}
-                className="w-full md:w-auto md:flex-1"
+                className="w-full md:w-auto md:flex-1 md:min-w-[20rem] lg:min-w-[28rem]"
               />
               {/* Date + Island row on mobile */}
               <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
@@ -369,7 +371,7 @@ export default function ExplorePage() {
                 <option value="st-kitts">🇰🇳 St. Kitts</option>
                 <option value="martinique">🇲🇶 Martinique</option>
                 <option value="guadeloupe">🇬🇵 Guadeloupe</option>
-                <option value="bonaire">Bonaire</option>
+                <option value="bonaire">🇧🇶 Bonaire</option>
               </select>
               {/* Price Range */}
               <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
