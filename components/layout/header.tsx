@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, User, LayoutDashboard, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -47,14 +48,20 @@ export function Header() {
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 flex items-center justify-between h-16 md:h-18">
         <Link href="/" className="flex items-center gap-2">
-          <span
-            className={`text-xl md:text-2xl font-bold tracking-tight transition-colors duration-300 ${
-              scrolled || !isLanding ? "text-navy-700" : "text-white"
-            }`}
-          >
-            Vakay
-            <span className="text-gold-500">Go</span>
-          </span>
+          {scrolled || !isLanding ? (
+            <Image
+              src="/images/logo.jpg"
+              alt="VakayGo"
+              width={140}
+              height={40}
+              className="h-9 md:h-10 w-auto object-contain"
+              priority
+            />
+          ) : (
+            <span className="text-xl md:text-2xl font-bold tracking-tight text-white">
+              Vakay<span className="text-gold-400">Go</span>
+            </span>
+          )}
         </Link>
 
         <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
