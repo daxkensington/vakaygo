@@ -129,6 +129,9 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const [aiSearchLoading, setAiSearchLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiResultsSummary, setAiResultsSummary] = useState("");
   const PAGE_SIZE = 24;
 
   // AI smart search keywords that trigger natural language parsing
@@ -143,10 +146,14 @@ export default function ExplorePage() {
   async function handleSmartSearch(query: string) {
     if (!isNaturalLanguageQuery(query)) {
       setAiSearchActive(false);
+      setAiSummary("");
+      setAiSuggestions([]);
+      setAiResultsSummary("");
       return;
     }
 
     setAiSearchLoading(true);
+    setAiResultsSummary("");
     try {
       const res = await fetch("/api/ai/smart-search", {
         method: "POST",
@@ -156,8 +163,10 @@ export default function ExplorePage() {
 
       if (!res.ok) return;
 
-      const { filters } = await res.json();
+      const { filters, summary, suggestions } = await res.json();
       setAiSearchActive(true);
+      setAiSummary(summary || "");
+      setAiSuggestions(Array.isArray(suggestions) ? suggestions : []);
 
       // Apply parsed filters
       if (filters.type) setActiveCategory(filters.type);
@@ -165,14 +174,48 @@ export default function ExplorePage() {
       if (filters.minPrice) setMinPrice(String(filters.minPrice));
       if (filters.maxPrice) setMaxPrice(String(filters.maxPrice));
       if (filters.minRating) setMinRating(String(filters.minRating));
+      if (filters.guests) setGuestCount(String(filters.guests));
+      if (Array.isArray(filters.amenities) && filters.amenities.length > 0)
+        setSelectedAmenities(filters.amenities);
+      if (filters.duration) setSelectedDuration(filters.duration);
       if (filters.q) setSearchQuery(filters.q);
     } catch {
       // Fall back to normal search
       setAiSearchActive(false);
+      setAiSummary("");
+      setAiSuggestions([]);
     } finally {
       setAiSearchLoading(false);
     }
   }
+
+  // Fetch AI results summary when results load from an AI search
+  useEffect(() => {
+    if (!aiSearchActive || loading || listings.length === 0) return;
+
+    const topResults = listings.slice(0, 5).map((l) => ({
+      title: l.title,
+      type: l.type,
+      rating: l.avgRating ? parseFloat(l.avgRating) : undefined,
+      price: l.priceAmount ? parseFloat(l.priceAmount) : undefined,
+    }));
+
+    fetch("/api/ai/search-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: searchQuery,
+        resultCount: totalCount,
+        topResults,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.summary) setAiResultsSummary(d.summary);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiSearchActive, loading, listings.length, totalCount]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -279,6 +322,9 @@ export default function ExplorePage() {
                 onChange={(val) => {
                   setSearchQuery(val);
                   setAiSearchActive(false);
+                  setAiSummary("");
+                  setAiSuggestions([]);
+                  setAiResultsSummary("");
                 }}
                 onEnter={(val) => handleSmartSearch(val)}
                 aiSearchLoading={aiSearchLoading}
@@ -605,6 +651,48 @@ export default function ExplorePage() {
             )}
           </div>
         </div>
+
+        {/* AI Search Summary Banner */}
+        {aiSearchActive && (aiSummary || aiSuggestions.length > 0) && (
+          <div className="mx-auto max-w-7xl px-4 md:px-6 pt-4">
+            <div className="bg-gradient-to-r from-gold-50 to-teal-50 rounded-2xl p-4 shadow-sm">
+              {aiSummary && (
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={16} className="text-gold-500 shrink-0" />
+                  <p className="text-sm font-medium text-navy-700">{aiSummary}</p>
+                </div>
+              )}
+              {aiResultsSummary && (
+                <p className="text-sm text-navy-500 ml-6 mb-2">{aiResultsSummary}</p>
+              )}
+              {aiSuggestions.length > 0 && (
+                <div className="flex items-center gap-2 ml-6 flex-wrap">
+                  <span className="text-xs text-navy-400 font-medium">Related:</span>
+                  {aiSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => {
+                        setSearchQuery("");
+                        setActiveCategory("all");
+                        setActiveIsland("");
+                        setMinPrice("");
+                        setMaxPrice("");
+                        setMinRating("");
+                        setGuestCount("");
+                        setSelectedAmenities([]);
+                        setSelectedDuration("");
+                        setTimeout(() => handleSmartSearch(suggestion), 50);
+                      }}
+                      className="px-3 py-1 bg-white/70 hover:bg-white text-xs font-medium text-navy-600 rounded-full transition-colors shadow-sm"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Breadcrumbs */}
         <div className="mx-auto max-w-7xl px-6 pt-4 pb-2">

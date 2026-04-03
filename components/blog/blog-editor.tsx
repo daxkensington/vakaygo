@@ -12,6 +12,13 @@ import {
   ImageIcon,
   X,
   ArrowLeft,
+  Sparkles,
+  Camera,
+  Paintbrush,
+  Plane,
+  RefreshCw,
+  Check,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -89,6 +96,24 @@ export function BlogEditor({
   const [slugManual, setSlugManual] = useState(!!isEdit);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // AI Image Generation state
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [imageStyle, setImageStyle] = useState<"photo" | "illustration" | "aerial">("photo");
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState("");
+  const [imageError, setImageError] = useState("");
+
+  // AI Blog Writer state
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [blogTone, setBlogTone] = useState("informative");
+  const [blogOutline, setBlogOutline] = useState("");
+  const [generatingBlog, setGeneratingBlog] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState("");
+  const [generatedTags, setGeneratedTags] = useState<string[]>([]);
+  const [generatedMeta, setGeneratedMeta] = useState("");
+  const [blogGenError, setBlogGenError] = useState("");
+
   const [form, setForm] = useState<PostData>(
     initialData || {
       title: "",
@@ -144,6 +169,92 @@ export function BlogEditor({
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) return;
+    setGeneratingImage(true);
+    setImageError("");
+    setGeneratedImageUrl("");
+    try {
+      const res = await fetch("/api/ai/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: imagePrompt, style: imageStyle }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImageError(data.error || "Failed to generate image");
+        return;
+      }
+      setGeneratedImageUrl(data.url);
+    } catch {
+      setImageError("Failed to generate image");
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  const handleUseGeneratedImage = () => {
+    if (generatedImageUrl) {
+      setForm((prev) => ({ ...prev, coverImage: generatedImageUrl }));
+      setShowImageModal(false);
+      setGeneratedImageUrl("");
+      setImagePrompt("");
+    }
+  };
+
+  const handleGenerateBlog = async () => {
+    if (!form.title.trim()) {
+      setBlogGenError("Please enter a blog title first");
+      return;
+    }
+    setGeneratingBlog(true);
+    setBlogGenError("");
+    setGeneratedContent("");
+    setGeneratedTags([]);
+    setGeneratedMeta("");
+    try {
+      const island = islands.find((i) => String(i.id) === form.islandId);
+      const res = await fetch("/api/ai/generate-blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title,
+          category: form.category,
+          island: island?.name || "",
+          tone: blogTone,
+          outline: blogOutline,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBlogGenError(data.error || "Failed to generate content");
+        return;
+      }
+      setGeneratedContent(data.content || "");
+      setGeneratedTags(data.suggestedTags || []);
+      setGeneratedMeta(data.metaDescription || "");
+    } catch {
+      setBlogGenError("Failed to generate blog content");
+    } finally {
+      setGeneratingBlog(false);
+    }
+  };
+
+  const handleInsertBlogContent = () => {
+    if (generatedContent) {
+      setForm((prev) => ({ ...prev, content: generatedContent }));
+    }
+    if (generatedTags.length > 0 && !form.tags) {
+      setForm((prev) => ({ ...prev, tags: generatedTags.join(", ") }));
+    }
+    if (generatedMeta && !form.metaDescription) {
+      setForm((prev) => ({ ...prev, metaDescription: generatedMeta }));
+    }
+    setShowBlogModal(false);
+    setGeneratedContent("");
+    setBlogOutline("");
   };
 
   const handleSave = async (targetStatus?: string) => {
@@ -214,6 +325,16 @@ export function BlogEditor({
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setShowBlogModal(true);
+              setBlogGenError("");
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-[0_4px_15px_rgba(200,145,46,0.3)] text-sm font-medium hover:from-gold-600 hover:to-gold-700 transition-all"
+          >
+            <Wand2 className="h-4 w-4" />
+            Write with AI
+          </button>
           <button
             onClick={() => setPreview(!preview)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-[var(--shadow-card)] text-sm font-medium text-navy-600 hover:bg-cream-50 transition-colors"
@@ -367,7 +488,21 @@ export function BlogEditor({
 
           {/* Cover image */}
           <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-5">
-            <h3 className="text-sm font-semibold text-navy-600 mb-4">Cover Image</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-navy-600">Cover Image</h3>
+              <button
+                onClick={() => {
+                  setShowImageModal(true);
+                  setImagePrompt(form.title || "");
+                  setImageError("");
+                  setGeneratedImageUrl("");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 text-white text-xs font-medium hover:from-gold-600 hover:to-gold-700 transition-all shadow-sm"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Generate
+              </button>
+            </div>
             {form.coverImage ? (
               <div className="relative">
                 <img
@@ -456,6 +591,300 @@ export function BlogEditor({
           </div>
         </div>
       </div>
+
+      {/* AI Image Generation Modal */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3
+                  className="text-lg font-bold text-navy-800"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  AI Cover Image
+                </h3>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="p-2 rounded-lg text-navy-400 hover:bg-cream-100 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Prompt */}
+              <label className="block text-sm font-medium text-navy-600 mb-2">
+                Image Description
+              </label>
+              <input
+                type="text"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Describe the cover image you want..."
+                className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 text-sm mb-4"
+              />
+
+              {/* Style Selector */}
+              <label className="block text-sm font-medium text-navy-600 mb-2">
+                Style
+              </label>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[
+                  { id: "photo" as const, label: "Photo", icon: Camera, desc: "Photorealistic" },
+                  { id: "illustration" as const, label: "Illustration", icon: Paintbrush, desc: "Artistic" },
+                  { id: "aerial" as const, label: "Aerial", icon: Plane, desc: "Drone-style" },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setImageStyle(s.id)}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
+                      imageStyle === s.id
+                        ? "bg-gold-50 ring-2 ring-gold-400 shadow-sm"
+                        : "bg-cream-50 hover:bg-cream-100"
+                    }`}
+                  >
+                    <s.icon className={`h-6 w-6 ${imageStyle === s.id ? "text-gold-600" : "text-navy-400"}`} />
+                    <span className={`text-sm font-medium ${imageStyle === s.id ? "text-gold-700" : "text-navy-600"}`}>
+                      {s.label}
+                    </span>
+                    <span className="text-[10px] text-navy-400">{s.desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Error */}
+              {imageError && (
+                <div className="mb-4 bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
+                  {imageError}
+                </div>
+              )}
+
+              {/* Generated Image Preview */}
+              {generatingImage && (
+                <div className="w-full aspect-square rounded-xl bg-cream-50 flex flex-col items-center justify-center mb-4">
+                  <div className="w-full h-full rounded-xl bg-gradient-to-r from-cream-100 via-cream-50 to-cream-100 animate-pulse" />
+                  <div className="absolute flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+                    <span className="text-sm text-navy-500 font-medium">Generating image...</span>
+                  </div>
+                </div>
+              )}
+
+              {generatedImageUrl && !generatingImage && (
+                <div className="mb-4">
+                  <img
+                    src={generatedImageUrl}
+                    alt="Generated cover"
+                    className="w-full aspect-square rounded-xl object-cover shadow-sm"
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                {generatedImageUrl ? (
+                  <>
+                    <button
+                      onClick={handleUseGeneratedImage}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                    >
+                      <Check className="h-4 w-4" />
+                      Use This
+                    </button>
+                    <button
+                      onClick={handleGenerateImage}
+                      disabled={generatingImage}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-cream-100 text-navy-600 font-medium text-sm hover:bg-cream-200 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Regenerate
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleGenerateImage}
+                    disabled={generatingImage || !imagePrompt.trim()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
+                  >
+                    {generatingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    Generate
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Blog Writer Modal */}
+      {showBlogModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3
+                  className="text-lg font-bold text-navy-800"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Write with AI
+                </h3>
+                <button
+                  onClick={() => setShowBlogModal(false)}
+                  className="p-2 rounded-lg text-navy-400 hover:bg-cream-100 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {!generatedContent ? (
+                <>
+                  {/* Title (read-only from form) */}
+                  <label className="block text-sm font-medium text-navy-600 mb-2">
+                    Title
+                  </label>
+                  <div className="w-full px-4 py-3 rounded-xl bg-cream-100 text-navy-600 text-sm mb-4">
+                    {form.title || "Enter a title in the editor first"}
+                  </div>
+
+                  {/* Tone */}
+                  <label className="block text-sm font-medium text-navy-600 mb-2">
+                    Writing Tone
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                    {[
+                      { id: "informative", label: "Informative" },
+                      { id: "casual", label: "Casual" },
+                      { id: "luxury", label: "Luxury" },
+                      { id: "adventure", label: "Adventure" },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setBlogTone(t.id)}
+                        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                          blogTone === t.id
+                            ? "bg-gold-50 ring-2 ring-gold-400 text-gold-700"
+                            : "bg-cream-50 text-navy-600 hover:bg-cream-100"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Key Points */}
+                  <label className="block text-sm font-medium text-navy-600 mb-2">
+                    Key Points to Cover (optional)
+                  </label>
+                  <textarea
+                    value={blogOutline}
+                    onChange={(e) => setBlogOutline(e.target.value)}
+                    placeholder="List key topics, tips, or sections you want covered...&#10;&#10;Example:&#10;- Best beaches to visit&#10;- Local food recommendations&#10;- Budget tips"
+                    rows={5}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 text-sm resize-none mb-4"
+                  />
+
+                  {/* Error */}
+                  {blogGenError && (
+                    <div className="mb-4 bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
+                      {blogGenError}
+                    </div>
+                  )}
+
+                  {/* Generate Button */}
+                  <button
+                    onClick={handleGenerateBlog}
+                    disabled={generatingBlog || !form.title.trim()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
+                  >
+                    {generatingBlog ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating article...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        Generate Blog Post
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Generated Content Preview */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-navy-600 mb-2">
+                      Generated Content Preview
+                    </label>
+                    <div className="max-h-[400px] overflow-y-auto rounded-xl bg-cream-50 p-4">
+                      <pre className="text-sm text-navy-700 whitespace-pre-wrap font-mono">
+                        {generatedContent}
+                      </pre>
+                    </div>
+                  </div>
+
+                  {/* Suggested Tags */}
+                  {generatedTags.length > 0 && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-navy-600 mb-2">
+                        Suggested Tags
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {generatedTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-3 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Meta Description */}
+                  {generatedMeta && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-navy-600 mb-2">
+                        Suggested Meta Description
+                      </label>
+                      <p className="text-sm text-navy-500 bg-cream-50 rounded-xl p-3">
+                        {generatedMeta}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleInsertBlogContent}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                    >
+                      <Check className="h-4 w-4" />
+                      Insert Content
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGeneratedContent("");
+                        setGeneratedTags([]);
+                        setGeneratedMeta("");
+                      }}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-cream-100 text-navy-600 font-medium text-sm hover:bg-cream-200 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Regenerate
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
+import { AiInsights } from "@/components/operator/ai-insights";
 
 type Stats = {
   totalRevenue: number;
@@ -285,6 +286,13 @@ export default function OperatorDashboard() {
           )}
         </div>
       </div>
+
+      {/* AI Insights */}
+      {stats && stats.activeListings > 0 && (
+        <div className="mb-6">
+          <AiInsights />
+        </div>
+      )}
 
       {/* Getting Started - only show if no active listings */}
       {stats && stats.activeListings === 0 && (

@@ -30,6 +30,7 @@ import {
   Loader2,
   Heart,
   Zap,
+  Sparkles,
 } from "lucide-react";
 
 type ListingDetail = {
@@ -392,6 +393,30 @@ export default function ListingDetailPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Ask AI Button */}
+              <button
+                onClick={() => {
+                  // Set listing context for the concierge
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (window as any).__vakaygo_listing_context = {
+                    title: listing.title,
+                    slug: listing.slug,
+                    island: listing.islandSlug,
+                    type: listing.type,
+                    price: listing.priceAmount || undefined,
+                  };
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const open = (window as any).__vakaygo_concierge_open;
+                  if (open) {
+                    open(`Tell me about "${listing.title}"`);
+                  }
+                }}
+                className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-[0_2px_12px_rgba(200,145,46,0.3)] hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02] transition-all duration-200"
+              >
+                <Sparkles size={16} />
+                Ask AI about this
+              </button>
 
               {/* Trust Badges */}
               <div className="mt-4">

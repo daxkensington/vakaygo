@@ -103,6 +103,7 @@ export async function POST(request: Request) {
       budget,
       interests,
       generateAI,
+      itineraryData, // Pre-built AI itinerary from /api/trips/generate
     } = body;
 
     if (!islandId || !startDate || !endDate) {
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
 
     const tripTitle = title || `${island.name} Trip`;
 
-    if (!generateAI) {
+    if (!generateAI && !itineraryData) {
       // Manual mode: just create the trip shell
       const [trip] = await db
         .insert(trips)
@@ -150,6 +151,58 @@ export async function POST(request: Request) {
         .returning();
 
       return NextResponse.json({ trip, items: [] });
+    }
+
+    // ─── Save pre-built AI itinerary from /api/trips/generate ──
+    if (itineraryData && itineraryData.days) {
+      const [trip] = await db
+        .insert(trips)
+        .values({
+          userId,
+          islandId,
+          title: itineraryData.title || tripTitle,
+          startDate: start,
+          endDate: end,
+          guestCount,
+          budget: budget || null,
+          interests: interests || null,
+          isAiGenerated: true,
+          isPublic: false,
+        })
+        .returning();
+
+      const itemValues: {
+        tripId: string;
+        listingId: string | null;
+        dayNumber: number;
+        timeSlot: string;
+        customTitle: string;
+        customNote: string | null;
+        sortOrder: number;
+      }[] = [];
+
+      for (const day of itineraryData.days) {
+        if (day.items && Array.isArray(day.items)) {
+          for (let i = 0; i < day.items.length; i++) {
+            const item = day.items[i];
+            itemValues.push({
+              tripId: trip.id,
+              listingId: item.listingId || null,
+              dayNumber: day.dayNumber,
+              timeSlot: item.timeSlot || "morning",
+              customTitle: item.title || "Activity",
+              customNote: item.note || null,
+              sortOrder: i,
+            });
+          }
+        }
+      }
+
+      if (itemValues.length > 0) {
+        await db.insert(tripItems).values(itemValues);
+      }
+
+      return NextResponse.json({ trip, items: itemValues });
     }
 
     // ─── AI-generated mode ─────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, MessageSquare, Clock, Send, X } from "lucide-react";
+import { Star, MessageSquare, Clock, Send, X, Sparkles, Loader2 } from "lucide-react";
 
 type Review = {
   id: string;
@@ -61,6 +61,11 @@ export default function OperatorReviewsPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<
+    { style: string; text: string }[]
+  >([]);
+  const [suggestingFor, setSuggestingFor] = useState<string | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -121,6 +126,30 @@ export default function OperatorReviewsPage() {
       console.error("Failed to save reply:", err);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function suggestReply(review: Review) {
+    setSuggestLoading(true);
+    setSuggestingFor(review.id);
+    setAiSuggestions([]);
+    try {
+      const res = await fetch("/api/ai/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewText: `${review.title ? review.title + " - " : ""}${review.comment || ""}`,
+          reviewRating: review.rating,
+          listingTitle: review.listingTitle,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setAiSuggestions(data.replies || []);
+    } catch {
+      console.error("Failed to get AI suggestions");
+    } finally {
+      setSuggestLoading(false);
     }
   }
 
@@ -341,9 +370,23 @@ export default function OperatorReviewsPage() {
                       {saving ? "Saving..." : "Save Reply"}
                     </button>
                     <button
+                      onClick={() => suggestReply(review)}
+                      disabled={suggestLoading && suggestingFor === review.id}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-gold-500 text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50 transition-all"
+                    >
+                      {suggestLoading && suggestingFor === review.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={14} />
+                      )}
+                      AI Suggest Reply
+                    </button>
+                    <button
                       onClick={() => {
                         setReplyingTo(null);
                         setReplyText("");
+                        setAiSuggestions([]);
+                        setSuggestingFor(null);
                       }}
                       className="flex items-center gap-2 px-4 py-2 text-navy-400 text-sm font-medium rounded-xl hover:bg-navy-50 transition-colors"
                     >
@@ -351,6 +394,34 @@ export default function OperatorReviewsPage() {
                       Cancel
                     </button>
                   </div>
+
+                  {/* AI Suggestion Cards */}
+                  {suggestingFor === review.id &&
+                    aiSuggestions.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-xs font-semibold text-navy-500">
+                          Choose a suggested reply:
+                        </p>
+                        {aiSuggestions.map((suggestion, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setReplyText(suggestion.text)}
+                            className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                              replyText === suggestion.text
+                                ? "border-teal-500 bg-teal-50"
+                                : "border-cream-200 bg-cream-50 hover:border-gold-300"
+                            }`}
+                          >
+                            <p className="text-xs font-semibold text-navy-500 mb-1">
+                              {suggestion.style}
+                            </p>
+                            <p className="text-sm text-navy-600 leading-relaxed">
+                              {suggestion.text}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               )}
             </div>

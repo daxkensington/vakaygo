@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Save, Loader2, ArrowLeft, Eye, Trash2 } from "lucide-react";
+import {
+  Save,
+  Loader2,
+  ArrowLeft,
+  Eye,
+  Trash2,
+  Sparkles,
+  DollarSign,
+  ArrowUpRight,
+} from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import Link from "next/link";
 import PhotoUploader from "@/components/operator/photo-uploader";
@@ -59,6 +68,33 @@ export default function EditListingPage() {
   const [newExcluded, setNewExcluded] = useState("");
   const [meetingPoint, setMeetingPoint] = useState("");
   const [images, setImages] = useState<{ id: string; url: string; alt: string | null }[]>([]);
+
+  // AI Optimizer state
+  const [optimizeData, setOptimizeData] = useState<{
+    score: number;
+    maxScore: number;
+    improvements: {
+      category: string;
+      priority: string;
+      suggestion: string;
+      action: string | null;
+    }[];
+    competitivePosition: string;
+    estimatedImpact: string;
+  } | null>(null);
+  const [optimizeLoading, setOptimizeLoading] = useState(false);
+
+  // AI Pricing state
+  const [pricingData, setPricingData] = useState<{
+    currentPrice: number;
+    suggestedPrice: number;
+    reasoning: string;
+    competitorRange: { low: number; median: number; high: number };
+    competitorCount: number;
+    seasonalTip: string;
+    insights: string[];
+  } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   useEffect(() => {
     async function fetchListing() {
@@ -136,6 +172,44 @@ export default function EditListingPage() {
       // handle error
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function fetchOptimization() {
+    if (!listing) return;
+    setOptimizeLoading(true);
+    try {
+      const res = await fetch("/api/ai/optimize-listing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setOptimizeData(data);
+    } catch {
+      console.error("Failed to fetch optimization");
+    } finally {
+      setOptimizeLoading(false);
+    }
+  }
+
+  async function fetchPricing() {
+    if (!listing) return;
+    setPricingLoading(true);
+    try {
+      const res = await fetch("/api/ai/pricing-suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setPricingData(data);
+    } catch {
+      console.error("Failed to fetch pricing");
+    } finally {
+      setPricingLoading(false);
     }
   }
 
@@ -262,6 +336,295 @@ export default function EditListingPage() {
             existingPhotos={images}
             onPhotosChange={setImages}
           />
+        </div>
+
+        {/* AI Listing Optimizer */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-gold-500 rounded-lg flex items-center justify-center">
+                <Sparkles size={16} className="text-white" />
+              </div>
+              <h2 className="font-bold text-navy-700">Optimize with AI</h2>
+            </div>
+            {!optimizeData && (
+              <button
+                type="button"
+                onClick={fetchOptimization}
+                disabled={optimizeLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-gold-500 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all"
+              >
+                {optimizeLoading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+                Analyze Listing
+              </button>
+            )}
+          </div>
+
+          {optimizeLoading && (
+            <div className="flex items-center gap-3 py-8 justify-center text-navy-400">
+              <Loader2 size={20} className="animate-spin" />
+              <span className="text-sm">Analyzing your listing...</span>
+            </div>
+          )}
+
+          {optimizeData && (
+            <div className="space-y-4">
+              {/* Score Circle */}
+              <div className="flex items-center gap-6">
+                <div className="relative w-20 h-20">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="34"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      className="text-cream-200"
+                    />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="34"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(optimizeData.score / optimizeData.maxScore) * 213.6} 213.6`}
+                      className={
+                        optimizeData.score >= 80
+                          ? "text-emerald-500"
+                          : optimizeData.score >= 50
+                            ? "text-amber-500"
+                            : "text-red-500"
+                      }
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-navy-700">
+                      {optimizeData.score}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold text-navy-700">
+                    Listing Score: {optimizeData.score}/{optimizeData.maxScore}
+                  </p>
+                  <p className="text-sm text-navy-400 capitalize">
+                    Position: {optimizeData.competitivePosition.replace(/_/g, " ")}
+                  </p>
+                  <p className="text-xs text-navy-300 mt-1">
+                    {optimizeData.estimatedImpact}
+                  </p>
+                </div>
+              </div>
+
+              {/* Improvements */}
+              <div className="space-y-2">
+                {optimizeData.improvements.map((imp, i) => {
+                  const priorityBadge =
+                    imp.priority === "high"
+                      ? "bg-red-100 text-red-700"
+                      : imp.priority === "medium"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700";
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 rounded-xl bg-cream-50 flex items-start gap-3"
+                    >
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${priorityBadge}`}
+                      >
+                        {imp.priority}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-navy-500">
+                          {imp.category}
+                        </p>
+                        <p className="text-sm text-navy-600 mt-0.5">
+                          {imp.suggestion}
+                        </p>
+                      </div>
+                      {imp.action === "generate_description" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Scroll to description section
+                            document
+                              .querySelector("textarea")
+                              ?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="text-xs font-medium text-teal-600 hover:text-teal-700 whitespace-nowrap flex items-center gap-1"
+                        >
+                          Fix <ArrowUpRight size={12} />
+                        </button>
+                      )}
+                      {imp.action === "add_photos" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            document
+                              .getElementById("photos-section")
+                              ?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="text-xs font-medium text-teal-600 hover:text-teal-700 whitespace-nowrap flex items-center gap-1"
+                        >
+                          Fix <ArrowUpRight size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={fetchOptimization}
+                disabled={optimizeLoading}
+                className="text-xs font-medium text-navy-400 hover:text-teal-600 transition-colors"
+              >
+                Re-analyze
+              </button>
+            </div>
+          )}
+
+          {!optimizeData && !optimizeLoading && (
+            <p className="text-sm text-navy-400">
+              Get AI-powered suggestions to improve your listing and increase
+              bookings.
+            </p>
+          )}
+        </div>
+
+        {/* AI Pricing Intelligence */}
+        <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-gold-500 to-gold-600 rounded-lg flex items-center justify-center">
+                <DollarSign size={16} className="text-white" />
+              </div>
+              <h2 className="font-bold text-navy-700">Pricing Intelligence</h2>
+            </div>
+            {!pricingData && (
+              <button
+                type="button"
+                onClick={fetchPricing}
+                disabled={pricingLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all"
+              >
+                {pricingLoading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <DollarSign size={14} />
+                )}
+                Analyze Pricing
+              </button>
+            )}
+          </div>
+
+          {pricingLoading && (
+            <div className="flex items-center gap-3 py-8 justify-center text-navy-400">
+              <Loader2 size={20} className="animate-spin" />
+              <span className="text-sm">Analyzing competitor pricing...</span>
+            </div>
+          )}
+
+          {pricingData && (
+            <div className="space-y-4">
+              {/* Price comparison */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-cream-50 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-navy-700">
+                    ${pricingData.currentPrice.toFixed(0)}
+                  </p>
+                  <p className="text-xs text-navy-400 mt-1">Your Price</p>
+                </div>
+                <div className="p-4 bg-teal-50 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-teal-600">
+                    ${pricingData.suggestedPrice.toFixed(0)}
+                  </p>
+                  <p className="text-xs text-teal-600 mt-1">Suggested Price</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-navy-600">{pricingData.reasoning}</p>
+
+              {/* Competitor range bar */}
+              <div>
+                <p className="text-xs font-semibold text-navy-500 mb-2">
+                  Competitor Range ({pricingData.competitorCount} listings)
+                </p>
+                <div className="relative h-3 bg-cream-100 rounded-full overflow-hidden">
+                  <div
+                    className="absolute h-full bg-gold-200 rounded-full"
+                    style={{
+                      left: "0%",
+                      width: "100%",
+                    }}
+                  />
+                  {/* Current price marker */}
+                  {pricingData.competitorRange.high > pricingData.competitorRange.low && (
+                    <div
+                      className="absolute top-0 w-1 h-full bg-navy-700 rounded-full"
+                      style={{
+                        left: `${Math.min(
+                          ((pricingData.currentPrice - pricingData.competitorRange.low) /
+                            (pricingData.competitorRange.high - pricingData.competitorRange.low)) *
+                            100,
+                          100
+                        )}%`,
+                      }}
+                      title={`Your price: $${pricingData.currentPrice}`}
+                    />
+                  )}
+                </div>
+                <div className="flex justify-between mt-1 text-xs text-navy-400">
+                  <span>${pricingData.competitorRange.low.toFixed(0)}</span>
+                  <span>Median: ${pricingData.competitorRange.median.toFixed(0)}</span>
+                  <span>${pricingData.competitorRange.high.toFixed(0)}</span>
+                </div>
+              </div>
+
+              {/* Seasonal tip */}
+              <div className="p-3 bg-gold-50 rounded-xl">
+                <p className="text-xs font-semibold text-gold-600 mb-0.5">
+                  Seasonal Tip
+                </p>
+                <p className="text-sm text-navy-600">{pricingData.seasonalTip}</p>
+              </div>
+
+              {/* Insights */}
+              <div className="space-y-1.5">
+                {pricingData.insights.map((insight, i) => (
+                  <p key={i} className="text-xs text-navy-500 flex items-start gap-2">
+                    <span className="text-gold-500 mt-0.5 shrink-0">*</span>
+                    {insight}
+                  </p>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={fetchPricing}
+                disabled={pricingLoading}
+                className="text-xs font-medium text-navy-400 hover:text-gold-600 transition-colors"
+              >
+                Re-analyze
+              </button>
+            </div>
+          )}
+
+          {!pricingData && !pricingLoading && (
+            <p className="text-sm text-navy-400">
+              See how your pricing compares to similar listings and get AI
+              recommendations.
+            </p>
+          )}
         </div>
 
         {/* Location */}
