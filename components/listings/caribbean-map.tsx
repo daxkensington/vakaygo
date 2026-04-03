@@ -85,6 +85,22 @@ const FLYOVER_WAYPOINTS = [
 const CARIBBEAN_CENTER: [number, number] = [-66, 18];
 const CARIBBEAN_ZOOM = 5;
 
+// Per-island flyover waypoints — 4 camera angles around each island
+function getIslandFlyover(slug: string): typeof FLYOVER_WAYPOINTS {
+  const island = islandCoords[slug];
+  if (!island) return FLYOVER_WAYPOINTS;
+  const [lng, lat] = island.center;
+  const z = island.zoom;
+  return [
+    { center: island.center, zoom: z - 1, pitch: 30, bearing: 0, label: island.name },
+    { center: [lng - 0.08, lat + 0.05] as [number, number], zoom: z + 1, pitch: 55, bearing: -30, label: `North ${island.name}` },
+    { center: [lng + 0.06, lat - 0.03] as [number, number], zoom: z + 1, pitch: 55, bearing: 45, label: `South ${island.name}` },
+    { center: [lng - 0.04, lat - 0.06] as [number, number], zoom: z + 1, pitch: 60, bearing: 120, label: `West Coast` },
+    { center: [lng + 0.05, lat + 0.04] as [number, number], zoom: z + 1, pitch: 50, bearing: -60, label: `East Coast` },
+    { center: island.center, zoom: z, pitch: 40, bearing: 0, label: `${island.name} Overview` },
+  ];
+}
+
 // ─── Create listing marker ──────────────────────────────────────
 function createListingMarker(listing: MapListing): { wrapper: HTMLDivElement; pin: HTMLDivElement } {
   const config = categoryConfig[listing.type] || categoryConfig.stay;
@@ -308,63 +324,18 @@ export default function CaribbeanMap({
 
   // Store listings as a lookup for click events
   const listingsMapRef = useRef<Map<string, MapListing>>(new Map());
+  const layersInitRef = useRef(false);
 
-  // ── Place markers using GeoJSON clustering ──
+  // ── Initialize clustering layers & event listeners ONCE ──
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || layersInitRef.current) return;
+    layersInitRef.current = true;
 
-    // Clear old individual markers
-    markersRef.current.forEach((entry) => entry.marker.remove());
-    markersRef.current.clear();
-
-    const mappable = listings.filter(
-      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
-    );
-
-    // Search filter
-    const filtered = searchQuery
-      ? mappable.filter((l) =>
-          l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          l.islandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (l.parish && l.parish.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-      : mappable;
-
-    // Store for click lookup
-    const lMap = new Map<string, MapListing>();
-    filtered.forEach((l) => lMap.set(l.id, l));
-    listingsMapRef.current = lMap;
-
-    // Build GeoJSON
-    const geojson: GeoJSON.FeatureCollection = {
-      type: "FeatureCollection",
-      features: filtered.map((l) => ({
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
-        },
-        properties: {
-          id: l.id,
-          title: l.title,
-          type: l.type,
-          price: l.priceAmount ? parseFloat(l.priceAmount) : null,
-          color: categoryConfig[l.type]?.color || "#D4A017",
-        },
-      })),
-    };
-
-    // Remove old layers/source if they exist
-    ["clusters", "cluster-count", "unclustered-point", "unclustered-label"].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    if (map.getSource("listings")) map.removeSource("listings");
-
-    // Add clustered source
+    // Add empty clustered source
     map.addSource("listings", {
       type: "geojson",
-      data: geojson,
+      data: { type: "FeatureCollection", features: [] },
       cluster: true,
       clusterMaxZoom: 14,
       clusterRadius: 60,
@@ -379,15 +350,11 @@ export default function CaribbeanMap({
       paint: {
         "circle-color": [
           "step", ["get", "point_count"],
-          "#D4A017",    // gold < 20
-          20, "#14B8A6", // teal 20-100
-          100, "#1E3A5F", // navy 100+
+          "#D4A017", 20, "#14B8A6", 100, "#1E3A5F",
         ],
         "circle-radius": [
           "step", ["get", "point_count"],
-          22,     // < 20
-          20, 28, // 20-100
-          100, 36, // 100+
+          22, 20, 28, 100, 36,
         ],
         "circle-stroke-width": 3,
         "circle-stroke-color": "#fff",
@@ -406,9 +373,7 @@ export default function CaribbeanMap({
         "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
         "text-size": 13,
       },
-      paint: {
-        "text-color": "#ffffff",
-      },
+      paint: { "text-color": "#ffffff" },
     });
 
     // Individual unclustered points
@@ -425,7 +390,7 @@ export default function CaribbeanMap({
       },
     });
 
-    // Price labels on unclustered points (visible at zoom 12+)
+    // Price labels on unclustered points (zoom 12+)
     map.addLayer({
       id: "unclustered-label",
       type: "symbol",
@@ -477,7 +442,51 @@ export default function CaribbeanMap({
     map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
     map.on("mouseenter", "unclustered-point", () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", "unclustered-point", () => { map.getCanvas().style.cursor = ""; });
+  }, [mapReady]);
 
+  // ── Update GeoJSON data when filters/listings change ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !layersInitRef.current) return;
+
+    const source = map.getSource("listings") as mapboxgl.GeoJSONSource;
+    if (!source) return;
+
+    const mappable = listings.filter(
+      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
+    );
+
+    const filtered = searchQuery
+      ? mappable.filter((l) =>
+          l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          l.islandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.parish && l.parish.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+      : mappable;
+
+    // Update lookup
+    const lMap = new Map<string, MapListing>();
+    filtered.forEach((l) => lMap.set(l.id, l));
+    listingsMapRef.current = lMap;
+
+    // Update the source data (no layer recreation needed)
+    source.setData({
+      type: "FeatureCollection",
+      features: filtered.map((l) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
+        },
+        properties: {
+          id: l.id,
+          title: l.title,
+          type: l.type,
+          price: l.priceAmount ? parseFloat(l.priceAmount) : null,
+          color: categoryConfig[l.type]?.color || "#D4A017",
+        },
+      })),
+    });
   }, [listings, activeCategories, searchQuery, mapReady]);
 
   // ── Flyover ──
@@ -487,14 +496,17 @@ export default function CaribbeanMap({
     setIsFlyover(true);
     flyoverIndexRef.current = 0;
 
+    // Use island-specific waypoints if an island is active, else full Caribbean tour
+    const waypoints = activeIsland ? getIslandFlyover(activeIsland) : FLYOVER_WAYPOINTS;
+
     const flyNext = () => {
       const idx = flyoverIndexRef.current;
-      if (idx >= FLYOVER_WAYPOINTS.length) {
+      if (idx >= waypoints.length) {
         setIsFlyover(false);
         setFlyoverLabel("");
         return;
       }
-      const wp = FLYOVER_WAYPOINTS[idx];
+      const wp = waypoints[idx];
       setFlyoverLabel(wp.label);
       map.flyTo({
         center: wp.center,
@@ -509,7 +521,7 @@ export default function CaribbeanMap({
     };
 
     flyNext();
-  }, []);
+  }, [activeIsland]);
 
   const stopFlyover = useCallback(() => {
     if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
