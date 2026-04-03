@@ -358,10 +358,10 @@ export default function CaribbeanMap({
       setMapReady(true);
     });
 
-    // Cinematic intro
+    // Cinematic intro — only if no island is selected (check ref for current value)
     map.on("load", () => {
-      if (!activeIsland) {
-        setTimeout(() => {
+      setTimeout(() => {
+        if (!activeIslandRef.current) {
           map.flyTo({
             center: CARIBBEAN_CENTER,
             zoom: 5.5,
@@ -370,8 +370,8 @@ export default function CaribbeanMap({
             duration: 3000,
             essential: true,
           });
-        }, 500);
-      }
+        }
+      }, 500);
     });
 
     mapRef.current = map;
