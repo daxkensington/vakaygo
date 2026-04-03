@@ -709,22 +709,23 @@ export function AIConcierge({
     }
   };
 
-  // Enter voice mode
+  // Enter voice mode with spoken welcome
   const enterVoiceMode = useCallback(() => {
     setVoiceMode(true);
     setVoiceEnabled(true);
-    // Start listening immediately
-    setTimeout(() => {
-      startListening((transcript) => {
-        setLastTranscript(transcript);
-        setInput(transcript);
+    // Speak a welcome greeting, then start listening
+    const welcome = WELCOME_MESSAGES[personality] || WELCOME_MESSAGES.coral;
+    speakText(welcome, () => {
+      // After welcome, start listening
+      if (voiceModeRef.current) {
         setTimeout(() => {
-          const form = document.getElementById("concierge-form") as HTMLFormElement;
-          form?.requestSubmit();
-        }, 100);
-      });
-    }, 300);
-  }, [startListening]);
+          startListening((transcript) => {
+            voiceSend(transcript);
+          });
+        }, 400);
+      }
+    });
+  }, [startListening, speakText, personality, voiceSend]);
 
   // Exit voice mode
   const exitVoiceMode = useCallback(() => {

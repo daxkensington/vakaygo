@@ -62,13 +62,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "TTS generation failed" }, { status: 500 });
     }
 
-    // Stream the audio directly (no buffering)
-    return new NextResponse(res.body, {
+    // Buffer and return the audio
+    const audioBuffer = await res.arrayBuffer();
+    return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
+        "Content-Length": String(audioBuffer.byteLength),
         "Cache-Control": "no-store",
-        "Transfer-Encoding": "chunked",
       },
     });
   } catch (error) {
