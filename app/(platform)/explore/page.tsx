@@ -220,10 +220,20 @@ export default function ExplorePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const typeParam = params.get("type");
+    const typeParam = params.get("type") || params.get("category");
     const islandParam = params.get("island");
+    const qParam = params.get("q");
+    const minPriceParam = params.get("minPrice");
+    const maxPriceParam = params.get("maxPrice");
+    const ratingParam = params.get("minRating");
+    const sortParam = params.get("sort");
     if (typeParam) setActiveCategory(typeParam);
     if (islandParam) setActiveIsland(islandParam);
+    if (qParam) setSearchQuery(qParam);
+    if (minPriceParam) setMinPrice(minPriceParam);
+    if (maxPriceParam) setMaxPrice(maxPriceParam);
+    if (ratingParam) setMinRating(ratingParam);
+    if (sortParam) setSortBy(sortParam);
   }, []);
 
   // SEO: Update document title based on active filters

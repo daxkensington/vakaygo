@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, listingViews, islands, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -65,7 +66,12 @@ export async function GET() {
       .orderBy(desc(sql`count(${listingViews.id})`))
       .limit(12);
 
-    return NextResponse.json({ trending });
+    const data = trending.map((t) => ({
+      ...t,
+      image: getImageUrl(t.image) || null,
+    }));
+
+    return NextResponse.json({ trending: data });
   } catch (error) {
     console.error("Trending error:", error);
     return NextResponse.json(

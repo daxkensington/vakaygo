@@ -182,14 +182,31 @@ export async function GET(request: Request) {
     const imageMap = new Map<string, string>();
 
     if (listingIds.length > 0) {
-      const images = await db
+      // First try primary images
+      const primaryImages = await db
         .select({ listingId: media.listingId, url: media.url })
         .from(media)
         .where(and(
           inArray(media.listingId, listingIds),
           eq(media.isPrimary, true)
         ));
-      images.forEach((img) => imageMap.set(img.listingId, img.url));
+      primaryImages.forEach((img) => imageMap.set(img.listingId, img.url));
+
+      // For listings without a primary image, grab the first available media
+      const missingIds = listingIds.filter((id) => !imageMap.has(id));
+      if (missingIds.length > 0) {
+        const fallbackImages = await db
+          .select({ listingId: media.listingId, url: media.url })
+          .from(media)
+          .where(inArray(media.listingId, missingIds))
+          .orderBy(media.sortOrder)
+          .limit(missingIds.length);
+        fallbackImages.forEach((img) => {
+          if (!imageMap.has(img.listingId)) {
+            imageMap.set(img.listingId, img.url);
+          }
+        });
+      }
     }
 
     const data = results.map((r) => ({

@@ -12,6 +12,7 @@ import {
   media,
 } from "@/drizzle/schema";
 import { eq, and, sql, desc, notInArray, inArray } from "drizzle-orm";
+import { getImageUrl } from "@/lib/image-utils";
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "dev-secret-change-in-production"
@@ -88,9 +89,10 @@ export async function GET() {
         .orderBy(desc(listings.isFeatured), desc(listings.avgRating))
         .limit(12);
 
+      const withImages = popular.map((p) => ({ ...p, image: getImageUrl(p.image) || null }));
       return NextResponse.json({
-        recommended: popular.slice(0, 6),
-        popular: popular.slice(6, 12),
+        recommended: withImages.slice(0, 6),
+        popular: withImages.slice(6, 12),
         isPersonalized: false,
       });
     }
@@ -192,8 +194,11 @@ export async function GET() {
       )
       .limit(50);
 
+    // Fix image URLs through proxy
+    const candidatesWithImages = candidates.map((c) => ({ ...c, image: getImageUrl(c.image) || null }));
+
     // Score candidates
-    const scored = candidates.map((listing) => {
+    const scored = candidatesWithImages.map((listing) => {
       let score = 0;
       let reason = "Popular on VakayGo";
 
