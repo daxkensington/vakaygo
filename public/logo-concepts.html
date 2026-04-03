@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VakayGo Logo Concepts</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #fff;
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      padding: 60px 20px 40px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    }
+    .header h1 {
+      font-size: 42px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #D4A017, #f5d78e, #D4A017);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    .header p {
+      color: #94a3b8;
+      font-size: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 32px 80px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 20px;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+      position: relative;
+    }
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 60px rgba(212, 160, 23, 0.15);
+    }
+    .card.selected {
+      box-shadow: 0 0 0 3px #D4A017, 0 20px 60px rgba(212, 160, 23, 0.25);
+    }
+    .card.selected::after {
+      content: "SELECTED";
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #D4A017;
+      color: #0f172a;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+      z-index: 2;
+    }
+    .card-img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: contain;
+      background: #fff;
+      padding: 20px;
+    }
+    .card-body {
+      padding: 20px;
+    }
+    .card-num {
+      display: inline-block;
+      background: rgba(212, 160, 23, 0.15);
+      color: #D4A017;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .card-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      background: rgba(255,255,255,0.06);
+      color: #cbd5e1;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+    .footer {
+      text-align: center;
+      padding: 40px 20px 60px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .vote-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(212, 160, 23, 0.2);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 100;
+    }
+    .vote-bar span {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .vote-bar strong {
+      color: #D4A017;
+    }
+    /* Dark bg preview toggle */
+    .preview-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 32px 20px;
+    }
+    .preview-toggle button {
+      padding: 8px 20px;
+      border: 1px solid #334155;
+      background: transparent;
+      color: #94a3b8;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .preview-toggle button.active {
+      background: #D4A017;
+      color: #0f172a;
+      border-color: #D4A017;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>VakayGo Logo Concepts</h1>
+    <p>Click on your favorite to select it</p>
+  </div>
+
+  <div class="preview-toggle">
+    <button class="active" onclick="setBg('white')">White Background</button>
+    <button onclick="setBg('#0f172a')">Dark Background</button>
+    <button onclick="setBg('#f8fafc')">Light Gray</button>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="card" onclick="select(1)">
+      <img class="card-img" src="/images/logo-concepts/concept-1.jpg" alt="Concept 1">
+      <div class="card-body">
+        <span class="card-num">Concept 1</span>
+        <h3 class="card-title">Wave Serif + Palm Leaf</h3>
+        <p class="card-desc">Elegant serif wordmark with wave curl in the V and gold palm frond accent wrapping around the G. Luxury feel.</p>
+        <div class="card-tags">
+          <span class="tag">Elegant</span>
+          <span class="tag">Serif</span>
+          <span class="tag">Palm Leaf</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(2)">
+      <img class="card-img" src="/images/logo-concepts/concept-2.jpg" alt="Concept 2">
+      <div class="card-body">
+        <span class="card-num">Concept 2</span>
+        <h3 class="card-title">Compass Rose</h3>
+        <p class="card-desc">Bold navy "Vakay" with gold "Go" featuring a compass rose replacing the O. Clean, corporate, works as favicon.</p>
+        <div class="card-tags">
+          <span class="tag">Clean</span>
+          <span class="tag">Corporate</span>
+          <span class="tag">Compass</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(3)">
+      <img class="card-img" src="/images/logo-concepts/concept-3.jpg" alt="Concept 3">
+      <div class="card-body">
+        <span class="card-num">Concept 3</span>
+        <h3 class="card-title">Palm Tree V + Wave</h3>
+        <p class="card-desc">Palm tree integrated into the V letterform, gold "Go", subtle wave line underneath. Clear Caribbean identity.</p>
+        <div class="card-tags">
+          <span class="tag">Tropical</span>
+          <span class="tag">Playful</span>
+          <span class="tag">Wave</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(4)">
+      <img class="card-img" src="/images/logo-concepts/concept-4.jpg" alt="Concept 4">
+      <div class="card-body">
+        <span class="card-num">Concept 4</span>
+        <h3 class="card-title">Refined Wave + Palm</h3>
+        <p class="card-desc">Polished version — ocean wave in the V, gold palm frond flowing from G. Luxury resort feel with serif elegance.</p>
+        <div class="card-tags">
+          <span class="tag">Luxury</span>
+          <span class="tag">Refined</span>
+          <span class="tag">Resort</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(5)">
+      <img class="card-img" src="/images/logo-concepts/concept-5.jpg" alt="Concept 5">
+      <div class="card-body">
+        <span class="card-num">Concept 5</span>
+        <h3 class="card-title">Gold Emblem + Sailboat</h3>
+        <p class="card-desc">Gold circle emblem with stylized V/sailboat monogram. Strong standalone icon — perfect for app icon and favicon.</p>
+        <div class="card-tags">
+          <span class="tag">Emblem</span>
+          <span class="tag">App Icon</span>
+          <span class="tag">Sailboat</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(6)">
+      <img class="card-img" src="/images/logo-concepts/concept-6.jpg" alt="Concept 6">
+      <div class="card-body">
+        <span class="card-num">Concept 6</span>
+        <h3 class="card-title">Palm + Sunburst</h3>
+        <p class="card-desc">Palm silhouette on the V, golden sunburst radiating behind the O in "Go". Wave line underneath. Bold and tropical.</p>
+        <div class="card-tags">
+          <span class="tag">Bold</span>
+          <span class="tag">Tropical</span>
+          <span class="tag">Sunburst</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(7)">
+      <img class="card-img" src="/images/logo-concepts/concept-7.jpg" alt="Concept 7">
+      <div class="card-body">
+        <span class="card-num">Concept 7</span>
+        <h3 class="card-title">VG Wave Monogram</h3>
+        <p class="card-desc">Ocean wave VG monogram icon with blue gradient depths. Clean wordmark beside it. Modern tech-meets-travel brand.</p>
+        <div class="card-tags">
+          <span class="tag">Monogram</span>
+          <span class="tag">Modern</span>
+          <span class="tag">Scalable</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" onclick="select(8)">
+      <img class="card-img" src="/images/logo-concepts/concept-8.jpg" alt="Concept 8">
+      <div class="card-body">
+        <span class="card-num">Concept 8</span>
+        <h3 class="card-title">Script + Seashells</h3>
+        <p class="card-desc">Elegant cursive "Vakay" flowing into bold "Go" with starfish and seashell accents. Boutique resort sophistication.</p>
+        <div class="card-tags">
+          <span class="tag">Script</span>
+          <span class="tag">Boutique</span>
+          <span class="tag">Elegant</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>VakayGo Logo Selection &mdash; Click your favorite concept</p>
+  </div>
+
+  <div class="vote-bar" id="vote-bar" style="display:none;">
+    <span>Selected: <strong id="vote-label"></strong></span>
+  </div>
+
+  <script>
+    let selectedCard = null;
+    function select(num) {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      const cards = document.querySelectorAll('.card');
+      cards[num - 1].classList.add('selected');
+      selectedCard = num;
+      document.getElementById('vote-bar').style.display = 'flex';
+      document.getElementById('vote-label').textContent = 'Concept ' + num;
+    }
+    function setBg(color) {
+      document.querySelectorAll('.card-img').forEach(img => img.style.background = color);
+      document.querySelectorAll('.preview-toggle button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
