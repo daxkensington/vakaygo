@@ -31,10 +31,26 @@ interface ConciergeContext {
   pageUrl?: string;
 }
 
-// ─── Constants ──────────────────────────────────────────────────
-const WELCOME_MESSAGE =
-  "Hey! I'm your AI travel concierge. I can search real listings, check availability, compare options, and help plan your Caribbean adventure. What are you looking for?";
+// ─── Personalities ─────────────────────────────────────────────
+const PERSONALITIES = [
+  { id: "coral", name: "Coral", emoji: "🐚", desc: "Warm & knowledgeable", color: "from-gold-400 to-gold-600" },
+  { id: "captain", name: "Captain Jack", emoji: "⚓", desc: "Salty island captain", color: "from-blue-500 to-blue-700" },
+  { id: "luxe", name: "Luxe", emoji: "✨", desc: "Premium concierge", color: "from-purple-400 to-purple-600" },
+  { id: "backpacker", name: "Ziggy", emoji: "🎒", desc: "Budget adventurer", color: "from-green-400 to-green-600" },
+  { id: "local", name: "Auntie Mae", emoji: "🌺", desc: "Caribbean insider", color: "from-orange-400 to-orange-600" },
+  { id: "party", name: "DJ Tropic", emoji: "🎶", desc: "Nightlife expert", color: "from-pink-400 to-pink-600" },
+];
 
+const WELCOME_MESSAGES: Record<string, string> = {
+  coral: "Hey! I'm Coral, your AI travel concierge. I can search real listings, check availability, compare options, and help plan your Caribbean adventure. What are you looking for?",
+  captain: "Ahoy! Captain Jack here. I've sailed every island in the Caribbean and I know the best spots — tourist traps and hidden treasures alike. Where shall we set course?",
+  luxe: "Welcome. I'm Luxe, your premium Caribbean concierge. I specialize in the finest experiences — from private villas to exclusive dining. How may I elevate your journey?",
+  backpacker: "Yo! I'm Ziggy! Ready to find you the most epic Caribbean experiences without burning through your wallet. Hidden gems, street food, local vibes — what's the move?",
+  local: "Hey darlin'! Auntie Mae here. I know every back road, family kitchen, and secret beach across these islands. Tell me what you're looking for and I'll set you right.",
+  party: "What's good! DJ Tropic in the house. Beach parties, rum bars, carnival season, live music — I know where the energy is across all 21 islands. What vibe are we chasing?",
+};
+
+// ─── Constants ──────────────────────────────────────────────────
 const QUICK_SUGGESTIONS = [
   "Best stays in Grenada",
   "Top-rated restaurants",
@@ -43,6 +59,7 @@ const QUICK_SUGGESTIONS = [
 ];
 
 const SESSION_KEY = "vakaygo-concierge-messages";
+const PERSONALITY_KEY = "vakaygo-concierge-personality";
 
 const TYPE_LABELS: Record<string, string> = {
   stay: "Stay",
@@ -73,9 +90,23 @@ function saveMessages(messages: Message[]) {
   } catch {}
 }
 
+function loadPersonality(): string {
+  if (typeof window === "undefined") return "coral";
+  try {
+    return localStorage.getItem(PERSONALITY_KEY) || "coral";
+  } catch {
+    return "coral";
+  }
+}
+
+function savePersonality(id: string) {
+  try {
+    localStorage.setItem(PERSONALITY_KEY, id);
+  } catch {}
+}
+
 // ─── Markdown-lite renderer ─────────────────────────────────────
 function renderMarkdown(text: string) {
-  // Split into lines and process
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
   let listItems: string[] = [];
@@ -94,7 +125,6 @@ function renderMarkdown(text: string) {
   }
 
   function processInline(str: string): React.ReactNode {
-    // Bold
     const parts: React.ReactNode[] = [];
     const boldRegex = /\*\*(.*?)\*\*/g;
     let lastIndex = 0;
@@ -122,13 +152,11 @@ function renderMarkdown(text: string) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // List items
     if (/^[-*]\s/.test(line)) {
       listItems.push(line.replace(/^[-*]\s/, ""));
       continue;
     }
 
-    // Numbered list
     if (/^\d+\.\s/.test(line)) {
       listItems.push(line.replace(/^\d+\.\s/, ""));
       continue;
@@ -154,15 +182,7 @@ function renderMarkdown(text: string) {
 // ─── Icons ──────────────────────────────────────────────────────
 function SparkleIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
     </svg>
   );
@@ -170,15 +190,7 @@ function SparkleIcon({ className }: { className?: string }) {
 
 function ChatIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </svg>
   );
@@ -186,15 +198,7 @@ function ChatIcon({ className }: { className?: string }) {
 
 function CloseIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 6L6 18M6 6l12 12" />
     </svg>
   );
@@ -202,15 +206,7 @@ function CloseIcon({ className }: { className?: string }) {
 
 function SendIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
     </svg>
   );
@@ -218,15 +214,7 @@ function SendIcon({ className }: { className?: string }) {
 
 function MicIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <rect x="9" y="1" width="6" height="12" rx="3" />
       <path d="M19 10v2a7 7 0 01-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="23" />
@@ -237,14 +225,16 @@ function MicIcon({ className }: { className?: string }) {
 
 function StarIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="currentColor"
-      strokeWidth={1}
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth={1}>
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
     </svg>
   );
 }
@@ -254,34 +244,50 @@ function TypingIndicator({ label }: { label?: string }) {
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <div className="flex items-center gap-1">
-        <span
-          className="w-2 h-2 rounded-full bg-navy-300 animate-bounce"
-          style={{ animationDelay: "0ms" }}
-        />
-        <span
-          className="w-2 h-2 rounded-full bg-navy-300 animate-bounce"
-          style={{ animationDelay: "150ms" }}
-        />
-        <span
-          className="w-2 h-2 rounded-full bg-navy-300 animate-bounce"
-          style={{ animationDelay: "300ms" }}
-        />
+        <span className="w-2 h-2 rounded-full bg-navy-300 animate-bounce" style={{ animationDelay: "0ms" }} />
+        <span className="w-2 h-2 rounded-full bg-navy-300 animate-bounce" style={{ animationDelay: "150ms" }} />
+        <span className="w-2 h-2 rounded-full bg-navy-300 animate-bounce" style={{ animationDelay: "300ms" }} />
       </div>
-      {label && (
-        <span className="text-xs text-navy-400 animate-pulse">{label}</span>
-      )}
+      {label && <span className="text-xs text-navy-400 animate-pulse">{label}</span>}
+    </div>
+  );
+}
+
+// ─── Voice Mode Visualizer ──────────────────────────────────────
+type VoiceState = "idle" | "listening" | "thinking" | "speaking";
+
+function VoiceVisualizer({ state, personality }: { state: VoiceState; personality: typeof PERSONALITIES[number] }) {
+  const rings = state === "listening" ? 3 : state === "speaking" ? 4 : state === "thinking" ? 2 : 0;
+
+  return (
+    <div className="relative flex items-center justify-center w-40 h-40 mx-auto">
+      {/* Animated rings */}
+      {Array.from({ length: rings }).map((_, i) => (
+        <div
+          key={i}
+          className={`absolute rounded-full border-2 ${
+            state === "listening" ? "border-red-400/40" :
+            state === "speaking" ? "border-gold-400/40" :
+            "border-navy-300/30"
+          }`}
+          style={{
+            width: `${100 + i * 30}%`,
+            height: `${100 + i * 30}%`,
+            animation: `pulse ${1.5 + i * 0.3}s ease-in-out infinite`,
+            animationDelay: `${i * 0.2}s`,
+          }}
+        />
+      ))}
+      {/* Center avatar */}
+      <div className={`relative z-10 w-24 h-24 rounded-full bg-gradient-to-br ${personality.color} flex items-center justify-center shadow-lg ${state === "thinking" ? "animate-pulse" : ""}`}>
+        <span className="text-4xl">{personality.emoji}</span>
+      </div>
     </div>
   );
 }
 
 // ─── Listing Card Component ─────────────────────────────────────
-function ListingCardInline({
-  listing,
-  onClick,
-}: {
-  listing: ListingCard;
-  onClick: () => void;
-}) {
+function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -289,11 +295,7 @@ function ListingCardInline({
     >
       <div className="relative h-28 overflow-hidden bg-cream-100">
         {listing.image ? (
-          <img
-            src={listing.image}
-            alt={listing.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+          <img src={listing.image} alt={listing.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gold-100 to-teal-100 flex items-center justify-center">
             <SparkleIcon className="w-8 h-8 text-gold-400" />
@@ -309,18 +311,14 @@ function ListingCardInline({
         </h4>
         <div className="flex items-center justify-between mt-1.5">
           {listing.price !== null ? (
-            <span className="text-xs font-bold text-navy-700">
-              ${listing.price.toFixed(0)}
-            </span>
+            <span className="text-xs font-bold text-navy-700">${listing.price.toFixed(0)}</span>
           ) : (
             <span className="text-xs text-navy-400">Price TBD</span>
           )}
           {listing.rating !== null && listing.rating > 0 && (
             <div className="flex items-center gap-0.5">
               <StarIcon className="w-3 h-3 text-gold-500" />
-              <span className="text-[10px] font-semibold text-navy-600">
-                {listing.rating.toFixed(1)}
-              </span>
+              <span className="text-[10px] font-semibold text-navy-600">{listing.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -352,12 +350,25 @@ export function AIConcierge({
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [personality, setPersonality] = useState("coral");
+  const [showPersonalities, setShowPersonalities] = useState(false);
+  const [lastTranscript, setLastTranscript] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const voiceModeRef = useRef(false);
   const router = useRouter();
   const params = useParams();
+
+  const currentPersonality = PERSONALITIES.find((p) => p.id === personality) || PERSONALITIES[0];
+
+  // Keep ref in sync
+  useEffect(() => {
+    voiceModeRef.current = voiceMode;
+  }, [voiceMode]);
 
   // Build context from current page
   const buildContext = useCallback((): ConciergeContext => {
@@ -367,7 +378,6 @@ export function AIConcierge({
     }
     if (typeof window !== "undefined") {
       ctx.pageUrl = window.location.pathname;
-      // Check for listing context set by "Ask AI about this" button
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lc = (window as any).__vakaygo_listing_context;
       if (lc) {
@@ -391,6 +401,7 @@ export function AIConcierge({
   // Load from sessionStorage on mount
   useEffect(() => {
     setMessages(loadMessages());
+    setPersonality(loadPersonality());
     setHasMounted(true);
   }, []);
 
@@ -414,24 +425,19 @@ export function AIConcierge({
 
   // Focus input when panel opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !voiceMode) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setHasUnread(false);
     }
-  }, [isOpen]);
+  }, [isOpen, voiceMode]);
 
   // Open with listing context prefill
-  const openWithContext = useCallback(
-    (prefill?: string) => {
-      setIsOpen(true);
-      if (prefill) {
-        setInput(prefill);
-      }
-    },
-    []
-  );
+  const openWithContext = useCallback((prefill?: string) => {
+    setIsOpen(true);
+    if (prefill) setInput(prefill);
+  }, []);
 
-  // Expose openWithContext globally for listing detail pages
+  // Expose openWithContext globally
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__vakaygo_concierge_open = openWithContext;
@@ -441,17 +447,51 @@ export function AIConcierge({
     };
   }, [openWithContext]);
 
-  // Voice input
-  const toggleVoice = useCallback(() => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
-      return;
-    }
+  // ─── Speech Functions ─────────────────────────────────────────
 
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+  const speakText = useCallback((text: string, onDone?: () => void) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      onDone?.();
       return;
     }
+    window.speechSynthesis.cancel();
+    // Strip markdown for speech
+    const clean = text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/[#*_~`]/g, "");
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")) || voices.find(v => v.lang.startsWith("en"));
+    if (preferred) utterance.voice = preferred;
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setVoiceState("speaking");
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setVoiceState("idle");
+      onDone?.();
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setVoiceState("idle");
+      onDone?.();
+    };
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setVoiceState("idle");
+    }
+  }, []);
+
+  // Start listening (used by both manual mic button and voice mode loop)
+  const startListening = useCallback((onResult: (transcript: string) => void) => {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return;
 
     const SpeechRecognition =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -464,46 +504,40 @@ export function AIConcierge({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
-      setInput((prev) => (prev ? prev + " " + transcript : transcript));
-      setIsListening(false);
+      onResult(transcript);
     };
 
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => {
+      setIsListening(false);
+      setVoiceState("idle");
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
 
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [isListening]);
-
-  // Text-to-speech for assistant responses
-  const speakText = useCallback((text: string) => {
-    if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.lang = "en-US";
-    // Prefer a natural-sounding voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")) || voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  }, [voiceEnabled]);
-
-  const stopSpeaking = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
+    setVoiceState("listening");
   }, []);
 
-  // Send message
+  // Toggle mic for text mode
+  const toggleVoice = useCallback(() => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    startListening((transcript) => {
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    });
+  }, [isListening, startListening]);
+
+  // ─── Send Message ─────────────────────────────────────────────
+
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, isVoice = false) => {
       if (!content.trim() || isLoading) return;
 
       const userMessage: Message = { role: "user", content: content.trim() };
@@ -513,23 +547,18 @@ export function AIConcierge({
       setInput("");
       setIsLoading(true);
       setLoadingLabel("Thinking...");
+      if (isVoice) setVoiceState("thinking");
 
       try {
-        // After a small delay, update the label to show searching
-        const searchTimer = setTimeout(
-          () => setLoadingLabel("Searching listings..."),
-          1500
-        );
+        const searchTimer = setTimeout(() => setLoadingLabel("Searching listings..."), 1500);
 
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: newMessages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
             context: buildContext(),
+            personality,
           }),
         });
 
@@ -546,34 +575,51 @@ export function AIConcierge({
 
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Speak the response if voice is enabled
-        if (voiceEnabled && data.message) {
-          speakText(data.message);
+        // Voice response: speak and then auto-listen again in voice mode
+        if ((voiceEnabled || isVoice) && data.message) {
+          speakText(data.message, () => {
+            // After speaking, auto-listen if still in voice mode
+            if (voiceModeRef.current) {
+              setTimeout(() => {
+                startListening((transcript) => {
+                  setLastTranscript(transcript);
+                  // Auto-send in voice mode
+                  if (transcript.trim()) {
+                    // We need to call sendMessage but can't recurse directly here
+                    // Instead, set a flag that triggers send
+                    setInput(transcript);
+                    setTimeout(() => {
+                      const form = document.getElementById("concierge-form") as HTMLFormElement;
+                      form?.requestSubmit();
+                    }, 100);
+                  }
+                });
+              }, 500);
+            }
+          });
         }
 
-        if (!isOpen) {
-          setHasUnread(true);
-        }
+        if (!isOpen) setHasUnread(true);
       } catch {
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content:
-              "Sorry, I'm having trouble connecting right now. Please try again in a moment!",
+            content: "Sorry, I'm having trouble connecting right now. Please try again in a moment!",
           },
         ]);
+        setVoiceState("idle");
       } finally {
         setIsLoading(false);
         setLoadingLabel(undefined);
       }
     },
-    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText]
+    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    sendMessage(input, voiceMode);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -585,19 +631,52 @@ export function AIConcierge({
     setIsOpen(false);
   };
 
-  // Quick actions after a message with listings
   const handleQuickAction = (action: string, msg: Message) => {
     if (action === "more" && msg.listings && msg.listings.length > 0) {
       const type = msg.listings[0].type;
       const island = msg.listings[0].island;
       sendMessage(`Show me more ${type} options in ${island}`);
     } else if (action === "compare" && msg.listings && msg.listings.length >= 2) {
-      const names = msg.listings
-        .slice(0, 3)
-        .map((l) => l.title)
-        .join(", ");
+      const names = msg.listings.slice(0, 3).map((l) => l.title).join(", ");
       sendMessage(`Compare these: ${names}`);
     }
+  };
+
+  // Enter voice mode
+  const enterVoiceMode = useCallback(() => {
+    setVoiceMode(true);
+    setVoiceEnabled(true);
+    // Start listening immediately
+    setTimeout(() => {
+      startListening((transcript) => {
+        setLastTranscript(transcript);
+        setInput(transcript);
+        setTimeout(() => {
+          const form = document.getElementById("concierge-form") as HTMLFormElement;
+          form?.requestSubmit();
+        }, 100);
+      });
+    }, 300);
+  }, [startListening]);
+
+  // Exit voice mode
+  const exitVoiceMode = useCallback(() => {
+    setVoiceMode(false);
+    setVoiceState("idle");
+    stopSpeaking();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  }, [stopSpeaking]);
+
+  const handlePersonalityChange = (id: string) => {
+    setPersonality(id);
+    savePersonality(id);
+    setShowPersonalities(false);
+    // Clear conversation when switching personality
+    setMessages([]);
+    sessionStorage.removeItem(SESSION_KEY);
   };
 
   const hasSpeechApi =
@@ -611,25 +690,49 @@ export function AIConcierge({
       {/* ── Chat Panel ───────────────────────────────────── */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[560px] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-slide-up"
+          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[600px] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-slide-up"
           style={{
-            background:
-              "linear-gradient(white, white) padding-box, linear-gradient(135deg, #c8912e, #2dd4bf, #c8912e) border-box",
+            background: "linear-gradient(white, white) padding-box, linear-gradient(135deg, #c8912e, #2dd4bf, #c8912e) border-box",
             border: "2px solid transparent",
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-gold-500 to-gold-400 text-white">
+          <div className={`flex items-center justify-between px-5 py-3 bg-gradient-to-r ${currentPersonality.color} text-white`}>
             <div className="flex items-center gap-2">
-              <SparkleIcon className="w-5 h-5" />
-              <span className="font-semibold text-[15px]">
-                VakayGo Concierge
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
-                AI
-              </span>
+              <span className="text-lg">{currentPersonality.emoji}</span>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-[14px]">{currentPersonality.name}</span>
+                  <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">AI</span>
+                </div>
+                <span className="text-[10px] text-white/70">{currentPersonality.desc}</span>
+              </div>
             </div>
             <div className="flex items-center gap-1">
+              {/* Personality picker */}
+              <button
+                onClick={() => setShowPersonalities(!showPersonalities)}
+                className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                aria-label="Change personality"
+                title="Change personality"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+              </button>
+              {/* Voice mode toggle */}
+              {hasSpeechApi && (
+                <button
+                  onClick={() => voiceMode ? exitVoiceMode() : enterVoiceMode()}
+                  className={`p-1.5 rounded-lg transition-colors ${voiceMode ? "bg-white/30" : "hover:bg-white/20"}`}
+                  aria-label={voiceMode ? "Exit voice mode" : "Enter voice mode"}
+                  title={voiceMode ? "Exit voice chat" : "Voice chat"}
+                >
+                  <PhoneIcon className="w-4 h-4" />
+                </button>
+              )}
+              {/* Voice TTS toggle */}
               <button
                 onClick={() => {
                   setVoiceEnabled((v) => {
@@ -639,7 +742,7 @@ export function AIConcierge({
                 }}
                 className={`p-1.5 rounded-lg transition-colors ${voiceEnabled ? "bg-white/30" : "hover:bg-white/20"}`}
                 aria-label={voiceEnabled ? "Disable voice" : "Enable voice"}
-                title={voiceEnabled ? "Voice responses ON" : "Voice responses OFF"}
+                title={voiceEnabled ? "Voice ON" : "Voice OFF"}
               >
                 {isSpeaking ? (
                   <svg className="w-4 h-4 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
@@ -650,7 +753,7 @@ export function AIConcierge({
                 )}
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={() => { setIsOpen(false); if (voiceMode) exitVoiceMode(); }}
                 className="p-1 rounded-lg hover:bg-white/20 transition-colors"
                 aria-label="Close chat"
               >
@@ -659,109 +762,199 @@ export function AIConcierge({
             </div>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            {/* Welcome message always shows */}
-            <div className="flex gap-2 justify-start">
-              <div className="flex-shrink-0 w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center mt-1">
-                <SparkleIcon className="w-4 h-4 text-gold-500" />
-              </div>
-              <div className="max-w-[85%] bg-cream-50 text-navy-700 rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed">
-                {WELCOME_MESSAGE}
-              </div>
-            </div>
-
-            {/* Quick suggestions if no messages yet */}
-            {messages.length === 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 ml-9">
-                {QUICK_SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-gold-50 text-gold-700 hover:bg-gold-100 transition-colors shadow-sm"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Message bubbles */}
-            {messages.map((msg, i) => (
-              <div key={i}>
-                <div
-                  className={`flex ${msg.role === "user" ? "justify-end" : "gap-2 justify-start"}`}
+          {/* Personality Picker Dropdown */}
+          {showPersonalities && (
+            <div className="absolute top-14 right-4 z-[60] w-64 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-cream-200 p-2 animate-slide-up">
+              <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider px-2 py-1">Choose Your Guide</p>
+              {PERSONALITIES.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handlePersonalityChange(p.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
+                    personality === p.id ? "bg-cream-100" : "hover:bg-cream-50"
+                  }`}
                 >
-                  {msg.role === "assistant" && (
-                    <div className="flex-shrink-0 w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center mt-1">
-                      <SparkleIcon className="w-4 h-4 text-gold-500" />
-                    </div>
+                  <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${p.color} flex items-center justify-center text-lg shadow-sm`}>
+                    {p.emoji}
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-navy-700">{p.name}</div>
+                    <div className="text-[11px] text-navy-400">{p.desc}</div>
+                  </div>
+                  {personality === p.id && (
+                    <svg className="w-4 h-4 text-gold-500 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><polyline points="20 6 9 17 4 12" /></svg>
                   )}
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-gold-500 text-white rounded-br-sm"
-                        : "bg-cream-50 text-navy-700 rounded-bl-sm"
-                    }`}
-                  >
-                    {msg.role === "assistant"
-                      ? renderMarkdown(msg.content)
-                      : msg.content}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Voice Mode Overlay */}
+          {voiceMode ? (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 bg-gradient-to-b from-cream-50 to-white">
+              <VoiceVisualizer state={voiceState} personality={currentPersonality} />
+
+              <div className="mt-6 text-center">
+                <p className="text-lg font-semibold text-navy-700">
+                  {voiceState === "listening" && "Listening..."}
+                  {voiceState === "thinking" && `${currentPersonality.name} is thinking...`}
+                  {voiceState === "speaking" && `${currentPersonality.name} is speaking...`}
+                  {voiceState === "idle" && "Tap the mic to talk"}
+                </p>
+                {lastTranscript && (
+                  <p className="mt-2 text-sm text-navy-400 italic max-w-xs">
+                    &ldquo;{lastTranscript}&rdquo;
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-8 flex items-center gap-4">
+                {/* Mic button for voice mode */}
+                <button
+                  onClick={() => {
+                    if (isListening && recognitionRef.current) {
+                      recognitionRef.current.stop();
+                      setIsListening(false);
+                      setVoiceState("idle");
+                    } else if (!isLoading && !isSpeaking) {
+                      startListening((transcript) => {
+                        setLastTranscript(transcript);
+                        setInput(transcript);
+                        setTimeout(() => {
+                          const form = document.getElementById("concierge-form") as HTMLFormElement;
+                          form?.requestSubmit();
+                        }, 100);
+                      });
+                    }
+                  }}
+                  disabled={isLoading || isSpeaking}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
+                    isListening
+                      ? "bg-red-500 text-white scale-110 animate-pulse shadow-red-500/40"
+                      : isLoading || isSpeaking
+                      ? "bg-navy-200 text-navy-400 cursor-not-allowed"
+                      : "bg-gold-500 text-white hover:bg-gold-600 hover:scale-105 shadow-gold-500/30"
+                  }`}
+                >
+                  <MicIcon className="w-7 h-7" />
+                </button>
+
+                {/* Stop / End call button */}
+                <button
+                  onClick={exitVoiceMode}
+                  className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
+                  title="End voice chat"
+                >
+                  <PhoneIcon className="w-5 h-5 rotate-[135deg]" />
+                </button>
+              </div>
+
+              <p className="mt-4 text-[11px] text-navy-300">
+                Voice chat with {currentPersonality.name}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                {/* Welcome message */}
+                <div className="flex gap-2 justify-start">
+                  <div className={`flex-shrink-0 w-7 h-7 bg-gradient-to-br ${currentPersonality.color} rounded-full flex items-center justify-center mt-1`}>
+                    <span className="text-xs">{currentPersonality.emoji}</span>
+                  </div>
+                  <div className="max-w-[85%] bg-cream-50 text-navy-700 rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed">
+                    {WELCOME_MESSAGES[personality] || WELCOME_MESSAGES.coral}
                   </div>
                 </div>
 
-                {/* Listing Cards */}
-                {msg.listings && msg.listings.length > 0 && (
-                  <div className="ml-9 mt-2">
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                      {msg.listings.map((listing) => (
-                        <ListingCardInline
-                          key={listing.slug}
-                          listing={listing}
-                          onClick={() => navigateToListing(listing.url)}
-                        />
-                      ))}
-                    </div>
-                    {/* Quick actions */}
-                    <div className="flex gap-2 mt-2">
-                      {msg.listings.length >= 2 && (
-                        <button
-                          onClick={() => handleQuickAction("compare", msg)}
-                          className="text-[10px] px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
-                        >
-                          Compare these
-                        </button>
-                      )}
+                {/* Quick suggestions if no messages yet */}
+                {messages.length === 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2 ml-9">
+                    {QUICK_SUGGESTIONS.map((suggestion) => (
                       <button
-                        onClick={() => handleQuickAction("more", msg)}
-                        className="text-[10px] px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 hover:bg-gold-100 transition-colors"
+                        key={suggestion}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-gold-50 text-gold-700 hover:bg-gold-100 transition-colors shadow-sm"
                       >
-                        See more like this
+                        {suggestion}
                       </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Message bubbles */}
+                {messages.map((msg, i) => (
+                  <div key={i}>
+                    <div className={`flex ${msg.role === "user" ? "justify-end" : "gap-2 justify-start"}`}>
+                      {msg.role === "assistant" && (
+                        <div className={`flex-shrink-0 w-7 h-7 bg-gradient-to-br ${currentPersonality.color} rounded-full flex items-center justify-center mt-1`}>
+                          <span className="text-xs">{currentPersonality.emoji}</span>
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                          msg.role === "user"
+                            ? "bg-gold-500 text-white rounded-br-sm"
+                            : "bg-cream-50 text-navy-700 rounded-bl-sm"
+                        }`}
+                      >
+                        {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
+                      </div>
+                    </div>
+
+                    {/* Listing Cards */}
+                    {msg.listings && msg.listings.length > 0 && (
+                      <div className="ml-9 mt-2">
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                          {msg.listings.map((listing) => (
+                            <ListingCardInline
+                              key={listing.slug}
+                              listing={listing}
+                              onClick={() => navigateToListing(listing.url)}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          {msg.listings.length >= 2 && (
+                            <button
+                              onClick={() => handleQuickAction("compare", msg)}
+                              className="text-[10px] px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
+                            >
+                              Compare these
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleQuickAction("more", msg)}
+                            className="text-[10px] px-2.5 py-1 rounded-full bg-gold-50 text-gold-700 hover:bg-gold-100 transition-colors"
+                          >
+                            See more like this
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Typing indicator */}
+                {isLoading && (
+                  <div className="flex gap-2 justify-start">
+                    <div className={`flex-shrink-0 w-7 h-7 bg-gradient-to-br ${currentPersonality.color} rounded-full flex items-center justify-center mt-1`}>
+                      <span className="text-xs">{currentPersonality.emoji}</span>
+                    </div>
+                    <div className="bg-cream-50 text-navy-700 rounded-2xl rounded-bl-sm">
+                      <TypingIndicator label={loadingLabel} />
                     </div>
                   </div>
                 )}
+
+                <div ref={messagesEndRef} />
               </div>
-            ))}
+            </>
+          )}
 
-            {/* Typing indicator */}
-            {isLoading && (
-              <div className="flex gap-2 justify-start">
-                <div className="flex-shrink-0 w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center mt-1">
-                  <SparkleIcon className="w-4 h-4 text-gold-500" />
-                </div>
-                <div className="bg-cream-50 text-navy-700 rounded-2xl rounded-bl-sm">
-                  <TypingIndicator label={loadingLabel} />
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Footer: Input + Powered by */}
-          <div className="border-t border-cream-200 bg-white">
-            <form onSubmit={handleSubmit} className="px-4 py-3">
+          {/* Footer: Input + Powered by (hidden in voice mode) */}
+          <div className={`border-t border-cream-200 bg-white ${voiceMode ? "hidden" : ""}`}>
+            <form id="concierge-form" onSubmit={handleSubmit} className="px-4 py-3">
               <div className="flex items-center gap-2">
                 {hasSpeechApi && (
                   <button
@@ -772,9 +965,7 @@ export function AIConcierge({
                         ? "bg-red-500 text-white animate-pulse"
                         : "bg-cream-50 text-navy-400 hover:bg-cream-100"
                     }`}
-                    aria-label={
-                      isListening ? "Stop listening" : "Voice input"
-                    }
+                    aria-label={isListening ? "Stop listening" : "Voice input"}
                   >
                     <MicIcon className="w-4 h-4" />
                   </button>
@@ -784,11 +975,7 @@ export function AIConcierge({
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={
-                    isListening
-                      ? "Listening..."
-                      : "Ask about Caribbean travel..."
-                  }
+                  placeholder={isListening ? "Listening..." : `Ask ${currentPersonality.name}...`}
                   className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-cream-50 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-transparent text-navy-700 placeholder:text-navy-300"
                   disabled={isLoading}
                 />
@@ -804,27 +991,31 @@ export function AIConcierge({
             </form>
             <div className="px-4 pb-2 flex items-center justify-center gap-1">
               <span className="text-[10px] text-navy-300">Powered by</span>
-              <span className="text-[10px] font-semibold text-navy-400">
-                Claude
-              </span>
+              <span className="text-[10px] font-semibold text-navy-400">Claude</span>
             </div>
           </div>
+
+          {/* Voice mode form (hidden but functional) */}
+          {voiceMode && (
+            <form id="concierge-form" onSubmit={handleSubmit} className="hidden">
+              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} />
+            </form>
+          )}
         </div>
       )}
 
       {/* ── Floating Chat Button ─────────────────────────── */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-white shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:shadow-[0_6px_28px_rgba(200,145,46,0.5)] hover:scale-105 transition-all duration-200 flex items-center justify-center ${showPulse ? "animate-pulse" : ""}`}
+        className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br ${currentPersonality.color} text-white shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:shadow-[0_6px_28px_rgba(200,145,46,0.5)] hover:scale-105 transition-all duration-200 flex items-center justify-center ${showPulse ? "animate-pulse" : ""}`}
         aria-label={isOpen ? "Close concierge chat" : "Open concierge chat"}
       >
         {isOpen ? (
           <CloseIcon className="w-6 h-6" />
         ) : (
-          <ChatIcon className="w-6 h-6" />
+          <span className="text-2xl">{currentPersonality.emoji}</span>
         )}
 
-        {/* Unread indicator */}
         {hasUnread && !isOpen && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
         )}
