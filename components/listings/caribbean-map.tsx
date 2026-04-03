@@ -184,6 +184,7 @@ export default function CaribbeanMap({
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const flyoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flyoverIndexRef = useRef(0);
+  const activeIslandRef = useRef(activeIsland);
 
   const styleUrls: Record<string, string> = {
     satellite: "mapbox://styles/mapbox/satellite-streets-v12",
@@ -300,14 +301,16 @@ export default function CaribbeanMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    // Reset layer init flag so layers get re-created after style load
+    layersInitRef.current = false;
+    setMapReady(false);
     map.setStyle(styleUrls[mapStyle]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
 
-  // Keep selectedRef in sync
-  useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
+  // Keep refs in sync
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  useEffect(() => { activeIslandRef.current = activeIsland; }, [activeIsland]);
 
   // ── Fly to island on change ──
   useEffect(() => {
@@ -496,8 +499,9 @@ export default function CaribbeanMap({
     setIsFlyover(true);
     flyoverIndexRef.current = 0;
 
-    // Use island-specific waypoints if an island is active, else full Caribbean tour
-    const waypoints = activeIsland ? getIslandFlyover(activeIsland) : FLYOVER_WAYPOINTS;
+    // Read from ref to avoid stale closure
+    const island = activeIslandRef.current;
+    const waypoints = island ? getIslandFlyover(island) : FLYOVER_WAYPOINTS;
 
     const flyNext = () => {
       const idx = flyoverIndexRef.current;
@@ -521,7 +525,7 @@ export default function CaribbeanMap({
     };
 
     flyNext();
-  }, [activeIsland]);
+  }, []);
 
   const stopFlyover = useCallback(() => {
     if (flyoverTimeoutRef.current) clearTimeout(flyoverTimeoutRef.current);
