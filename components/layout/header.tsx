@@ -77,6 +77,15 @@ export function Header() {
             Islands
           </Link>
           <Link
+            href="/map"
+            aria-current={pathname === "/map" ? "page" : undefined}
+            className={`transition-colors duration-300 hover:text-gold-500 ${
+              scrolled || !isLanding ? "text-navy-500" : "text-white/80"
+            }`}
+          >
+            Map
+          </Link>
+          <Link
             href="/guides"
             aria-current={pathname.startsWith("/guides") ? "page" : undefined}
             className={`transition-colors duration-300 hover:text-gold-500 ${

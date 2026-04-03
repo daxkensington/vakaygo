@@ -40,7 +40,7 @@ import {
   PawPrint,
 } from "lucide-react";
 
-const MapView = dynamic(() => import("@/components/listings/map-view"), {
+const CaribbeanMap = dynamic(() => import("@/components/listings/caribbean-map"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full min-h-[400px] bg-cream-100 rounded-2xl flex items-center justify-center">
@@ -789,7 +789,7 @@ export default function ExplorePage() {
 
               {/* Map */}
               <div className="lg:w-[60%] order-1 lg:order-2 min-h-[300px] lg:min-h-0 rounded-2xl overflow-hidden shadow-[var(--shadow-card)]">
-                <MapView listings={listings} activeIsland={activeIsland} />
+                <CaribbeanMap listings={listings} activeIsland={activeIsland} onIslandChange={(island) => setActiveIsland(island)} />
               </div>
             </div>
           </div>

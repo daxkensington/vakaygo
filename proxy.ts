@@ -16,10 +16,11 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.tile.openstreetmap.org https://*.vercel-storage.com",
+    "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.tile.openstreetmap.org https://*.vercel-storage.com https://*.mapbox.com",
     "font-src 'self' data:",
     "media-src 'self' blob:",
-    "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com",
+    "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com https://*.mapbox.com https://api.mapbox.com https://events.mapbox.com",
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
   ].join("; "),
 };
