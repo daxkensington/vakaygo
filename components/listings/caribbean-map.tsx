@@ -95,14 +95,11 @@ const FLYOVER_WAYPOINTS: FlyoverWaypoint[] = [
 const CARIBBEAN_CENTER: [number, number] = [-66, 18];
 const CARIBBEAN_ZOOM = 5;
 
-// Type priority for flyover — real attractions first, generic services last
-const TYPE_PRIORITY: Record<string, number> = {
-  stay: 30, dining: 28, excursion: 25, event: 22,
-  tour: 15, guide: 12, vip: 10, transfer: 3, transport: 2,
-};
+// Attraction keywords — these are real places tourists visit, not businesses
+const ATTRACTION_KEYWORDS = /waterfall|falls|beach|bay|reef|volcano|mountain|peak|hill|lake|spring|cave|fort|castle|ruins|park|garden|botanical|trail|forest|rainforest|museum|temple|church|cathedral|market|harbor|harbour|port|island|plantation|estate|distillery|brewery|chocolate|sculpture|monument|lighthouse|viewpoint|lookout|sanctuary|reserve|lagoon|crater|canyon|gorge|bridge|pier|dock|marina|stadium|arena|zoo|aquarium|gallery|palace|tower|dam|pool|cenote|sinkhole|blowhole|cliff|rock|arch|canyon/i;
 
-// Taxi/generic service title patterns to deprioritize
-const GENERIC_PATTERNS = /taxi|car rental|auto rental|transport|shuttle|transfer|security|cleaning/i;
+// Generic business patterns to exclude from flyover
+const BUSINESS_PATTERNS = /taxi|car rental|auto rental|transport|shuttle|transfer|security|cleaning|laundry|insurance|pharmacy|clinic|hospital|dentist|bank|atm|gas station|mechanic|plumber|lawyer|accountant|storage|moving|printing|courier|staffing|consulting/i;
 
 function buildIslandFlyover(slug: string, listings: MapListing[]): FlyoverWaypoint[] {
   const island = islandCoords[slug];
@@ -112,45 +109,31 @@ function buildIslandFlyover(slug: string, listings: MapListing[]): FlyoverWaypoi
     (l) => l.islandSlug === slug && l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!))
   );
 
-  // Smart scoring: type priority + rating + reviews - generic penalty
+  // Score listings to find real attractions (not businesses)
   const scored = islandListings.map((l) => {
-    const typePriority = TYPE_PRIORITY[l.type] || 5;
+    const isAttraction = ATTRACTION_KEYWORDS.test(l.title);
+    const isBusiness = BUSINESS_PATTERNS.test(l.title);
     const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
-    const reviews = Math.min(l.reviewCount || 0, 30);
-    const genericPenalty = GENERIC_PATTERNS.test(l.title) ? -40 : 0;
-    const featuredBonus = l.isFeatured ? 20 : 0;
-    const hasImage = l.image ? 5 : 0;
+    const reviews = l.reviewCount || 0;
 
-    return {
-      ...l,
-      score: typePriority + (rating * 8) + (reviews * 0.3) + genericPenalty + featuredBonus + hasImage,
-    };
+    // Attractions with lots of reviews are the real tourist spots
+    const score =
+      (isAttraction ? 100 : 0) +        // Huge bonus for real attractions
+      (isBusiness ? -200 : 0) +          // Kill generic businesses
+      (rating * 5) +                     // Rating matters
+      Math.min(reviews, 500) * 0.1 +     // More reviews = more popular
+      (l.isFeatured ? 20 : 0) +          // Featured bonus
+      (l.image ? 5 : 0);                 // Has image
+
+    return { ...l, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick up to 8, one per type first for variety
-  const picked: typeof scored = [];
-  const usedTypes = new Set<string>();
-
-  // First pass: best of each interesting type
-  const priorityTypes = ["stay", "dining", "excursion", "event", "tour", "guide", "vip"];
-  for (const type of priorityTypes) {
-    if (picked.length >= 8) break;
-    const best = scored.find((l) => l.type === type && !GENERIC_PATTERNS.test(l.title));
-    if (best && !picked.find((p) => p.id === best.id)) {
-      usedTypes.add(type);
-      picked.push(best);
-    }
-  }
-
-  // Second pass: fill with top remaining
-  for (const l of scored) {
-    if (picked.length >= 8) break;
-    if (!picked.find((p) => p.id === l.id) && !GENERIC_PATTERNS.test(l.title)) {
-      picked.push(l);
-    }
-  }
+  // Pick top 10 attractions, skip businesses
+  const picked = scored
+    .filter((l) => !BUSINESS_PATTERNS.test(l.title))
+    .slice(0, 10);
 
   if (picked.length === 0) {
     return [{ center: island.center, zoom: island.zoom, pitch: 40, bearing: 0, label: island.name }];
