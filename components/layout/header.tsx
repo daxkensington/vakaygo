@@ -48,20 +48,16 @@ export function Header() {
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 flex items-center justify-between h-16 md:h-18">
         <Link href="/" className="flex items-center gap-2">
-          {scrolled || !isLanding ? (
-            <Image
-              src="/images/logo.jpg"
-              alt="VakayGo"
-              width={140}
-              height={40}
-              className="h-9 md:h-10 w-auto object-contain"
-              priority
-            />
-          ) : (
-            <span className="text-xl md:text-2xl font-bold tracking-tight text-white">
-              Vakay<span className="text-gold-400">Go</span>
-            </span>
-          )}
+          <Image
+            src="/images/logo.jpg"
+            alt="VakayGo"
+            width={180}
+            height={50}
+            className={`h-10 md:h-12 w-auto object-contain transition-all duration-300 ${
+              !scrolled && isLanding ? "brightness-0 invert mix-blend-screen" : ""
+            }`}
+            priority
+          />
         </Link>
 
         <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
