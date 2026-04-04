@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         voice: config.voice,
         input: clean,
         speed: config.speed,
-        response_format: "mp3", // Universal browser support
+        response_format: "aac", // Modern codec, small + high quality, universal support
       }),
     });
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "audio/mpeg",
+        "Content-Type": "audio/aac",
         "Content-Length": String(audioBuffer.byteLength),
         "Cache-Control": "no-store",
       },
