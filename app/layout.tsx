@@ -117,7 +117,7 @@ export default function RootLayout({
                     "Discover stays, tours, dining, events, and experiences across the Caribbean islands. All in one place, powered by locals.",
                   logo: {
                     "@type": "ImageObject",
-                    url: "https://vakaygo.com/logo.png",
+                    url: "https://vakaygo.com/images/logo.jpg",
                   },
                   sameAs: [],
                 },
