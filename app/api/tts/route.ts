@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         voice: config.voice,
         input: clean,
         speed: config.speed,
-        response_format: "opus", // Smaller & faster than mp3
+        response_format: "mp3", // Universal browser support
       }),
     });
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "audio/ogg",
+        "Content-Type": "audio/mpeg",
         "Content-Length": String(audioBuffer.byteLength),
         "Cache-Control": "no-store",
       },

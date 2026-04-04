@@ -524,6 +524,19 @@ export function AIConcierge({
       await audio.play();
     } catch (err) {
       console.error("TTS playback error:", err);
+      // Fallback to browser speech synthesis if API TTS fails
+      try {
+        if ("speechSynthesis" in window) {
+          const clean = text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/[#*_~`]/g, "").slice(0, 500);
+          const utterance = new SpeechSynthesisUtterance(clean);
+          utterance.rate = 1.0;
+          utterance.lang = "en-US";
+          utterance.onend = () => { setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
+          utterance.onerror = () => { setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
+          window.speechSynthesis.speak(utterance);
+          return;
+        }
+      } catch {}
       setIsSpeaking(false);
       setVoiceState("idle");
       onDone?.();
