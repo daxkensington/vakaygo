@@ -11,7 +11,7 @@ const props = [
     gradient: "from-gold-500 to-gold-600",
     iconBg: "bg-gold-500",
     image:
-      "https://images.unsplash.com/photo-1602002418816-5c0aeef426aa?w=600&q=80&auto=format",
+      "/images/sections/value-local.jpg",
   },
   {
     icon: ShieldCheck,
@@ -21,7 +21,7 @@ const props = [
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image:
-      "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=600&q=80&auto=format",
+      "/images/sections/value-travel.jpg",
   },
   {
     icon: Sparkles,
@@ -31,7 +31,7 @@ const props = [
     gradient: "from-gold-500 to-teal-500",
     iconBg: "bg-gradient-to-br from-gold-500 to-teal-500",
     image:
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format",
+      "/images/sections/value-explore.jpg",
   },
 ];
 

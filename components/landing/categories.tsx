@@ -9,7 +9,7 @@ const categories = [
     count: 682,
     description: "Villas, guesthouses & boutique hotels",
     image:
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&q=80&auto=format",
+      "/images/sections/stays.jpg",
   },
   {
     icon: Compass,
@@ -26,7 +26,7 @@ const categories = [
     count: 2227,
     description: "Walking tours, sightseeing & cultural experiences",
     image:
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format",
+      "/images/sections/tours.jpg",
   },
   {
     icon: UtensilsCrossed,
@@ -35,7 +35,7 @@ const categories = [
     count: 1615,
     description: "Local spots, street food & fine dining",
     image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80&auto=format",
+      "/images/sections/dining.jpg",
   },
   {
     icon: Music,
@@ -44,7 +44,7 @@ const categories = [
     count: 86,
     description: "Fetes, festivals & beach parties",
     image:
-      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80&auto=format",
+      "/images/sections/events.jpg",
   },
   {
     icon: Plane,
@@ -61,7 +61,7 @@ const categories = [
     count: 419,
     description: "Car rental, taxi, water taxi & ferry",
     image:
-      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&q=80&auto=format",
+      "/images/sections/transport.jpg",
   },
   {
     icon: Shield,
@@ -78,7 +78,7 @@ const categories = [
     count: 3,
     description: "Expert locals who show you the real island",
     image:
-      "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=600&q=80&auto=format",
+      "/images/sections/guides.jpg",
   },
 ];
 

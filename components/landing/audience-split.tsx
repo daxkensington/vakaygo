@@ -39,7 +39,7 @@ export function AudienceSplit() {
               className="absolute inset-0 bg-cover bg-center"
               style={{
                 backgroundImage:
-                  "url(https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&q=80&auto=format)",
+                  "url(/images/sections/traveler.jpg)",
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-br from-teal-600/90 to-teal-800/95" />
@@ -86,7 +86,7 @@ export function AudienceSplit() {
               className="absolute inset-0 bg-cover bg-center"
               style={{
                 backgroundImage:
-                  "url(https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80&auto=format)",
+                  "url(/images/sections/operator.jpg)",
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-br from-navy-700/90 to-navy-900/95" />
