@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import {
   MapPin, X, Maximize2, Minimize2, Compass, Play, Pause,
-  Search, Navigation, Layers, Star, ChevronRight,
+  Search, Navigation, Layers, Star, ChevronRight, Flame, Sun, Moon,
 } from "lucide-react";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -94,6 +94,31 @@ const FLYOVER_WAYPOINTS: FlyoverWaypoint[] = [
 // Caribbean overview
 const CARIBBEAN_CENTER: [number, number] = [-66, 18];
 const CARIBBEAN_ZOOM = 5;
+
+// ─── Haversine distance (km) ────────────────────────────────────
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 10) return `${km.toFixed(1)} km`;
+  return `${Math.round(km)} km`;
+}
+
+// ─── Timezone offset for auto dark mode ────────────────────────
+function isNighttimeAtLng(lng: number): boolean {
+  const utcHour = new Date().getUTCHours();
+  const tzOffset = Math.round(lng / 15);
+  const localHour = (utcHour + tzOffset + 24) % 24;
+  return localHour >= 19 || localHour < 6;
+}
 
 // Attraction keywords — these are real places tourists visit, not businesses
 const ATTRACTION_KEYWORDS = /waterfall|falls|beach|bay|reef|volcano|mountain|peak|hill|lake|spring|cave|fort|castle|ruins|park|garden|botanical|trail|forest|rainforest|museum|temple|church|cathedral|market|harbor|harbour|port|island|plantation|estate|distillery|brewery|chocolate|sculpture|monument|lighthouse|viewpoint|lookout|sanctuary|reserve|lagoon|crater|canyon|gorge|bridge|pier|dock|marina|stadium|arena|zoo|aquarium|gallery|palace|tower|dam|pool|cenote|sinkhole|blowhole|cliff|rock|arch|canyon/i;
@@ -283,8 +308,14 @@ export default function CaribbeanMap({
   const [searchOpen, setSearchOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [heatmapActive, setHeatmapActive] = useState(false);
+  const [mapBearing, setMapBearing] = useState(0);
+  const [autoDarkApplied, setAutoDarkApplied] = useState(false);
+  const [isNighttime, setIsNighttime] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userLocationRef = useRef<[number, number] | null>(null);
   const flyoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flyoverIndexRef = useRef(0);
   const activeIslandRef = useRef(activeIsland);
@@ -320,6 +351,20 @@ export default function CaribbeanMap({
 
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new mapboxgl.ScaleControl({ maxWidth: 150 }), "bottom-left");
+
+    // ── Bearing tracker for compass rose ──
+    map.on("rotate", () => { setMapBearing(map.getBearing()); });
+
+    // ── URL hash sync (shareable map state) ──
+    const updateHash = () => {
+      const c = map.getCenter();
+      const z = map.getZoom().toFixed(2);
+      const p = map.getPitch().toFixed(0);
+      const b = map.getBearing().toFixed(0);
+      window.location.hash = `map=${z}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${p}/${b}`;
+    };
+    map.on("moveend", updateHash);
+    map.on("zoomend", updateHash);
 
     map.on("style.load", () => {
       // 3D terrain — dramatic mountains
@@ -388,7 +433,7 @@ export default function CaribbeanMap({
         const islandFeatures = Object.entries(islandCoords).map(([slug, data]) => ({
           type: "Feature" as const,
           geometry: { type: "Point" as const, coordinates: data.center },
-          properties: { name: data.name, slug },
+          properties: { name: data.name, slug, count: 0 },
         }));
 
         map.addSource("island-labels", {
@@ -402,7 +447,11 @@ export default function CaribbeanMap({
           source: "island-labels",
           maxzoom: 8,
           layout: {
-            "text-field": ["get", "name"],
+            "text-field": ["case",
+              [">", ["get", "count"], 0],
+              ["concat", ["get", "name"], " (", ["to-string", ["get", "count"]], ")"],
+              ["get", "name"],
+            ],
             "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
             "text-size": 13,
             "text-transform": "uppercase",
@@ -430,18 +479,44 @@ export default function CaribbeanMap({
 
     // Cinematic intro — only if no island is selected (check ref for current value)
     map.on("load", () => {
-      setTimeout(() => {
-        if (!activeIslandRef.current) {
-          map.flyTo({
-            center: CARIBBEAN_CENTER,
-            zoom: 5.5,
-            pitch: 35,
-            bearing: 0,
-            duration: 3000,
-            essential: true,
-          });
+      // Parse URL hash for shared map state
+      const hash = window.location.hash;
+      const hashMatch = hash.match(/^#map=([\d.]+)\/([-\d.]+)\/([-\d.]+)\/([\d.]+)\/([-\d.]+)/);
+      if (hashMatch) {
+        const [, z, lat, lng, p, b] = hashMatch.map(Number);
+        map.flyTo({
+          center: [lng, lat] as [number, number],
+          zoom: z,
+          pitch: p,
+          bearing: b,
+          duration: 2000,
+          essential: true,
+        });
+      } else {
+        // Auto dark mode check on initial load
+        const centerLng = activeIslandRef.current && islandCoords[activeIslandRef.current]
+          ? islandCoords[activeIslandRef.current].center[0]
+          : CARIBBEAN_CENTER[0];
+        const night = isNighttimeAtLng(centerLng);
+        setIsNighttime(night);
+        if (night && !autoDarkApplied) {
+          setAutoDarkApplied(true);
+          setMapStyle("dark");
         }
-      }, 500);
+
+        setTimeout(() => {
+          if (!activeIslandRef.current) {
+            map.flyTo({
+              center: CARIBBEAN_CENTER,
+              zoom: 5.5,
+              pitch: 35,
+              bearing: 0,
+              duration: 3000,
+              essential: true,
+            });
+          }
+        }, 500);
+      }
     });
 
     mapRef.current = map;
@@ -467,6 +542,7 @@ export default function CaribbeanMap({
   // Keep refs in sync
   useEffect(() => { selectedRef.current = selected; }, [selected]);
   useEffect(() => { activeIslandRef.current = activeIsland; }, [activeIsland]);
+  useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
 
   // Popup ref
   const popupRef = useRef<mapboxgl.Popup | null>(null);
@@ -489,6 +565,13 @@ export default function CaribbeanMap({
       : "";
     const cfg = categoryConfig[selected.type] || categoryConfig.stay;
 
+    // Distance badge if GPS active
+    let distBadge = "";
+    if (userLocation && selected.latitude && selected.longitude) {
+      const d = haversineKm(userLocation[1], userLocation[0], parseFloat(selected.latitude!), parseFloat(selected.longitude!));
+      distBadge = `<span style="display:inline-block;background:#EFF6FF;color:#3B82F6;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;">📍 ${formatDistance(d)}</span>`;
+    }
+
     const html = `
       <div style="width:260px;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;border-radius:12px;">
         ${selected.image ? `<div style="height:130px;background:url(${selected.image}) center/cover;"></div>` : ""}
@@ -496,6 +579,7 @@ export default function CaribbeanMap({
           <div style="margin-bottom:6px;">
             <span style="background:${cfg.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${cfg.emoji} ${cfg.label}</span>
             ${selected.isFeatured ? '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;">Featured</span>' : ""}
+            ${distBadge}
           </div>
           <h3 style="font-size:14px;font-weight:600;color:#1e293b;line-height:1.3;margin:0 0 4px;">${selected.title}</h3>
           <p style="font-size:11px;color:#8896a7;margin:0 0 8px;">📍 ${selected.parish ? selected.parish + ", " : ""}${selected.islandName}</p>
@@ -602,8 +686,34 @@ export default function CaribbeanMap({
       paint: {
         "circle-color": ["get", "color"],
         "circle-radius": 8,
+        "circle-radius-transition": { duration: 300, delay: 0 },
         "circle-stroke-width": 2.5,
         "circle-stroke-color": "#fff",
+        "circle-opacity-transition": { duration: 300, delay: 0 },
+      },
+    });
+
+    // Heatmap layer (hidden by default)
+    map.addLayer({
+      id: "heatmap-layer",
+      type: "heatmap",
+      source: "listings",
+      maxzoom: 15,
+      layout: { visibility: "none" },
+      paint: {
+        "heatmap-weight": 1,
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 9, 2, 15, 3],
+        "heatmap-color": [
+          "interpolate", ["linear"], ["heatmap-density"],
+          0, "rgba(0,0,0,0)",
+          0.2, "rgba(212,160,23,0.4)",
+          0.4, "rgba(212,160,23,0.7)",
+          0.6, "rgba(249,115,22,0.85)",
+          0.8, "rgba(239,68,68,0.9)",
+          1, "rgba(220,38,38,1)",
+        ],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 15, 9, 30, 15, 40],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.8, 15, 0.3],
       },
     });
 
@@ -675,6 +785,14 @@ export default function CaribbeanMap({
       const cfg = categoryConfig[listing.type] || categoryConfig.stay;
       const r = listing.avgRating ? parseFloat(listing.avgRating).toFixed(1) : "";
 
+      // Distance from user if GPS active
+      let distHtml = "";
+      const uLoc = userLocationRef.current;
+      if (uLoc && listing.latitude && listing.longitude) {
+        const d = haversineKm(uLoc[1], uLoc[0], parseFloat(listing.latitude!), parseFloat(listing.longitude!));
+        distHtml = `<span style="font-size:10px;color:#3B82F6;font-weight:600;">📍 ${formatDistance(d)}</span>`;
+      }
+
       hoverPopup.setLngLat(coords).setHTML(`
         <div style="display:flex;gap:8px;align-items:center;padding:8px;font-family:system-ui,sans-serif;">
           ${listing.image ? `<img src="${listing.image}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:56px;height:56px;border-radius:8px;background:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${cfg.emoji}</div>`}
@@ -683,6 +801,7 @@ export default function CaribbeanMap({
             <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
               ${r ? `<span style="font-size:11px;color:#1e293b;">⭐ ${r}</span>` : ""}
               <span style="font-size:10px;color:${cfg.color};font-weight:600;">${cfg.emoji} ${cfg.label}</span>
+              ${distHtml}
             </div>
           </div>
         </div>
@@ -743,6 +862,47 @@ export default function CaribbeanMap({
       })),
     });
   }, [listings, activeCategories, searchQuery, mapReady]);
+
+  // ── Heatmap toggle: show/hide layers ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !layersInitRef.current) return;
+
+    const pinLayers = ["clusters", "cluster-count", "unclustered-point", "unclustered-label"];
+
+    if (heatmapActive) {
+      pinLayers.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none"); });
+      if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "visible");
+    } else {
+      pinLayers.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible"); });
+      if (map.getLayer("heatmap-layer")) map.setLayoutProperty("heatmap-layer", "visibility", "none");
+    }
+  }, [heatmapActive, mapReady]);
+
+  // ── Update island label counts when listings change ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const source = map.getSource("island-labels") as mapboxgl.GeoJSONSource;
+    if (!source) return;
+
+    // Count listings per island
+    const counts: Record<string, number> = {};
+    listings.forEach((l) => {
+      if (l.latitude && l.longitude && l.islandSlug) {
+        counts[l.islandSlug] = (counts[l.islandSlug] || 0) + 1;
+      }
+    });
+
+    const features = Object.entries(islandCoords).map(([slug, data]) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: data.center },
+      properties: { name: data.name, slug, count: counts[slug] || 0 },
+    }));
+
+    source.setData({ type: "FeatureCollection", features });
+  }, [listings, mapReady]);
 
   // ── Flyover ──
   // Flyover: fly to a specific waypoint index
@@ -867,16 +1027,58 @@ export default function CaribbeanMap({
   };
 
   // ── Fullscreen ──
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     const el = mapContainer.current?.parentElement;
     if (!el) return;
-    if (!isFullscreen) {
+    if (!document.fullscreenElement) {
       el.requestFullscreen?.();
+      setIsFullscreen(true);
     } else {
       document.exitFullscreen?.();
+      setIsFullscreen(false);
     }
-    setIsFullscreen(!isFullscreen);
-  };
+  }, []);
+
+  // ── Keyboard navigation ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (isFlyover) { stopFlyover(); return; }
+        if (searchOpen) { setSearchOpen(false); setSearchQuery(""); return; }
+        if (selected) { setSelected(null); return; }
+      }
+
+      // Don't trigger shortcuts if typing in an input
+      if (isInput) return;
+
+      if (e.key === "/") {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (e.key === "f" || e.key === "F") {
+        if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleFullscreen(); }
+      } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        setHeatmapActive((prev) => !prev);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        if (isFlyover) stopFlyover(); else startFlyover();
+      } else if (e.key === "ArrowRight" && isFlyover) {
+        e.preventDefault();
+        skipToNext();
+      } else if (e.key === "ArrowLeft" && isFlyover) {
+        e.preventDefault();
+        skipToPrev();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isFlyover, searchOpen, selected, stopFlyover, startFlyover, skipToNext, skipToPrev, toggleFullscreen]);
 
   // ── Reset view ──
   const resetView = () => {
@@ -928,10 +1130,11 @@ export default function CaribbeanMap({
           {searchOpen && (
             <div className="absolute top-0 left-11 w-64">
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search listings..."
+                placeholder="Search listings... (press /)"
                 className="w-full px-3 py-2 text-sm bg-white/95 backdrop-blur-md rounded-lg shadow-lg outline-none focus:ring-2 focus:ring-gold-400 text-navy-700 placeholder:text-navy-300"
                 autoFocus
               />
@@ -968,7 +1171,7 @@ export default function CaribbeanMap({
           {(["satellite", "outdoors", "dark"] as const).map((s) => (
             <button
               key={s}
-              onClick={() => setMapStyle(s)}
+              onClick={() => { setMapStyle(s); setAutoDarkApplied(true); }}
               className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors ${
                 mapStyle === s ? "bg-gold-500 text-white" : "text-navy-600 hover:bg-cream-100"
               }`}
@@ -976,6 +1179,31 @@ export default function CaribbeanMap({
               {s === "satellite" ? "Satellite" : s === "outdoors" ? "Terrain" : "Dark"}
             </button>
           ))}
+        </div>
+
+        {/* Heatmap / Pins toggle */}
+        <div className="flex flex-col gap-1 bg-white/90 backdrop-blur-md rounded-lg shadow-lg p-1">
+          <button
+            onClick={() => setHeatmapActive(false)}
+            className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors ${
+              !heatmapActive ? "bg-gold-500 text-white" : "text-navy-600 hover:bg-cream-100"
+            }`}
+          >
+            Pins
+          </button>
+          <button
+            onClick={() => setHeatmapActive(true)}
+            className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors ${
+              heatmapActive ? "bg-orange-500 text-white" : "text-navy-600 hover:bg-cream-100"
+            }`}
+          >
+            Heat
+          </button>
+        </div>
+
+        {/* Day/Night indicator */}
+        <div className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center" title={isNighttime ? "Nighttime at destination" : "Daytime at destination"}>
+          {isNighttime ? <Moon size={14} className="text-indigo-400" /> : <Sun size={14} className="text-amber-500" />}
         </div>
       </div>
 
@@ -987,13 +1215,49 @@ export default function CaribbeanMap({
         <button onClick={isFlyover ? stopFlyover : startFlyover} className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${isFlyover ? "bg-gold-500 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"}`} title="Cinematic tour">
           {isFlyover ? <Pause size={16} /> : <Play size={16} />}
         </button>
-        <button onClick={resetView} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title="Reset view">
-          <Compass size={16} className="text-navy-700" />
+        <button onClick={resetView} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title={`Reset view (bearing: ${Math.round(mapBearing)}°)`}>
+          <Compass size={16} className="text-navy-700 transition-transform duration-200" style={{ transform: `rotate(${-mapBearing}deg)` }} />
         </button>
         <button onClick={toggleFullscreen} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title="Fullscreen">
           {isFullscreen ? <Minimize2 size={16} className="text-navy-700" /> : <Maximize2 size={16} className="text-navy-700" />}
         </button>
       </div>
+
+      {/* Listing count & active filter summary */}
+      {mapReady && (
+        <div className="absolute top-14 left-3 z-10">
+          <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-lg px-3 py-2 text-xs max-w-[260px]">
+            <div className="font-semibold text-navy-700">
+              Showing {listingsMapRef.current.size.toLocaleString()} of {listings.filter(l => l.latitude).length.toLocaleString()} listings
+            </div>
+            {activeCategories.size < Object.keys(categoryConfig).length && (
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                <span className="text-navy-400">Filters:</span>
+                {Array.from(activeCategories).map((cat) => (
+                  <span key={cat} className="text-[10px] font-semibold" style={{ color: categoryConfig[cat]?.color }}>
+                    {categoryConfig[cat]?.emoji}{categoryConfig[cat]?.label}
+                  </span>
+                ))}
+                <button
+                  onClick={() => setActiveCategories(new Set(Object.keys(categoryConfig)))}
+                  className="text-[10px] text-red-500 font-semibold hover:text-red-700 ml-1"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            {searchQuery && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-navy-400">Search:</span>
+                <span className="font-medium text-navy-600">"{searchQuery}"</span>
+                <button onClick={() => setSearchQuery("")} className="text-red-500 hover:text-red-700">
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Category filters */}
       <div className="absolute bottom-3 left-3 right-3 z-10">
@@ -1117,11 +1381,23 @@ export default function CaribbeanMap({
           0%, 100% { box-shadow: 0 0 0 6px rgba(59,130,246,0.3), 0 2px 8px rgba(0,0,0,0.3); }
           50% { box-shadow: 0 0 0 12px rgba(59,130,246,0.1), 0 2px 8px rgba(0,0,0,0.3); }
         }
+        @keyframes popupSlideIn {
+          from { opacity: 0; transform: translateY(8px) scale(0.92); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes markerAppear {
+          from { transform: scale(0); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .vakaygo-popup {
+          animation: popupSlideIn 0.2s ease-out;
+        }
         .vakaygo-popup .mapboxgl-popup-content {
           padding: 0 !important;
           border-radius: 12px !important;
           overflow: hidden;
           box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
+          animation: popupSlideIn 0.2s ease-out;
         }
         .vakaygo-popup .mapboxgl-popup-close-button {
           font-size: 18px;
@@ -1145,11 +1421,15 @@ export default function CaribbeanMap({
         .vakaygo-popup .mapboxgl-popup-tip {
           border-top-color: white !important;
         }
+        .vakaygo-hover-popup {
+          animation: popupSlideIn 0.15s ease-out;
+        }
         .vakaygo-hover-popup .mapboxgl-popup-content {
           padding: 0 !important;
           border-radius: 12px !important;
           overflow: hidden;
           box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+          animation: popupSlideIn 0.15s ease-out;
         }
         .vakaygo-hover-popup .mapboxgl-popup-tip {
           border-top-color: white !important;
