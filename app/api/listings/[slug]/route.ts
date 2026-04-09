@@ -44,6 +44,9 @@ export async function GET(
         maxStay: listings.maxStay,
         advanceNotice: listings.advanceNotice,
         maxGuests: listings.maxGuests,
+        meetingPointLat: listings.meetingPointLat,
+        meetingPointLng: listings.meetingPointLng,
+        meetingPointNote: listings.meetingPointNote,
         createdAt: listings.createdAt,
         islandSlug: islands.slug,
         islandName: islands.name,
@@ -67,6 +70,7 @@ export async function GET(
         id: media.id,
         url: media.url,
         alt: media.alt,
+        type: media.type,
         isPrimary: media.isPrimary,
         sortOrder: media.sortOrder,
       })
@@ -76,7 +80,7 @@ export async function GET(
 
     const images = rawImages.map((img) => ({
       ...img,
-      url: getImageUrl(img.url) || img.url,
+      url: img.type === "video" ? img.url : (getImageUrl(img.url) || img.url),
     }));
 
     // Get similar listings (same type, same island)

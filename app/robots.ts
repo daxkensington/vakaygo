@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/operator", "/api", "/auth"],
+        disallow: ["/admin", "/operator", "/api", "/auth", "/dashboard"],
       },
     ],
     sitemap: "https://vakaygo.com/sitemap.xml",

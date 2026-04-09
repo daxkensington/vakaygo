@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { reviews, listings, users, reviewPhotos } from "@/drizzle/schema";
+import { reviews, listings, users, reviewPhotos, reviewSubRatings } from "@/drizzle/schema";
 import { sendNewReviewNotification } from "@/server/email";
 import { createNotification } from "@/server/notifications";
 import { awardReviewPoints } from "@/server/loyalty";
@@ -34,6 +34,8 @@ export async function GET(request: Request) {
         createdAt: reviews.createdAt,
         travelerName: users.name,
         travelerAvatar: users.avatarUrl,
+        helpfulCount: reviews.helpfulCount,
+        isVerifiedPurchase: reviews.isVerifiedPurchase,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.travelerId, users.id))
@@ -68,12 +70,34 @@ export async function GET(request: Request) {
       }
     }
 
-    const reviewsWithPhotos = result.map((r) => ({
+    // Fetch sub-ratings for all reviews
+    let subRatingsMap: Record<string, { category: string; rating: number }[]> = {};
+    if (reviewIds.length > 0) {
+      const subRatings = await db
+        .select({
+          reviewId: reviewSubRatings.reviewId,
+          category: reviewSubRatings.category,
+          rating: reviewSubRatings.rating,
+        })
+        .from(reviewSubRatings)
+        .where(inArray(reviewSubRatings.reviewId, reviewIds));
+
+      for (const sr of subRatings) {
+        if (!subRatingsMap[sr.reviewId]) subRatingsMap[sr.reviewId] = [];
+        subRatingsMap[sr.reviewId].push({
+          category: sr.category,
+          rating: sr.rating,
+        });
+      }
+    }
+
+    const reviewsWithExtras = result.map((r) => ({
       ...r,
       photos: photosMap[r.id] || [],
+      subRatings: subRatingsMap[r.id] || [],
     }));
 
-    return NextResponse.json({ reviews: reviewsWithPhotos });
+    return NextResponse.json({ reviews: reviewsWithExtras });
   } catch (error) {
     console.error("Reviews error:", error);
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });

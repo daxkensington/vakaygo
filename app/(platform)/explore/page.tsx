@@ -38,6 +38,8 @@ import {
   Palmtree,
   Eye,
   PawPrint,
+  History,
+  Trash2,
 } from "lucide-react";
 
 const CaribbeanMap = dynamic(() => import("@/components/listings/caribbean-map"), {
@@ -90,6 +92,17 @@ const durationOptions = [
   { id: "multi-day", label: "Multi-day" },
 ];
 
+const cuisineOptions = [
+  "Caribbean",
+  "Seafood",
+  "International",
+  "Italian",
+  "Indian",
+  "Mexican",
+  "BBQ",
+  "Vegetarian",
+];
+
 type Listing = {
   id: string;
   title: string;
@@ -128,6 +141,12 @@ export default function ExplorePage() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedDuration, setSelectedDuration] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [freeCancellation, setFreeCancellation] = useState(false);
+  const [cuisineType, setCuisineType] = useState("");
+  const [openNow, setOpenNow] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [aiSearchActive, setAiSearchActive] = useState(false);
   const [aiSearchLoading, setAiSearchLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
@@ -137,6 +156,40 @@ export default function ExplorePage() {
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
+
+  // Fetch search history on mount
+  useEffect(() => {
+    fetch("/api/search-history")
+      .then((r) => r.json())
+      .then((d) => setSearchHistory(d.history || []))
+      .catch(() => {});
+  }, []);
+
+  async function saveSearchHistory(query: string) {
+    if (!query.trim()) return;
+    try {
+      await fetch("/api/search-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: query.trim() }),
+      });
+      setSearchHistory((prev) => {
+        const filtered = prev.filter((h) => h !== query.trim());
+        return [query.trim(), ...filtered].slice(0, 10);
+      });
+    } catch {
+      // silently fail
+    }
+  }
+
+  async function clearSearchHistory() {
+    try {
+      await fetch("/api/search-history", { method: "DELETE" });
+      setSearchHistory([]);
+    } catch {
+      // silently fail
+    }
+  }
 
   function isNaturalLanguageQuery(q: string): boolean {
     if (q.length > 20) return true;
@@ -271,6 +324,9 @@ export default function ExplorePage() {
       if (guestCount) params.set("guests", guestCount);
       if (selectedAmenities.length > 0) params.set("amenities", selectedAmenities.join(","));
       if (selectedDuration) params.set("duration", selectedDuration);
+      if (freeCancellation) params.set("cancellationPolicy", "flexible");
+      if (cuisineType) params.set("cuisineType", cuisineType);
+      if (openNow) params.set("openNow", "true");
       if (sortBy !== "recommended") params.set("sort", sortBy);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(page * PAGE_SIZE));
@@ -295,7 +351,7 @@ export default function ExplorePage() {
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, page, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, freeCancellation, cuisineType, openNow, page, sortBy]);
 
   // Reset page and fetch count when filters change
   useEffect(() => {
@@ -314,11 +370,14 @@ export default function ExplorePage() {
     if (guestCount) countParams.set("guests", guestCount);
     if (selectedAmenities.length > 0) countParams.set("amenities", selectedAmenities.join(","));
     if (selectedDuration) countParams.set("duration", selectedDuration);
+    if (freeCancellation) countParams.set("cancellationPolicy", "flexible");
+    if (cuisineType) countParams.set("cuisineType", cuisineType);
+    if (openNow) countParams.set("openNow", "true");
     fetch(`/api/listings/count?${countParams}`)
       .then((r) => r.json())
       .then((d) => setTotalCount(d.count || 0))
       .catch(() => {});
-  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, sortBy]);
+  }, [activeCategory, searchQuery, activeIsland, selectedDate, minPrice, maxPrice, minRating, guestCount, selectedAmenities, selectedDuration, freeCancellation, cuisineType, openNow, sortBy]);
 
   return (
     <>
@@ -329,20 +388,69 @@ export default function ExplorePage() {
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
             <div className="flex flex-wrap items-center gap-2 md:gap-4">
               {/* Search with Autocomplete - full width on mobile */}
-              <SearchAutocomplete
-                value={searchQuery}
-                onChange={(val) => {
-                  setSearchQuery(val);
-                  setAiSearchActive(false);
-                  setAiSummary("");
-                  setAiSuggestions([]);
-                  setAiResultsSummary("");
-                }}
-                onEnter={(val) => handleSmartSearch(val)}
-                aiSearchLoading={aiSearchLoading}
-                aiSearchActive={aiSearchActive}
-                className="w-full md:w-auto md:flex-1 md:min-w-[20rem] lg:min-w-[28rem]"
-              />
+              <div className="relative w-full md:w-auto md:flex-1 md:min-w-[20rem] lg:min-w-[28rem]">
+                <SearchAutocomplete
+                  value={searchQuery}
+                  onChange={(val) => {
+                    setSearchQuery(val);
+                    setAiSearchActive(false);
+                    setAiSummary("");
+                    setAiSuggestions([]);
+                    setAiResultsSummary("");
+                    setShowSearchHistory(!val && searchFocused);
+                  }}
+                  onEnter={(val) => {
+                    handleSmartSearch(val);
+                    saveSearchHistory(val);
+                    setShowSearchHistory(false);
+                  }}
+                  onFocus={() => {
+                    setSearchFocused(true);
+                    if (!searchQuery) setShowSearchHistory(true);
+                  }}
+                  onBlur={() => {
+                    setSearchFocused(false);
+                    // Delay to allow click on history items
+                    setTimeout(() => setShowSearchHistory(false), 200);
+                  }}
+                  aiSearchLoading={aiSearchLoading}
+                  aiSearchActive={aiSearchActive}
+                  className="w-full"
+                />
+                {/* Search History Dropdown */}
+                {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-[var(--shadow-elevated)] z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-cream-100">
+                      <span className="text-xs font-semibold text-navy-400 uppercase tracking-wide">Recent Searches</span>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          clearSearchHistory();
+                        }}
+                        className="flex items-center gap-1 text-xs text-navy-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={11} />
+                        Clear History
+                      </button>
+                    </div>
+                    {searchHistory.map((term) => (
+                      <button
+                        key={term}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSearchQuery(term);
+                          setShowSearchHistory(false);
+                          handleSmartSearch(term);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-cream-50 transition-colors text-left"
+                      >
+                        <History size={14} className="text-navy-300 shrink-0" />
+                        <span className="text-sm text-navy-600 truncate">{term}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {/* Date + Island row on mobile */}
               <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
@@ -472,7 +580,7 @@ export default function ExplorePage() {
             </div>
 
             {/* Active Filters Pills */}
-            {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration) && (
+            {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration || freeCancellation || cuisineType || openNow) && (
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <span className="text-xs text-navy-400 font-medium">Active:</span>
                 {activeCategory !== "all" && (
@@ -566,6 +674,33 @@ export default function ExplorePage() {
                     <X size={12} />
                   </button>
                 )}
+                {freeCancellation && (
+                  <button
+                    onClick={() => setFreeCancellation(false)}
+                    className="flex items-center gap-1 px-3 py-1 bg-teal-600 text-white text-xs font-medium rounded-full hover:bg-teal-500 transition-colors"
+                  >
+                    Free Cancellation
+                    <X size={12} />
+                  </button>
+                )}
+                {cuisineType && (
+                  <button
+                    onClick={() => setCuisineType("")}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    {cuisineType.charAt(0).toUpperCase() + cuisineType.slice(1)}
+                    <X size={12} />
+                  </button>
+                )}
+                {openNow && (
+                  <button
+                    onClick={() => setOpenNow(false)}
+                    className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
+                  >
+                    Open Now
+                    <X size={12} />
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveCategory("all");
@@ -578,6 +713,9 @@ export default function ExplorePage() {
                     setGuestCount("");
                     setSelectedAmenities([]);
                     setSelectedDuration("");
+                    setFreeCancellation(false);
+                    setCuisineType("");
+                    setOpenNow(false);
                   }}
                   className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gold-600 hover:text-gold-700 transition-colors underline"
                 >
@@ -661,6 +799,49 @@ export default function ExplorePage() {
                 ))}
               </div>
             )}
+
+            {/* Cuisine Type + Open Now — visible when Dining selected */}
+            {activeCategory === "dining" && (
+              <div className="flex items-center gap-3 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                <select
+                  value={cuisineType}
+                  onChange={(e) => setCuisineType(e.target.value)}
+                  className="px-3 py-1.5 rounded-full bg-cream-100 text-navy-500 text-xs font-medium outline-none appearance-none cursor-pointer hover:bg-cream-200 transition-colors min-w-[7rem]"
+                >
+                  <option value="">All Cuisines</option>
+                  {cuisineOptions.map((c) => (
+                    <option key={c} value={c.toLowerCase()}>{c}</option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all bg-cream-100 hover:bg-cream-200 text-xs font-medium text-navy-500 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={openNow}
+                    onChange={(e) => setOpenNow(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-teal-500"
+                  />
+                  <Clock size={13} />
+                  Open Now
+                </label>
+              </div>
+            )}
+
+            {/* Free Cancellation Toggle — always visible */}
+            <div className="flex items-center gap-3 mt-3">
+              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all text-xs font-medium whitespace-nowrap ${
+                freeCancellation
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "bg-cream-100 text-navy-500 hover:bg-cream-200"
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={freeCancellation}
+                  onChange={(e) => setFreeCancellation(e.target.checked)}
+                  className="sr-only"
+                />
+                Free Cancellation
+              </label>
+            </div>
           </div>
         </div>
 
@@ -760,7 +941,7 @@ export default function ExplorePage() {
                     <Compass size={32} className="text-navy-200 mx-auto mb-3" />
                     <p className="text-navy-500 font-semibold">No listings found</p>
                     <button
-                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); }}
+                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setFreeCancellation(false); setCuisineType(""); setOpenNow(false); }}
                       className="mt-4 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
                     >
                       Clear Filters
@@ -837,7 +1018,7 @@ export default function ExplorePage() {
                   Try adjusting your filters, searching for something else, or exploring a different island.
                 </p>
                 <button
-                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); }}
+                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setFreeCancellation(false); setCuisineType(""); setOpenNow(false); }}
                   className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   Clear All Filters

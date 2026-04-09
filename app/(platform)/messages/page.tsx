@@ -19,6 +19,9 @@ import {
   X,
   Wifi,
   WifiOff,
+  Globe,
+  FileText,
+  ChevronDown,
 } from "lucide-react";
 
 function formatTime(dateStr: string) {
@@ -48,6 +51,10 @@ export default function MessagesPage() {
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentType, setAttachmentType] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templates, setTemplates] = useState<{ id: string; title: string; content: string }[]>([]);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +90,47 @@ export default function MessagesPage() {
       markAsRead(activeConv);
     }
   }, [activeConv, markAsRead]);
+
+  // Poll typing indicator
+  useEffect(() => {
+    if (!activeConv) return;
+    let cancelled = false;
+
+    async function pollTyping() {
+      try {
+        const res = await fetch(`/api/messages/typing?conversationWith=${activeConv}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setPartnerTyping(!!data.isTyping);
+      } catch {
+        // silently fail
+      }
+    }
+
+    pollTyping();
+    const interval = setInterval(pollTyping, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeConv]);
+
+  // Fetch operator templates (only if user is an operator)
+  useEffect(() => {
+    if (templatesLoaded) return;
+    fetch("/api/operator/message-templates")
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then((data) => {
+        if (data?.templates) {
+          setTemplates(data.templates);
+        }
+        setTemplatesLoaded(true);
+      })
+      .catch(() => setTemplatesLoaded(true));
+  }, [templatesLoaded]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -316,10 +364,16 @@ export default function MessagesPage() {
                         <p className="font-semibold text-navy-700 text-sm truncate">
                           {activeConvData?.name || "User"}
                         </p>
-                        {/* Typing indicator placeholder */}
-                        <p className="text-[11px] text-navy-300 hidden">
-                          typing...
-                        </p>
+                        {partnerTyping && (
+                          <p className="text-[11px] text-teal-600 flex items-center gap-1">
+                            <span className="flex gap-0.5">
+                              <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </span>
+                            is typing
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -394,11 +448,69 @@ export default function MessagesPage() {
                     )}
 
                     {/* Input Area */}
+                    {/* Typing indicator in messages area */}
+                    {partnerTyping && (
+                      <div className="px-4 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-[10px] shrink-0">
+                            {activeConvData?.name?.charAt(0) || "?"}
+                          </div>
+                          <div className="bg-cream-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
+                            <div className="flex gap-1">
+                              <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <span className="w-1.5 h-1.5 bg-navy-300 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <form
                       onSubmit={handleSend}
                       className="p-4 border-t border-cream-200"
                     >
+                      {/* Template Picker */}
+                      {templates.length > 0 && showTemplates && (
+                        <div className="mb-3 bg-cream-50 rounded-xl p-2 max-h-40 overflow-y-auto">
+                          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wide px-2 py-1">
+                            Quick Replies
+                          </p>
+                          {templates.map((tpl) => (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => {
+                                setNewMessage(tpl.content);
+                                setShowTemplates(false);
+                                textareaRef.current?.focus();
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-cream-100 rounded-lg transition-colors"
+                            >
+                              <p className="text-xs font-semibold text-navy-700">{tpl.title}</p>
+                              <p className="text-xs text-navy-400 truncate">{tpl.content}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex items-end gap-2">
+                        {/* Template button (operators only) */}
+                        {templates.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowTemplates(!showTemplates)}
+                            className={`p-2.5 transition-colors shrink-0 ${
+                              showTemplates
+                                ? "text-gold-500"
+                                : "text-navy-400 hover:text-gold-500"
+                            }`}
+                            aria-label="Message templates"
+                          >
+                            <FileText size={18} />
+                          </button>
+                        )}
+
                         {/* Attach button */}
                         <button
                           type="button"
@@ -489,8 +601,34 @@ export default function MessagesPage() {
 }
 
 function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+
+  async function handleTranslate() {
+    if (translatedText) {
+      setTranslatedText(null);
+      return;
+    }
+    if (!msg.content) return;
+    setTranslating(true);
+    try {
+      const res = await fetch("/api/messages/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: msg.id, text: msg.content }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTranslatedText(data.translatedText || null);
+    } catch {
+      // silently fail
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} group`}>
       {/* Avatar for received messages */}
       {!isOwn && (
         <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-[10px] shrink-0 mt-1 mr-2">
@@ -532,14 +670,47 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
 
         {/* Message text */}
         {msg.content && (
-          <div
-            className={`px-4 py-2.5 rounded-2xl text-sm ${
-              isOwn
-                ? "bg-gold-500 text-white rounded-br-sm"
-                : "bg-cream-100 text-navy-700 rounded-bl-sm"
-            } ${msg._optimistic ? "opacity-70" : ""}`}
-          >
-            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+          <div className="relative">
+            <div
+              className={`px-4 py-2.5 rounded-2xl text-sm ${
+                isOwn
+                  ? "bg-gold-500 text-white rounded-br-sm"
+                  : "bg-cream-100 text-navy-700 rounded-bl-sm"
+              } ${msg._optimistic ? "opacity-70" : ""}`}
+            >
+              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+            </div>
+
+            {/* Translate button */}
+            <button
+              onClick={handleTranslate}
+              disabled={translating}
+              className={`absolute -bottom-1 ${isOwn ? "left-0 -translate-x-full mr-1" : "right-0 translate-x-full ml-1"} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-cream-100 text-navy-300 hover:text-teal-600 disabled:opacity-40`}
+              title={translatedText ? "Hide translation" : "Translate"}
+            >
+              {translating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Globe size={12} />
+              )}
+            </button>
+
+            {/* Translated text */}
+            {translatedText && (
+              <div
+                className={`mt-1 px-4 py-2 rounded-xl text-xs italic ${
+                  isOwn
+                    ? "bg-gold-400/50 text-white/90"
+                    : "bg-teal-50 text-teal-700"
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-0.5">
+                  <Globe size={10} />
+                  <span className="font-semibold text-[10px] not-italic">Translated</span>
+                </div>
+                <p className="whitespace-pre-wrap break-words">{translatedText}</p>
+              </div>
+            )}
           </div>
         )}
 

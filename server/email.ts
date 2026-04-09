@@ -292,3 +292,288 @@ export async function sendVerificationEmail(params: {
 </body></html>`.trim(),
   });
 }
+
+// ─── PAYOUT & FINANCIAL EMAILS ────────────────────────────────
+
+export async function sendPayoutNotification(params: {
+  to: string;
+  operatorName: string;
+  amount: string;
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+  bookingCount: number;
+}) {
+  const { to, operatorName, amount, currency, periodStart, periodEnd, bookingCount } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Payout Processed — $${amount} ${currency}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#1A6B6A;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+    <p style="color:white;font-size:14px;margin:0 0 8px">Payout Processed</p>
+    <h1 style="color:white;font-size:28px;margin:0">$${amount} ${currency}</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${operatorName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your payout has been processed and is on its way to your bank account.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Amount</td><td style="text-align:right;color:#1A6B6A;font-weight:700">$${amount}</td></tr>
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Period</td><td style="text-align:right">${periodStart} — ${periodEnd}</td></tr>
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Bookings</td><td style="text-align:right">${bookingCount}</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:24px 0 16px">
+      <a href="https://vakaygo.com/operator/payouts" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Payouts</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendRefundConfirmation(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  refundAmount: string;
+  refundPercent: number;
+}) {
+  const { to, travelerName, bookingNumber, listingTitle, refundAmount, refundPercent } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Refund Processed — ${listingTitle}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${travelerName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your refund for booking <strong>#${bookingNumber}</strong> (${listingTitle}) has been processed.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Refund Amount</td><td style="text-align:right;color:#1A6B6A;font-weight:700">$${refundAmount}</td></tr>
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Refund Rate</td><td style="text-align:right">${refundPercent}%</td></tr>
+      </table>
+    </div>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Refunds typically appear within 5-10 business days depending on your bank.</p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendPriceDropAlert(params: {
+  to: string;
+  travelerName: string;
+  listingTitle: string;
+  oldPrice: string;
+  newPrice: string;
+  listingUrl: string;
+}) {
+  const { to, travelerName, listingTitle, oldPrice, newPrice, listingUrl } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Price Drop! ${listingTitle} is now $${newPrice}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#C8912E;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+    <p style="color:white;font-size:14px;margin:0 0 8px">Price Drop Alert</p>
+    <h1 style="color:white;font-size:22px;margin:0">${listingTitle}</h1>
+    <p style="color:white;font-size:16px;margin:12px 0 0"><s>$${oldPrice}</s> &rarr; <strong>$${newPrice}</strong></p>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08);text-align:center">
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Hi ${travelerName}, a listing you saved just dropped in price!</p>
+    <a href="${listingUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Book Now</a>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendAbandonedBookingRecovery(params: {
+  to: string;
+  travelerName: string;
+  listingTitle: string;
+  bookingNumber: string;
+  totalAmount: string;
+  paymentUrl: string;
+}) {
+  const { to, travelerName, listingTitle, bookingNumber, totalAmount, paymentUrl } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Complete your booking — ${listingTitle}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:white;border-radius:16px;padding:32px;box-shadow:0 2px 12px rgba(28,35,51,0.08);text-align:center">
+    <p style="font-size:32px;margin:0 0 12px">🏖️</p>
+    <h2 style="color:#1C2333;font-size:20px;margin:0 0 8px">Don't miss out!</h2>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Hi ${travelerName}, you started booking <strong>${listingTitle}</strong> (#${bookingNumber}) for <strong>$${totalAmount}</strong> but didn't complete payment.</p>
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Your spot is being held — complete your booking before it's gone.</p>
+    <a href="${paymentUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Complete Booking</a>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendGiftCardEmail(params: {
+  to: string;
+  recipientName: string;
+  senderName: string;
+  amount: string;
+  code: string;
+  personalMessage?: string;
+}) {
+  const { to, recipientName, senderName, amount, code, personalMessage } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `${senderName} sent you a $${amount} VakayGo gift card!`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:linear-gradient(135deg,#C8912E,#D4A84B);border-radius:16px;padding:40px 32px;text-align:center;margin-bottom:24px">
+    <p style="font-size:36px;margin:0 0 8px">🎁</p>
+    <h1 style="color:white;font-size:24px;margin:0">You received a gift card!</h1>
+    <p style="color:white;font-size:32px;font-weight:800;margin:16px 0 0">$${amount}</p>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${recipientName || "there"},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6"><strong>${senderName}</strong> sent you a VakayGo gift card worth <strong>$${amount}</strong>!</p>
+    ${personalMessage ? `<div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px;font-style:italic;color:#4A4F73">"${personalMessage}"</div>` : ""}
+    <div style="background:#1C2333;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px">
+      <p style="color:#9A9DB0;font-size:12px;margin:0 0 4px">Your Gift Card Code</p>
+      <p style="color:#C8912E;font-size:24px;font-weight:800;margin:0;letter-spacing:2px">${code}</p>
+    </div>
+    <div style="text-align:center">
+      <a href="https://vakaygo.com/gift-cards" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Redeem Now</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendTaxDocumentReady(params: {
+  to: string;
+  operatorName: string;
+  year: number;
+  totalEarnings: string;
+}) {
+  const { to, operatorName, year, totalEarnings } = params;
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Your ${year} Tax Summary is Ready — VakayGo`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${operatorName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your <strong>${year} annual tax summary</strong> is now available. Total earnings: <strong>$${totalEarnings}</strong>.</p>
+    <div style="text-align:center;margin:24px 0 16px">
+      <a href="https://vakaygo.com/operator/payouts" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Tax Documents</a>
+    </div>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">This is a summary for your records. Please consult a tax professional for filing.</p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+export async function sendWeeklyAdminReport(params: {
+  to: string;
+  newBookings: number;
+  totalRevenue: string;
+  newUsers: number;
+  topListings: { title: string; bookings: number }[];
+}) {
+  const { to, newBookings, totalRevenue, newUsers, topListings } = params;
+  const topListingsHtml = topListings.map((l, i) => `<tr><td style="padding:4px 0;color:#4A4F73">${i + 1}. ${l.title}</td><td style="text-align:right;color:#1C2333;font-weight:600">${l.bookings} bookings</td></tr>`).join("");
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Weekly Report — ${newBookings} bookings, $${totalRevenue} revenue`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#1C2333;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+    <p style="color:#C8912E;font-size:14px;margin:0 0 8px">Weekly Platform Report</p>
+    <h1 style="color:white;font-size:22px;margin:0">This Week at VakayGo</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <div style="display:flex;gap:12px;margin-bottom:24px">
+      <div style="flex:1;background:#F5EDD8;border-radius:12px;padding:16px;text-align:center">
+        <p style="color:#C8912E;font-size:24px;font-weight:800;margin:0">${newBookings}</p>
+        <p style="color:#4A4F73;font-size:12px;margin:4px 0 0">Bookings</p>
+      </div>
+      <div style="flex:1;background:#F5EDD8;border-radius:12px;padding:16px;text-align:center">
+        <p style="color:#1A6B6A;font-size:24px;font-weight:800;margin:0">$${totalRevenue}</p>
+        <p style="color:#4A4F73;font-size:12px;margin:4px 0 0">Revenue</p>
+      </div>
+      <div style="flex:1;background:#F5EDD8;border-radius:12px;padding:16px;text-align:center">
+        <p style="color:#1C2333;font-size:24px;font-weight:800;margin:0">${newUsers}</p>
+        <p style="color:#4A4F73;font-size:12px;margin:4px 0 0">New Users</p>
+      </div>
+    </div>
+    <h3 style="color:#1C2333;font-size:14px;margin:0 0 12px">Top Listings</h3>
+    <table style="width:100%;font-size:14px">${topListingsHtml}</table>
+    <div style="text-align:center;margin:24px 0 0">
+      <a href="https://vakaygo.com/admin" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Dashboard</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+</div>
+</body></html>`.trim(),
+  });
+}

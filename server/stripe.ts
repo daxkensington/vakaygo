@@ -52,6 +52,94 @@ export async function createAccountLink(accountId: string) {
 }
 
 /**
+ * Create checkout session for a deposit (partial payment)
+ */
+export async function createDepositSession(params: {
+  amount: number;
+  fullAmount: number;
+  currency: string;
+  platformFee: number;
+  operatorStripeAccountId: string;
+  bookingId: string;
+  listingTitle: string;
+  travelerEmail: string;
+  successUrl: string;
+  cancelUrl: string;
+}) {
+  return getStripe().checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "payment",
+    line_items: [{
+      price_data: {
+        currency: params.currency.toLowerCase(),
+        product_data: {
+          name: `Deposit — ${params.listingTitle}`,
+          description: `Deposit for VakayGo booking (full amount: ${(params.fullAmount / 100).toFixed(2)} ${params.currency.toUpperCase()})`,
+        },
+        unit_amount: params.amount,
+      },
+      quantity: 1,
+    }],
+    payment_intent_data: {
+      application_fee_amount: params.platformFee,
+      transfer_data: { destination: params.operatorStripeAccountId },
+      metadata: {
+        bookingId: params.bookingId,
+        paymentType: "deposit",
+        fullAmount: String(params.fullAmount),
+      },
+    },
+    customer_email: params.travelerEmail,
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    metadata: {
+      bookingId: params.bookingId,
+      paymentType: "deposit",
+    },
+  });
+}
+
+/**
+ * Create a Stripe transfer (for automated payouts to operators)
+ */
+export async function createTransfer(params: {
+  amount: number;
+  currency: string;
+  destinationAccountId: string;
+  description: string;
+  metadata?: Record<string, string>;
+}) {
+  return getStripe().transfers.create({
+    amount: params.amount,
+    currency: params.currency.toLowerCase(),
+    destination: params.destinationAccountId,
+    description: params.description,
+    metadata: params.metadata || {},
+  });
+}
+
+/**
+ * Release escrow: transfer held funds from platform to operator
+ */
+export async function releaseEscrowTransfer(params: {
+  paymentIntentId: string;
+  amount: number;
+  destinationAccountId: string;
+}) {
+  return getStripe().transfers.create({
+    amount: params.amount,
+    currency: "usd",
+    destination: params.destinationAccountId,
+    source_transaction: params.paymentIntentId,
+    description: "Escrow release — trip completed",
+    metadata: {
+      type: "escrow_release",
+      paymentIntentId: params.paymentIntentId,
+    },
+  });
+}
+
+/**
  * Create checkout session for a booking (redirect-based)
  */
 export async function createCheckoutSession(params: {
@@ -64,9 +152,10 @@ export async function createCheckoutSession(params: {
   travelerEmail: string;
   successUrl: string;
   cancelUrl: string;
+  paymentMethodTypes?: string[];
 }) {
   return getStripe().checkout.sessions.create({
-    payment_method_types: ["card"],
+    payment_method_types: (params.paymentMethodTypes || ["card"]) as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
     mode: "payment",
     line_items: [{
       price_data: {

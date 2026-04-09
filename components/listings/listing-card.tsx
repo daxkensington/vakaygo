@@ -63,6 +63,8 @@ export function ListingCard(props: ListingCardProps) {
     <Link
       href={`/${props.islandSlug}/${props.slug}`}
       className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
+      itemScope
+      itemType="https://schema.org/Product"
     >
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
@@ -108,29 +110,38 @@ export function ListingCard(props: ListingCardProps) {
             {props.parish ? `${props.parish}, ` : ""}{getIslandFlag(props.islandSlug)} {props.islandName}
           </p>
           {rating > 0 && (
-            <div className="flex items-center gap-1 shrink-0 ml-2">
+            <div
+              className="flex items-center gap-1 shrink-0 ml-2"
+              itemProp="aggregateRating"
+              itemScope
+              itemType="https://schema.org/AggregateRating"
+            >
               <Star size={12} className="text-gold-500 fill-gold-500" />
-              <span className="text-xs font-semibold text-navy-700">
+              <span className="text-xs font-semibold text-navy-700" itemProp="ratingValue">
                 {rating.toFixed(1)}
               </span>
+              <meta itemProp="bestRating" content="5" />
               {props.reviewCount && props.reviewCount > 0 && (
-                <span className="text-xs text-navy-300">({props.reviewCount})</span>
+                <span className="text-xs text-navy-300">
+                  (<span itemProp="reviewCount">{props.reviewCount}</span>)
+                </span>
               )}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors flex-1">
+          <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors flex-1" itemProp="name">
             {props.title}
           </h3>
           {props.operatorSuperhost && <SuperhostBadge variant="card" />}
         </div>
         {props.priceAmount && parseFloat(props.priceAmount) > 0 && (
-          <p className="mt-2">
-            <span className="font-bold text-navy-700">
+          <p className="mt-2" itemProp="offers" itemScope itemType="https://schema.org/Offer">
+            <span className="font-bold text-navy-700" itemProp="price" content={props.priceAmount}>
               {format(parseFloat(props.priceAmount))}
             </span>
             <span className="text-navy-400 text-sm"> / {props.priceUnit}</span>
+            <meta itemProp="priceCurrency" content="XCD" />
           </p>
         )}
       </div>

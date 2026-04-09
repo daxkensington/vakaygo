@@ -17,6 +17,8 @@ import {
   Tag,
   X,
   ChevronDown,
+  Gift,
+  CreditCard,
 } from "lucide-react";
 
 type BookingWidgetProps = {
@@ -57,6 +59,15 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [payDeposit, setPayDeposit] = useState(false);
+  const [showGiftCard, setShowGiftCard] = useState(false);
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [giftCardLoading, setGiftCardLoading] = useState(false);
+  const [giftCardError, setGiftCardError] = useState("");
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{
+    code: string;
+    balance: number;
+  } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
     discountType: string;
@@ -99,7 +110,11 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
     }
     promoDiscount = Math.min(promoDiscount, pricing.total);
   }
-  const finalTotal = pricing.total - promoDiscount;
+  const giftCardDiscount = appliedGiftCard
+    ? Math.min(appliedGiftCard.balance, pricing.total - promoDiscount)
+    : 0;
+  const finalTotal = pricing.total - promoDiscount - giftCardDiscount;
+  const depositAmount = Math.round(finalTotal * 0.25 * 100) / 100;
 
   async function handleApplyPromo() {
     if (!promoCode.trim()) return;
@@ -140,6 +155,33 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
     setAppliedPromo(null);
     setPromoCode("");
     setPromoError("");
+  }
+
+  async function handleApplyGiftCard() {
+    if (!giftCardCode.trim()) return;
+    setGiftCardLoading(true);
+    setGiftCardError("");
+    try {
+      const res = await fetch(`/api/payments/gift-cards?code=${encodeURIComponent(giftCardCode.trim())}`);
+      const data = await res.json();
+      if (res.ok && data.balance > 0) {
+        setAppliedGiftCard({ code: giftCardCode.trim(), balance: data.balance });
+        setGiftCardError("");
+      } else {
+        setGiftCardError(data.error || "Invalid or empty gift card");
+        setAppliedGiftCard(null);
+      }
+    } catch {
+      setGiftCardError("Failed to check gift card");
+    } finally {
+      setGiftCardLoading(false);
+    }
+  }
+
+  function handleRemoveGiftCard() {
+    setAppliedGiftCard(null);
+    setGiftCardCode("");
+    setGiftCardError("");
   }
 
   async function handleGuestCheckout(e: React.FormEvent) {
@@ -202,6 +244,8 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           guestCount: guests,
           includeInsurance,
           promoCode: appliedPromo?.code || undefined,
+          paymentType: payDeposit ? "deposit" : "full",
+          giftCardCode: appliedGiftCard?.code || undefined,
         }),
       });
 
@@ -554,10 +598,16 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               <span>-{formatCurrency(promoDiscount)}</span>
             </div>
           )}
+          {giftCardDiscount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Gift card applied</span>
+              <span>-{formatCurrency(giftCardDiscount)}</span>
+            </div>
+          )}
           <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
             <span className="text-navy-700">Total</span>
             <span className="text-navy-700">
-              {promoDiscount > 0 ? (
+              {(promoDiscount > 0 || giftCardDiscount > 0) ? (
                 <>
                   <span className="line-through text-navy-300 mr-1 font-normal text-xs">{formatCurrency(pricing.total)}</span>
                   {formatCurrency(finalTotal)}
@@ -567,6 +617,91 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               )}
             </span>
           </div>
+        </div>
+
+        {/* Deposit Option */}
+        {finalTotal > 20 && (
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-gold-50 cursor-pointer mb-4">
+            <input
+              type="checkbox"
+              checked={payDeposit}
+              onChange={(e) => setPayDeposit(e.target.checked)}
+              className="w-4 h-4 accent-gold-500"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-navy-700">
+                Pay deposit only ({formatCurrency(depositAmount)})
+              </p>
+              <p className="text-xs text-navy-400">
+                25% now, remainder due before your experience
+              </p>
+            </div>
+            <CreditCard size={18} className="text-gold-500" />
+          </label>
+        )}
+
+        {/* Gift Card */}
+        <div className="mb-4">
+          {!appliedGiftCard ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowGiftCard(!showGiftCard)}
+                className="flex items-center gap-1.5 text-sm text-navy-400 hover:text-navy-600 font-medium transition-colors"
+              >
+                <Gift size={14} />
+                Have a gift card?
+                <ChevronDown size={14} className={`transition-transform ${showGiftCard ? "rotate-180" : ""}`} />
+              </button>
+              {showGiftCard && (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={giftCardCode}
+                    onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+                    placeholder="Gift card code"
+                    className="flex-1 px-3 py-2 rounded-lg bg-cream-50 border border-cream-300 text-navy-700 placeholder:text-navy-300 outline-none focus:border-gold-500 text-sm font-mono tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyGiftCard}
+                    disabled={giftCardLoading || !giftCardCode.trim()}
+                    className="px-4 py-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    {giftCardLoading ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
+                  </button>
+                </div>
+              )}
+              {giftCardError && (
+                <p className="mt-2 text-xs text-red-500">{giftCardError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between bg-green-50 px-3 py-2.5 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Gift size={14} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-semibold text-green-700">{appliedGiftCard.code}</p>
+                  <p className="text-xs text-green-600">Balance: {formatCurrency(appliedGiftCard.balance)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveGiftCard}
+                className="p-1 hover:bg-green-100 rounded-full transition-colors"
+              >
+                <X size={14} className="text-green-600" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* BNPL Note */}
+        <div className="flex items-center gap-2 mb-6 p-2.5 rounded-xl bg-cream-50">
+          <CreditCard size={14} className="text-navy-400 shrink-0" />
+          <p className="text-xs text-navy-400">
+            <span className="font-medium">Pay in installments</span> available via Klarna / Afterpay at checkout
+          </p>
         </div>
 
         {/* Guest Checkout Form */}

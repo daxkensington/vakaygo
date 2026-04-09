@@ -16,6 +16,10 @@ import { TrustBadges } from "@/components/listings/trust-badges";
 import { ContactOperator } from "@/components/listings/contact-operator";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { WhatsIncluded } from "@/components/listings/whats-included";
+import { TourItinerary } from "@/components/listings/tour-itinerary";
+import { MeetingPointMap } from "@/components/listings/meeting-point-map";
+import { LikelySellOutBadge } from "@/components/listings/likely-sell-out-badge";
+import { DiningMenu } from "@/components/listings/dining-menu";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
@@ -61,12 +65,24 @@ type ListingDetail = {
   operatorAvatar: string | null;
   operatorId: string;
   operatorSuperhost?: boolean;
+  meetingPointLat: string | null;
+  meetingPointLng: string | null;
+  meetingPointNote: string | null;
   cancellationPolicy: string | null;
   minStay: number | null;
   maxStay: number | null;
   advanceNotice: number | null;
   maxGuests: number | null;
-  images: { id: string; url: string; alt: string | null }[];
+  images: { id: string; url: string; alt: string | null; type?: string | null }[];
+};
+
+type RelatedGuide = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  coverImage: string | null;
+  category: string;
 };
 
 type SimilarListing = {
@@ -111,6 +127,7 @@ export default function ListingDetailPage() {
   const params = useParams();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarListing[]>([]);
+  const [relatedGuides, setRelatedGuides] = useState<RelatedGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const { isSaved, toggle } = useSaved();
   const viewTracked = useRef(false);
@@ -131,6 +148,15 @@ export default function ListingDetailPage() {
     }
     if (params.slug) fetchListing();
   }, [params.slug]);
+
+  // Fetch related guides by island
+  useEffect(() => {
+    if (!listing) return;
+    fetch(`/api/blog?island=${listing.islandSlug}&limit=3`)
+      .then((res) => (res.ok ? res.json() : { posts: [] }))
+      .then((data) => setRelatedGuides(data.posts || []))
+      .catch(() => {});
+  }, [listing]);
 
   // Track listing view (once per page load)
   useEffect(() => {
@@ -256,13 +282,41 @@ export default function ListingDetailPage() {
     }
 
     if (listing.priceAmount) {
-      jsonLd.priceRange = `$${parseFloat(listing.priceAmount).toFixed(0)}`;
+      const price = parseFloat(listing.priceAmount);
+      // Generate human-readable priceRange
+      if (price < 20) jsonLd.priceRange = "$";
+      else if (price < 50) jsonLd.priceRange = "$$";
+      else if (price < 100) jsonLd.priceRange = "$$$";
+      else jsonLd.priceRange = "$$$$";
+
       jsonLd.offers = {
         "@type": "Offer",
         price: listing.priceAmount,
         priceCurrency: listing.priceCurrency || "XCD",
         availability: "https://schema.org/InStock",
       };
+    }
+
+    // Opening hours specification from operatingHours
+    if (td.operatingHours && typeof td.operatingHours === "object") {
+      const dayMap: Record<string, string> = {
+        monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
+        thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+      };
+      const hours = td.operatingHours as Record<string, { open: string; close: string }>;
+      jsonLd.openingHoursSpecification = Object.entries(hours)
+        .filter(([, v]) => v && v.open && v.close)
+        .map(([day, v]) => ({
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: dayMap[day.toLowerCase()] || day,
+          opens: v.open,
+          closes: v.close,
+        }));
+    }
+
+    // Cuisine type for dining listings
+    if (listing.type === "dining" && td.cuisineType) {
+      jsonLd.servesCuisine = td.cuisineType as string;
     }
 
     // Add geo coordinates if available in typeData
@@ -319,8 +373,13 @@ export default function ListingDetailPage() {
 
   const td = listing.typeData || {};
   const images = listing.images.length > 0
-    ? listing.images
-    : [{ id: "placeholder", url: "", alt: listing.title }];
+    ? listing.images.map((img: { id: string; url: string; alt: string | null; type?: string | null }) => ({
+        id: img.id,
+        url: img.url,
+        alt: img.alt,
+        type: img.type ?? undefined,
+      }))
+    : [{ id: "placeholder", url: "", alt: listing.title as string | null }];
 
   return (
     <>
@@ -378,6 +437,16 @@ export default function ListingDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Likely to sell out badge for bookable types */}
+                  {["tour", "excursion", "event", "vip"].includes(listing.type) && td.bookingCount7Days !== undefined && (
+                    <div className="mt-3">
+                      <LikelySellOutBadge
+                        bookingCount7Days={td.bookingCount7Days as number}
+                        spotsRemaining={td.spotsRemaining as number | undefined}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <ShareButton
@@ -552,8 +621,29 @@ export default function ListingDetailPage() {
                 </p>
               </div>
 
+              {/* Tour Itinerary (tour/excursion types) */}
+              {["tour", "excursion"].includes(listing.type) && td.itinerary && Array.isArray(td.itinerary) && (
+                <TourItinerary itinerary={td.itinerary as { stopNumber: number; title: string; description: string; duration?: string; time?: string }[]} />
+              )}
+
+              {/* Dining Menu */}
+              {listing.type === "dining" && td.menu && Array.isArray(td.menu) && (
+                <DiningMenu menu={td.menu as { section: string; items: { name: string; description?: string; price?: string }[] }[]} />
+              )}
+
               {/* What's Included / Excluded (tour types) */}
               <WhatsIncluded typeData={listing.typeData} listingType={listing.type} />
+
+              {/* Meeting Point Map (for tour/excursion/transfer types) */}
+              {["tour", "excursion", "transfer"].includes(listing.type) &&
+                listing.meetingPointLat &&
+                listing.meetingPointLng && (
+                  <MeetingPointMap
+                    lat={parseFloat(listing.meetingPointLat)}
+                    lng={parseFloat(listing.meetingPointLng)}
+                    note={listing.meetingPointNote || undefined}
+                  />
+                )}
 
               {/* Legacy: What's Included (simple list from td.includes) */}
               {td.includes && !td.included && (
@@ -671,7 +761,51 @@ export default function ListingDetailPage() {
               )}
 
               {/* Reviews */}
-              <ReviewSection listingId={listing.id} listingTitle={listing.title} />
+              <ReviewSection listingId={listing.id} listingTitle={listing.title} listingType={listing.type} />
+
+              {/* Related Guides */}
+              {relatedGuides.length > 0 && (
+                <div className="mt-12">
+                  <h2
+                    className="text-xl font-bold text-navy-700 mb-4"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Related Guides
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {relatedGuides.map((guide) => (
+                      <Link
+                        key={guide.id}
+                        href={`/blog/${guide.slug}`}
+                        className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
+                      >
+                        {guide.coverImage && (
+                          <div className="relative h-32 overflow-hidden">
+                            <ImageWithFallback
+                              src={getImageUrl(guide.coverImage)}
+                              type="tour"
+                              className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <span className="text-xs font-semibold text-gold-600 uppercase tracking-wide">
+                            {guide.category}
+                          </span>
+                          <h3 className="font-semibold text-navy-700 mt-1 line-clamp-2 group-hover:text-gold-600 transition-colors">
+                            {guide.title}
+                          </h3>
+                          {guide.excerpt && (
+                            <p className="text-sm text-navy-400 mt-1 line-clamp-2">
+                              {guide.excerpt}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Sidebar — Type-Specific Booking Widget */}

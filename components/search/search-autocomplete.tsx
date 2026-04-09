@@ -62,6 +62,8 @@ interface SearchAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   onEnter?: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   aiSearchLoading?: boolean;
   aiSearchActive?: boolean;
   placeholder?: string;
@@ -72,6 +74,8 @@ export function SearchAutocomplete({
   value,
   onChange,
   onEnter,
+  onFocus,
+  onBlur,
   aiSearchLoading,
   aiSearchActive,
   placeholder = 'Search stays, tours, dining, events... or try "romantic dinner in Grenada"',
@@ -229,12 +233,16 @@ export function SearchAutocomplete({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => {
+            onFocus?.();
             if (
               value.length >= 2 &&
               (results.listings.length > 0 || results.islands.length > 0)
             ) {
               setIsOpen(true);
             }
+          }}
+          onBlur={() => {
+            onBlur?.();
           }}
           className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
           role="combobox"

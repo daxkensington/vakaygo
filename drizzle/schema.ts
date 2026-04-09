@@ -103,6 +103,11 @@ export const users = pgTable(
     loyaltyTier: varchar("loyalty_tier", { length: 16 }).default("explorer"), // explorer, adventurer, voyager, captain
     referralCode: varchar("referral_code", { length: 16 }),
     referredBy: uuid("referred_by"),
+    // 2FA / Trust & Safety
+    totpSecret: varchar("totp_secret", { length: 256 }),
+    totpEnabled: boolean("totp_enabled").default(false),
+    phoneVerified: boolean("phone_verified").default(false),
+    idVerified: boolean("id_verified").default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -198,6 +203,14 @@ export const listings = pgTable(
     isInstantBook: boolean("is_instant_book").default(false),
     metaTitle: varchar("meta_title", { length: 256 }),
     metaDescription: varchar("meta_description", { length: 512 }),
+    // Video & meeting point
+    videoUrl: text("video_url"),
+    meetingPointLat: decimal("meeting_point_lat", { precision: 10, scale: 7 }),
+    meetingPointLng: decimal("meeting_point_lng", { precision: 10, scale: 7 }),
+    meetingPointNote: varchar("meeting_point_note", { length: 512 }),
+    // Dining-specific
+    cuisineType: varchar("cuisine_type", { length: 64 }),
+    operatingHours: json("operating_hours").$type<Record<string, { open: string; close: string }>>(),
     // iCal sync
     icalToken: varchar("ical_token", { length: 128 }),
     icalImportUrl: text("ical_import_url"),
@@ -304,6 +317,11 @@ export const bookings = pgTable(
     checkedInAt: timestamp("checked_in_at"),
     promoCodeId: uuid("promo_code_id"),
     discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
+    // Deposit & escrow
+    depositAmount: decimal("deposit_amount", { precision: 10, scale: 2 }),
+    depositPaid: boolean("deposit_paid").default(false),
+    escrowReleased: boolean("escrow_released").default(false),
+    escrowReleasedAt: timestamp("escrow_released_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -336,6 +354,8 @@ export const reviews = pgTable(
     operatorReply: text("operator_reply"),
     operatorRepliedAt: timestamp("operator_replied_at"),
     isPublished: boolean("is_published").default(true),
+    helpfulCount: integer("helpful_count").default(0),
+    isVerifiedPurchase: boolean("is_verified_purchase").default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("reviews_listing_idx").on(t.listingId)]
@@ -449,6 +469,10 @@ export const messages = pgTable(
     content: text("content").notNull(),
     attachmentUrl: text("attachment_url"),
     attachmentType: varchar("attachment_type", { length: 16 }), // image, file
+    // Translation
+    translatedContent: text("translated_content"),
+    sourceLanguage: varchar("source_language", { length: 8 }),
+    targetLanguage: varchar("target_language", { length: 8 }),
     isRead: boolean("is_read").default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -664,4 +688,215 @@ export const conciergeMemory = pgTable("concierge_memory", {
 }, (t) => [
   index("concierge_memory_user_idx").on(t.userId),
   index("concierge_memory_category_idx").on(t.category),
+]);
+
+// ─── SEARCH HISTORY ──────────────────────────────────────────
+export const searchHistory = pgTable("search_history", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  query: text("query").notNull(),
+  filters: json("filters").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("search_history_user_idx").on(t.userId),
+]);
+
+// ─── REVIEW SUB-RATINGS ─────────────────────────────────────
+export const reviewSubRatings = pgTable("review_sub_ratings", {
+  id: serial("id").primaryKey(),
+  reviewId: uuid("review_id").notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 32 }).notNull(), // cleanliness, accuracy, location, value, communication, checkin
+  rating: integer("rating").notNull(),
+}, (t) => [
+  index("review_sub_ratings_review_idx").on(t.reviewId),
+]);
+
+// ─── REVIEW VOTES (helpful) ─────────────────────────────────
+export const reviewVotes = pgTable("review_votes", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reviewId: uuid("review_id").notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.userId, t.reviewId] }),
+]);
+
+// ─── GIFT CARDS ──────────────────────────────────────────────
+export const giftCards = pgTable("gift_cards", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  purchaserId: uuid("purchaser_id").references(() => users.id),
+  recipientEmail: varchar("recipient_email", { length: 320 }),
+  recipientName: varchar("recipient_name", { length: 256 }),
+  personalMessage: text("personal_message"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD"),
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("gift_cards_code_idx").on(t.code),
+]);
+
+// ─── PAYOUT SCHEDULES ────────────────────────────────────────
+export const payoutSchedules = pgTable("payout_schedules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operatorId: uuid("operator_id").notNull().references(() => users.id).unique(),
+  frequency: varchar("frequency", { length: 16 }).default("weekly").notNull(), // weekly, biweekly, monthly
+  dayOfWeek: integer("day_of_week").default(1), // 0=Sun, 1=Mon, ...
+  dayOfMonth: integer("day_of_month").default(1), // for monthly payouts
+  minPayout: decimal("min_payout", { precision: 10, scale: 2 }).default("10.00"),
+  stripeAccountId: varchar("stripe_account_id", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── TAX DOCUMENTS ───────────────────────────────────────────
+export const taxDocuments = pgTable("tax_documents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  year: integer("year").notNull(),
+  totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).notNull(),
+  totalBookings: integer("total_bookings").notNull(),
+  totalPayouts: decimal("total_payouts", { precision: 12, scale: 2 }),
+  documentUrl: text("document_url"),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+}, (t) => [
+  index("tax_docs_operator_idx").on(t.operatorId),
+]);
+
+// ─── MESSAGE TEMPLATES ───────────────────────────────────────
+export const messageTemplates = pgTable("message_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operatorId: uuid("operator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 128 }).notNull(),
+  content: text("content").notNull(),
+  shortcut: varchar("shortcut", { length: 32 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("message_templates_operator_idx").on(t.operatorId),
+]);
+
+// ─── DYNAMIC PRICING RULES ──────────────────────────────────
+export const pricingRules = pgTable("pricing_rules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 16 }).notNull(), // surge, seasonal, weekday, weekend
+  name: varchar("name", { length: 128 }),
+  multiplier: decimal("multiplier", { precision: 4, scale: 2 }).notNull(), // e.g. 1.50 = +50%
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  daysOfWeek: json("days_of_week").$type<number[]>(), // [0,6] for weekends
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("pricing_rules_listing_idx").on(t.listingId),
+]);
+
+// ─── OPERATOR TEAM MEMBERS ───────────────────────────────────
+export const operatorTeamMembers = pgTable("operator_team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  memberId: uuid("member_id").notNull().references(() => users.id),
+  role: varchar("role", { length: 16 }).default("cohost").notNull(), // cohost, staff
+  permissions: json("permissions").$type<string[]>(), // ["manage_listings", "view_bookings", "reply_messages"]
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("operator_team_operator_idx").on(t.operatorId),
+  index("operator_team_member_idx").on(t.memberId),
+]);
+
+// ─── REPORTS (flag listing/user/review) ──────────────────────
+export const reportStatusEnum = pgEnum("report_status", [
+  "pending", "reviewed", "resolved", "dismissed"
+]);
+
+export const reports = pgTable("reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reporterId: uuid("reporter_id").notNull().references(() => users.id),
+  targetType: varchar("target_type", { length: 16 }).notNull(), // listing, user, review
+  targetId: varchar("target_id", { length: 128 }).notNull(),
+  reason: varchar("reason", { length: 64 }).notNull(), // inappropriate, misleading, spam, safety, other
+  description: text("description"),
+  status: reportStatusEnum("status").default("pending").notNull(),
+  adminNotes: text("admin_notes"),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("reports_status_idx").on(t.status),
+  index("reports_target_idx").on(t.targetType, t.targetId),
+]);
+
+// ─── ID VERIFICATIONS ────────────────────────────────────────
+export const verificationStatusEnum = pgEnum("verification_status", [
+  "pending", "approved", "rejected"
+]);
+
+export const idVerifications = pgTable("id_verifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id).unique(),
+  documentType: varchar("document_type", { length: 32 }).notNull(), // passport, drivers_license, national_id
+  documentUrl: text("document_url").notNull(),
+  selfieUrl: text("selfie_url"),
+  status: verificationStatusEnum("status").default("pending").notNull(),
+  reviewedBy: uuid("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── FEATURE FLAGS ───────────────────────────────────────────
+export const featureFlags = pgTable("feature_flags", {
+  key: varchar("key", { length: 128 }).primaryKey(),
+  enabled: boolean("enabled").default(false).notNull(),
+  rolloutPercent: integer("rollout_percent").default(100),
+  allowedUsers: json("allowed_users").$type<string[]>(),
+  description: text("description"),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── A/B TESTS ───────────────────────────────────────────────
+export const abTests = pgTable("ab_tests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  variants: json("variants").$type<{ name: string; weight: number }[]>().notNull(),
+  trafficPercent: integer("traffic_percent").default(100),
+  isActive: boolean("is_active").default(true),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const abTestAssignments = pgTable("ab_test_assignments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  testId: uuid("test_id").notNull().references(() => abTests.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  variant: varchar("variant", { length: 64 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("ab_assignments_test_idx").on(t.testId),
+  index("ab_assignments_user_idx").on(t.userId),
+]);
+
+// ─── WISHLIST COLLECTIONS ────────────────────────────────────
+export const wishlistCollections = pgTable("wishlist_collections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("wishlist_collections_user_idx").on(t.userId),
+]);
+
+export const wishlistItems = pgTable("wishlist_items", {
+  collectionId: uuid("collection_id").notNull().references(() => wishlistCollections.id, { onDelete: "cascade" }),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.collectionId, t.listingId] }),
 ]);

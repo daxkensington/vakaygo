@@ -9,6 +9,8 @@ import { PromoBanner } from "@/components/layout/promo-banner";
 import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { getLocale } from "next-intl/server";
+import { rtlLocales, type Locale } from "@/i18n/config";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -85,13 +87,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale() as Locale;
+  const dir = rtlLocales.includes(locale) ? "rtl" : "ltr";
+
   return (
-    <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang={locale} dir={dir} data-dir={dir} className={`${dmSans.variable} ${dmSerif.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1A6B6A" />

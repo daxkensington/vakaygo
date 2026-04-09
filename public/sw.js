@@ -1,7 +1,8 @@
 // VakayGo Service Worker
-const CACHE_VERSION = "vakaygo-v1";
+const CACHE_VERSION = "vakaygo-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
+const FAVORITES_CACHE = `${CACHE_VERSION}-favorites`;
 
 const STATIC_ASSETS = [
   "/offline",
@@ -22,7 +23,12 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
+          .filter(
+            (key) =>
+              key !== STATIC_CACHE &&
+              key !== DYNAMIC_CACHE &&
+              key !== FAVORITES_CACHE
+          )
           .map((key) => caches.delete(key))
       )
     )
@@ -40,6 +46,29 @@ self.addEventListener("fetch", (event) => {
 
   // Skip chrome-extension and other non-http(s)
   if (!url.protocol.startsWith("http")) return;
+
+  // Check favorites cache for saved listing pages when offline
+  if (url.pathname.match(/^\/api\/listings\/[^/]+$/) || url.pathname.match(/^\/[^/]+\/[^/]+$/)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then(
+            (cached) =>
+              cached ||
+              caches.open(FAVORITES_CACHE).then((cache) => cache.match(request)) ||
+              caches.match("/offline")
+          )
+        )
+    );
+    return;
+  }
 
   // API calls and HTML pages: network-first
   if (
@@ -96,6 +125,46 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request).catch(() => caches.match(request))
   );
+});
+
+// Message handler: cache listing data for offline favorites
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "CACHE_LISTING") {
+    const { slug, data } = event.data;
+    if (!slug || !data) return;
+
+    const listingApiUrl = new URL(`/api/listings/${slug}`, self.location.origin).href;
+    const listingPageUrl = new URL(`/${data.islandSlug}/${slug}`, self.location.origin).href;
+
+    caches.open(FAVORITES_CACHE).then((cache) => {
+      // Cache the API response as JSON
+      const apiResponse = new Response(JSON.stringify(data), {
+        headers: { "Content-Type": "application/json" },
+      });
+      cache.put(listingApiUrl, apiResponse);
+
+      // Also try to cache the page itself from dynamic cache
+      caches.open(DYNAMIC_CACHE).then((dynCache) => {
+        dynCache.match(listingPageUrl).then((cached) => {
+          if (cached) {
+            cache.put(listingPageUrl, cached.clone());
+          }
+        });
+      });
+    });
+  }
+
+  if (event.data && event.data.type === "UNCACHE_LISTING") {
+    const { slug, islandSlug } = event.data;
+    if (!slug) return;
+
+    caches.open(FAVORITES_CACHE).then((cache) => {
+      cache.delete(new URL(`/api/listings/${slug}`, self.location.origin).href);
+      if (islandSlug) {
+        cache.delete(new URL(`/${islandSlug}/${slug}`, self.location.origin).href);
+      }
+    });
+  }
 });
 
 // Push notifications

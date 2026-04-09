@@ -22,6 +22,13 @@
       "when": 1775193149352,
       "tag": "0002_lonely_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775735311311,
+      "tag": "0003_wonderful_madrox",
+      "breakpoints": true
     }
   ]
 }
