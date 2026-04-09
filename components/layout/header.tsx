@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
-import Image from "next/image";
+
 import { usePathname } from "next/navigation";
 import { Menu, X, User, LayoutDashboard, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -47,17 +47,72 @@ export function Header() {
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 md:px-6 flex items-center justify-between h-16 md:h-18">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/images/logo.jpg"
-            alt="VakayGo"
-            width={180}
-            height={50}
-            className={`h-10 md:h-12 w-auto object-contain transition-all duration-300 ${
-              !scrolled && isLanding ? "brightness-0 invert mix-blend-screen" : ""
-            }`}
-            priority
-          />
+        <Link href="/" className="flex items-center gap-1.5 group">
+          {/* SVG logo — renders crisp at any size, works on any background */}
+          <svg
+            viewBox="0 0 200 44"
+            className="h-9 md:h-10 w-auto"
+            aria-label="VakayGo"
+          >
+            {/* Palm tree on the V */}
+            <g transform="translate(3, 0) scale(0.38)">
+              <path
+                d="M28 8c-2-6-8-8-14-7 4 2 8 6 10 12l-2 0c-6-5-14-6-18-3 5 1 11 4 15 10l-2 1c-7-3-14-2-17 1 5 0 12 2 17 7"
+                className={`transition-all duration-300 ${
+                  !scrolled && isLanding ? "fill-white" : "fill-[#1C2333]"
+                }`}
+              />
+              <rect
+                x="24" y="28" width="3" height="20" rx="1.5"
+                className={`transition-all duration-300 ${
+                  !scrolled && isLanding ? "fill-white/70" : "fill-[#1C2333]/60"
+                }`}
+              />
+            </g>
+            {/* "Vakay" text */}
+            <text
+              x="22" y="32"
+              className={`text-[30px] font-bold transition-all duration-300 ${
+                !scrolled && isLanding ? "fill-white" : "fill-[#1C2333]"
+              }`}
+              style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 800, letterSpacing: "-0.5px" }}
+            >
+              Vakay
+            </text>
+            {/* "Go" text in gold */}
+            <text
+              x="122" y="32"
+              className="fill-[#C8912E] text-[30px] font-bold"
+              style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 800, letterSpacing: "-0.5px" }}
+            >
+              Go
+            </text>
+            {/* Gold sunburst behind "Go" */}
+            <g transform="translate(155, 6)" opacity="0.9">
+              {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => (
+                <line
+                  key={angle}
+                  x1="0" y1="0"
+                  x2={Math.cos((angle * Math.PI) / 180) * 8}
+                  y2={Math.sin((angle * Math.PI) / 180) * 8}
+                  stroke="#C8912E"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  transform={`translate(0, 0)`}
+                />
+              ))}
+            </g>
+            {/* Wave line */}
+            <path
+              d="M22 38 Q52 34, 82 38 Q112 42, 142 38 Q157 36, 170 38"
+              fill="none"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              className={`transition-all duration-300 ${
+                !scrolled && isLanding ? "stroke-white/40" : "stroke-[#1A6B6A]/30"
+              }`}
+            />
+          </svg>
         </Link>
 
         <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
