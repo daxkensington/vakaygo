@@ -40,6 +40,7 @@ import {
   PawPrint,
   History,
   Trash2,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const CaribbeanMap = dynamic(() => import("@/components/listings/caribbean-map"), {
@@ -152,7 +153,26 @@ export default function ExplorePage() {
   const [aiSummary, setAiSummary] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiResultsSummary, setAiResultsSummary] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const PAGE_SIZE = 24;
+
+  const mobileFilterCount =
+    (selectedDate ? 1 : 0) +
+    (activeIsland ? 1 : 0) +
+    (minPrice ? 1 : 0) +
+    (maxPrice ? 1 : 0) +
+    (minRating ? 1 : 0) +
+    (guestCount ? 1 : 0);
+
+  // Lock body scroll when filter sheet is open
+  useEffect(() => {
+    if (!showFilters) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [showFilters]);
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
@@ -451,8 +471,23 @@ export default function ExplorePage() {
                   </div>
                 )}
               </div>
+              {/* Mobile-only Filters trigger */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(true)}
+                aria-label="Open filters"
+                className="md:hidden relative flex items-center gap-2 px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium hover:bg-cream-100 transition-colors shrink-0"
+              >
+                <SlidersHorizontal size={16} />
+                Filters
+                {mobileFilterCount > 0 && (
+                  <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold-500 text-white text-[10px] font-bold">
+                    {mobileFilterCount}
+                  </span>
+                )}
+              </button>
               {/* Date + Island row on mobile */}
-              <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
+              <div className="hidden md:flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="date"
@@ -466,7 +501,7 @@ export default function ExplorePage() {
               <select
                 value={activeIsland}
                 onChange={(e) => setActiveIsland(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
+                className="hidden md:block px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
               >
                 <option value="">All Islands</option>
                 <option value="grenada">🇬🇩 Grenada</option>
@@ -492,7 +527,7 @@ export default function ExplorePage() {
                 <option value="bonaire">🇧🇶 Bonaire</option>
               </select>
               {/* Price Range */}
-              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
+              <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <DollarSign size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="number"
@@ -516,7 +551,7 @@ export default function ExplorePage() {
               <select
                 value={minRating}
                 onChange={(e) => setMinRating(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
+                className="hidden md:block px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
               >
                 <option value="">Any Rating</option>
                 <option value="3">3+ Stars</option>
@@ -524,7 +559,7 @@ export default function ExplorePage() {
                 <option value="4.5">4.5+ Stars</option>
               </select>
               {/* Guest Count */}
-              <div className="flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 shrink-0">
+              <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 shrink-0">
                 <Users size={16} className="text-navy-300 shrink-0" />
                 <button
                   onClick={() => setGuestCount((prev) => {
@@ -1047,6 +1082,186 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
+
+      {/* Mobile filters bottom sheet */}
+      {showFilters && (
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col">
+          <button
+            type="button"
+            aria-label="Close filters"
+            onClick={() => setShowFilters(false)}
+            className="flex-1 bg-navy-900/50"
+          />
+          <div className="bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
+              <h2 className="text-lg font-semibold text-navy-700">Filters</h2>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                aria-label="Close filters"
+                className="p-1 text-navy-400 hover:text-navy-700"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+              <div>
+                <label htmlFor="m-date" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
+                  Date
+                </label>
+                <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-3">
+                  <Calendar size={16} className="text-navy-300 shrink-0" />
+                  <input
+                    id="m-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-transparent text-navy-700 text-sm font-medium outline-none w-full"
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="m-island" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
+                  Island
+                </label>
+                <select
+                  id="m-island"
+                  value={activeIsland}
+                  onChange={(e) => setActiveIsland(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer"
+                >
+                  <option value="">All Islands</option>
+                  <option value="grenada">🇬🇩 Grenada</option>
+                  <option value="trinidad-and-tobago">🇹🇹 Trinidad & Tobago</option>
+                  <option value="barbados">🇧🇧 Barbados</option>
+                  <option value="st-lucia">🇱🇨 St. Lucia</option>
+                  <option value="jamaica">🇯🇲 Jamaica</option>
+                  <option value="bahamas">🇧🇸 Bahamas</option>
+                  <option value="antigua">🇦🇬 Antigua</option>
+                  <option value="dominica">🇩🇲 Dominica</option>
+                  <option value="st-vincent">🇻🇨 St. Vincent</option>
+                  <option value="aruba">🇦🇼 Aruba</option>
+                  <option value="curacao">🇨🇼 Curaçao</option>
+                  <option value="cayman-islands">🇰🇾 Cayman Islands</option>
+                  <option value="puerto-rico">🇵🇷 Puerto Rico</option>
+                  <option value="dominican-republic">🇩🇴 Dominican Republic</option>
+                  <option value="turks-and-caicos">🇹🇨 Turks & Caicos</option>
+                  <option value="us-virgin-islands">🇻🇮 USVI</option>
+                  <option value="british-virgin-islands">🇻🇬 BVI</option>
+                  <option value="st-kitts">🇰🇳 St. Kitts</option>
+                  <option value="martinique">🇲🇶 Martinique</option>
+                  <option value="guadeloupe">🇬🇵 Guadeloupe</option>
+                  <option value="bonaire">🇧🇶 Bonaire</option>
+                </select>
+              </div>
+
+              <div>
+                <span className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
+                  Price Range
+                </span>
+                <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-3">
+                  <DollarSign size={16} className="text-navy-300 shrink-0" />
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                    min="0"
+                  />
+                  <span className="text-navy-300 text-sm">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="m-rating" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
+                  Rating
+                </label>
+                <select
+                  id="m-rating"
+                  value={minRating}
+                  onChange={(e) => setMinRating(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer"
+                >
+                  <option value="">Any Rating</option>
+                  <option value="3">3+ Stars</option>
+                  <option value="4">4+ Stars</option>
+                  <option value="4.5">4.5+ Stars</option>
+                </select>
+              </div>
+
+              <div>
+                <span className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
+                  Guests
+                </span>
+                <div className="flex items-center justify-between bg-cream-50 rounded-xl px-4 py-3">
+                  <Users size={16} className="text-navy-300 shrink-0" />
+                  <button
+                    type="button"
+                    onClick={() => setGuestCount((prev) => {
+                      const n = parseInt(prev || "0");
+                      return n > 1 ? String(n - 1) : "";
+                    })}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-navy-500 hover:bg-cream-100 transition-colors"
+                    aria-label="Decrease guests"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-sm font-medium text-navy-700">
+                    {guestCount ? `${guestCount} guest${parseInt(guestCount) !== 1 ? "s" : ""}` : "Any"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setGuestCount((prev) => {
+                      const n = parseInt(prev || "0");
+                      return n < 20 ? String(n + 1) : prev;
+                    })}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-navy-500 hover:bg-cream-100 transition-colors"
+                    aria-label="Increase guests"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-5 py-4 border-t border-cream-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDate("");
+                  setActiveIsland("");
+                  setMinPrice("");
+                  setMaxPrice("");
+                  setMinRating("");
+                  setGuestCount("");
+                }}
+                className="px-4 py-3 text-sm font-medium text-navy-500 hover:text-navy-700 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="flex-1 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
+              >
+                Show {totalCount} result{totalCount !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

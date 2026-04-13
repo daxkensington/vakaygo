@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { PromoBanner } from "@/components/layout/promo-banner";
 import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
+import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { getLocale } from "next-intl/server";
@@ -148,7 +149,7 @@ export default async function RootLayout({
             }),
           }}
         />
-        <AuthProvider><SavedProvider><CurrencyProvider><PromoBanner /><EmailVerificationBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
         <Analytics />
