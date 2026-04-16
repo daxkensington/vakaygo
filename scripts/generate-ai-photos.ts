@@ -1,17 +1,19 @@
 /**
- * Generate AI photos for listings without images using Grok
+ * Generate AI photos for listings without reliable images using Grok
  * Creates type-specific Caribbean images for each listing category
  *
  * Usage: DATABASE_URL=... GROK_API_KEY=... npx tsx scripts/generate-ai-photos.ts
  * Options:
- *   --limit=50     Process N listings (default 50)
- *   --type=excursion  Only process specific type
+ *   --limit=50         Process N listings (default 50)
+ *   --type=excursion   Only process specific type
+ *   --google-only      Target listings whose only images are Google Places URLs
+ *   --concurrency=3    Parallel requests (default 3)
  */
 
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, media, islands } from "../drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql, not, like } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GROK_API_KEY = process.env.GROK_API_KEY!;
@@ -21,6 +23,9 @@ const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? parseInt(limitArg.split("=")[1]) : 50;
 const typeArg = args.find((a) => a.startsWith("--type="));
 const typeFilter = typeArg ? typeArg.split("=")[1] : null;
+const googleOnly = args.includes("--google-only");
+const concurrencyArg = args.find((a) => a.startsWith("--concurrency="));
+const concurrency = concurrencyArg ? parseInt(concurrencyArg.split("=")[1]) : 3;
 
 // Type-specific prompts for generating relevant Caribbean images
 const typePrompts: Record<string, string[]> = {
@@ -107,60 +112,116 @@ async function main() {
 
   const db = drizzle(neon(DATABASE_URL));
 
-  // Get listings without photos
-  const conditions = [eq(listings.status, "active")];
-  if (typeFilter) {
-    conditions.push(eq(listings.type, typeFilter as any));
+  let listingsToProcess: { id: string; title: string; type: string; islandId: number }[];
+
+  if (googleOnly) {
+    // Find listings whose ONLY images are Google Places URLs (likely broken/expired)
+    const typeCondition = typeFilter
+      ? sql`AND l.type = ${typeFilter}`
+      : sql``;
+
+    const result = await db.execute(sql`
+      SELECT l.id, l.title, l.type, l.island_id as "islandId"
+      FROM listings l
+      WHERE l.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM media m
+          WHERE m.listing_id = l.id
+          AND m.url NOT LIKE '%googleapis.com%'
+        )
+        AND EXISTS (
+          SELECT 1 FROM media m2
+          WHERE m2.listing_id = l.id
+        )
+        ${typeCondition}
+      LIMIT ${limit}
+    `);
+    listingsToProcess = result.rows as any;
+  } else {
+    // Original: listings with zero media rows
+    const conditions = [eq(listings.status, "active")];
+    if (typeFilter) {
+      conditions.push(eq(listings.type, typeFilter as any));
+    }
+
+    listingsToProcess = await db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        type: listings.type,
+        islandId: listings.islandId,
+      })
+      .from(listings)
+      .leftJoin(media, eq(listings.id, media.listingId))
+      .where(and(...conditions, isNull(media.id)))
+      .limit(limit);
   }
 
-  const listingsWithoutPhotos = await db
-    .select({
-      id: listings.id,
-      title: listings.title,
-      type: listings.type,
-      islandId: listings.islandId,
-    })
-    .from(listings)
-    .leftJoin(media, eq(listings.id, media.listingId))
-    .where(and(...conditions, isNull(media.id)))
-    .limit(limit);
+  const mode = googleOnly ? "google-only" : "no-media";
+  console.log(`[${mode}] Found ${listingsToProcess.length} listings to process (concurrency=${concurrency})\n`);
 
-  console.log(`Found ${listingsWithoutPhotos.length} listings without photos\n`);
+  if (listingsToProcess.length === 0) {
+    console.log("Nothing to do!");
+    return;
+  }
 
   // Track which prompts we've used per type to avoid duplicates
   const promptIndex: Record<string, number> = {};
   let generated = 0;
+  let failed = 0;
 
-  for (const listing of listingsWithoutPhotos) {
-    const prompts = typePrompts[listing.type] || typePrompts.tour;
+  // Process in batches of `concurrency`
+  for (let i = 0; i < listingsToProcess.length; i += concurrency) {
+    const batch = listingsToProcess.slice(i, i + concurrency);
 
-    // Rotate through prompts for variety
-    if (!promptIndex[listing.type]) promptIndex[listing.type] = 0;
-    const prompt = prompts[promptIndex[listing.type] % prompts.length];
-    promptIndex[listing.type]++;
+    const results = await Promise.allSettled(
+      batch.map(async (listing) => {
+        const prompts = typePrompts[listing.type] || typePrompts.tour;
 
-    const imageUrl = await generateImage(prompt);
+        if (!promptIndex[listing.type]) promptIndex[listing.type] = 0;
+        const prompt = prompts[promptIndex[listing.type] % prompts.length];
+        promptIndex[listing.type]++;
 
-    if (imageUrl) {
-      await db.insert(media).values({
-        listingId: listing.id,
-        url: imageUrl,
-        alt: listing.title,
-        type: "image",
-        sortOrder: 0,
-        isPrimary: true,
-      });
-      generated++;
-      process.stdout.write(".");
-    } else {
-      process.stdout.write("x");
+        const imageUrl = await generateImage(prompt);
+
+        if (imageUrl) {
+          // Clear isPrimary from existing google images, set new one as primary
+          await db
+            .update(media)
+            .set({ isPrimary: false })
+            .where(eq(media.listingId, listing.id));
+
+          await db.insert(media).values({
+            listingId: listing.id,
+            url: imageUrl,
+            alt: listing.title,
+            type: "image",
+            sortOrder: 0,
+            isPrimary: true,
+          });
+          return true;
+        }
+        return false;
+      })
+    );
+
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value) {
+        generated++;
+        process.stdout.write(".");
+      } else {
+        failed++;
+        process.stdout.write("x");
+      }
     }
 
-    // Rate limit — Grok has limits
-    await new Promise((r) => setTimeout(r, 2000));
+    // Rate limit between batches
+    if (i + concurrency < listingsToProcess.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+    }
   }
 
-  console.log(`\n\nGenerated ${generated} AI images for ${listingsWithoutPhotos.length} listings`);
+  console.log(`\n\nDone: ${generated} generated, ${failed} failed out of ${listingsToProcess.length} listings`);
 }
 
 main().catch(console.error);

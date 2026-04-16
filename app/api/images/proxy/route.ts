@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 export const runtime = "edge";
 
 const ALLOWED_HOSTS = [
   "googleapis.com",
   "images.unsplash.com",
   "imgen.x.ai",
+  "scontent.xx.fbcdn.net",
+  "external.xx.fbcdn.net",
+  "lookaside.fbsbx.com",
+  "s3-media",
+  "yelpcdn.com",
 ];
 
 export async function GET(req: NextRequest) {
@@ -59,7 +65,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Image proxy error:", error);
+    logger.error("Image proxy error", error);
     return NextResponse.json({ error: "Proxy fetch failed" }, { status: 502 });
   }
 }

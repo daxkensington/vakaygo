@@ -21,5 +21,14 @@ export function getImageUrl(url: string | null | undefined): string | null {
     return `/api/images/proxy?url=${encodeURIComponent(url)}`;
   }
 
+  // Facebook CDN and Yelp CDN — proxy to avoid hotlink/CORS issues
+  if (
+    url.includes("fbcdn.net") ||
+    url.includes("fbsbx.com") ||
+    url.includes("yelpcdn.com")
+  ) {
+    return `/api/images/proxy?url=${encodeURIComponent(url)}`;
+  }
+
   return url;
 }
