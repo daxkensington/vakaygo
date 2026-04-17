@@ -14,9 +14,8 @@ import {
 import { eq, and, sql, desc, notInArray, inArray } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -237,7 +236,7 @@ export async function GET() {
       isPersonalized: hasPersonalData,
     });
   } catch (error) {
-    console.error("Recommendations error:", error);
+    logger.error("Recommendations error", error);
     return NextResponse.json(
       { error: "Failed to get recommendations" },
       { status: 500 }

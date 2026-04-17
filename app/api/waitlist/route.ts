@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -30,17 +31,17 @@ export async function POST(request: Request) {
         })
         .onConflictDoNothing({ target: waitlist.email });
     } else {
-      console.log("Waitlist signup (no DB):", {
+      logger.info("Waitlist signup (no DB)", { extra: {
         name,
         email,
         type,
         businessName,
-      });
+      } });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Waitlist error:", error);
+    logger.error("Waitlist error", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }

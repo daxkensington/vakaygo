@@ -6,9 +6,8 @@ import { jwtVerify } from "jose";
 import { listings, listingViews, islands, media } from "@/drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -72,7 +71,7 @@ export async function GET() {
 
     return NextResponse.json({ listings: recent });
   } catch (error) {
-    console.error("Recent views error:", error);
+    logger.error("Recent views error", error);
     return NextResponse.json({ listings: [] });
   }
 }

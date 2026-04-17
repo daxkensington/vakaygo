@@ -7,9 +7,8 @@ import { refundBooking } from "@/server/stripe";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 /**
  * Calculate refund percentage based on cancellation policy and time until start.
@@ -146,7 +145,7 @@ export async function POST(request: Request) {
       status: newStatus,
     });
   } catch (error) {
-    console.error("Refund error:", error);
+    logger.error("Refund error", error);
     return NextResponse.json({ error: "Failed to process refund" }, { status: 500 });
   }
 }

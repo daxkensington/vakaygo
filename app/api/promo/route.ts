@@ -6,9 +6,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -116,7 +115,7 @@ export async function POST(request: Request) {
       description: promo.description,
     });
   } catch (error) {
-    console.error("Promo validation error:", error);
+    logger.error("Promo validation error", error);
     return NextResponse.json({ valid: false, reason: "Failed to validate promo code" }, { status: 500 });
   }
 }

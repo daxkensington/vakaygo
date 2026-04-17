@@ -6,9 +6,8 @@ import { jwtVerify } from "jose";
 import { listings, listingViews } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(
   request: NextRequest,
@@ -79,7 +78,7 @@ export async function POST(
 
     return NextResponse.json({ tracked: true });
   } catch (error) {
-    console.error("Track view error:", error);
+    logger.error("Track view error", error);
     return NextResponse.json({ error: "Failed to track view" }, { status: 500 });
   }
 }

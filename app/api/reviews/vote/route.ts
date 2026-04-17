@@ -6,9 +6,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ voted: true });
     }
   } catch (error) {
-    console.error("Review vote error:", error);
+    logger.error("Review vote error", error);
     return NextResponse.json(
       { error: "Failed to toggle vote" },
       { status: 500 }

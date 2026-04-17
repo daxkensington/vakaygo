@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
     const { query, resultCount, topResults } = await request.json();
@@ -48,7 +49,7 @@ Write a 1-2 sentence summary of these results.`;
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Grok search summary error:", err);
+      logger.error("Grok search summary error", err);
       return NextResponse.json(
         { error: "Failed to generate summary" },
         { status: 502 }
@@ -60,7 +61,7 @@ Write a 1-2 sentence summary of these results.`;
 
     return NextResponse.json({ summary });
   } catch (error) {
-    console.error("Search summary error:", error);
+    logger.error("Search summary error", error);
     return NextResponse.json(
       { error: "Failed to generate search summary" },
       { status: 500 }

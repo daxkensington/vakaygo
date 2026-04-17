@@ -8,9 +8,8 @@ import { jwtVerify } from "jose";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail } from "@/server/email";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -71,7 +70,7 @@ export async function POST() {
 
     return NextResponse.json({ sent: true });
   } catch (error) {
-    console.error("Send verification email error:", error);
+    logger.error("Send verification email error", error);
     return NextResponse.json(
       { error: "Failed to send verification email" },
       { status: 500 }

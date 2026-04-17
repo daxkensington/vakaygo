@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Volatile in-memory typing state: key = "senderId:receiverId", value = expiry timestamp
 const typingState = new Map<string, number>();
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Typing POST error:", error);
+    logger.error("Typing POST error", error);
     return NextResponse.json({ error: "Failed to set typing state" }, { status: 500 });
   }
 }
@@ -84,7 +83,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ isTyping });
   } catch (error) {
-    console.error("Typing GET error:", error);
+    logger.error("Typing GET error", error);
     return NextResponse.json({ error: "Failed to check typing state" }, { status: 500 });
   }
 }

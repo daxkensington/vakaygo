@@ -6,9 +6,9 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -31,10 +31,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const { id } = await params;
@@ -72,7 +71,7 @@ export async function GET(
 
     return NextResponse.json({ post });
   } catch (error) {
-    console.error("Admin blog [id] GET error:", error);
+    logger.error("Admin blog [id] GET error", error);
     return NextResponse.json({ error: "Failed to fetch post" }, { status: 500 });
   }
 }

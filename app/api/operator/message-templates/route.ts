@@ -3,27 +3,11 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messageTemplates } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
-
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-async function getOperatorId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -31,10 +15,9 @@ async function getOperatorId(): Promise<string | null> {
  */
 export async function GET() {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const db = getDb();
 
@@ -46,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json({ templates });
   } catch (error) {
-    console.error("Message templates GET error:", error);
+    logger.error("Message templates GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch templates" },
       { status: 500 }
@@ -60,10 +43,9 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const { title, content, shortcut } = await request.json();
 
@@ -88,7 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ template }, { status: 201 });
   } catch (error) {
-    console.error("Message templates POST error:", error);
+    logger.error("Message templates POST error", error);
     return NextResponse.json(
       { error: "Failed to create template" },
       { status: 500 }
@@ -102,10 +84,9 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const { id, title, content, shortcut } = await request.json();
     if (!id) {
@@ -139,7 +120,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ template: updated });
   } catch (error) {
-    console.error("Message templates PUT error:", error);
+    logger.error("Message templates PUT error", error);
     return NextResponse.json(
       { error: "Failed to update template" },
       { status: 500 }
@@ -153,10 +134,9 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -186,7 +166,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Message templates DELETE error:", error);
+    logger.error("Message templates DELETE error", error);
     return NextResponse.json(
       { error: "Failed to delete template" },
       { status: 500 }

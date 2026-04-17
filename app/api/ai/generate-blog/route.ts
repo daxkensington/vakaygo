@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
   informative:
@@ -88,7 +87,7 @@ Generate the full blog post content in Markdown format.`;
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI blog generation error:", err);
+      logger.error("OpenAI blog generation error", err);
       return NextResponse.json(
         { error: "Blog generation failed" },
         { status: 502 }
@@ -118,7 +117,7 @@ Generate the full blog post content in Markdown format.`;
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Blog generation error:", error);
+    logger.error("Blog generation error", error);
     return NextResponse.json(
       { error: "Failed to generate blog content" },
       { status: 500 }

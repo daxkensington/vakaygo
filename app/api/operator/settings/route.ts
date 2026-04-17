@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 
 async function getAuthUserId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
+  const auth = await requireOperator();
+  return auth.ok ? auth.userId : null;
 }
 
 export async function GET() {
@@ -56,7 +46,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/operator/settings error:", error);
+    logger.error("GET /api/operator/settings error", error);
     return NextResponse.json(
       { error: "Failed to load settings" },
       { status: 500 }
@@ -124,7 +114,7 @@ export async function PATCH(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("PATCH /api/operator/settings error:", error);
+    logger.error("PATCH /api/operator/settings error", error);
     return NextResponse.json(
       { error: "Failed to update settings" },
       { status: 500 }

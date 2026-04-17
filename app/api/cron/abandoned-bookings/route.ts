@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings } from "@/drizzle/schema";
 import { eq, and, isNull, lt, sql } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Abandoned bookings cron error:", error);
+    logger.error("Abandoned bookings cron error", error);
     return NextResponse.json(
       { error: "Failed to process abandoned bookings" },
       { status: 500 }

@@ -7,9 +7,8 @@ import { getImageUrl } from "@/lib/image-utils";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -80,7 +79,7 @@ export async function GET() {
 
     return NextResponse.json({ trips: tripsWithCounts });
   } catch (error) {
-    console.error("Trips GET error:", error);
+    logger.error("Trips GET error", error);
     return NextResponse.json({ error: "Failed to fetch trips" }, { status: 500 });
   }
 }
@@ -252,7 +251,7 @@ export async function POST(request: Request) {
           activeListings
         );
       } catch (e) {
-        console.error("OpenAI generation failed, falling back to heuristic:", e);
+        logger.error("OpenAI generation failed, falling back to heuristic", e);
       }
     }
 
@@ -322,7 +321,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ trip, items: itemsWithListings });
   } catch (error) {
-    console.error("Trips POST error:", error);
+    logger.error("Trips POST error", error);
     return NextResponse.json({ error: "Failed to create trip" }, { status: 500 });
   }
 }

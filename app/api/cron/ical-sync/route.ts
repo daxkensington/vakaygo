@@ -5,6 +5,7 @@ import { listings, availability } from "@/drizzle/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { parseICal } from "@/lib/ical-parser";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -154,7 +155,7 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("iCal cron sync error:", error);
+    logger.error("iCal cron sync error", error);
     return NextResponse.json(
       { error: "Cron sync failed" },
       { status: 500 }

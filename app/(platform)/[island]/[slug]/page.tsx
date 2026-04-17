@@ -17,7 +17,20 @@ import { ContactOperator } from "@/components/listings/contact-operator";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { WhatsIncluded } from "@/components/listings/whats-included";
 import { TourItinerary } from "@/components/listings/tour-itinerary";
-import { MeetingPointMap } from "@/components/listings/meeting-point-map";
+import dynamic from "next/dynamic";
+
+const MeetingPointMap = dynamic(
+  () =>
+    import("@/components/listings/meeting-point-map").then(
+      (m) => m.MeetingPointMap
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 bg-cream-100 rounded-2xl animate-pulse" />
+    ),
+  }
+);
 import { LikelySellOutBadge } from "@/components/listings/likely-sell-out-badge";
 import { DiningMenu } from "@/components/listings/dining-menu";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";

@@ -3,9 +3,7 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { getUserById } from "@/server/auth";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET() {
   try {

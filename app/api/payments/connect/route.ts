@@ -7,9 +7,8 @@ import { createConnectAccount, createAccountLink, getAccountStatus } from "@/ser
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 /**
  * POST: Create a Stripe Connect account for operator and return onboarding URL
@@ -71,7 +70,7 @@ export async function POST() {
 
     return NextResponse.json({ url: onboardingUrl });
   } catch (error) {
-    console.error("Connect error:", error);
+    logger.error("Connect error", error);
     return NextResponse.json({ error: "Failed to setup payments" }, { status: 500 });
   }
 }
@@ -109,7 +108,7 @@ export async function GET() {
       detailsSubmitted: status.detailsSubmitted,
     });
   } catch (error) {
-    console.error("Account status error:", error);
+    logger.error("Account status error", error);
     return NextResponse.json({ connected: false });
   }
 }

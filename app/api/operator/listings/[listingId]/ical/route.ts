@@ -4,13 +4,10 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, bookings, availability } from "@/drizzle/schema";
 import { eq, and, gte, inArray } from "drizzle-orm";
 import { generateICal } from "@/lib/ical-parser";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { randomUUID } from "crypto";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -137,7 +134,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("iCal export error:", error);
+    logger.error("iCal export error", error);
     return NextResponse.json(
       { error: "Failed to generate iCal feed" },
       { status: 500 }
@@ -156,22 +153,10 @@ export async function POST(
   try {
     const { listingId } = await params;
 
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("session")?.value;
-    if (!sessionToken) {
-      return NextResponse.json({ error: "Please sign in" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(sessionToken, SECRET);
-    const userId = payload.id as string;
-    const role = payload.role as string;
-
-    if (role !== "operator" && role !== "admin") {
-      return NextResponse.json(
-        { error: "Only operators can manage iCal sync" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
+    const userId = auth.userId;
+    const role = auth.role;
 
     const db = getDb();
 
@@ -214,7 +199,7 @@ export async function POST(
       icalLastSync: listing.icalLastSync,
     });
   } catch (error) {
-    console.error("iCal token error:", error);
+    logger.error("iCal token error", error);
     return NextResponse.json(
       { error: "Failed to get iCal settings" },
       { status: 500 }

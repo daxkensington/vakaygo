@@ -6,9 +6,9 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -32,10 +32,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const { id } = await params;
@@ -71,7 +70,7 @@ export async function PATCH(
 
     return NextResponse.json({ promo: updated });
   } catch (error) {
-    console.error("Update promo error:", error);
+    logger.error("Update promo error", error);
     return NextResponse.json({ error: "Failed to update promo code" }, { status: 500 });
   }
 }
@@ -81,10 +80,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const { id } = await params;
@@ -94,7 +92,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete promo error:", error);
+    logger.error("Delete promo error", error);
     return NextResponse.json({ error: "Failed to delete promo code" }, { status: 500 });
   }
 }

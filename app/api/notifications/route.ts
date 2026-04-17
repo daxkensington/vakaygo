@@ -6,9 +6,8 @@ import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET() {
   try {
@@ -42,7 +41,7 @@ export async function GET() {
       unreadCount: Number(unreadResult?.count ?? 0),
     });
   } catch (error) {
-    console.error("Notifications GET error:", error);
+    logger.error("Notifications GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
       { status: 500 }
@@ -92,7 +91,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Notifications PATCH error:", error);
+    logger.error("Notifications PATCH error", error);
     return NextResponse.json(
       { error: "Failed to update notifications" },
       { status: 500 }

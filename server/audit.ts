@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { auditLog } from "@/drizzle/schema";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!);
   return drizzle(sql);
@@ -27,6 +28,6 @@ export async function logAdminAction(params: {
     });
   } catch (error) {
     // Fire-and-forget: log but don't throw
-    console.error("Failed to write audit log:", error);
+    logger.error("Failed to write audit log", error);
   }
 }

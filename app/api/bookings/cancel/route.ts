@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -75,7 +74,7 @@ export async function POST(request: Request) {
         : "Booking cancelled. A 50% cancellation fee may apply.",
     });
   } catch (error) {
-    console.error("Cancel booking error:", error);
+    logger.error("Cancel booking error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

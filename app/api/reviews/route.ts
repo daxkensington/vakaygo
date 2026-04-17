@@ -9,9 +9,8 @@ import { eq, and, sql, inArray } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(request: Request) {
   try {
@@ -99,7 +98,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ reviews: reviewsWithExtras });
   } catch (error) {
-    console.error("Reviews error:", error);
+    logger.error("Reviews error", error);
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
   }
 }
@@ -172,7 +171,7 @@ export async function POST(request: Request) {
 
     // Award loyalty points for leaving a review (non-blocking)
     awardReviewPoints(travelerId, bookingId).catch((err) => {
-      console.error("Failed to award review points:", err);
+      logger.error("Failed to award review points", err);
     });
 
     // Notify operator of new review (non-blocking)
@@ -222,7 +221,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ review });
   } catch (error) {
-    console.error("Create review error:", error);
+    logger.error("Create review error", error);
     return NextResponse.json({ error: "Failed to create review" }, { status: 500 });
   }
 }

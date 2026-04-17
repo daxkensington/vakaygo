@@ -6,9 +6,9 @@ import { desc, sql, eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -30,10 +30,9 @@ type ActivityEvent = {
 };
 
 export async function GET() {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -161,7 +160,7 @@ export async function GET() {
       },
     });
   } catch (err) {
-    console.error("Activity feed error:", err);
+    logger.error("Activity feed error", err);
     return NextResponse.json({ events: [], today: { users: 0, bookings: 0, listings: 0, reviews: 0 } });
   }
 }

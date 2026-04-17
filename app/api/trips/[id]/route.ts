@@ -7,9 +7,8 @@ import { getImageUrl } from "@/lib/image-utils";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -135,7 +134,7 @@ export async function GET(
 
     return NextResponse.json({ trip, items: itemsWithListings });
   } catch (error) {
-    console.error("Trip GET error:", error);
+    logger.error("Trip GET error", error);
     return NextResponse.json({ error: "Failed to fetch trip" }, { status: 500 });
   }
 }
@@ -180,7 +179,7 @@ export async function PATCH(
 
     return NextResponse.json({ trip: updated });
   } catch (error) {
-    console.error("Trip PATCH error:", error);
+    logger.error("Trip PATCH error", error);
     return NextResponse.json({ error: "Failed to update trip" }, { status: 500 });
   }
 }
@@ -215,7 +214,7 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: true });
   } catch (error) {
-    console.error("Trip DELETE error:", error);
+    logger.error("Trip DELETE error", error);
     return NextResponse.json({ error: "Failed to delete trip" }, { status: 500 });
   }
 }

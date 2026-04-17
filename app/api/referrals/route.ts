@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { generateReferralCode, getReferralStats } from "@/server/loyalty";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -57,7 +56,7 @@ export async function GET() {
       stats,
     });
   } catch (error) {
-    console.error("Referrals GET error:", error);
+    logger.error("Referrals GET error", error);
     return NextResponse.json({ error: "Failed to fetch referral data" }, { status: 500 });
   }
 }
@@ -114,7 +113,7 @@ export async function POST() {
       referralLink: `https://vakaygo.com/join/${code}`,
     });
   } catch (error) {
-    console.error("Referrals POST error:", error);
+    logger.error("Referrals POST error", error);
     return NextResponse.json({ error: "Failed to generate referral code" }, { status: 500 });
   }
 }

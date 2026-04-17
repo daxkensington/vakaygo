@@ -12,6 +12,7 @@ import { conciergeMemory } from "@/drizzle/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 
+import { logger } from "@/lib/logger";
 // ─── Auth Helper ───────────────────────────────────────────────
 async function getUserId(): Promise<string | null> {
   try {
@@ -141,11 +142,11 @@ async function loadMemories(userId: string): Promise<string> {
     db.update(conciergeMemory)
       .set({ lastUsedAt: new Date() })
       .where(eq(conciergeMemory.userId, userId))
-      .catch((e) => console.error("Memory touch error:", e));
+      .catch((e) => logger.error("Memory touch error", e));
 
     return memoryPrompt;
   } catch (e) {
-    console.error("Memory load error:", e);
+    logger.error("Memory load error", e);
     return "";
   }
 }
@@ -205,7 +206,7 @@ async function saveMemory(userId: string, category: string, fact: string, source
 
     return { saved: true };
   } catch (e) {
-    console.error("Memory save error:", e);
+    logger.error("Memory save error", e);
     return { saved: false };
   }
 }
@@ -468,7 +469,7 @@ export async function POST(request: Request) {
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Anthropic API error:", res.status, errorText);
+        logger.error("Anthropic API error", null, { status: res.status, body: errorText });
         return NextResponse.json({ error: "Failed to get response from AI" }, { status: 500 });
       }
 
@@ -501,7 +502,7 @@ export async function POST(request: Request) {
             content: JSON.stringify(result),
           });
         } catch (err) {
-          console.error(`Tool ${block.name} error:`, err);
+          logger.error("Chat tool execution failed", err, { tool: block.name });
           toolResults.push({
             type: "tool_result",
             tool_use_id: block.id,
@@ -529,7 +530,7 @@ export async function POST(request: Request) {
       ...(listingCards.length > 0 ? { listings: listingCards } : {}),
     });
   } catch (error) {
-    console.error("Chat API error:", error);
+    logger.error("Chat API error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

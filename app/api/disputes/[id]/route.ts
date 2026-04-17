@@ -8,9 +8,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { Resend } from "resend";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const resend = new Resend(
   process.env.RESEND_API_KEY || "re_9veHwfmR_EfQt6FpKGS8MwUJgJcejmPDz"
@@ -109,7 +108,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Get dispute error:", error);
+    logger.error("Get dispute error", error);
     return NextResponse.json(
       { error: "Failed to fetch dispute" },
       { status: 500 }
@@ -298,7 +297,7 @@ export async function PATCH(
 
     return NextResponse.json({ dispute: updated });
   } catch (error) {
-    console.error("Update dispute error:", error);
+    logger.error("Update dispute error", error);
     return NextResponse.json(
       { error: "Failed to update dispute" },
       { status: 500 }

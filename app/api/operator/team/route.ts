@@ -3,27 +3,12 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { operatorTeamMembers, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-async function getOperatorId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -31,10 +16,9 @@ async function getOperatorId(): Promise<string | null> {
  */
 export async function GET() {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const db = getDb();
 
@@ -55,7 +39,7 @@ export async function GET() {
 
     return NextResponse.json({ members });
   } catch (error) {
-    console.error("Team GET error:", error);
+    logger.error("Team GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch team members" },
       { status: 500 }
@@ -69,10 +53,9 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const { email, role, permissions } = await request.json();
 
@@ -138,7 +121,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ member: teamMember }, { status: 201 });
   } catch (error) {
-    console.error("Team POST error:", error);
+    logger.error("Team POST error", error);
     return NextResponse.json(
       { error: "Failed to add team member" },
       { status: 500 }
@@ -152,10 +135,9 @@ export async function POST(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    const operatorId = await getOperatorId();
-    if (!operatorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const operatorId = __auth.userId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -185,7 +167,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Team DELETE error:", error);
+    logger.error("Team DELETE error", error);
     return NextResponse.json(
       { error: "Failed to remove team member" },
       { status: 500 }

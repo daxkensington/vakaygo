@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 export async function registerServiceWorker() {
   if (
     typeof window === "undefined" ||
@@ -34,15 +35,24 @@ export async function registerServiceWorker() {
 
     return registration;
   } catch (error) {
-    console.error("Service worker registration failed:", error);
+    logger.error("Service worker registration failed", error);
     return null;
   }
 }
 
 export function applyServiceWorkerUpdate(registration: ServiceWorkerRegistration) {
   const waiting = registration.waiting;
-  if (waiting) {
-    waiting.postMessage({ type: "SKIP_WAITING" });
+  if (!waiting) return;
+
+  // Reload only after the new SW has actually taken control. Reloading
+  // before then would re-fetch under the old SW and the user wouldn't see
+  // the new version.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloaded) return;
+    reloaded = true;
     window.location.reload();
-  }
+  });
+
+  waiting.postMessage({ type: "SKIP_WAITING" });
 }

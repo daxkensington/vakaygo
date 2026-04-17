@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
 
+import { logger } from "@/lib/logger";
 const VALID_ACTIONS = ["approve", "reject", "pause", "delete"] as const;
 type BulkAction = (typeof VALID_ACTIONS)[number];
 
@@ -16,9 +17,7 @@ const STATUS_MAP: Record<Exclude<BulkAction, "delete">, string> = {
   pause: "paused",
 };
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin(_request: NextRequest): Promise<{ ok: boolean; adminId?: string }> {
   try {
@@ -110,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ updated, action });
   } catch (error) {
-    console.error("Admin bulk action error:", error);
+    logger.error("Admin bulk action error", error);
     return NextResponse.json(
       { error: "Failed to perform bulk action" },
       { status: 500 }

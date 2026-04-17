@@ -6,9 +6,8 @@ import { eq, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -72,7 +71,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ verification }, { status: 201 });
   } catch (error) {
-    console.error("ID verification POST error:", error);
+    logger.error("ID verification POST error", error);
     return NextResponse.json(
       { error: "Failed to submit verification" },
       { status: 500 }
@@ -126,7 +125,7 @@ export async function GET() {
 
     return NextResponse.json({ verifications: results });
   } catch (error) {
-    console.error("ID verification GET error:", error);
+    logger.error("ID verification GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch verifications" },
       { status: 500 }
@@ -214,7 +213,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ status: newStatus });
   } catch (error) {
-    console.error("ID verification PUT error:", error);
+    logger.error("ID verification PUT error", error);
     return NextResponse.json(
       { error: "Failed to update verification" },
       { status: 500 }

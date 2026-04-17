@@ -6,9 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET() {
   try {
@@ -43,7 +42,7 @@ export async function GET() {
 
     return NextResponse.json({ listings: results });
   } catch (error) {
-    console.error("My listings error:", error);
+    logger.error("My listings error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

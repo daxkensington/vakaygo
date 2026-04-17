@@ -9,9 +9,8 @@ import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email
 import { createNotification } from "@/server/notifications";
 import { awardBookingPoints } from "@/server/loyalty";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function PATCH(
   request: Request,
@@ -50,10 +49,10 @@ export async function PATCH(
       try {
         const totalAmount = parseFloat(updated.totalAmount);
         awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
-          console.error("Failed to award booking points:", err);
+          logger.error("Failed to award booking points", err);
         });
       } catch (loyaltyErr) {
-        console.error("Loyalty error:", loyaltyErr);
+        logger.error("Loyalty error", loyaltyErr);
       }
     }
 
@@ -101,14 +100,14 @@ export async function PATCH(
           link: "/bookings",
         }).catch(() => {});
       } catch (emailErr) {
-        console.error("Failed to send booking status email:", emailErr);
+        logger.error("Failed to send booking status email", emailErr);
         // Don't fail the request if email fails
       }
     }
 
     return NextResponse.json({ booking: { id: updated.id, status: updated.status } });
   } catch (error) {
-    console.error("Update booking error:", error);
+    logger.error("Update booking error", error);
     return NextResponse.json({ error: "Failed to update booking" }, { status: 500 });
   }
 }

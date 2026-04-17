@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
+import { logger } from "@/lib/logger";
 function getRedirectUri(requestUrl: string): string {
   // Use NEXT_PUBLIC_APP_URL if set, otherwise derive from the request
   const baseUrl =
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     clientId === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID" ||
     clientId.trim() === ""
   ) {
-    console.error("GOOGLE_CLIENT_ID is not configured in environment variables");
+    logger.error("GOOGLE_CLIENT_ID is not configured in environment variables");
     return NextResponse.redirect(
       new URL(
         "/auth/signin?error=oauth_not_configured",

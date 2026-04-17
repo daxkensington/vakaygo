@@ -11,9 +11,8 @@ import {
   checkAvailability,
 } from "@/server/trip-planner-tools";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -261,7 +260,7 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Claude API error:", errorText);
+        logger.error("Claude API error", errorText);
         return NextResponse.json(
           { error: "AI generation failed" },
           { status: 500 }
@@ -295,7 +294,7 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
               try {
                 itineraryData = JSON.parse(jsonMatch[0]);
               } catch {
-                console.error("Failed to parse itinerary JSON");
+                logger.error("Failed to parse itinerary JSON");
               }
             }
           }
@@ -319,7 +318,7 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
               content: JSON.stringify(result),
             });
           } catch (err) {
-            console.error(`Tool ${toolUse.name} failed:`, err);
+            logger.error("Trip generate tool failed", err, { tool: toolUse.name });
             toolResults.push({
               type: "tool_result",
               tool_use_id: toolUse.id,
@@ -403,7 +402,7 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
       itinerary: itineraryData,
     });
   } catch (error) {
-    console.error("Trip generate error:", error);
+    logger.error("Trip generate error", error);
     return NextResponse.json(
       { error: "Failed to generate trip" },
       { status: 500 }

@@ -7,9 +7,9 @@ import { alias } from "drizzle-orm/pg-core";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -25,10 +25,9 @@ async function verifyAdmin() {
 }
 
 export async function GET(request: NextRequest) {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -104,7 +103,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Admin bookings error:", error);
+    logger.error("Admin bookings error", error);
     return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
 }

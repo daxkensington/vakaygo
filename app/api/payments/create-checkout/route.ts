@@ -7,9 +7,8 @@ import { createCheckoutSession } from "@/server/stripe";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -94,7 +93,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Checkout error:", error);
+    logger.error("Checkout error", error);
     return NextResponse.json({ error: "Failed to create checkout" }, { status: 500 });
   }
 }

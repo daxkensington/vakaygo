@@ -43,6 +43,16 @@ const categoryConfig: Record<string, { color: string; emoji: string; label: stri
   guide:      { color: "#22C55E", emoji: "🧭", label: "Guides" },
 };
 
+// Escape HTML before interpolating user-controlled strings into popup HTML.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ─── Island coordinates & flyover waypoints ─────────────────────
 const islandCoords: Record<string, { center: [number, number]; zoom: number; name: string }> = {
   grenada:                { center: [-61.679, 12.1165], zoom: 11, name: "Grenada" },
@@ -572,22 +582,29 @@ export default function CaribbeanMap({
       distBadge = `<span style="display:inline-block;background:#EFF6FF;color:#3B82F6;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;">📍 ${formatDistance(d)}</span>`;
     }
 
+    const safeTitle = escapeHtml(selected.title);
+    const safeParish = selected.parish ? escapeHtml(selected.parish) : "";
+    const safeIslandName = escapeHtml(selected.islandName);
+    const safeImage = selected.image ? escapeHtml(selected.image) : "";
+    const safeIslandSlug = encodeURIComponent(selected.islandSlug);
+    const safeSlug = encodeURIComponent(selected.slug);
+
     const html = `
       <div style="width:260px;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;border-radius:12px;">
-        ${selected.image ? `<div style="height:130px;background:url(${selected.image}) center/cover;"></div>` : ""}
+        ${safeImage ? `<div role="img" aria-label="${safeTitle}" style="height:130px;background:url('${safeImage}') center/cover;"></div>` : ""}
         <div style="padding:12px;">
           <div style="margin-bottom:6px;">
             <span style="background:${cfg.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${cfg.emoji} ${cfg.label}</span>
             ${selected.isFeatured ? '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;">Featured</span>' : ""}
             ${distBadge}
           </div>
-          <h3 style="font-size:14px;font-weight:600;color:#1e293b;line-height:1.3;margin:0 0 4px;">${selected.title}</h3>
-          <p style="font-size:11px;color:#8896a7;margin:0 0 8px;">📍 ${selected.parish ? selected.parish + ", " : ""}${selected.islandName}</p>
+          <h3 style="font-size:14px;font-weight:600;color:#1e293b;line-height:1.3;margin:0 0 4px;">${safeTitle}</h3>
+          <p style="font-size:11px;color:#8896a7;margin:0 0 8px;">📍 ${safeParish ? safeParish + ", " : ""}${safeIslandName}</p>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             ${price ? `<span style="font-weight:700;color:#1e293b;font-size:14px;">${price}</span>` : ""}
             ${r > 0 ? `<span style="font-size:12px;color:#1e293b;">⭐ <strong>${r.toFixed(1)}</strong>${selected.reviewCount ? ` <span style="color:#8896a7">(${selected.reviewCount})</span>` : ""}</span>` : ""}
           </div>
-          <a href="/${selected.islandSlug}/${selected.slug}" style="display:block;text-align:center;background:#D4A017;color:#fff;padding:8px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">View Details →</a>
+          <a href="/${safeIslandSlug}/${safeSlug}" style="display:block;text-align:center;background:#D4A017;color:#fff;padding:8px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">View Details →</a>
         </div>
       </div>
     `;
@@ -793,11 +810,13 @@ export default function CaribbeanMap({
         distHtml = `<span style="font-size:10px;color:#3B82F6;font-weight:600;">📍 ${formatDistance(d)}</span>`;
       }
 
+      const safeTitle = escapeHtml(listing.title);
+      const safeImage = listing.image ? escapeHtml(listing.image) : "";
       hoverPopup.setLngLat(coords).setHTML(`
         <div style="display:flex;gap:8px;align-items:center;padding:8px;font-family:system-ui,sans-serif;">
-          ${listing.image ? `<img src="${listing.image}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:56px;height:56px;border-radius:8px;background:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${cfg.emoji}</div>`}
+          ${safeImage ? `<img src="${safeImage}" alt="${safeTitle}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div role="img" aria-label="${cfg.label}" style="width:56px;height:56px;border-radius:8px;background:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${cfg.emoji}</div>`}
           <div style="min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:#1e293b;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${listing.title}</div>
+            <div style="font-size:12px;font-weight:600;color:#1e293b;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${safeTitle}</div>
             <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
               ${r ? `<span style="font-size:11px;color:#1e293b;">⭐ ${r}</span>` : ""}
               <span style="font-size:10px;color:${cfg.color};font-weight:600;">${cfg.emoji} ${cfg.label}</span>

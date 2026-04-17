@@ -6,9 +6,8 @@ import { jwtVerify } from "jose";
 import { listings, media, reviews, islands, users } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -172,7 +171,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Claude error:", err);
+      logger.error("Claude error", err);
       return NextResponse.json(
         { error: "AI analysis failed" },
         { status: 502 }
@@ -197,7 +196,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       const jsonStr = rawText.replace(/```json\n?|\n?```/g, "").trim();
       parsed = JSON.parse(jsonStr);
     } catch {
-      console.error("Failed to parse optimize JSON:", rawText);
+      logger.error("Failed to parse optimize JSON", rawText);
       return NextResponse.json(
         { error: "Failed to parse AI response" },
         { status: 502 }
@@ -212,7 +211,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       estimatedImpact: parsed.estimatedImpact,
     });
   } catch (error) {
-    console.error("Optimize listing error:", error);
+    logger.error("Optimize listing error", error);
     return NextResponse.json(
       { error: "Failed to generate optimization suggestions" },
       { status: 500 }

@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyCredentials } from "@/server/auth";
-import { SignJWT } from "jose";
-import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { setSessionCookie } from "@/server/admin-auth";
 
 export async function POST(request: Request) {
   try {
@@ -26,28 +23,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const token = await new SignJWT({
+    await setSessionCookie({
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.name ?? undefined,
       role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("7d")
-      .sign(SECRET);
-
-    const cookieStore = await cookies();
-    cookieStore.set("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
-      path: "/",
     });
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Signin error:", error);
+    logger.error("Signin error", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }

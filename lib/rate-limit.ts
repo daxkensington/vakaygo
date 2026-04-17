@@ -34,6 +34,7 @@ let lastCleanup = Date.now();
 export const RATE_LIMITS = {
   auth: { maxTokens: 5, refillRate: 5 / 60, windowMs: 60_000 },
   ai: { maxTokens: 10, refillRate: 10 / 60, windowMs: 60_000 },
+  admin: { maxTokens: 20, refillRate: 20 / 60, windowMs: 60_000 },
   write: { maxTokens: 30, refillRate: 30 / 60, windowMs: 60_000 },
   read: { maxTokens: 60, refillRate: 60 / 60, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitConfig>;
@@ -45,6 +46,7 @@ export type EndpointType = keyof typeof RATE_LIMITS;
  */
 export function getEndpointType(pathname: string, method: string): EndpointType {
   if (pathname.startsWith("/api/auth")) return "auth";
+  if (pathname.startsWith("/api/admin")) return "admin";
   if (pathname.startsWith("/api/ai") || pathname.startsWith("/api/chat")) return "ai";
   if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") return "write";
   return "read";

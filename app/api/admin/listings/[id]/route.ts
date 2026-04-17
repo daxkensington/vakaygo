@@ -7,9 +7,9 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -28,10 +28,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const verifiedAdminId = await verifyAdmin();
-  if (!verifiedAdminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const verifiedAdminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -115,7 +114,7 @@ export async function PATCH(
       ...(rejectionReason && status === "rejected" ? { rejectionReason } : {}),
     });
   } catch (error) {
-    console.error("Admin listing update error:", error);
+    logger.error("Admin listing update error", error);
     return NextResponse.json({ error: "Failed to update listing" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings } from "@/drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 export async function GET() {
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -24,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({ islands: results });
   } catch (error) {
-    console.error("Islands error:", error);
+    logger.error("Islands error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

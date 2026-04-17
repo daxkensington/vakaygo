@@ -7,6 +7,7 @@ import { users, referrals } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
+import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
     const { email, password, name, role, referralCode } = await request.json();
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
         }
       } catch (refError) {
         // Referral failure should not break signup
-        console.error("Referral processing error:", refError);
+        logger.error("Referral processing error", refError);
       }
     }
 
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    console.error("Signup error:", error);
+    logger.error("Signup error", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

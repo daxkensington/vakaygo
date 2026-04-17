@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { put } from "@vercel/blob";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const ALLOWED_TYPES = [
   "image/jpeg",
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: blob.url, mediaId });
   } catch (err) {
-    console.error("Upload error:", err);
+    logger.error("Upload error", err);
     return NextResponse.json(
       { error: "Upload failed" },
       { status: 500 }

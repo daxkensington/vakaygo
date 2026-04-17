@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
     const { query } = await request.json();
@@ -63,7 +64,7 @@ Examples:
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Grok error:", err);
+      logger.error("Grok error", err);
       return NextResponse.json(
         { error: "AI search parsing failed" },
         { status: 502 }
@@ -167,7 +168,7 @@ Examples:
       suggestions: Array.isArray(suggestions) ? suggestions.slice(0, 3) : [],
     });
   } catch (error) {
-    console.error("Smart search error:", error);
+    logger.error("Smart search error", error);
     return NextResponse.json(
       { error: "Failed to parse search query" },
       { status: 500 }

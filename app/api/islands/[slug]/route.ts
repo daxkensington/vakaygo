@@ -5,6 +5,7 @@ import { islands, listings, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
+import { logger } from "@/lib/logger";
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -74,7 +75,7 @@ export async function GET(
       featured: featuredWithImages,
     });
   } catch (error) {
-    console.error("Island error:", error);
+    logger.error("Island error", error);
     return NextResponse.json({ error: "Failed to fetch island" }, { status: 500 });
   }
 }

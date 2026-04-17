@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import twilio from "twilio";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -75,7 +74,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ sent: true });
   } catch (error) {
-    console.error("Phone verify POST error:", error);
+    logger.error("Phone verify POST error", error);
     return NextResponse.json(
       { error: "Failed to send verification code" },
       { status: 500 }
@@ -137,7 +136,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ verified: true });
   } catch (error) {
-    console.error("Phone verify PUT error:", error);
+    logger.error("Phone verify PUT error", error);
     return NextResponse.json(
       { error: "Failed to verify code" },
       { status: 500 }

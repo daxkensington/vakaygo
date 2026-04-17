@@ -4,12 +4,9 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, availability } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { parseICal } from "@/lib/ical-parser";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator, assertListingOwnership } from "@/server/admin-auth";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -26,44 +23,13 @@ export async function POST(
   try {
     const { listingId } = await params;
 
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("session")?.value;
-    if (!sessionToken) {
-      return NextResponse.json({ error: "Please sign in" }, { status: 401 });
-    }
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
 
-    const { payload } = await jwtVerify(sessionToken, SECRET);
-    const userId = payload.id as string;
-    const role = payload.role as string;
-
-    if (role !== "operator" && role !== "admin") {
-      return NextResponse.json(
-        { error: "Only operators can manage iCal sync" },
-        { status: 403 }
-      );
-    }
+    const owns = await assertListingOwnership(listingId, auth.userId, auth.role);
+    if (!owns.ok) return owns.error;
 
     const db = getDb();
-
-    // Verify ownership
-    const [listing] = await db
-      .select({
-        id: listings.id,
-        operatorId: listings.operatorId,
-      })
-      .from(listings)
-      .where(eq(listings.id, listingId))
-      .limit(1);
-
-    if (!listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
-    if (listing.operatorId !== userId && role !== "admin") {
-      return NextResponse.json(
-        { error: "You do not own this listing" },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const { url } = body as { url: string };
@@ -173,7 +139,7 @@ export async function POST(
       lastSync: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("iCal import error:", error);
+    logger.error("iCal import error", error);
     return NextResponse.json(
       { error: "Failed to import iCal feed" },
       { status: 500 }

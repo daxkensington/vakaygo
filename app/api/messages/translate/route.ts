@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      console.error("OpenAI translation error:", await response.text());
+      logger.error("OpenAI translation error", await response.text());
       return NextResponse.json(
         { error: "Translation failed" },
         { status: 502 }
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
       targetLanguage,
     });
   } catch (error) {
-    console.error("Translate error:", error);
+    logger.error("Translate error", error);
     return NextResponse.json(
       { error: "Failed to translate message" },
       { status: 500 }

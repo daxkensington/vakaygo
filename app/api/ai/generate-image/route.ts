@@ -3,9 +3,8 @@ import { put } from "@vercel/blob";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const STYLE_PREFIXES: Record<string, string> = {
   photo:
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
 
     if (!grokRes.ok) {
       const err = await grokRes.text();
-      console.error("Grok image generation error:", err);
+      logger.error("Grok image generation error", err);
       return NextResponse.json(
         { error: "Image generation failed" },
         { status: 502 }
@@ -105,7 +104,7 @@ export async function POST(request: Request) {
       prompt: fullPrompt,
     });
   } catch (error) {
-    console.error("Image generation error:", error);
+    logger.error("Image generation error", error);
     return NextResponse.json(
       { error: "Failed to generate image" },
       { status: 500 }

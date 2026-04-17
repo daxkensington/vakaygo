@@ -7,9 +7,8 @@ import { createNotification } from "@/server/notifications";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -64,7 +63,7 @@ export async function GET() {
 
     return NextResponse.json({ disputes: results });
   } catch (error) {
-    console.error("Get disputes error:", error);
+    logger.error("Get disputes error", error);
     return NextResponse.json(
       { error: "Failed to fetch disputes" },
       { status: 500 }
@@ -203,7 +202,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ dispute }, { status: 201 });
   } catch (error) {
-    console.error("Create dispute error:", error);
+    logger.error("Create dispute error", error);
     return NextResponse.json(
       { error: "Failed to create dispute" },
       { status: 500 }

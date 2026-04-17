@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -81,7 +80,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI error:", err);
+      logger.error("OpenAI error", err);
       return NextResponse.json(
         { error: "AI generation failed" },
         { status: 502 }
@@ -96,7 +95,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       const jsonStr = content.replace(/```json\n?|\n?```/g, "").trim();
       parsed = JSON.parse(jsonStr);
     } catch {
-      console.error("Failed to parse suggest-reply JSON:", content);
+      logger.error("Failed to parse suggest-reply JSON", content);
       return NextResponse.json(
         { error: "Failed to parse AI response" },
         { status: 502 }
@@ -105,7 +104,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     return NextResponse.json({ replies: parsed.replies });
   } catch (error) {
-    console.error("Suggest reply error:", error);
+    logger.error("Suggest reply error", error);
     return NextResponse.json(
       { error: "Failed to generate reply suggestions" },
       { status: 500 }

@@ -6,9 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getUserId(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Push subscribe error:", error);
+    logger.error("Push subscribe error", error);
     return NextResponse.json(
       { error: "Failed to save subscription" },
       { status: 500 }
@@ -102,7 +101,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Push unsubscribe error:", error);
+    logger.error("Push unsubscribe error", error);
     return NextResponse.json(
       { error: "Failed to remove subscription" },
       { status: 500 }

@@ -6,9 +6,8 @@ import { jwtVerify } from "jose";
 import { users, bookings, reviews, savedListings } from "@/drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -78,7 +77,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/profile error:", error);
+    logger.error("GET /api/profile error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -131,7 +130,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ user: updated });
   } catch (error) {
-    console.error("PATCH /api/profile error:", error);
+    logger.error("PATCH /api/profile error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

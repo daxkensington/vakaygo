@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import Stripe from "stripe";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 let _stripe: Stripe | null = null;
 function getStripe(): Stripe {
@@ -82,7 +81,7 @@ export async function GET(request: Request) {
       expiresAt: card.expiresAt,
     });
   } catch (error) {
-    console.error("Gift card balance check error:", error);
+    logger.error("Gift card balance check error", error);
     return NextResponse.json({ error: "Failed to check balance" }, { status: 500 });
   }
 }
@@ -155,7 +154,7 @@ export async function POST(request: Request) {
       clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
-    console.error("Gift card purchase error:", error);
+    logger.error("Gift card purchase error", error);
     return NextResponse.json({ error: "Failed to create gift card" }, { status: 500 });
   }
 }
@@ -226,7 +225,7 @@ export async function PUT(request: Request) {
       currency: card.currency,
     });
   } catch (error) {
-    console.error("Gift card redeem error:", error);
+    logger.error("Gift card redeem error", error);
     return NextResponse.json({ error: "Failed to redeem gift card" }, { status: 500 });
   }
 }

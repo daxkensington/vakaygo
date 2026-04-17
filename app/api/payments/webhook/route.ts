@@ -5,6 +5,7 @@ import { bookings } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { constructWebhookEvent } from "@/server/stripe";
 
+import { logger } from "@/lib/logger";
 /**
  * Stripe webhook handler
  * Receives events when payments succeed, fail, or are refunded
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
             })
             .where(eq(bookings.id, bookingId));
 
-          console.log(`Booking ${bookingId} paid — confirmed`);
+          logger.info("Booking paid", { bookingId });
         }
         break;
       }
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
             })
             .where(eq(bookings.id, bookingId));
 
-          console.log(`Booking ${bookingId} payment failed — cancelled`);
+          logger.warn("Booking payment failed", { bookingId });
         }
         break;
       }
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
               })
               .where(eq(bookings.id, booking.id));
 
-            console.log(`Booking ${booking.id} refunded`);
+            logger.info("Booking refunded", { bookingId: booking.id });
           }
         }
         break;
@@ -103,17 +104,21 @@ export async function POST(request: Request) {
       case "account.updated": {
         // Operator's Stripe account was updated (completed onboarding, etc.)
         const account = event.data.object;
-        console.log(`Stripe account ${account.id} updated — charges: ${account.charges_enabled}, payouts: ${account.payouts_enabled}`);
+        logger.info("Stripe account updated", {
+          accountId: account.id,
+          charges: account.charges_enabled,
+          payouts: account.payouts_enabled,
+        });
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        logger.warn("Unhandled stripe event type", { type: event.type });
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logger.error("Webhook error", error);
     return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
   }
 }

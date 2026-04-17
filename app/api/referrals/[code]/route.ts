@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
 import { users } from "@/drizzle/schema";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -41,7 +42,7 @@ export async function GET(
       reward: 500,
     });
   } catch (error) {
-    console.error("Referral validate error:", error);
+    logger.error("Referral validate error", error);
     return NextResponse.json({ valid: false, error: "Failed to validate code" }, { status: 500 });
   }
 }

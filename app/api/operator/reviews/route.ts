@@ -1,26 +1,16 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { reviews, listings, users } from "@/drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
-
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const userId = __auth.userId;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -64,7 +54,7 @@ export async function GET() {
       stats: { avgRating, totalReviews, responseRate },
     });
   } catch (error) {
-    console.error("Operator reviews error:", error);
+    logger.error("Operator reviews error", error);
     return NextResponse.json(
       { error: "Failed to load reviews" },
       { status: 500 }
@@ -74,15 +64,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const userId = __auth.userId;
 
     const { reviewId, reply } = await request.json();
 
@@ -127,7 +111,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ review: updated });
   } catch (error) {
-    console.error("Operator reply error:", error);
+    logger.error("Operator reply error", error);
     return NextResponse.json(
       { error: "Failed to save reply" },
       { status: 500 }

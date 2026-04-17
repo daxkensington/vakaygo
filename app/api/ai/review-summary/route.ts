@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { reviews, listings, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 // In-memory cache for review summaries
 const summaryCache = new Map<
   string,
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Gemini error:", err);
+      logger.error("Gemini error", err);
       return NextResponse.json(
         { error: "AI summary generation failed" },
         { status: 502 }
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ summary, cached: false });
   } catch (error) {
-    console.error("Review summary error:", error);
+    logger.error("Review summary error", error);
     return NextResponse.json(
       { error: "Failed to generate review summary" },
       { status: 500 }

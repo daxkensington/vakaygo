@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { savedListings, listings } from "@/drizzle/schema";
 import { eq, and, isNotNull, sql } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Price alerts cron error:", error);
+    logger.error("Price alerts cron error", error);
     return NextResponse.json(
       { error: "Failed to process price alerts" },
       { status: 500 }

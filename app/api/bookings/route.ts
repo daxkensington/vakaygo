@@ -9,9 +9,8 @@ import { createNotification } from "@/server/notifications";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -300,7 +299,7 @@ export async function POST(request: Request) {
       listing: { title: listing.title, type: listing.type },
     });
   } catch (error) {
-    console.error("Booking error:", error);
+    logger.error("Booking error", error);
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 }
@@ -353,7 +352,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ bookings: results });
   } catch (error) {
-    console.error("Get bookings error:", error);
+    logger.error("Get bookings error", error);
     return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
 }

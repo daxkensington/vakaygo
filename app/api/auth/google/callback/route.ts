@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SignJWT } from "jose";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and } from "drizzle-orm";
 import { users, accounts } from "@/drizzle/schema";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { setSessionCookie } from "@/server/admin-auth";
 
 function getRedirectUri(requestUrl: string): string {
   const baseUrl =
@@ -31,14 +29,14 @@ export async function GET(request: Request) {
       clientId === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID" ||
       clientSecret === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_SECRET"
     ) {
-      console.error("Google OAuth credentials are not configured");
+      logger.error("Google OAuth credentials are not configured");
       return NextResponse.redirect(
         new URL("/auth/signin?error=oauth_not_configured", url.origin)
       );
     }
 
     if (!databaseUrl) {
-      console.error("DATABASE_URL is not configured");
+      logger.error("DATABASE_URL is not configured");
       return NextResponse.redirect(
         new URL("/auth/signin?error=server_error", url.origin)
       );
@@ -49,7 +47,7 @@ export async function GET(request: Request) {
     const errorParam = url.searchParams.get("error");
 
     if (errorParam) {
-      console.error("Google OAuth error:", errorParam);
+      logger.error("Google OAuth error", errorParam);
       return NextResponse.redirect(
         new URL("/auth/signin?error=google_denied", url.origin)
       );
@@ -66,7 +64,7 @@ export async function GET(request: Request) {
     const storedState = cookieStore.get("oauth_state")?.value;
 
     if (!storedState || storedState !== state) {
-      console.error("OAuth state mismatch:", {
+      logger.error("OAuth state mismatch", {
         hasStoredState: !!storedState,
         statesMatch: storedState === state,
       });
@@ -98,7 +96,7 @@ export async function GET(request: Request) {
 
     if (!tokenRes.ok) {
       const errorBody = await tokenRes.text();
-      console.error("Google token exchange failed:", errorBody);
+      logger.error("Google token exchange failed", errorBody);
       return NextResponse.redirect(
         new URL("/auth/signin?error=token_exchange_failed", url.origin)
       );
@@ -115,7 +113,7 @@ export async function GET(request: Request) {
     );
 
     if (!profileRes.ok) {
-      console.error("Google profile fetch failed:", await profileRes.text());
+      logger.error("Google profile fetch failed", await profileRes.text());
       return NextResponse.redirect(
         new URL("/auth/signin?error=profile_fetch_failed", url.origin)
       );
@@ -124,7 +122,7 @@ export async function GET(request: Request) {
     const profile = await profileRes.json();
 
     if (!profile.email) {
-      console.error("Google profile missing email:", profile);
+      logger.error("Google profile missing email", profile);
       return NextResponse.redirect(
         new URL("/auth/signin?error=no_email", url.origin)
       );
@@ -242,31 +240,18 @@ export async function GET(request: Request) {
       });
     }
 
-    // Create JWT session
-    const token = await new SignJWT({
+    await setSessionCookie({
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.name ?? undefined,
       role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(SECRET);
-
-    cookieStore.set("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
-      path: "/",
     });
 
     // Redirect based on role
     const redirectPath = user.role === "operator" ? "/operator" : "/explore";
     return NextResponse.redirect(new URL(redirectPath, url.origin));
   } catch (error) {
-    console.error("Google OAuth callback error:", error);
+    logger.error("Google OAuth callback error", error);
     return NextResponse.redirect(
       new URL("/auth/signin?error=callback_failed", url.origin)
     );

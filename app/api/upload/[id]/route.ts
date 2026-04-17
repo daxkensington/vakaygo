@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { del } from "@vercel/blob";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function DELETE(
   request: NextRequest,
@@ -41,7 +40,7 @@ export async function DELETE(
     try {
       await del(record.url);
     } catch (blobErr) {
-      console.error("Blob deletion error (continuing):", blobErr);
+      logger.error("Blob deletion error (continuing)", blobErr);
       // Continue even if blob delete fails — still remove DB record
     }
 
@@ -50,7 +49,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Delete media error:", err);
+    logger.error("Delete media error", err);
     return NextResponse.json(
       { error: "Failed to delete media" },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logger } from "@/lib/logger";
 // OpenAI TTS voices mapped to concierge personalities
 // Each voice has a distinct character that matches the personality
 const PERSONALITY_VOICES: Record<string, { voice: string; speed: number }> = {
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI TTS error:", res.status, err);
+      logger.error("OpenAI TTS error", null, { status: res.status, body: err });
       return NextResponse.json({ error: "TTS generation failed" }, { status: 500 });
     }
 
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("TTS API error:", error);
+    logger.error("TTS API error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

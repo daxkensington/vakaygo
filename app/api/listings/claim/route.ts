@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
       message: "Listing claimed successfully! You can now edit it from your dashboard.",
     });
   } catch (error) {
-    console.error("Claim listing error:", error);
+    logger.error("Claim listing error", error);
     return NextResponse.json({ error: "Failed to claim listing" }, { status: 500 });
   }
 }

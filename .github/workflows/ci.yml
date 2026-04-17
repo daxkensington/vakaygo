@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run check:i18n
+      - run: npm test -- --run
+        env:
+          NODE_ENV: test
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      - run: npx playwright test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli
+          lhci autorun
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

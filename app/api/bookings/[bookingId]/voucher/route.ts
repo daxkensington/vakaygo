@@ -8,9 +8,8 @@ import { cookies } from "next/headers";
 import QRCode from "qrcode";
 import { randomUUID } from "crypto";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -133,7 +132,7 @@ export async function GET(
       checkedIn: booking.checkedIn,
     });
   } catch (error) {
-    console.error("Voucher error:", error);
+    logger.error("Voucher error", error);
     return NextResponse.json(
       { error: "Failed to generate voucher" },
       { status: 500 }

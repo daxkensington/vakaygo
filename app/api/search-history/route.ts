@@ -6,9 +6,8 @@ import { eq, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -39,7 +38,7 @@ export async function GET() {
 
     return NextResponse.json({ searches: results });
   } catch (error) {
-    console.error("Search history GET error:", error);
+    logger.error("Search history GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch search history" },
       { status: 500 }
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ search: entry }, { status: 201 });
   } catch (error) {
-    console.error("Search history POST error:", error);
+    logger.error("Search history POST error", error);
     return NextResponse.json(
       { error: "Failed to save search" },
       { status: 500 }
@@ -104,7 +103,7 @@ export async function DELETE() {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Search history DELETE error:", error);
+    logger.error("Search history DELETE error", error);
     return NextResponse.json(
       { error: "Failed to clear search history" },
       { status: 500 }

@@ -5,6 +5,7 @@ import { listings, listingViews, islands, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -73,7 +74,7 @@ export async function GET() {
 
     return NextResponse.json({ trending: data });
   } catch (error) {
-    console.error("Trending error:", error);
+    logger.error("Trending error", error);
     return NextResponse.json(
       { error: "Failed to get trending listings" },
       { status: 500 }

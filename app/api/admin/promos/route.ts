@@ -6,9 +6,9 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { desc } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -29,10 +29,9 @@ async function verifyAdmin() {
 
 // GET: List all promo codes
 export async function GET() {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   const db = getDb();
   const results = await db
@@ -45,10 +44,9 @@ export async function GET() {
 
 // POST: Create a new promo code
 export async function POST(request: Request) {
-  const adminId = await verifyAdmin();
-  if (!adminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const adminId = __auth.userId;
 
   try {
     const body = await request.json();
@@ -100,7 +98,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ promo });
   } catch (error: unknown) {
-    console.error("Create promo error:", error);
+    logger.error("Create promo error", error);
     const msg = error instanceof Error && error.message.includes("unique")
       ? "A promo code with this name already exists"
       : "Failed to create promo code";

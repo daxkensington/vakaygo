@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { reviews, listings, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 // In-memory cache for review intelligence results
 const intelligenceCache = new Map<
   string,
@@ -127,7 +128,7 @@ For keywordCloud, extract 8-15 meaningful keywords/phrases mentioned across revi
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Gemini error:", err);
+      logger.error("Gemini error", err);
       return NextResponse.json(
         { error: "AI analysis failed" },
         { status: 502 }
@@ -151,7 +152,7 @@ For keywordCloud, extract 8-15 meaningful keywords/phrases mentioned across revi
       const jsonStr = rawText.replace(/```json\n?|\n?```/g, "").trim();
       parsed = JSON.parse(jsonStr);
     } catch {
-      console.error("Failed to parse review intelligence JSON:", rawText);
+      logger.error("Failed to parse review intelligence JSON", rawText);
       return NextResponse.json(
         { error: "Failed to parse AI response" },
         { status: 502 }
@@ -167,7 +168,7 @@ For keywordCloud, extract 8-15 meaningful keywords/phrases mentioned across revi
 
     return NextResponse.json({ ...parsed, cached: false });
   } catch (error) {
-    console.error("Review intelligence error:", error);
+    logger.error("Review intelligence error", error);
     return NextResponse.json(
       { error: "Failed to generate review intelligence" },
       { status: 500 }

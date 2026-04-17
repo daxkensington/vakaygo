@@ -5,6 +5,7 @@ import { listings, islands, media, availability } from "@/drizzle/schema";
 import { eq, and, ilike, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -218,7 +219,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ listings: data });
   } catch (error) {
-    console.error("Listings error:", error);
+    logger.error("Listings error", error);
     return NextResponse.json(
       { error: "Failed to fetch listings" },
       { status: 500 }
@@ -291,7 +292,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ listing });
   } catch (error) {
-    console.error("Create listing error:", error);
+    logger.error("Create listing error", error);
     return NextResponse.json(
       { error: "Failed to create listing" },
       { status: 500 }

@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function PATCH(
   request: Request,
@@ -62,7 +61,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Update listing error:", error);
+    logger.error("Update listing error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

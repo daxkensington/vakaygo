@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { users } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       new URL("/profile?verified=true", request.url)
     );
   } catch (error) {
-    console.error("Verify email error:", error);
+    logger.error("Verify email error", error);
     return NextResponse.redirect(
       new URL("/auth/verify-email?error=server_error", request.url)
     );

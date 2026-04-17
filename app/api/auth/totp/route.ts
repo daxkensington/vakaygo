@@ -7,9 +7,8 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { TOTP } from "otpauth";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -68,7 +67,7 @@ export async function GET() {
 
     return NextResponse.json({ secret, uri });
   } catch (error) {
-    console.error("TOTP setup error:", error);
+    logger.error("TOTP setup error", error);
     return NextResponse.json(
       { error: "Failed to generate TOTP" },
       { status: 500 }
@@ -153,7 +152,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ enabled: true });
   } catch (error) {
-    console.error("TOTP verify error:", error);
+    logger.error("TOTP verify error", error);
     return NextResponse.json(
       { error: "Failed to verify TOTP" },
       { status: 500 }

@@ -12,9 +12,8 @@ import {
 } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Cache per operator
 const insightsCache = new Map<
@@ -205,7 +204,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI error:", err);
+      logger.error("OpenAI error", err);
       return NextResponse.json(
         { error: "AI generation failed" },
         { status: 502 }
@@ -220,7 +219,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       const jsonStr = content.replace(/```json\n?|\n?```/g, "").trim();
       parsed = JSON.parse(jsonStr);
     } catch {
-      console.error("Failed to parse insights JSON:", content);
+      logger.error("Failed to parse insights JSON", content);
       return NextResponse.json(
         { error: "Failed to parse AI response" },
         { status: 502 }
@@ -235,7 +234,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     return NextResponse.json({ insights: parsed.insights, cached: false });
   } catch (error) {
-    console.error("Operator insights error:", error);
+    logger.error("Operator insights error", error);
     return NextResponse.json(
       { error: "Failed to generate insights" },
       { status: 500 }

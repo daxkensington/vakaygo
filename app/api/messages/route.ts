@@ -6,9 +6,8 @@ import { eq, or, and, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -140,7 +139,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ conversations });
   } catch (error) {
-    console.error("Messages error:", error);
+    logger.error("Messages error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: msg });
   } catch (error) {
-    console.error("Send message error:", error);
+    logger.error("Send message error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

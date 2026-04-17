@@ -6,9 +6,8 @@ import { eq, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -75,7 +74,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ report }, { status: 201 });
   } catch (error) {
-    console.error("Report POST error:", error);
+    logger.error("Report POST error", error);
     return NextResponse.json(
       { error: "Failed to create report" },
       { status: 500 }
@@ -119,7 +118,7 @@ export async function GET() {
 
     return NextResponse.json({ reports: results });
   } catch (error) {
-    console.error("Report GET error:", error);
+    logger.error("Report GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch reports" },
       { status: 500 }

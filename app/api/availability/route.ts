@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { availability, bookings, listings } from "@/drizzle/schema";
+import { availability, bookings } from "@/drizzle/schema";
 import { eq, and, gte, lt, ne, sql } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireOperator, assertListingOwnership } from "@/server/admin-auth";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -96,7 +93,7 @@ export async function GET(request: Request) {
       month,
     });
   } catch (error) {
-    console.error("Availability GET error:", error);
+    logger.error("Availability GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch availability" },
       { status: 500 }
@@ -106,26 +103,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // Verify auth - operator only
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json(
-        { error: "Please sign in" },
-        { status: 401 }
-      );
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
-    const role = payload.role as string;
-
-    if (role !== "operator" && role !== "admin") {
-      return NextResponse.json(
-        { error: "Only operators can manage availability" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
 
     const body = await request.json();
     const { listingId, dates } = body as {
@@ -145,28 +124,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const owns = await assertListingOwnership(listingId, auth.userId, auth.role);
+    if (!owns.ok) return owns.error;
+
     const db = getDb();
-
-    // Verify the operator owns this listing
-    const [listing] = await db
-      .select({ id: listings.id, operatorId: listings.operatorId })
-      .from(listings)
-      .where(eq(listings.id, listingId))
-      .limit(1);
-
-    if (!listing) {
-      return NextResponse.json(
-        { error: "Listing not found" },
-        { status: 404 }
-      );
-    }
-
-    if (listing.operatorId !== userId && role !== "admin") {
-      return NextResponse.json(
-        { error: "You do not own this listing" },
-        { status: 403 }
-      );
-    }
 
     // Upsert each date
     const results = [];
@@ -231,7 +192,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ updated: results.length, results });
   } catch (error) {
-    console.error("Availability POST error:", error);
+    logger.error("Availability POST error", error);
     return NextResponse.json(
       { error: "Failed to update availability" },
       { status: 500 }

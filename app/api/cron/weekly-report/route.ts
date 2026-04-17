@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings } from "@/drizzle/schema";
 import { gt, sql, eq, desc } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(report);
   } catch (error) {
-    console.error("Weekly report cron error:", error);
+    logger.error("Weekly report cron error", error);
     return NextResponse.json(
       { error: "Failed to generate weekly report" },
       { status: 500 }

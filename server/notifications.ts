@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { notifications } from "@/drizzle/schema";
 import { sendPushNotification } from "@/server/push";
 
+import { logger } from "@/lib/logger";
 export async function createNotification(params: {
   userId: string;
   type: "booking" | "review" | "message" | "system";
@@ -26,5 +27,5 @@ export async function createNotification(params: {
     title: params.title,
     body: params.body || "",
     url: params.link,
-  }).catch((err) => console.error("Push notification failed:", err));
+  }).catch((err) => logger.error("Push notification failed", err));
 }

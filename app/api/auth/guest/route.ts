@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SignJWT } from "jose";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
@@ -8,9 +6,8 @@ import { users } from "@/drizzle/schema";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { setSessionCookie } from "@/server/admin-auth";
 
 export async function POST(request: Request) {
   try {
@@ -73,24 +70,11 @@ export async function POST(request: Request) {
       user = newUser;
     }
 
-    // Create JWT session
-    const token = await new SignJWT({
+    await setSessionCookie({
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.name ?? undefined,
       role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("7d")
-      .sign(SECRET);
-
-    const cookieStore = await cookies();
-    cookieStore.set("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
-      path: "/",
     });
 
     return NextResponse.json({ user });
@@ -103,7 +87,7 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    console.error("Guest checkout error:", error);
+    logger.error("Guest checkout error", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

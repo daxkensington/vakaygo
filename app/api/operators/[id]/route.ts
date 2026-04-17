@@ -5,6 +5,7 @@ import { users, listings, islands, media, reviews } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
+import { logger } from "@/lib/logger";
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -95,7 +96,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Operator profile error:", error);
+    logger.error("Operator profile error", error);
     return NextResponse.json(
       { error: "Failed to fetch operator profile" },
       { status: 500 }

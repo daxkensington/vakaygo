@@ -7,9 +7,9 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+import { requireAdmin } from "@/server/admin-auth";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -28,10 +28,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const verifiedAdminId = await verifyAdmin();
-  if (!verifiedAdminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const verifiedAdminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -116,7 +115,7 @@ export async function GET(
       bookings: userBookings,
     });
   } catch (error) {
-    console.error("Admin user detail error:", error);
+    logger.error("Admin user detail error", error);
     return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
   }
 }
@@ -125,10 +124,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const verifiedAdminId = await verifyAdmin();
-  if (!verifiedAdminId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const __auth = await requireAdmin();
+  if (!__auth.ok) return __auth.error;
+  const verifiedAdminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -201,7 +199,7 @@ export async function PATCH(
 
     return NextResponse.json({ user: updated });
   } catch (error) {
-    console.error("Admin user update error:", error);
+    logger.error("Admin user update error", error);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }

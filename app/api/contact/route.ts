@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
+import { logger } from "@/lib/logger";
 const resend = new Resend(
   process.env.RESEND_API_KEY || "re_9veHwfmR_EfQt6FpKGS8MwUJgJcejmPDz"
 );
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Contact form error:", error);
+    logger.error("Contact form error", error);
     return NextResponse.json(
       { error: "Failed to send message. Please try again." },
       { status: 500 }

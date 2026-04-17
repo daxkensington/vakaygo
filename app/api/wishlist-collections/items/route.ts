@@ -10,9 +10,8 @@ import { eq, and } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -82,7 +81,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error("Wishlist items GET error:", error);
+    logger.error("Wishlist items GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch items" },
       { status: 500 }
@@ -142,7 +141,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
-    console.error("Wishlist items POST error:", error);
+    logger.error("Wishlist items POST error", error);
     return NextResponse.json(
       { error: "Failed to add item" },
       { status: 500 }
@@ -208,7 +207,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Wishlist items DELETE error:", error);
+    logger.error("Wishlist items DELETE error", error);
     return NextResponse.json(
       { error: "Failed to remove item" },
       { status: 500 }

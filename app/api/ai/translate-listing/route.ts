@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -128,7 +127,7 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const errorBody = await res.text();
-      console.error("OpenAI API error:", res.status, errorBody);
+      logger.error("OpenAI API error", null, { status: res.status, body: errorBody });
       return NextResponse.json(
         { error: "Translation failed — AI service error" },
         { status: 502 }
@@ -175,7 +174,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ translation, cached: false });
   } catch (error) {
-    console.error("Translate listing error:", error);
+    logger.error("Translate listing error", error);
     return NextResponse.json(
       { error: "Failed to translate listing" },
       { status: 500 }

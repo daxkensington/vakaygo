@@ -6,9 +6,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -48,7 +47,7 @@ export async function GET() {
 
     return NextResponse.json({ collections });
   } catch (error) {
-    console.error("Wishlist collections GET error:", error);
+    logger.error("Wishlist collections GET error", error);
     return NextResponse.json(
       { error: "Failed to fetch collections" },
       { status: 500 }
@@ -90,7 +89,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ collection }, { status: 201 });
   } catch (error) {
-    console.error("Wishlist collections POST error:", error);
+    logger.error("Wishlist collections POST error", error);
     return NextResponse.json(
       { error: "Failed to create collection" },
       { status: 500 }
@@ -144,7 +143,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ collection: updated });
   } catch (error) {
-    console.error("Wishlist collections PUT error:", error);
+    logger.error("Wishlist collections PUT error", error);
     return NextResponse.json(
       { error: "Failed to update collection" },
       { status: 500 }
@@ -195,7 +194,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Wishlist collections DELETE error:", error);
+    logger.error("Wishlist collections DELETE error", error);
     return NextResponse.json(
       { error: "Failed to delete collection" },
       { status: 500 }

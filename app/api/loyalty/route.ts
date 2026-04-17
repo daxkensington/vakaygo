@@ -9,9 +9,8 @@ import {
   MIN_REDEMPTION_POINTS,
 } from "@/server/loyalty";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -55,7 +54,7 @@ export async function GET(request: Request) {
       hasMore: transactions.length === limit,
     });
   } catch (error) {
-    console.error("Loyalty GET error:", error);
+    logger.error("Loyalty GET error", error);
     return NextResponse.json({ error: "Failed to fetch loyalty data" }, { status: 500 });
   }
 }

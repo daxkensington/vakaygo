@@ -6,9 +6,8 @@ import { eq, and, ne, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -98,7 +97,7 @@ export async function GET(
 
     return NextResponse.json({ post, related });
   } catch (error) {
-    console.error("Blog slug GET error:", error);
+    logger.error("Blog slug GET error", error);
     return NextResponse.json({ error: "Failed to fetch post" }, { status: 500 });
   }
 }
@@ -160,7 +159,7 @@ export async function PUT(
 
     return NextResponse.json({ post: updated });
   } catch (error: any) {
-    console.error("Blog PUT error:", error);
+    logger.error("Blog PUT error", error);
     if (error?.message?.includes("unique")) {
       return NextResponse.json({ error: "A post with this slug already exists" }, { status: 409 });
     }
@@ -192,7 +191,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Blog DELETE error:", error);
+    logger.error("Blog DELETE error", error);
     return NextResponse.json({ error: "Failed to delete post" }, { status: 500 });
   }
 }

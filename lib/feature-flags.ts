@@ -1,7 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { featureFlags } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
+import { featureFlags } from "@/drizzle/schema";
+import { logger } from "@/lib/logger";
 
 // In-memory cache with 60-second TTL
 const cache = new Map<
@@ -70,7 +71,7 @@ export async function isFeatureEnabled(
 
     return evaluateFlag(entry, userId);
   } catch (error) {
-    console.error(`Feature flag check error for "${key}":`, error);
+    logger.error("Feature flag check error", error, { key });
     // Fail closed — feature is off if we can't check
     return false;
   }

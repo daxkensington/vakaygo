@@ -1,26 +1,16 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { listings, bookings, reviews, messages, users } from "@/drizzle/schema";
 import { eq, sql, desc, and } from "drizzle-orm";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
-
+import { logger } from "@/lib/logger";
+import { requireOperator } from "@/server/admin-auth";
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const __auth = await requireOperator();
+    if (!__auth.ok) return __auth.error;
+    const userId = __auth.userId;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -131,7 +121,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("Operator stats error:", error);
+    logger.error("Operator stats error", error);
     return NextResponse.json({ error: "Failed to load stats" }, { status: 500 });
   }
 }

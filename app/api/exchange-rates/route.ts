@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 // Exchange Rates API — fetches live rates with 1-hour in-memory cache
 
 const SUPPORTED_CURRENCIES = ["USD", "XCD", "EUR", "GBP", "CAD", "BBD", "JMD", "TTD"] as const;
@@ -55,7 +56,7 @@ export async function GET() {
       source: "live",
     });
   } catch (err) {
-    console.error("Exchange rate fetch failed, using fallback:", err);
+    logger.error("Exchange rate fetch failed, using fallback", err);
 
     // Use fallback rates but don't cache them long
     return Response.json({

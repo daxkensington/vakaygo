@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands } from "@/drizzle/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
-    console.error("Autocomplete error:", error);
+    logger.error("Autocomplete error", error);
     return NextResponse.json({ listings: [], islands: [] });
   }
 }

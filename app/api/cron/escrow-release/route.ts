@@ -5,6 +5,7 @@ import { bookings, users } from "@/drizzle/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
 import { releaseEscrowTransfer } from "@/server/stripe";
 
+import { logger } from "@/lib/logger";
 /**
  * GET — Release escrow for completed trips.
  * Runs every 6 hours. Finds bookings that are completed, escrow not yet
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
       timestamp: now.toISOString(),
     });
   } catch (error) {
-    console.error("Escrow release cron error:", error);
+    logger.error("Escrow release cron error", error);
     return NextResponse.json({ error: "Escrow release cron failed" }, { status: 500 });
   }
 }

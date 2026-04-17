@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(request: Request) {
   try {
@@ -67,7 +66,7 @@ Return as JSON: { "description": "...", "headline": "..." }`;
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("OpenAI error:", err);
+      logger.error("OpenAI error", err);
       return NextResponse.json(
         { error: "AI generation failed" },
         { status: 502 }
@@ -96,7 +95,7 @@ Return as JSON: { "description": "...", "headline": "..." }`;
       headline: parsed.headline,
     });
   } catch (error) {
-    console.error("Generate description error:", error);
+    logger.error("Generate description error", error);
     return NextResponse.json(
       { error: "Failed to generate description" },
       { status: 500 }

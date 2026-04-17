@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { payouts, taxDocuments, users } from "@/drizzle/schema";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 
+import { logger } from "@/lib/logger";
 /**
  * GET — Annual tax document generation cron.
  * Runs once a year on January 15 at 8 AM UTC.
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
       timestamp: now.toISOString(),
     });
   } catch (error) {
-    console.error("Tax document cron error:", error);
+    logger.error("Tax document cron error", error);
     return NextResponse.json({ error: "Tax document generation failed" }, { status: 500 });
   }
 }

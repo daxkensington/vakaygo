@@ -5,6 +5,7 @@ import { bookings, payouts, payoutSchedules, users } from "@/drizzle/schema";
 import { eq, and, sql, lte, isNull } from "drizzle-orm";
 import { createTransfer } from "@/server/stripe";
 
+import { logger } from "@/lib/logger";
 /**
  * GET — Automated weekly payout cron.
  * Runs every Monday at 8 AM UTC. Collects operator earnings from completed
@@ -151,7 +152,7 @@ export async function GET(request: Request) {
       timestamp: now.toISOString(),
     });
   } catch (error) {
-    console.error("Payout cron error:", error);
+    logger.error("Payout cron error", error);
     return NextResponse.json({ error: "Payout cron failed" }, { status: 500 });
   }
 }

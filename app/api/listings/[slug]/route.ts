@@ -5,6 +5,7 @@ import { listings, media, islands, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
+import { logger } from "@/lib/logger";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -128,7 +129,7 @@ export async function GET(
       similar: similarWithImages,
     });
   } catch (error) {
-    console.error("Listing detail error:", error);
+    logger.error("Listing detail error", error);
     return NextResponse.json({ error: "Failed to fetch listing" }, { status: 500 });
   }
 }

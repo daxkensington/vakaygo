@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -89,7 +88,7 @@ export async function GET(
       guestEmail: traveler?.email,
     });
   } catch (error) {
-    console.error("Verify booking error:", error);
+    logger.error("Verify booking error", error);
     return NextResponse.json(
       { error: "Failed to verify booking" },
       { status: 500 }
@@ -165,7 +164,7 @@ export async function POST(
       checkedInAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Check-in error:", error);
+    logger.error("Check-in error", error);
     return NextResponse.json(
       { error: "Failed to check in" },
       { status: 500 }

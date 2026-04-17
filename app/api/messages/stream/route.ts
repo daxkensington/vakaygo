@@ -5,11 +5,10 @@ import { eq, and, gt, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
+import { logger } from "@/lib/logger";
 export const maxDuration = 300; // 5 minutes
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -125,7 +124,7 @@ export async function GET() {
             heartbeatCounter = 0;
           }
         } catch (err) {
-          console.error("SSE poll error:", err);
+          logger.error("SSE poll error", err);
         }
 
         await sleep(POLL_INTERVAL);

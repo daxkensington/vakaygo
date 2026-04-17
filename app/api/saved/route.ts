@@ -6,9 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+import { logger } from "@/lib/logger";
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -51,7 +50,7 @@ export async function GET() {
 
     return NextResponse.json({ saved: results });
   } catch (error) {
-    console.error("Get saved error:", error);
+    logger.error("Get saved error", error);
     return NextResponse.json({ error: "Failed to fetch saved listings" }, { status: 500 });
   }
 }
@@ -81,7 +80,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ saved: true });
   } catch (error) {
-    console.error("Save listing error:", error);
+    logger.error("Save listing error", error);
     return NextResponse.json({ error: "Failed to save listing" }, { status: 500 });
   }
 }
@@ -115,7 +114,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ removed: true });
   } catch (error) {
-    console.error("Unsave listing error:", error);
+    logger.error("Unsave listing error", error);
     return NextResponse.json({ error: "Failed to unsave listing" }, { status: 500 });
   }
 }
