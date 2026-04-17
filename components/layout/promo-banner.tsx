@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
 
@@ -9,8 +10,13 @@ const DISMISS_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export function PromoBanner() {
   const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+
+  // Don't show on landing page — hero has its own CTAs
+  const isLanding = pathname === "/";
 
   useEffect(() => {
+    if (isLanding) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const timestamp = parseInt(dismissed, 10);
@@ -18,7 +24,7 @@ export function PromoBanner() {
     }
     // Small delay for slide-down animation
     requestAnimationFrame(() => setVisible(true));
-  }, []);
+  }, [isLanding]);
 
   function dismiss() {
     setVisible(false);
@@ -28,7 +34,7 @@ export function PromoBanner() {
   if (!visible) return null;
 
   return (
-    <div className="relative z-40 bg-gradient-to-r from-gold-500 to-gold-600 animate-in slide-in-from-top duration-500">
+    <div className="relative z-[60] bg-gradient-to-r from-gold-500 to-gold-600 animate-in slide-in-from-top duration-500">
       <div className="mx-auto max-w-7xl px-4 py-2.5 flex items-center justify-center gap-3">
         <p className="text-sm text-white text-center font-medium">
           Plan your dream Caribbean getaway with our new AI Trip Planner!{" "}

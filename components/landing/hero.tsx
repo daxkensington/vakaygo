@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, ChevronDown, Sparkles } from "lucide-react";
+import { Search, MapPin, ChevronDown } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 
 const heroImages = [
@@ -126,18 +126,26 @@ export function Hero() {
 
   return (
     <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
-      {/* Rotating background images */}
+      {/* Rotating background images — first one is the LCP candidate */}
       {heroImages.map((img, i) => (
         <div
           key={img}
           className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
-          style={{
-            opacity: currentImage === i ? 1 : 0,
-            backgroundImage: `url(${img})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+          style={{ opacity: currentImage === i ? 1 : 0 }}
+          aria-hidden={currentImage !== i}
+        >
+          <Image
+            src={img}
+            alt=""
+            fill
+            priority={i === 0}
+            fetchPriority={i === 0 ? "high" : "auto"}
+            loading={i === 0 ? "eager" : "lazy"}
+            sizes="100vw"
+            quality={80}
+            className="object-cover object-center"
+          />
+        </div>
       ))}
 
       {/* Cinematic overlay */}
@@ -146,24 +154,13 @@ export function Hero() {
 
       {/* Content */}
       <div
-        className={`relative z-10 mx-auto max-w-7xl px-6 text-center transition-all duration-1000 ${
+        className={`relative z-10 mx-auto max-w-7xl px-6 pt-20 md:pt-24 text-center transition-all duration-1000 ${
           loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-3">
+        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
           7,200+ listings across 21 Caribbean islands
-        </div>
-        <div className="mb-8">
-          <Link
-            href="/trips"
-            className="inline-flex items-center gap-2 bg-gold-500/20 backdrop-blur-md text-gold-300 border border-gold-400/30 rounded-full px-5 py-2 text-sm font-medium hover:bg-gold-500/30 transition-all duration-300 group"
-          >
-            <span className="bg-gold-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">New</span>
-            <Sparkles size={14} className="text-gold-400" />
-            AI Trip Planner — plan your perfect island getaway
-            <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
-          </Link>
         </div>
 
         <h1
