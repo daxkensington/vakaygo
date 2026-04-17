@@ -54,21 +54,46 @@ export function Header() {
             className="h-9 md:h-10 w-auto"
             aria-label="VakayGo"
           >
-            {/* Palm tree on the V */}
-            <g transform="translate(3, 0) scale(0.38)">
-              <path
-                d="M28 8c-2-6-8-8-14-7 4 2 8 6 10 12l-2 0c-6-5-14-6-18-3 5 1 11 4 15 10l-2 1c-7-3-14-2-17 1 5 0 12 2 17 7"
-                className={`transition-all duration-300 ${
-                  !scrolled && isLanding ? "fill-white" : "fill-[#1C2333]"
-                }`}
-              />
-              <rect
-                x="24" y="28" width="3" height="20" rx="1.5"
-                className={`transition-all duration-300 ${
-                  !scrolled && isLanding ? "fill-white/70" : "fill-[#1C2333]/60"
-                }`}
-              />
-            </g>
+            {/* Palm tree to the left of Vakay — fan of 7 drooping fronds over a curved trunk */}
+            {(() => {
+              const frondClass = `transition-all duration-300 ${
+                !scrolled && isLanding ? "fill-white" : "fill-[#1C2333]"
+              }`;
+              const trunkClass = frondClass;
+              return (
+                <g>
+                  {/* Curved trunk from crown (11, 17) down to baseline */}
+                  <path
+                    d="M10 17 C10 22 11 28 13 33 C14 36 15 39 16 40 L13 40 C12 38 11 35 10 32 C8 27 8 22 8 17 Z"
+                    className={trunkClass}
+                  />
+                  {/* Crown of fronds — 7 rotated leaf-ellipses fanning upward */}
+                  <g transform="translate(11 17)">
+                    {[
+                      { a: -72, rx: 1.6, ry: 8 },
+                      { a: -48, rx: 1.8, ry: 8.5 },
+                      { a: -22, rx: 1.9, ry: 9 },
+                      { a: 0, rx: 1.8, ry: 8.5 },
+                      { a: 22, rx: 1.9, ry: 9 },
+                      { a: 48, rx: 1.8, ry: 8.5 },
+                      { a: 72, rx: 1.6, ry: 8 },
+                    ].map(({ a, rx, ry }, i) => (
+                      <ellipse
+                        key={i}
+                        cx="0"
+                        cy={-ry + 1}
+                        rx={rx}
+                        ry={ry}
+                        transform={`rotate(${a})`}
+                        className={frondClass}
+                      />
+                    ))}
+                    {/* Crown nub — covers where fronds meet */}
+                    <circle r="2" className={frondClass} />
+                  </g>
+                </g>
+              );
+            })()}
             {/* "Vakay" text */}
             <text
               x="22" y="32"
