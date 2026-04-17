@@ -154,7 +154,7 @@ export function Hero() {
 
       {/* Content */}
       <div
-        className={`relative z-10 mx-auto max-w-7xl px-6 pt-20 md:pt-24 text-center transition-all duration-1000 ${
+        className={`relative z-10 mx-auto max-w-7xl px-6 text-center transition-all duration-1000 ${
           loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
