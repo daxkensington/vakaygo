@@ -61,8 +61,9 @@ const categoryTabs = [
   { id: "event", label: "Events", icon: Music },
   { id: "transfer", label: "Transfers", icon: Car },
   { id: "transport", label: "Transport", icon: Car },
-  { id: "vip", label: "VIP Services", icon: Users },
+  { id: "vip", label: "VIP", icon: Users },
   { id: "guide", label: "Guides", icon: Users },
+  { id: "spa", label: "Spa", icon: Sparkles },
 ];
 
 const typeColors: Record<string, string> = {
@@ -72,6 +73,7 @@ const typeColors: Record<string, string> = {
   event: "bg-teal-600",
   transport: "bg-navy-500",
   guide: "bg-gold-500",
+  spa: "bg-pink-500",
 };
 
 const amenityOptions = [

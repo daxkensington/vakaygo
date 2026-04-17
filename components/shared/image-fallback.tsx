@@ -9,6 +9,7 @@ import {
   Car,
   Palmtree,
   Users,
+  Sparkles,
 } from "lucide-react";
 
 const fallbackConfig: Record<
@@ -24,6 +25,7 @@ const fallbackConfig: Record<
   transfer: { gradient: "from-slate-500 to-gray-600", icon: Car },
   vip: { gradient: "from-gold-500 to-gold-700", icon: Users },
   guide: { gradient: "from-gold-400 to-teal-500", icon: Users },
+  spa: { gradient: "from-pink-400 to-pink-600", icon: Sparkles },
 };
 
 const defaultConfig = { gradient: "from-teal-500 to-gold-500", icon: Palmtree };

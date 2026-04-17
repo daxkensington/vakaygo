@@ -54,7 +54,7 @@ type FormData = {
 };
 
 const LISTING_TYPES = [
-  "stay", "tour", "dining", "event", "transport", "guide", "excursion", "transfer", "vip",
+  "stay", "tour", "dining", "event", "transport", "guide", "excursion", "transfer", "vip", "spa",
 ];
 
 const defaultForm: FormData = {

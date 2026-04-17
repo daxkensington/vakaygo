@@ -16,6 +16,7 @@ import {
   Music,
   Car,
   Users,
+  Sparkles,
 } from "lucide-react";
 
 type MyListing = {
@@ -36,6 +37,7 @@ type MyListing = {
 const typeIcons: Record<string, typeof Home> = {
   stay: Home, tour: Compass, dining: UtensilsCrossed,
   event: Music, transport: Car, guide: Users,
+  spa: Sparkles,
 };
 
 const statusColors: Record<string, string> = {

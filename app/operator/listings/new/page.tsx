@@ -8,6 +8,7 @@ import {
   Music,
   Car,
   Users,
+  Sparkles,
   ArrowRight,
   ArrowLeft,
   Upload,
@@ -91,6 +92,14 @@ const listingTypes = [
     color: "bg-gold-50 text-gold-600 border-gold-200",
     activeColor: "bg-gold-500 text-white border-gold-500",
   },
+  {
+    id: "spa",
+    label: "Spa & Wellness",
+    description: "Spa treatments, massages, wellness retreats, beauty services",
+    icon: Sparkles,
+    color: "bg-pink-50 text-pink-600 border-pink-200",
+    activeColor: "bg-pink-500 text-white border-pink-500",
+  },
 ];
 
 export default function NewListingPage() {
@@ -127,6 +136,7 @@ export default function NewListingPage() {
     transport: ["trip", "person", "day"],
     vip: ["hour", "day", "person", "event"],
     guide: ["person", "hour", "group"],
+    spa: ["treatment", "hour", "package"],
   };
 
   async function handleSubmit() {

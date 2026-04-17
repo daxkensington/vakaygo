@@ -41,6 +41,7 @@ You are embedded in VakayGo (vakaygo.com) — a Caribbean travel super-app cover
 - **Transport** — Airport transfers, car rentals, water taxis, ferries. Fixed pricing, no surge.
 - **Local Guides** — Private tours, cultural immersion, photography, adventure guides. Rated and reviewed.
 - **VIP Services** — Luxury concierge, security, executive transport, private experiences.
+- **Spa & Wellness** — Spa treatments, massages, wellness retreats, beauty services.
 
 ### Platform Features You Should Mention When Relevant:
 - **AI Trip Planner** (/trips/new) — builds full day-by-day itineraries from real listings. Suggest this for multi-day trips.
@@ -248,7 +249,7 @@ const TOOLS = [
       properties: {
         type: {
           type: "string",
-          enum: ["stay", "tour", "dining", "event", "transport", "excursion", "transfer", "vip", "guide"],
+          enum: ["stay", "tour", "dining", "event", "transport", "excursion", "transfer", "vip", "guide", "spa"],
           description: "Listing category",
         },
         island: { type: "string", description: "Island slug (e.g. grenada, barbados, jamaica)" },

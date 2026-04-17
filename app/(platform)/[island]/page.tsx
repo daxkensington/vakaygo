@@ -13,6 +13,7 @@ import {
   Music,
   Car,
   Users,
+  Sparkles,
   Star,
   MapPin,
   Loader2,
@@ -49,6 +50,7 @@ const typeConfig = [
   { type: "transport", label: "Transport", icon: Car, color: "bg-navy-600" },
   { type: "vip", label: "VIP", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Guides", icon: Users, color: "bg-gold-500" },
+  { type: "spa", label: "Spa & Wellness", icon: Sparkles, color: "bg-pink-500" },
 ];
 
 const heroImages: Record<string, string> = {

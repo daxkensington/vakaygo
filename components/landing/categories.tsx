@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight, Shield, Plane } from "lucide-react";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight, Shield, Plane, Sparkles } from "lucide-react";
 
 const categories = [
   {
@@ -80,6 +80,14 @@ const categories = [
     image:
       "/images/sections/guides.jpg",
   },
+  {
+    icon: Sparkles,
+    name: "Spa & Wellness",
+    slug: "spa",
+    count: 0,
+    description: "Spa treatments, massages & wellness retreats",
+    image: "/images/categories/spa.jpg",
+  },
 ];
 
 export function Categories() {
@@ -94,7 +102,7 @@ export function Categories() {
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Nine ways to explore
+            Ten ways to explore
           </h2>
           <p className="mt-4 text-navy-400 max-w-lg mx-auto text-lg">
             Everything a traveler needs. Everything a local business can offer.

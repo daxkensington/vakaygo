@@ -44,6 +44,7 @@ const typeIcons: Record<string, typeof Search> = {
   transfer: Car,
   guide: Users,
   vip: Users,
+  spa: Sparkles,
 };
 
 const typeBadgeColors: Record<string, string> = {
@@ -56,6 +57,7 @@ const typeBadgeColors: Record<string, string> = {
   transfer: "bg-navy-100 text-navy-600",
   guide: "bg-gold-100 text-gold-700",
   vip: "bg-gold-100 text-gold-700",
+  spa: "bg-pink-100 text-pink-700",
 };
 
 interface SearchAutocompleteProps {

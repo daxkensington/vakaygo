@@ -36,6 +36,7 @@ const typeConfig: Record<string, { color: string; bg: string }> = {
   transfer: { color: "text-navy-700", bg: "bg-navy-50" },
   vip: { color: "text-gold-800", bg: "bg-gold-50" },
   guide: { color: "text-gold-800", bg: "bg-gold-50" },
+  spa: { color: "text-pink-800", bg: "bg-pink-50" },
 };
 
 const typeLabels: Record<string, string> = {
@@ -48,6 +49,7 @@ const typeLabels: Record<string, string> = {
   transfer: "Transfer",
   vip: "VIP",
   guide: "Guide",
+  spa: "Spa & Wellness",
 };
 
 

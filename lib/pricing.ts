@@ -13,6 +13,7 @@ export const CATEGORY_RATES: Record<string, { travelerFee: number; operatorFee: 
   transport: { travelerFee: 0.08, operatorFee: 0.05, label: "13% total — saves 50%+ vs Uber" },
   vip:       { travelerFee: 0.10, operatorFee: 0.05, label: "15% total — premium positioning" },
   guide:     { travelerFee: 0.10, operatorFee: 0.05, label: "15% total — saves 5-10% vs ToursByLocals" },
+  spa:       { travelerFee: 0.10, operatorFee: 0.05, label: "15% total — competitive with spa marketplaces" },
 };
 
 // ─── DINING SUBSCRIPTION TIERS ──────────────────────────────────
@@ -204,4 +205,5 @@ export const COMPETITIVE_RATES = {
   transport: { competitor: "Uber", theirRate: "25-40%", ourRate: "13%", savings: "50-65%" },
   vip: { competitor: "No dominant player", theirRate: "varies", ourRate: "15%", savings: "Market-setting" },
   guides: { competitor: "ToursByLocals", theirRate: "20-25%", ourRate: "15%", savings: "25-40%" },
+  spa: { competitor: "Spa marketplaces", theirRate: "20-30%", ourRate: "15%", savings: "30-50%" },
 } as const;

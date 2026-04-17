@@ -122,6 +122,7 @@ const typeLabels: Record<string, string> = {
   transport: "Transport",
   vip: "VIP Service",
   guide: "Local Guide",
+  spa: "Spa & Wellness",
 };
 
 const schemaTypeMap: Record<string, string> = {
@@ -134,6 +135,7 @@ const schemaTypeMap: Record<string, string> = {
   transport: "TaxiService",
   vip: "LocalBusiness",
   guide: "TouristInformationCenter",
+  spa: "HealthAndBeautyBusiness",
 };
 
 export default function ListingDetailPage() {

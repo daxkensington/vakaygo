@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     transport: { bg: "#1E293B", text: "#fff" },
     vip: { bg: "#B8922F", text: "#fff" },
     guide: { bg: "#D4A843", text: "#fff" },
+    spa: { bg: "#EC4899", text: "#fff" },
   };
 
   const typeLabels: Record<string, string> = {
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
     transport: "Transport",
     vip: "VIP",
     guide: "Guide",
+    spa: "Spa & Wellness",
   };
 
   const badgeColor = typeBadgeColors[type] || null;

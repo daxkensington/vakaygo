@@ -70,6 +70,7 @@ const TYPE_OPTIONS = [
   { value: "excursion", label: "Excursion" },
   { value: "transfer", label: "Transfer" },
   { value: "vip", label: "VIP" },
+  { value: "spa", label: "Spa" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -90,6 +91,7 @@ const TYPE_COLORS: Record<string, string> = {
   excursion: "bg-emerald-100 text-emerald-700",
   transfer: "bg-sky-100 text-sky-700",
   vip: "bg-amber-100 text-amber-800",
+  spa: "bg-pink-100 text-pink-700",
 };
 
 /* ------------------------------------------------------------------ */

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
 Parse into filters:
 {
-  "type": one of "stay", "tour", "dining", "event", "transport", "excursion", "transfer", "vip", "guide" (only if clearly mentioned),
+  "type": one of "stay", "tour", "dining", "event", "transport", "excursion", "transfer", "vip", "guide", "spa" (only if clearly mentioned),
   "island": island slug like "grenada", "barbados", "jamaica", "st-lucia", "trinidad-and-tobago", "antigua", "dominica", "bahamas", "aruba", "curacao", "cayman-islands", "puerto-rico", "dominican-republic" (only if clearly mentioned),
   "q": keyword string for text search (extract the key subject/activity),
   "minPrice": number (only if a budget floor is mentioned),
@@ -115,6 +115,7 @@ Examples:
       "transfer",
       "vip",
       "guide",
+      "spa",
     ];
     if (filters.type && !validTypes.includes(filters.type as string)) {
       delete filters.type;

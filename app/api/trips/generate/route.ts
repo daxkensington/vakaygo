@@ -88,7 +88,7 @@ const CLAUDE_TOOLS = [
       properties: {
         type: {
           type: "string",
-          enum: ["stay", "tour", "dining", "event", "excursion", "transport", "transfer"],
+          enum: ["stay", "tour", "dining", "event", "excursion", "transport", "transfer", "spa"],
           description: "Type of listing to search for",
         },
         island: {

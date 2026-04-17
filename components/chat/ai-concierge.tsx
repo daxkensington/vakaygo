@@ -83,6 +83,7 @@ const TYPE_LABELS: Record<string, string> = {
   transfer: "Transfer",
   vip: "VIP",
   guide: "Guide",
+  spa: "Spa & Wellness",
 };
 
 // ─── Session Storage ────────────────────────────────────────────

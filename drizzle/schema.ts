@@ -32,6 +32,7 @@ export const listingTypeEnum = pgEnum("listing_type", [
   "excursion",
   "transfer",
   "vip",
+  "spa",
 ]);
 
 export const bookingStatusEnum = pgEnum("booking_status", [
