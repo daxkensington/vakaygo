@@ -13,6 +13,7 @@
 import { neon } from "@neondatabase/serverless";
 import * as fs from "fs";
 import * as path from "path";
+import sharp from "sharp";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
@@ -111,7 +112,14 @@ async function main() {
               const buffer = Buffer.from(await imgRes.arrayBuffer());
               const filename = `${slugify(listing.title)}-${listing.id.slice(0, 8)}.jpg`;
               const filepath = path.join(OUTPUT_DIR, filename);
-              fs.writeFileSync(filepath, buffer);
+              // Compress before writing — raw Grok images are 400-700 KB
+              // and tank LCP across the catalog.
+              const compressed = await sharp(buffer)
+                .rotate()
+                .resize({ width: 1600, withoutEnlargement: true })
+                .jpeg({ quality: 78, progressive: true, mozjpeg: true })
+                .toBuffer();
+              fs.writeFileSync(filepath, compressed);
 
               // Store permanent local path in DB
               const localUrl = `/images/generated/${filename}`;
