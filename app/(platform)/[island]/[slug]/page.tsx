@@ -418,7 +418,14 @@ export default function ListingDetailPage() {
                     url={typeof window !== "undefined" ? window.location.href : ""}
                   />
                   <button
+                    type="button"
                     onClick={() => listing && toggle(listing.id)}
+                    aria-label={
+                      listing && isSaved(listing.id)
+                        ? "Remove from saved"
+                        : "Save listing"
+                    }
+                    aria-pressed={listing ? isSaved(listing.id) : false}
                     className={`w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center transition-colors ${
                       listing && isSaved(listing.id)
                         ? "text-red-500"
@@ -478,7 +485,7 @@ export default function ListingDetailPage() {
               {/* Operator / Claim Banner */}
               {td.unclaimed ? (
                 <div className="mt-8 p-6 bg-gradient-to-r from-gold-500 to-gold-600 rounded-2xl text-white">
-                  <h3 className="font-bold text-lg">Is this your business?</h3>
+                  <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
                     This listing was created from public data. Claim it for free
                     to add photos, pricing, availability, and start receiving
@@ -486,7 +493,7 @@ export default function ListingDetailPage() {
                   </p>
                   <a
                     href="/auth/signup"
-                    className="inline-flex items-center gap-2 bg-white text-gold-600 px-5 py-2.5 rounded-xl font-semibold mt-4 hover:bg-cream-100 transition-colors text-sm"
+                    className="inline-flex items-center gap-2 bg-white text-gold-700 px-5 py-2.5 rounded-xl font-semibold mt-4 hover:bg-cream-100 transition-colors text-sm"
                   >
                     Claim This Business — Free
                   </a>
@@ -753,7 +760,7 @@ export default function ListingDetailPage() {
                           </div>
                         )}
                         <div className="p-4">
-                          <span className="text-xs font-semibold text-gold-600 uppercase tracking-wide">
+                          <span className="text-xs font-semibold text-gold-700 uppercase tracking-wide">
                             {guide.category}
                           </span>
                           <h3 className="font-semibold text-navy-700 mt-1 line-clamp-2 group-hover:text-gold-600 transition-colors">

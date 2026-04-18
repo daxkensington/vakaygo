@@ -144,7 +144,16 @@ export default async function IslandPage({ params }: Props) {
                   >
                     <div className="relative h-44 overflow-hidden">
                       {image ? (
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: `url(${image})` }} />
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={image}
+                          alt={listing.title}
+                          loading="lazy"
+                          decoding="async"
+                          width={800}
+                          height={600}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
                       ) : (
                         <div className="absolute inset-0 bg-cream-200" />
                       )}

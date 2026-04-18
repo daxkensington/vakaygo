@@ -376,9 +376,15 @@ export default async function BestHotelsPage({ params }: Props) {
                     >
                       <div className="relative h-48 overflow-hidden">
                         {imageUrl ? (
-                          <div
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                            style={{ backgroundImage: `url(${imageUrl})` }}
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={imageUrl}
+                            alt={listing.title}
+                            loading="lazy"
+                            decoding="async"
+                            width={800}
+                            height={600}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
                           <div className="absolute inset-0 bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">

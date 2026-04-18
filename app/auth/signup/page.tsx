@@ -82,7 +82,7 @@ function SignUpContent() {
   }
 
   return (
-    <div className="min-h-screen bg-cream-50 flex items-center justify-center px-6">
+    <main className="min-h-screen bg-cream-50 flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="text-3xl font-bold text-navy-700">
@@ -223,6 +223,8 @@ function SignUpContent() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-500"
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -261,6 +263,6 @@ function SignUpContent() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

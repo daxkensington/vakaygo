@@ -73,6 +73,7 @@ export function ListingCard(props: ListingCardProps) {
         <ImageWithFallback
           src={imageUrl}
           type={props.type}
+          alt={props.title}
           className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
         />
 

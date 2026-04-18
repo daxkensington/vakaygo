@@ -62,24 +62,32 @@ export function ImageFallback({
 }
 
 /**
- * A wrapper for background-image divs that detects load failures and swaps to
- * the gradient fallback. Uses an invisible <img> to detect errors since CSS
- * background-image has no onError event.
+ * Listing-card image with fallback. Uses a real <img> (not a CSS
+ * background-image) so the browser can lazy-load below-the-fold cards
+ * and so explicit width/height prevent layout shift. Falls back to the
+ * gradient placeholder on load failure or when src is null.
+ *
+ * Pass `priority` for above-the-fold images (hero, first card) so the
+ * browser fetches them eagerly with high priority.
  */
 export function ImageWithFallback({
   src,
   type,
+  alt,
   className = "",
   iconSize = 40,
   children,
   onClick,
+  priority = false,
 }: {
   src: string | null;
   type: string;
+  alt?: string;
   className?: string;
   iconSize?: number;
   children?: React.ReactNode;
   onClick?: () => void;
+  priority?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -92,18 +100,18 @@ export function ImageWithFallback({
   }
 
   return (
-    <div
-      className={`bg-cover bg-center ${className}`}
-      style={{ backgroundImage: `url(${src})` }}
-      onClick={onClick}
-    >
-      {/* Hidden image to detect load errors */}
+    <div className={`relative overflow-hidden ${className}`} onClick={onClick}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt=""
-        className="sr-only"
+        alt={alt || ""}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : "auto"}
+        width={800}
+        height={600}
         onError={() => setFailed(true)}
+        className="absolute inset-0 w-full h-full object-cover"
       />
       {children}
     </div>
