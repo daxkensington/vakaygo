@@ -48,7 +48,10 @@ export default function MapPage() {
   useEffect(() => {
     async function loadListings() {
       try {
-        const params = new URLSearchParams({ limit: "2000" });
+        // Initial paint loads 500. 2000 was a 1.5-2 MB JSON blob and
+        // ~1.3s TBT for no visible benefit (most pins overlap at default
+        // zoom). Refilter via the island chips to drill in further.
+        const params = new URLSearchParams({ limit: "500" });
         if (activeIsland) params.set("island", activeIsland);
         const res = await fetch(`/api/listings?${params}`);
         if (res.ok) {

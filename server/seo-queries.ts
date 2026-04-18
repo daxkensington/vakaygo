@@ -55,6 +55,31 @@ export async function getActiveIslands(): Promise<IslandSeoData[]> {
     .orderBy(islands.sortOrder);
 }
 
+/** Active islands + count of active listings each, sorted by sortOrder. */
+export async function getActiveIslandsWithCounts(): Promise<
+  Array<IslandSeoData & { listingCount: number }>
+> {
+  const db = createDb();
+  const rows = await db
+    .select({
+      id: islands.id,
+      slug: islands.slug,
+      name: islands.name,
+      country: islands.country,
+      description: islands.description,
+      heroImage: islands.heroImage,
+      region: islands.region,
+      sortOrder: islands.sortOrder,
+      listingCount: sql<number>`COUNT(CASE WHEN ${listings.status} = 'active' THEN 1 END)::int`,
+    })
+    .from(islands)
+    .leftJoin(listings, eq(listings.islandId, islands.id))
+    .where(eq(islands.isActive, true))
+    .groupBy(islands.id)
+    .orderBy(islands.sortOrder);
+  return rows.map(({ sortOrder: _s, ...rest }) => rest);
+}
+
 export type ListingSeoMeta = {
   id: string;
   title: string;
