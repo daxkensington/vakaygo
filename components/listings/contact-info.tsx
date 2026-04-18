@@ -137,7 +137,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
           This listing was created from public data. If this is your business,{" "}
           <a
             href="/auth/signup"
-            className="text-gold-600 font-semibold hover:underline"
+            className="text-gold-700 font-semibold hover:underline"
           >
             claim it for free
           </a>{" "}

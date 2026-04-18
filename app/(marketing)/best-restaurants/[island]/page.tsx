@@ -305,7 +305,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
               </h2>
               <Link
                 href={`/explore?island=${slug}&type=dining`}
-                className="text-gold-600 font-semibold text-sm flex items-center gap-1 hover:text-gold-600 transition-colors"
+                className="text-gold-700 font-semibold text-sm flex items-center gap-1 hover:text-gold-600 transition-colors"
               >
                 View all {diningCount} <ArrowRight size={14} />
               </Link>

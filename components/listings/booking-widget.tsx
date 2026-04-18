@@ -756,7 +756,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
             </div>
             <a
               href="/auth/signin"
-              className="block text-center text-sm text-gold-600 font-semibold hover:text-gold-600 mt-3"
+              className="block text-center text-sm text-gold-700 font-semibold hover:text-gold-600 mt-3"
             >
               Sign in to your account
             </a>

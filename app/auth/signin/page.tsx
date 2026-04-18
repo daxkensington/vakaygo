@@ -169,7 +169,7 @@ function SignInContent() {
 
         <p className="text-center text-navy-400 text-sm mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-gold-600 font-semibold hover:text-gold-600">
+          <Link href="/auth/signup" className="text-gold-700 font-semibold hover:text-gold-600">
             Sign up
           </Link>
         </p>

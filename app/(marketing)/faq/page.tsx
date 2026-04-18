@@ -255,7 +255,7 @@ export default function FaqPage() {
                   <p className="text-navy-400 mb-2">No matching questions found.</p>
                   <p className="text-navy-300 text-sm">
                     Try a different search term or{" "}
-                    <Link href="/contact" className="text-gold-600 font-semibold hover:text-gold-700">
+                    <Link href="/contact" className="text-gold-700 font-semibold hover:text-gold-700">
                       contact us directly
                     </Link>
                     .

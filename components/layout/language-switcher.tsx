@@ -52,7 +52,7 @@ export function LanguageSwitcher() {
                 onClick={() => switchLocale(locale)}
                 className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-cream-50 transition-colors ${
                   current === locale
-                    ? "text-gold-600 font-semibold bg-gold-50"
+                    ? "text-gold-700 font-semibold bg-gold-50"
                     : "text-navy-600"
                 }`}
               >

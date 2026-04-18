@@ -102,7 +102,7 @@ export default function ContactPage() {
                           setSuccess(false);
                           setForm({ name: "", email: "", category: "", subject: "", message: "" });
                         }}
-                        className="text-gold-600 font-semibold hover:text-gold-700 transition-colors"
+                        className="text-gold-700 font-semibold hover:text-gold-700 transition-colors"
                       >
                         Send another message
                       </button>
@@ -236,7 +236,7 @@ export default function ContactPage() {
                   </p>
                   <a
                     href="mailto:hello@vakaygo.com"
-                    className="text-gold-600 font-semibold text-sm hover:text-gold-700 transition-colors"
+                    className="text-gold-700 font-semibold text-sm hover:text-gold-700 transition-colors"
                   >
                     hello@vakaygo.com
                   </a>

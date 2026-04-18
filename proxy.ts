@@ -41,7 +41,13 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://www.googletagmanager.com https://www.google-analytics.com https://*.sentry.io",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.tile.openstreetmap.org https://*.vercel-storage.com https://*.mapbox.com https://images.unsplash.com https://imgen.x.ai https://www.google-analytics.com https://www.googletagmanager.com",
+    // img-src is intentionally open to https: — listing photos come from
+    // 7k+ different operator websites (Cloudinary, WordPress, Squarespace,
+    // etc.) and no manageable allowlist covers them all. Routing every
+    // image through our proxy was a measured LCP regression. Risk is low
+    // since browsers don't execute image content; CSP still blocks
+    // active content (script/connect/frame) tightly.
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "media-src 'self' blob:",
     "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com https://*.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://www.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net",

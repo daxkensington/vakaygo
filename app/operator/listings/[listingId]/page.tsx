@@ -225,7 +225,7 @@ export default function EditListingPage() {
     return (
       <div className="text-center py-20">
         <p className="text-navy-400">Listing not found</p>
-        <Link href="/operator/listings" className="text-gold-600 font-semibold mt-4 inline-block">
+        <Link href="/operator/listings" className="text-gold-700 font-semibold mt-4 inline-block">
           Back to listings
         </Link>
       </div>

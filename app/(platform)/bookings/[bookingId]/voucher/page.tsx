@@ -145,7 +145,7 @@ export default function VoucherPage({
           <h1 className="text-xl font-bold text-navy-700">{error || "Voucher not found"}</h1>
           <Link
             href="/bookings"
-            className="mt-6 flex items-center gap-2 text-gold-500 hover:text-gold-600 font-semibold"
+            className="mt-6 flex items-center gap-2 text-gold-500 hover:text-gold-700 font-semibold"
           >
             <ArrowLeft size={16} />
             Back to Bookings

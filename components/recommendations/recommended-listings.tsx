@@ -79,7 +79,7 @@ export function RecommendedListings() {
             </p>
             <Link
               href="/explore"
-              className="inline-flex items-center gap-2 mt-4 text-gold-600 font-semibold hover:text-gold-700 transition-colors"
+              className="inline-flex items-center gap-2 mt-4 text-gold-700 font-semibold hover:text-gold-700 transition-colors"
             >
               Start Exploring <ArrowRight size={16} />
             </Link>

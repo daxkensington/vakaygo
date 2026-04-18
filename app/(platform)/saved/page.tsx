@@ -300,7 +300,7 @@ export default function SavedPage() {
               </p>
               <button
                 onClick={() => setActiveCollection(null)}
-                className="text-gold-600 font-semibold hover:text-gold-600 transition-colors"
+                className="text-gold-700 font-semibold hover:text-gold-600 transition-colors"
               >
                 View All Saved
               </button>
@@ -354,7 +354,7 @@ export default function SavedPage() {
                               onClick={() => handleMoveListing(listing.id, null)}
                               className={`w-full text-left px-3 py-2 text-xs hover:bg-cream-50 transition-colors ${
                                 !listing.collectionId
-                                  ? "text-gold-600 font-semibold"
+                                  ? "text-gold-700 font-semibold"
                                   : "text-navy-600"
                               }`}
                             >
@@ -374,7 +374,7 @@ export default function SavedPage() {
                                 }
                                 className={`w-full text-left px-3 py-2 text-xs hover:bg-cream-50 transition-colors ${
                                   listing.collectionId === col.id
-                                    ? "text-gold-600 font-semibold"
+                                    ? "text-gold-700 font-semibold"
                                     : "text-navy-600"
                                 }`}
                               >
