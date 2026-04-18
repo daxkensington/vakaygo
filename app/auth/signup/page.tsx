@@ -256,7 +256,7 @@ function SignUpContent() {
 
         <p className="text-center text-navy-400 text-sm mt-6">
           Already have an account?{" "}
-          <Link href="/auth/signin" className="text-gold-500 font-semibold hover:text-gold-600">
+          <Link href="/auth/signin" className="text-gold-600 font-semibold hover:text-gold-600">
             Sign in
           </Link>
         </p>

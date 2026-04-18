@@ -17,8 +17,11 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("session")?.value;
+    // Anonymous visitors have no saved listings — return empty instead of
+    // 401 so the SavedProvider on every page doesn't fire a console error
+    // for the bulk of SEO traffic.
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ saved: [] });
     }
 
     const { payload } = await jwtVerify(token, SECRET);

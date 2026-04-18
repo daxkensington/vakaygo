@@ -180,7 +180,7 @@ export default function IslandPage() {
               <h2 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
                 Top experiences in {data.name}
               </h2>
-              <Link href={`/explore?island=${islandSlug}`} className="text-gold-500 font-semibold text-sm flex items-center gap-1 hover:text-gold-600">
+              <Link href={`/explore?island=${islandSlug}`} className="text-gold-600 font-semibold text-sm flex items-center gap-1 hover:text-gold-600">
                 View all <ArrowRight size={14} />
               </Link>
             </div>

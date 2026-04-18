@@ -341,7 +341,7 @@ export default async function BestHotelsPage({ params }: Props) {
               </h2>
               <Link
                 href={`/explore?island=${slug}&type=stay`}
-                className="text-gold-500 font-semibold text-sm flex items-center gap-1 hover:text-gold-600 transition-colors"
+                className="text-gold-600 font-semibold text-sm flex items-center gap-1 hover:text-gold-600 transition-colors"
               >
                 View all {stayCount} <ArrowRight size={14} />
               </Link>

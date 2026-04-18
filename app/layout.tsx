@@ -149,7 +149,7 @@ export default async function RootLayout({
             }),
           }}
         />
-        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner />{children}</CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner /><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
         <Analytics />

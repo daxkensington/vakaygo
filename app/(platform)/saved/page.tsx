@@ -300,7 +300,7 @@ export default function SavedPage() {
               </p>
               <button
                 onClick={() => setActiveCollection(null)}
-                className="text-gold-500 font-semibold hover:text-gold-600 transition-colors"
+                className="text-gold-600 font-semibold hover:text-gold-600 transition-colors"
               >
                 View All Saved
               </button>
