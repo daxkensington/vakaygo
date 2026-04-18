@@ -556,7 +556,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link
                 href={`/explore?island=${slug}&type=dining`}
-                className="bg-gold-500 hover:bg-gold-600 text-white px-8 py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                className="bg-gold-700 hover:bg-gold-800 text-white px-8 py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 Browse Restaurants <ArrowRight size={16} />
               </Link>

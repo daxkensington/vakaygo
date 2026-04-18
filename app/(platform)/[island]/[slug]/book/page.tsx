@@ -176,7 +176,7 @@ export default function BookingPage() {
               A confirmation email has been sent to {user.email}. The operator will be notified of your booking.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-              <Link href="/bookings" className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+              <Link href="/bookings" className="bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
                 View My Bookings
               </Link>
               <Link href="/explore" className="bg-white text-navy-600 px-6 py-3 rounded-xl font-semibold shadow-sm hover:bg-cream-50 transition-colors">

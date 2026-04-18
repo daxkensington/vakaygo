@@ -979,7 +979,7 @@ export default function ExplorePage() {
                     <p className="text-navy-500 font-semibold">No listings found</p>
                     <button
                       onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setFreeCancellation(false); setCuisineType(""); setOpenNow(false); }}
-                      className="mt-4 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
+                      className="mt-4 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
                     >
                       Clear Filters
                     </button>
@@ -1056,7 +1056,7 @@ export default function ExplorePage() {
                 </p>
                 <button
                   onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setFreeCancellation(false); setCuisineType(""); setOpenNow(false); }}
-                  className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
+                  className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   Clear All Filters
                 </button>
@@ -1256,7 +1256,7 @@ export default function ExplorePage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(false)}
-                className="flex-1 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
+                className="flex-1 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
               >
                 Show {totalCount} result{totalCount !== 1 ? "s" : ""}
               </button>

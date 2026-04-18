@@ -114,7 +114,7 @@ export default function TeamPage() {
         </div>
         <button
           onClick={() => setShowInvite(!showInvite)}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
         >
           <UserPlus size={16} />
           Invite Member
@@ -173,7 +173,7 @@ export default function TeamPage() {
             <button
               type="submit"
               disabled={inviting}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
             >
               {inviting ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
               Send Invite

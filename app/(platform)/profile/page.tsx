@@ -87,7 +87,7 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
             Sign in to view your profile
           </h1>
-          <Link href="/auth/signin" className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+          <Link href="/auth/signin" className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
             Sign In
           </Link>
         </div>

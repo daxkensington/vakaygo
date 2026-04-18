@@ -215,7 +215,7 @@ function OperatorWelcome({
         <div className="flex flex-wrap gap-3">
           <Link
             href="/operator"
-            className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white font-semibold px-5 py-3 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-5 py-3 rounded-xl transition-colors"
           >
             <LayoutDashboard size={16} />
             Dashboard
@@ -268,7 +268,7 @@ function TravelerWelcome({ name }: { name: string }) {
         <div className="flex flex-wrap gap-3 mt-6">
           <Link
             href="/explore"
-            className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white font-semibold px-5 py-3 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-5 py-3 rounded-xl transition-colors"
           >
             Explore <ArrowRight size={16} />
           </Link>

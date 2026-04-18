@@ -173,7 +173,7 @@ function BookingsContent() {
             Sign in to view your bookings
           </h1>
           <p className="text-navy-400 mt-2">Keep track of all your trips in one place.</p>
-          <Link href="/auth/signin" className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+          <Link href="/auth/signin" className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
             Sign In
           </Link>
         </div>
@@ -254,7 +254,7 @@ function BookingsContent() {
               </p>
               <Link
                 href="/explore"
-                className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
+                className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
               >
                 Start Exploring
               </Link>

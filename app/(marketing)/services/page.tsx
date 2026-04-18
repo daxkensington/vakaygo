@@ -201,7 +201,7 @@ export default function ServicesPage() {
                 </div>
                 <Link
                   href="/explore?type=vip"
-                  className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-8"
+                  className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-8"
                 >
                   Explore VIP Services <ArrowRight size={16} />
                 </Link>

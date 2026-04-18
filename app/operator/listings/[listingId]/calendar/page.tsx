@@ -836,7 +836,7 @@ export default function OperatorCalendarPage() {
                         <button
                           onClick={handleIcalImport}
                           disabled={icalSyncing || !icalImportInput.trim()}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gold-500 hover:bg-gold-600 text-white transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-gold-700 hover:bg-gold-800 text-white transition-colors disabled:opacity-50"
                         >
                           {icalSyncing ? (
                             <Loader2 size={12} className="animate-spin" />
@@ -1069,7 +1069,7 @@ export default function OperatorCalendarPage() {
                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
                   saveSuccess
                     ? "bg-teal-500 text-white"
-                    : "bg-gold-500 hover:bg-gold-600 text-white"
+                    : "bg-gold-700 hover:bg-gold-800 text-white"
                 }`}
               >
                 {saving ? (

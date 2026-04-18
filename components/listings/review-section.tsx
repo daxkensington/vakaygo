@@ -234,7 +234,7 @@ export function ReviewSection({
         {user && (
           <button
             onClick={() => setShowReviewModal(true)}
-            className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
           >
             <PenLine size={14} />
             Write a Review

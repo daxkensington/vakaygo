@@ -197,7 +197,7 @@ export default function ProtectionPage() {
             </p>
             <Link
               href="/explore"
-              className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-8 py-4 rounded-xl font-semibold transition-colors text-lg"
+              className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-8 py-4 rounded-xl font-semibold transition-colors text-lg"
             >
               Start Exploring
               <ArrowRight size={20} />

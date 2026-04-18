@@ -198,7 +198,7 @@ export default function PricingRulesPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
         >
           <Plus size={16} />
           Add Rule
@@ -343,7 +343,7 @@ export default function PricingRulesPage() {
               <button
                 type="submit"
                 disabled={formSaving}
-                className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+                className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
               >
                 {formSaving ? <Loader2 size={16} className="animate-spin" /> : null}
                 {editingId ? "Update Rule" : "Create Rule"}

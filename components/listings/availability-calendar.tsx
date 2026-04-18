@@ -472,7 +472,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
               <button
                 onClick={savePopover}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 bg-gold-500 hover:bg-gold-600 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-gold-700 hover:bg-gold-800 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 {saving ? (
                   <Loader2 size={14} className="animate-spin" />

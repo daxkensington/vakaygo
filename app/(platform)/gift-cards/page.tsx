@@ -176,7 +176,7 @@ export default function GiftCardsPage() {
                       setSelectedAmount(50);
                       setCustomAmount("");
                     }}
-                    className="mt-6 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
+                    className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors"
                   >
                     Send Another
                   </button>

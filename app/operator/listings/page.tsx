@@ -81,7 +81,7 @@ export default function ListingsPage() {
         </div>
         <Link
           href="/operator/listings/new"
-          className="bg-gold-500 hover:bg-gold-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2"
+          className="bg-gold-700 hover:bg-gold-800 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2"
         >
           <Plus size={18} />
           New Listing
@@ -120,7 +120,7 @@ export default function ListingsPage() {
           {!searchQuery && (
             <Link
               href="/operator/listings/new"
-              className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
+              className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
             >
               <Plus size={18} />
               Create Your First Listing

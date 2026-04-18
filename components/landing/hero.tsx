@@ -329,7 +329,7 @@ export function Hero() {
               <button
                 type="submit"
                 aria-label="Search and explore listings"
-                className="bg-gold-500 hover:bg-gold-600 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]"
+                className="bg-gold-700 hover:bg-gold-800 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]"
               >
                 <Search size={18} />
                 <span className="hidden md:inline">Explore</span>

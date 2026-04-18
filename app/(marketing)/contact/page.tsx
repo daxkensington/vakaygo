@@ -204,7 +204,7 @@ export default function ContactPage() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full bg-gold-500 hover:bg-gold-600 text-white font-semibold py-3.5 rounded-xl transition-all shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="w-full bg-gold-700 hover:bg-gold-800 text-white font-semibold py-3.5 rounded-xl transition-all shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                           {loading ? (
                             <>

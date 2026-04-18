@@ -69,7 +69,7 @@ function VerifyEmailContent() {
                 <button
                   onClick={handleResend}
                   disabled={sending || sent}
-                  className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-6 py-3 rounded-xl transition-colors disabled:opacity-50"
                 >
                   {sending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -117,7 +117,7 @@ function VerifyEmailContent() {
               <button
                 onClick={handleResend}
                 disabled={sending || sent}
-                className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-6 py-3 rounded-xl transition-colors disabled:opacity-50"
               >
                 {sending ? (
                   <Loader2 size={16} className="animate-spin" />

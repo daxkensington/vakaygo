@@ -363,7 +363,7 @@ export default function SecurityPage() {
                   <button
                     onClick={handleEnableTotp}
                     disabled={totpSaving || totpCode.length < 6}
-                    className="px-5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
+                    className="px-5 py-3 rounded-xl bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
                   >
                     {totpSaving ? <Loader2 size={16} className="animate-spin" /> : null}
                     Enable 2FA
@@ -455,7 +455,7 @@ export default function SecurityPage() {
                     <button
                       onClick={handleVerifyPhone}
                       disabled={phoneSaving || phoneCode.length < 6}
-                      className="px-5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
+                      className="px-5 py-3 rounded-xl bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
                     >
                       {phoneSaving && phoneSent ? <Loader2 size={16} className="animate-spin" /> : null}
                       Verify
@@ -560,7 +560,7 @@ export default function SecurityPage() {
                 <button
                   onClick={handleSubmitId}
                   disabled={idSaving || !documentFile || !selfieFile}
-                  className="px-5 py-3 rounded-xl bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
+                  className="px-5 py-3 rounded-xl bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
                 >
                   {idSaving ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                   Submit for Verification

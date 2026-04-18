@@ -214,7 +214,7 @@ export default function AdminPromosPage() {
         </div>
         <button
           onClick={handleNew}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+          className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
         >
           <Plus size={16} />
           New Promo Code

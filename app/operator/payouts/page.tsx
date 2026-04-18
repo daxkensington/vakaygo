@@ -192,7 +192,7 @@ export default function OperatorPayoutsPage() {
               Add a bank account or payment method to receive payouts
             </p>
           </div>
-          <button className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+          <button className="bg-gold-700 hover:bg-gold-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
             Add Method
           </button>
         </div>
