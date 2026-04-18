@@ -27,6 +27,27 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.vercel-storage.com" },
     ],
   },
+  // SEO-friendly URLs map to proper dynamic routes. Next.js doesn't treat
+  // a folder like `things-to-do-in-[island]` as dynamic (the bracket has
+  // to start the segment), so we keep the canonical URL on the front and
+  // rewrite to a sibling folder that *is* a real dynamic route.
+  async rewrites() {
+    return [
+      { source: "/things-to-do-in-:island", destination: "/things-to-do-in/:island" },
+      { source: "/best-restaurants-:island", destination: "/best-restaurants/:island" },
+      { source: "/best-hotels-:island", destination: "/best-hotels/:island" },
+    ];
+  },
+  // Redirects fire before rewrites — anyone hitting the internal path
+  // gets bounced to the canonical dashed URL so search engines never see
+  // two URLs for the same page.
+  async redirects() {
+    return [
+      { source: "/things-to-do-in/:island", destination: "/things-to-do-in-:island", permanent: true },
+      { source: "/best-restaurants/:island", destination: "/best-restaurants-:island", permanent: true },
+      { source: "/best-hotels/:island", destination: "/best-hotels-:island", permanent: true },
+    ];
+  },
 };
 
 export default withSentryConfig(

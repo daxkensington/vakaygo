@@ -206,6 +206,7 @@ export async function getIslandsWithDining(): Promise<IslandSeoData[]> {
       description: islands.description,
       heroImage: islands.heroImage,
       region: islands.region,
+      sortOrder: islands.sortOrder,
     })
     .from(islands)
     .innerJoin(listings, eq(listings.islandId, islands.id))
@@ -217,7 +218,7 @@ export async function getIslandsWithDining(): Promise<IslandSeoData[]> {
       )
     )
     .orderBy(islands.sortOrder);
-  return results;
+  return results.map(({ sortOrder: _s, ...rest }) => rest);
 }
 
 /** Get islands that have stay listings */
@@ -232,6 +233,7 @@ export async function getIslandsWithStays(): Promise<IslandSeoData[]> {
       description: islands.description,
       heroImage: islands.heroImage,
       region: islands.region,
+      sortOrder: islands.sortOrder,
     })
     .from(islands)
     .innerJoin(listings, eq(listings.islandId, islands.id))
@@ -243,5 +245,5 @@ export async function getIslandsWithStays(): Promise<IslandSeoData[]> {
       )
     )
     .orderBy(islands.sortOrder);
-  return results;
+  return results.map(({ sortOrder: _s, ...rest }) => rest);
 }
