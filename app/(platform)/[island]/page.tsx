@@ -1,8 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
@@ -16,29 +13,15 @@ import {
   Sparkles,
   Star,
   MapPin,
-  Loader2,
   ArrowRight,
 } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
-
-type IslandData = {
-  name: string;
-  slug: string;
-  description: string | null;
-  counts: Record<string, number>;
-  featured: {
-    id: string;
-    title: string;
-    slug: string;
-    type: string;
-    priceAmount: string | null;
-    priceUnit: string | null;
-    avgRating: string | null;
-    reviewCount: number | null;
-    parish: string | null;
-    image: string | null;
-  }[];
-};
+import {
+  getIslandBySlug,
+  getIslandStats,
+  getTopListingsForIsland,
+} from "@/server/seo-queries";
+import { getImageUrl } from "@/lib/image-utils";
 
 const typeConfig = [
   { type: "stay", label: "Stays", icon: Home, color: "bg-gold-500" },
@@ -67,54 +50,20 @@ const heroImages: Record<string, string> = {
 };
 const defaultHero = "/images/hero/caribbean-hero.jpg";
 
-export default function IslandPage() {
-  const params = useParams();
-  const islandSlug = params.island as string;
-  const [data, setData] = useState<IslandData | null>(null);
-  const [loading, setLoading] = useState(true);
+type Props = { params: Promise<{ island: string }> };
 
-  useEffect(() => {
-    async function fetchIsland() {
-      try {
-        const res = await fetch(`/api/islands/${islandSlug}`);
-        if (!res.ok) throw new Error("Not found");
-        const json = await res.json();
-        setData(json);
-      } catch {
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-    if (islandSlug) fetchIsland();
-  }, [islandSlug]);
+export default async function IslandPage({ params }: Props) {
+  const { island: islandSlug } = await params;
+  // Layout already validated this slug; the cache() wrapper makes this
+  // a no-op DB-wise.
+  const island = await getIslandBySlug(islandSlug);
+  if (!island) notFound();
 
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={40} className="animate-spin text-gold-500" />
-        </div>
-      </>
-    );
-  }
+  const [stats, featured] = await Promise.all([
+    getIslandStats(island.id),
+    getTopListingsForIsland(island.id, 8),
+  ]);
 
-  if (!data) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6">
-          <h1 className="text-2xl font-bold text-navy-700">Island not found</h1>
-          <Link href="/explore" className="mt-6 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold">
-            Back to Explore
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  const totalListings = Object.values(data.counts).reduce((a, b) => a + b, 0);
   const heroImg = heroImages[islandSlug] || defaultHero;
 
   return (
@@ -127,7 +76,7 @@ export default function IslandPage() {
             items={[
               { label: "Home", href: "/" },
               { label: "Islands", href: "/explore" },
-              { label: `${getIslandFlag(islandSlug)} ${data.name}` },
+              { label: `${getIslandFlag(islandSlug)} ${island.name}` },
             ]}
           />
         </div>
@@ -138,15 +87,15 @@ export default function IslandPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/30 to-transparent" />
           <div className="relative z-10 mx-auto max-w-7xl px-6 pb-12 w-full">
             <h1 className="text-4xl md:text-6xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-              {getIslandFlag(islandSlug)} {data.name}
+              {getIslandFlag(islandSlug)} {island.name}
             </h1>
-            <p className="text-white/70 mt-2 max-w-2xl">{data.description}</p>
+            <p className="text-white/70 mt-2 max-w-2xl">{island.description}</p>
             <div className="flex items-center gap-6 mt-4 text-sm text-white/60">
               <span className="flex items-center gap-1">
                 <MapPin size={14} />
                 Caribbean
               </span>
-              <span>{totalListings} listings</span>
+              <span>{stats.totalListings} listings</span>
             </div>
           </div>
         </section>
@@ -155,7 +104,7 @@ export default function IslandPage() {
         <div className="mx-auto max-w-7xl px-6 -mt-8 relative z-10">
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {typeConfig.map((tc) => {
-              const count = data.counts[tc.type] || 0;
+              const count = stats.typeCounts[tc.type] || 0;
               return (
                 <Link
                   key={tc.type}
@@ -174,52 +123,55 @@ export default function IslandPage() {
         </div>
 
         {/* Featured Listings */}
-        {data.featured.length > 0 && (
+        {featured.length > 0 && (
           <div className="mx-auto max-w-7xl px-6 py-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
-                Top experiences in {data.name}
+                Top experiences in {island.name}
               </h2>
               <Link href={`/explore?island=${islandSlug}`} className="text-gold-700 font-semibold text-sm flex items-center gap-1 hover:text-gold-600">
                 View all <ArrowRight size={14} />
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {data.featured.map((listing) => (
-                <Link
-                  key={listing.id}
-                  href={`/${islandSlug}/${listing.slug}`}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
-                >
-                  <div className="relative h-44 overflow-hidden">
-                    {listing.image ? (
-                      <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: `url(${listing.image})` }} />
-                    ) : (
-                      <div className="absolute inset-0 bg-cream-200" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <p className="text-xs text-navy-400">{listing.parish || data.name}</p>
-                    <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
-                      {listing.title}
-                    </h3>
-                    <div className="flex items-center justify-between mt-2">
-                      {listing.priceAmount && (
-                        <span className="font-bold text-navy-700">
-                          ${parseFloat(listing.priceAmount).toFixed(0)}
-                          <span className="text-navy-400 text-sm font-normal"> / {listing.priceUnit}</span>
-                        </span>
-                      )}
-                      {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Star size={12} className="text-gold-500 fill-gold-500" />
-                          <span className="text-xs font-semibold">{parseFloat(listing.avgRating).toFixed(1)}</span>
-                        </div>
+              {featured.map((listing) => {
+                const image = getImageUrl(listing.image);
+                return (
+                  <Link
+                    key={listing.id}
+                    href={`/${islandSlug}/${listing.slug}`}
+                    className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <div className="relative h-44 overflow-hidden">
+                      {image ? (
+                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style={{ backgroundImage: `url(${image})` }} />
+                      ) : (
+                        <div className="absolute inset-0 bg-cream-200" />
                       )}
                     </div>
-                  </div>
-                </Link>
-              ))}
+                    <div className="p-4">
+                      <p className="text-xs text-navy-400">{listing.parish || island.name}</p>
+                      <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
+                        {listing.title}
+                      </h3>
+                      <div className="flex items-center justify-between mt-2">
+                        {listing.priceAmount && (
+                          <span className="font-bold text-navy-700">
+                            ${parseFloat(listing.priceAmount).toFixed(0)}
+                            <span className="text-navy-400 text-sm font-normal"> / {listing.priceUnit}</span>
+                          </span>
+                        )}
+                        {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Star size={12} className="text-gold-500 fill-gold-500" />
+                            <span className="text-xs font-semibold">{parseFloat(listing.avgRating).toFixed(1)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
