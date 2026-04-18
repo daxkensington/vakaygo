@@ -3,16 +3,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 export const runtime = "edge";
 
-const ALLOWED_HOSTS = [
-  "googleapis.com",
-  "images.unsplash.com",
-  "imgen.x.ai",
-  "scontent.xx.fbcdn.net",
-  "external.xx.fbcdn.net",
-  "lookaside.fbsbx.com",
-  "s3-media",
-  "yelpcdn.com",
-];
+// Cap upstream response so a malicious link can't tie up the proxy.
+const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+
+// Reject SSRF targets even if a caller hand-crafts the URL.
+const BLOCKED_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "::1",
+]);
+
+function isPrivateIPv4(host: string): boolean {
+  const m = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) return false;
+  const a = parseInt(m[1], 10);
+  const b = parseInt(m[2], 10);
+  if (a === 10) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 169 && b === 254) return true;
+  return false;
+}
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
@@ -20,20 +32,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing url param" }, { status: 400 });
   }
 
-  let parsedHost: string;
+  let parsed: URL;
   try {
-    parsedHost = new URL(url).hostname;
+    parsed = new URL(url);
   } catch {
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 
-  if (!ALLOWED_HOSTS.some((h) => parsedHost.endsWith(h))) {
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return NextResponse.json({ error: "Unsupported protocol" }, { status: 400 });
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (BLOCKED_HOSTS.has(host) || isPrivateIPv4(host)) {
     return NextResponse.json({ error: "Host not allowed" }, { status: 400 });
   }
 
   // For Google Places, append the API key
   let fullUrl = url;
-  if (url.includes("googleapis.com")) {
+  if (host.endsWith("googleapis.com")) {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 });
@@ -54,13 +71,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const imageBuffer = await imageRes.arrayBuffer();
     const contentType = imageRes.headers.get("Content-Type") || "image/jpeg";
+    if (!contentType.startsWith("image/")) {
+      return NextResponse.json({ error: "Not an image" }, { status: 415 });
+    }
+
+    const declaredLen = parseInt(imageRes.headers.get("Content-Length") || "0", 10);
+    if (declaredLen && declaredLen > MAX_BYTES) {
+      return NextResponse.json({ error: "Image too large" }, { status: 413 });
+    }
+
+    const imageBuffer = await imageRes.arrayBuffer();
+    if (imageBuffer.byteLength > MAX_BYTES) {
+      return NextResponse.json({ error: "Image too large" }, { status: 413 });
+    }
 
     return new NextResponse(imageBuffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400, s-maxage=604800",
+        "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
         "Access-Control-Allow-Origin": "*",
       },
     });
