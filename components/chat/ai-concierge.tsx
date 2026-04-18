@@ -314,7 +314,7 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
             <SparkleIcon className="w-8 h-8 text-gold-400" />
           </div>
         )}
-        <span className="absolute top-2 left-2 bg-gold-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+        <span className="absolute top-2 left-2 bg-gold-700 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
           {TYPE_LABELS[listing.type] || listing.type}
         </span>
       </div>
@@ -923,7 +923,7 @@ export function AIConcierge({
                       ? "bg-red-500 text-white scale-110 animate-pulse shadow-red-500/40"
                       : isLoading || isSpeaking
                       ? "bg-navy-200 text-navy-400 cursor-not-allowed"
-                      : "bg-gold-500 text-white hover:bg-gold-600 hover:scale-105 shadow-gold-500/30"
+                      : "bg-gold-700 text-white hover:bg-gold-800 hover:scale-105 shadow-gold-500/30"
                   }`}
                 >
                   <MicIcon className="w-7 h-7" />
@@ -984,7 +984,7 @@ export function AIConcierge({
                       <div
                         className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           msg.role === "user"
-                            ? "bg-gold-500 text-white rounded-br-sm"
+                            ? "bg-gold-700 text-white rounded-br-sm"
                             : "bg-cream-50 text-navy-700 rounded-bl-sm"
                         }`}
                       >
@@ -1072,7 +1072,7 @@ export function AIConcierge({
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="p-2.5 rounded-xl bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-2.5 rounded-xl bg-gold-700 text-white hover:bg-gold-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   aria-label="Send message"
                 >
                   <SendIcon className="w-4 h-4" />

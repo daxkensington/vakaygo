@@ -199,7 +199,7 @@ export default function GiftCardsPage() {
                           }}
                           className={`py-3 rounded-xl text-sm font-bold transition-all ${
                             selectedAmount === amount
-                              ? "bg-gold-500 text-white shadow-[0_4px_20px_rgba(200,145,46,0.3)]"
+                              ? "bg-gold-700 text-white shadow-[0_4px_20px_rgba(200,145,46,0.3)]"
                               : "bg-cream-50 text-navy-600 hover:bg-cream-100"
                           }`}
                         >
@@ -292,7 +292,7 @@ export default function GiftCardsPage() {
                   <button
                     type="submit"
                     disabled={sendLoading || finalAmount < 5}
-                    className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+                    className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
                   >
                     {sendLoading ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -330,7 +330,7 @@ export default function GiftCardsPage() {
                     <button
                       onClick={handleCheckBalance}
                       disabled={redeemLoading || !redeemCode.trim()}
-                      className="px-6 py-3 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors flex items-center gap-2"
+                      className="px-6 py-3 bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors flex items-center gap-2"
                     >
                       {redeemLoading ? (
                         <Loader2 size={16} className="animate-spin" />

@@ -122,7 +122,7 @@ export default function AdminBlogPage() {
         </div>
         <Link
           href="/admin/blog/new"
-          className="inline-flex items-center gap-2 bg-gold-500 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+          className="inline-flex items-center gap-2 bg-gold-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
         >
           <Plus className="h-4 w-4" />
           New Post
@@ -177,7 +177,7 @@ export default function AdminBlogPage() {
           <p className="text-navy-400 mb-6">Create your first blog post to get started.</p>
           <Link
             href="/admin/blog/new"
-            className="inline-flex items-center gap-2 bg-gold-500 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-gold-600 transition-colors"
+            className="inline-flex items-center gap-2 bg-gold-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-gold-800 transition-colors"
           >
             <Plus className="h-4 w-4" />
             Create Post

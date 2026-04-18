@@ -317,7 +317,7 @@ export default function PhotoUploader({
 
               {/* Primary badge */}
               {index === 0 && (
-                <span className="absolute top-2 left-2 rounded-md bg-gold-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow">
+                <span className="absolute top-2 left-2 rounded-md bg-gold-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow">
                   Cover
                 </span>
               )}

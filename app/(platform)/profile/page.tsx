@@ -247,7 +247,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2"
+                className="bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 Save Changes

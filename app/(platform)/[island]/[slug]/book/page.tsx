@@ -88,7 +88,7 @@ export default function BookingPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6 pt-20">
           <Lock size={48} className="text-navy-200 mb-6" />
           <h1 className="text-2xl font-bold text-navy-700">Sign in to book</h1>
-          <Link href="/auth/signin" className="mt-6 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold">
+          <Link href="/auth/signin" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold">
             Sign In
           </Link>
         </div>
@@ -351,7 +351,7 @@ export default function BookingPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2 text-lg"
+                  className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2 text-lg"
                 >
                   {submitting ? (
                     <Loader2 size={20} className="animate-spin" />

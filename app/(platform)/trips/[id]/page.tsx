@@ -258,7 +258,7 @@ export default function TripDetailPage({
               </h2>
               <Link
                 href="/auth/signin"
-                className="mt-4 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors"
+                className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
               </Link>
@@ -429,7 +429,7 @@ export default function TripDetailPage({
                       onClick={() => setActiveDay(dayNum)}
                       className={`shrink-0 px-5 py-3 rounded-2xl font-semibold text-sm transition-all ${
                         activeDay === dayNum
-                          ? "bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-lg shadow-gold-500/25"
+                          ? "bg-gradient-to-r from-gold-700 to-gold-800 text-white shadow-lg shadow-gold-500/25"
                           : "bg-white text-navy-500 hover:bg-cream-100 shadow-sm"
                       }`}
                     >

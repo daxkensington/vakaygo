@@ -351,7 +351,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <button
             onClick={handlePayNow}
             disabled={paymentLoading}
-            className="w-full mt-6 bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+            className="w-full mt-6 bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
           >
             {paymentLoading ? (
               <Loader2 size={18} className="animate-spin" />
@@ -541,7 +541,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
                     type="button"
                     onClick={handleApplyPromo}
                     disabled={promoLoading || !promoCode.trim()}
-                    className="px-4 py-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                    className="px-4 py-2 bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
                     {promoLoading ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
                   </button>
@@ -666,7 +666,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
                     type="button"
                     onClick={handleApplyGiftCard}
                     disabled={giftCardLoading || !giftCardCode.trim()}
-                    className="px-4 py-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                    className="px-4 py-2 bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
                     {giftCardLoading ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
                   </button>
@@ -740,7 +740,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               <button
                 type="submit"
                 disabled={guestLoading}
-                className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2 text-sm"
               >
                 {guestLoading ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -776,7 +776,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
             <button
               onClick={handleBook}
               disabled={loading}
-              className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+              className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 size={18} className="animate-spin" />

@@ -162,7 +162,7 @@ function SignInContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : "Sign In"}
             </button>

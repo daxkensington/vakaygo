@@ -163,7 +163,7 @@ export default function RewardsPage() {
           <Lock size={48} className="text-navy-200 mb-6" />
           <h1 className="text-2xl font-bold text-navy-700">Sign in to view rewards</h1>
           <p className="text-navy-400 mt-2">Earn points on every booking and unlock exclusive perks.</p>
-          <Link href="/auth/signin" className="mt-6 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors">
+          <Link href="/auth/signin" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors">
             Sign In
           </Link>
         </div>
@@ -324,7 +324,7 @@ export default function RewardsPage() {
                         }`}
                       >
                         {isCurrent && (
-                          <span className="absolute -top-3 right-4 bg-gold-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          <span className="absolute -top-3 right-4 bg-gold-700 text-white text-xs font-bold px-3 py-1 rounded-full">
                             You are here
                           </span>
                         )}
@@ -461,7 +461,7 @@ export default function RewardsPage() {
                   <button
                     onClick={generateCode}
                     disabled={generatingCode}
-                    className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                   >
                     {generatingCode ? (
                       <Loader2 size={16} className="animate-spin" />

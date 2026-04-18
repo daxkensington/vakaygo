@@ -82,7 +82,7 @@ export default function OperatorLayout({
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-gold-500 text-white"
+                      ? "bg-gold-700 text-white"
                       : "text-navy-500 hover:bg-cream-50 hover:text-navy-700"
                   }`}
                 >

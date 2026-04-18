@@ -198,7 +198,7 @@ export default function OperatorSettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2"
+            className="bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             Save Settings

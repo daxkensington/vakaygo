@@ -206,7 +206,7 @@ export default function VoucherPage({
               </p>
               <span
                 className={`mt-2 inline-flex items-center gap-1.5 px-4 py-1 rounded-full text-sm font-semibold text-white ${
-                  isConfirmed ? "bg-teal-500" : data.status === "pending" ? "bg-gold-500" : "bg-navy-400"
+                  isConfirmed ? "bg-teal-500" : data.status === "pending" ? "bg-gold-700" : "bg-navy-400"
                 }`}
               >
                 {isConfirmed && <CheckCircle2 size={14} />}

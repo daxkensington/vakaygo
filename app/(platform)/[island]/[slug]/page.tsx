@@ -327,7 +327,7 @@ export default function ListingDetailPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6">
           <h1 className="text-2xl font-bold text-navy-700">Listing not found</h1>
           <p className="text-navy-400 mt-2">This experience may no longer be available.</p>
-          <Link href="/explore" className="mt-6 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold">
+          <Link href="/explore" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold">
             Back to Explore
           </Link>
         </div>
@@ -371,7 +371,7 @@ export default function ListingDetailPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="bg-gold-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-gold-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       {typeLabels[listing.type] || listing.type}
                     </span>
                     {listing.isInstantBook && (
@@ -484,7 +484,7 @@ export default function ListingDetailPage() {
 
               {/* Operator / Claim Banner */}
               {td.unclaimed ? (
-                <div className="mt-8 p-6 bg-gradient-to-r from-gold-500 to-gold-600 rounded-2xl text-white">
+                <div className="mt-8 p-6 bg-gradient-to-r from-gold-700 to-gold-800 rounded-2xl text-white">
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
                     This listing was created from public data. Claim it for free

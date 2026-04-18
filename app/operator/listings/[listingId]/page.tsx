@@ -515,7 +515,7 @@ export default function EditListingPage() {
                 type="button"
                 onClick={fetchPricing}
                 disabled={pricingLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-700 to-gold-800 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all"
               >
                 {pricingLoading ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -917,7 +917,7 @@ export default function EditListingPage() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2"
+              className="bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               Save Changes

@@ -194,7 +194,7 @@ export default function ContentManagement() {
 
             {/* Preview */}
             {promoBannerEnabled && promoBannerText && (
-              <div className="mt-2 rounded-xl bg-gold-500 px-4 py-2.5 text-center text-sm font-medium text-white">
+              <div className="mt-2 rounded-xl bg-gold-700 px-4 py-2.5 text-center text-sm font-medium text-white">
                 {promoBannerText}
               </div>
             )}
@@ -217,7 +217,7 @@ export default function ContentManagement() {
                   })
                 }
                 disabled={saving === "promo"}
-                className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-800 disabled:opacity-60"
               >
                 {saving === "promo" ? (
                   <Loader2 size={16} className="animate-spin" />

@@ -205,7 +205,7 @@ export default function MessagesPage() {
           </h1>
           <Link
             href="/auth/signin"
-            className="mt-6 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold"
+            className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold"
           >
             Sign In
           </Link>
@@ -242,7 +242,7 @@ export default function MessagesPage() {
                 </span>
               )}
               {unreadCount > 0 && (
-                <span className="bg-gold-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-gold-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   {unreadCount} unread
                 </span>
               )}
@@ -327,7 +327,7 @@ export default function MessagesPage() {
                                   {conv.lastMessage}
                                 </p>
                                 {conv.unread > 0 && (
-                                  <span className="w-5 h-5 bg-gold-500 text-white text-[10px] rounded-full flex items-center justify-center shrink-0 ml-2">
+                                  <span className="w-5 h-5 bg-gold-700 text-white text-[10px] rounded-full flex items-center justify-center shrink-0 ml-2">
                                     {conv.unread}
                                   </span>
                                 )}
@@ -570,7 +570,7 @@ export default function MessagesPage() {
                             sending ||
                             (!newMessage.trim() && !attachmentUrl)
                           }
-                          className="bg-gold-500 hover:bg-gold-600 disabled:opacity-40 text-white p-3 rounded-xl transition-colors shrink-0"
+                          className="bg-gold-700 hover:bg-gold-800 disabled:opacity-40 text-white p-3 rounded-xl transition-colors shrink-0"
                         >
                           <Send size={18} />
                         </button>
@@ -674,7 +674,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
             <div
               className={`px-4 py-2.5 rounded-2xl text-sm ${
                 isOwn
-                  ? "bg-gold-500 text-white rounded-br-sm"
+                  ? "bg-gold-700 text-white rounded-br-sm"
                   : "bg-cream-100 text-navy-700 rounded-bl-sm"
               } ${msg._optimistic ? "opacity-70" : ""}`}
             >

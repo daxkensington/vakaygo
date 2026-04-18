@@ -116,7 +116,7 @@ export function AudienceSplit() {
               </ul>
               <a
                 href="/for-businesses"
-                className="inline-flex items-center gap-2 mt-10 bg-gold-500 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-600 transition-colors group"
+                className="inline-flex items-center gap-2 mt-10 bg-gold-700 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-800 transition-colors group"
               >
                 List your business
                 <ArrowRight

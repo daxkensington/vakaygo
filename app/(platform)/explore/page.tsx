@@ -483,7 +483,7 @@ export default function ExplorePage() {
                 <SlidersHorizontal size={16} />
                 Filters
                 {mobileFilterCount > 0 && (
-                  <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold-500 text-white text-[10px] font-bold">
+                  <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold-700 text-white text-[10px] font-bold">
                     {mobileFilterCount}
                   </span>
                 )}

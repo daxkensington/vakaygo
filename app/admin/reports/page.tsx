@@ -131,7 +131,7 @@ export default function AdminReportsPage() {
             onClick={() => setFilter(tab)}
             className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-colors ${
               filter === tab
-                ? "bg-gold-500 text-white"
+                ? "bg-gold-700 text-white"
                 : "bg-white text-navy-500 hover:bg-cream-100 shadow-[var(--shadow-card)]"
             }`}
           >

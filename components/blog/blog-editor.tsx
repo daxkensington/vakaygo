@@ -344,7 +344,7 @@ export function BlogEditor({
               setShowBlogModal(true);
               setBlogGenError("");
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-[0_4px_15px_rgba(200,145,46,0.3)] text-sm font-medium hover:from-gold-600 hover:to-gold-700 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-gold-700 to-gold-800 text-white shadow-[0_4px_15px_rgba(200,145,46,0.3)] text-sm font-medium hover:from-gold-800 hover:to-gold-900 transition-all"
           >
             <Wand2 className="h-4 w-4" />
             Write with AI
@@ -482,7 +482,7 @@ export function BlogEditor({
               <button
                 onClick={() => handleSave("published")}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-700 text-white font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Publish
@@ -511,7 +511,7 @@ export function BlogEditor({
                   setImageError("");
                   setGeneratedImageUrl("");
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 text-white text-xs font-medium hover:from-gold-600 hover:to-gold-700 transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gold-700 to-gold-800 text-white text-xs font-medium hover:from-gold-800 hover:to-gold-900 transition-all shadow-sm"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 AI Generate
@@ -700,7 +700,7 @@ export function BlogEditor({
                   <>
                     <button
                       onClick={handleUseGeneratedImage}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-700 text-white font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
                     >
                       <Check className="h-4 w-4" />
                       Use This
@@ -718,7 +718,7 @@ export function BlogEditor({
                   <button
                     onClick={handleGenerateImage}
                     disabled={generatingImage || !imagePrompt.trim()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-700 text-white font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
                   >
                     {generatingImage ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -812,7 +812,7 @@ export function BlogEditor({
                   <button
                     onClick={handleGenerateBlog}
                     disabled={generatingBlog || !form.title.trim()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gold-700 text-white font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)] disabled:opacity-50"
                   >
                     {generatingBlog ? (
                       <>
@@ -876,7 +876,7 @@ export function BlogEditor({
                   <div className="flex gap-3">
                     <button
                       onClick={handleInsertBlogContent}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-600 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-700 text-white font-medium text-sm hover:bg-gold-800 transition-colors shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
                     >
                       <Check className="h-4 w-4" />
                       Insert Content

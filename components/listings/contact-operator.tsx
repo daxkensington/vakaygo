@@ -96,7 +96,7 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
             <button
               type="submit"
               disabled={sending || !message.trim()}
-              className="mt-2 w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+              className="mt-2 w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
             >
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               Send Message

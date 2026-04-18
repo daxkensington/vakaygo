@@ -87,7 +87,7 @@ export default function MapPage() {
               onClick={() => setActiveIsland(island.slug)}
               className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 activeIsland === island.slug
-                  ? "bg-gold-500 text-white"
+                  ? "bg-gold-700 text-white"
                   : "bg-cream-50 text-navy-600 hover:bg-cream-100"
               }`}
             >

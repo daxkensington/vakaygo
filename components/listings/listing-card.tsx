@@ -87,7 +87,7 @@ export function ListingCard(props: ListingCardProps) {
         {/* Featured badge */}
         {props.isFeatured && (
           <div className="absolute top-3 right-3">
-            <span className="bg-gold-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+            <span className="bg-gold-700 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
               Featured
             </span>
           </div>

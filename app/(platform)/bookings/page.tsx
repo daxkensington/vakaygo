@@ -392,7 +392,7 @@ function BookingsContent() {
                         <button
                           onClick={() => handlePayNow(booking.id)}
                           disabled={payingBookingId === booking.id}
-                          className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                          className="flex items-center gap-1.5 bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
                         >
                           {payingBookingId === booking.id ? (
                             <Loader2 size={14} className="animate-spin" />

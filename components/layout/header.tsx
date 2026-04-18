@@ -253,7 +253,7 @@ export function Header() {
               </Link>
               <Link
                 href="/auth/signup"
-                className="bg-gold-500 text-white px-6 py-2.5 rounded-full hover:bg-gold-600 transition-all duration-300 hover:shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                className="bg-gold-700 text-white px-6 py-2.5 rounded-full hover:bg-gold-800 transition-all duration-300 hover:shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
               >
                 Sign Up
               </Link>
@@ -313,7 +313,7 @@ export function Header() {
               <Link href="/auth/signin" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 Sign In
               </Link>
-              <Link href="/auth/signup" className="block bg-gold-500 text-white text-center px-5 py-3.5 rounded-full font-semibold" onClick={() => setMobileOpen(false)}>
+              <Link href="/auth/signup" className="block bg-gold-700 text-white text-center px-5 py-3.5 rounded-full font-semibold" onClick={() => setMobileOpen(false)}>
                 Sign Up
               </Link>
             </>

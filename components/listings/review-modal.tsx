@@ -355,7 +355,7 @@ export function ReviewModal({
               <button
                 type="submit"
                 disabled={!isValid || submitting}
-                className="w-full bg-gold-500 hover:bg-gold-600 disabled:bg-cream-200 disabled:text-navy-300 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-gold-700 hover:bg-gold-800 disabled:bg-cream-200 disabled:text-navy-300 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>

@@ -1192,7 +1192,7 @@ export default function CaribbeanMap({
               key={s}
               onClick={() => { setMapStyle(s); setAutoDarkApplied(true); }}
               className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors ${
-                mapStyle === s ? "bg-gold-500 text-white" : "text-navy-600 hover:bg-cream-100"
+                mapStyle === s ? "bg-gold-700 text-white" : "text-navy-600 hover:bg-cream-100"
               }`}
             >
               {s === "satellite" ? "Satellite" : s === "outdoors" ? "Terrain" : "Dark"}
@@ -1205,7 +1205,7 @@ export default function CaribbeanMap({
           <button
             onClick={() => setHeatmapActive(false)}
             className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors ${
-              !heatmapActive ? "bg-gold-500 text-white" : "text-navy-600 hover:bg-cream-100"
+              !heatmapActive ? "bg-gold-700 text-white" : "text-navy-600 hover:bg-cream-100"
             }`}
           >
             Pins
@@ -1231,7 +1231,7 @@ export default function CaribbeanMap({
         <button onClick={locateUser} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title="My location">
           <Navigation size={16} className="text-navy-700" />
         </button>
-        <button onClick={isFlyover ? stopFlyover : startFlyover} className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${isFlyover ? "bg-gold-500 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"}`} title="Cinematic tour">
+        <button onClick={isFlyover ? stopFlyover : startFlyover} className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${isFlyover ? "bg-gold-700 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"}`} title="Cinematic tour">
           {isFlyover ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <button onClick={resetView} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title={`Reset view (bearing: ${Math.round(mapBearing)}°)`}>

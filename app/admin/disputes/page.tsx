@@ -307,7 +307,7 @@ export default function AdminDisputesPage() {
               onClick={() => setFilter(tab.key)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === tab.key
-                  ? "bg-gold-500 text-white"
+                  ? "bg-gold-700 text-white"
                   : "text-navy-500 hover:bg-cream-100"
               }`}
             >
@@ -555,7 +555,7 @@ export default function AdminDisputesPage() {
                           <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
                           >
                             {saving ? (
                               <Loader2

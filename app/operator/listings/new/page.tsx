@@ -601,7 +601,7 @@ export default function NewListingPage() {
             <button
               onClick={() => setStep(step + 1)}
               disabled={step === 1 && !type}
-              className="flex items-center gap-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors"
+              className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors"
             >
               Continue
               <ArrowRight size={16} />

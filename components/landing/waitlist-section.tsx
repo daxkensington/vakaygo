@@ -37,7 +37,7 @@ export function WaitlistSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
           <Link
             href="/auth/signup"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-white px-8 py-4 rounded-full font-semibold transition-all duration-300 shadow-[0_4px_20px_rgba(200,145,46,0.3)] hover:shadow-[0_8px_30px_rgba(200,145,46,0.4)]"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-gold-700 to-gold-800 hover:from-gold-800 hover:to-gold-900 text-white px-8 py-4 rounded-full font-semibold transition-all duration-300 shadow-[0_4px_20px_rgba(200,145,46,0.3)] hover:shadow-[0_8px_30px_rgba(200,145,46,0.4)]"
           >
             Sign Up Free
             <ArrowRight size={18} />

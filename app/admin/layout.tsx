@@ -79,7 +79,7 @@ export default function AdminLayout({
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-6 py-3 font-medium text-white transition-colors hover:bg-gold-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-6 py-3 font-medium text-white transition-colors hover:bg-gold-800"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to site
@@ -136,7 +136,7 @@ export default function AdminLayout({
                   flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                   ${
                     active
-                      ? "border-l-2 border-gold-400 bg-gold-500/10 text-gold-400"
+                      ? "border-l-2 border-gold-400 bg-gold-700/10 text-gold-400"
                       : "text-white/60 hover:bg-white/5 hover:text-white"
                   }
                 `}

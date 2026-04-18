@@ -409,7 +409,7 @@ export function BlogPostDetail({
                   </div>
                   <Link
                     href={`/${post.islandSlug}`}
-                    className="shrink-0 flex items-center gap-2 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-gold-600 transition-colors"
+                    className="shrink-0 flex items-center gap-2 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-gold-800 transition-colors"
                   >
                     Explore
                     <ArrowRight className="h-4 w-4" />

@@ -126,7 +126,7 @@ export function GuidesContent() {
                   onClick={() => handleCategoryChange(cat.value)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     category === cat.value
-                      ? "bg-gold-500 text-white shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
+                      ? "bg-gold-700 text-white shadow-[0_4px_15px_rgba(200,145,46,0.3)]"
                       : "bg-white text-navy-500 shadow-[var(--shadow-card)] hover:bg-gold-50 hover:text-gold-700"
                   }`}
                 >
@@ -279,7 +279,7 @@ export function GuidesContent() {
                   placeholder="Your email"
                   className="w-full px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm text-white placeholder:text-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/50"
                 />
-                <button className="w-full px-4 py-2.5 rounded-xl bg-gold-500 text-white text-sm font-semibold hover:bg-gold-600 transition-colors">
+                <button className="w-full px-4 py-2.5 rounded-xl bg-gold-700 text-white text-sm font-semibold hover:bg-gold-800 transition-colors">
                   Subscribe
                 </button>
               </div>

@@ -56,7 +56,7 @@ export function AIDescriptionButton({
         type="button"
         onClick={handleGenerate}
         disabled={loading}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all shadow-sm"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold-700 to-gold-800 hover:from-gold-800 hover:to-gold-900 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all shadow-sm"
       >
         {loading ? (
           <Loader2 size={12} className="animate-spin" />

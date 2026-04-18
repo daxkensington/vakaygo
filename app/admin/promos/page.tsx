@@ -398,7 +398,7 @@ export default function AdminPromosPage() {
                       }}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                         form.applicableTypes.includes(type)
-                          ? "bg-gold-500 text-white"
+                          ? "bg-gold-700 text-white"
                           : "bg-cream-100 text-navy-500 hover:bg-cream-200"
                       }`}
                     >
@@ -434,7 +434,7 @@ export default function AdminPromosPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-2.5 bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   {editingId ? "Update" : "Create"}

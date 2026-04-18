@@ -223,7 +223,7 @@ export default function FaqPage() {
                     }}
                     className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       activeTab === tab
-                        ? "bg-gold-500 text-white shadow-[var(--shadow-card)]"
+                        ? "bg-gold-700 text-white shadow-[var(--shadow-card)]"
                         : "bg-white text-navy-400 hover:text-navy-600 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]"
                     }`}
                   >

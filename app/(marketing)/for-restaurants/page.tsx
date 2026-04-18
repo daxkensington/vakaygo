@@ -88,7 +88,7 @@ export default function ForRestaurantsPage() {
                   key={key}
                   className={`rounded-2xl p-8 ${
                     key === "essential"
-                      ? "bg-gold-500 text-white shadow-[0_8px_30px_rgba(200,145,46,0.3)] scale-105"
+                      ? "bg-gold-700 text-white shadow-[0_8px_30px_rgba(200,145,46,0.3)] scale-105"
                       : "bg-cream-50 text-navy-700"
                   }`}
                 >
@@ -122,7 +122,7 @@ export default function ForRestaurantsPage() {
                     className={`block text-center mt-8 px-6 py-3 rounded-xl font-semibold transition-colors ${
                       key === "essential"
                         ? "bg-white text-gold-600 hover:bg-cream-100"
-                        : "bg-gold-500 text-white hover:bg-gold-600"
+                        : "bg-gold-700 text-white hover:bg-gold-800"
                     }`}
                   >
                     {tier.price === 0 ? "List for Free" : "Get Started"}

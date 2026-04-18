@@ -233,7 +233,7 @@ export default function ForBusinessesPage() {
                   key={step.number}
                   className="flex items-start gap-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
                 >
-                  <div className="w-12 h-12 bg-gold-500 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0">
+                  <div className="w-12 h-12 bg-gold-700 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0">
                     {step.number}
                   </div>
                   <div>

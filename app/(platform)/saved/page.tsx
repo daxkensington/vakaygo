@@ -170,7 +170,7 @@ export default function SavedPage() {
               </p>
               <Link
                 href="/auth/signin"
-                className="bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors"
+                className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
               </Link>
@@ -241,7 +241,7 @@ export default function SavedPage() {
                     <button
                       type="submit"
                       disabled={creatingCollection || !newCollectionName.trim()}
-                      className="p-2 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white rounded-full transition-colors"
+                      className="p-2 bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white rounded-full transition-colors"
                     >
                       {creatingCollection ? (
                         <Loader2 size={14} className="animate-spin" />
@@ -279,7 +279,7 @@ export default function SavedPage() {
               </p>
               <Link
                 href="/explore"
-                className="bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors"
+                className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Explore Listings
               </Link>

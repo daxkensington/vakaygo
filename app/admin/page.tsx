@@ -452,7 +452,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-3">
           <Link
             href="/admin/listings?status=pending"
-            className="inline-flex items-center gap-2 rounded-xl bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-800"
           >
             <CheckCircle size={16} />
             Approve Pending Listings

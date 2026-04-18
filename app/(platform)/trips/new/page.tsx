@@ -406,7 +406,7 @@ export default function NewTripPage() {
               </h2>
               <Link
                 href="/auth/signin"
-                className="mt-4 bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors"
+                className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
               </Link>
@@ -437,7 +437,7 @@ export default function NewTripPage() {
                       }}
                       className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                         s === step
-                          ? "bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-lg shadow-gold-500/25"
+                          ? "bg-gradient-to-r from-gold-700 to-gold-800 text-white shadow-lg shadow-gold-500/25"
                           : s < step
                             ? "bg-teal-500 text-white cursor-pointer"
                             : "bg-cream-200 text-navy-400"
@@ -595,7 +595,7 @@ export default function NewTripPage() {
                   <button
                     onClick={handleNext}
                     disabled={!canProceedStep1}
-                    className="w-full py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-gold-500 to-gold-600 text-white hover:from-gold-600 hover:to-gold-700 transition-all shadow-lg shadow-gold-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-gold-700 to-gold-800 text-white hover:from-gold-800 hover:to-gold-900 transition-all shadow-lg shadow-gold-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     Continue
                     <ArrowRight size={20} />
@@ -728,7 +728,7 @@ export default function NewTripPage() {
                     <button
                       onClick={handleNext}
                       disabled={!canProceedStep2}
-                      className="flex-[2] py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-gold-500 to-gold-600 text-white hover:from-gold-600 hover:to-gold-700 transition-all shadow-lg shadow-gold-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="flex-[2] py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-gold-700 to-gold-800 text-white hover:from-gold-800 hover:to-gold-900 transition-all shadow-lg shadow-gold-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       Continue
                       <ArrowRight size={20} />
@@ -954,7 +954,7 @@ export default function NewTripPage() {
                   </button>
                   <button
                     onClick={handleViewTrip}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white hover:from-gold-600 hover:to-gold-700 transition-all text-sm font-semibold shadow-lg shadow-gold-500/25"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold-700 to-gold-800 text-white hover:from-gold-800 hover:to-gold-900 transition-all text-sm font-semibold shadow-lg shadow-gold-500/25"
                   >
                     <Bookmark size={16} />
                     View Saved Trip

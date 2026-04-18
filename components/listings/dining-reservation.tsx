@@ -167,7 +167,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gold-500 hover:bg-gold-600 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
+          className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 size={18} className="animate-spin" /> : "Reserve a Table"}
         </button>

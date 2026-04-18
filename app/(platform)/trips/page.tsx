@@ -123,7 +123,7 @@ export default function TripsPage() {
             {user && (
               <Link
                 href="/trips/new"
-                className="flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-600 text-white px-5 py-3 rounded-2xl font-semibold hover:from-gold-600 hover:to-gold-700 transition-all shadow-lg shadow-gold-500/25"
+                className="flex items-center gap-2 bg-gradient-to-r from-gold-700 to-gold-800 text-white px-5 py-3 rounded-2xl font-semibold hover:from-gold-800 hover:to-gold-900 transition-all shadow-lg shadow-gold-500/25"
               >
                 <Sparkles size={18} />
                 Plan a Trip
@@ -146,7 +146,7 @@ export default function TripsPage() {
               </p>
               <Link
                 href="/auth/signin"
-                className="bg-gold-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-600 transition-colors"
+                className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
               </Link>
@@ -175,7 +175,7 @@ export default function TripsPage() {
               </p>
               <Link
                 href="/trips/new"
-                className="flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-600 text-white px-6 py-3 rounded-2xl font-semibold hover:from-gold-600 hover:to-gold-700 transition-all shadow-lg shadow-gold-500/25"
+                className="flex items-center gap-2 bg-gradient-to-r from-gold-700 to-gold-800 text-white px-6 py-3 rounded-2xl font-semibold hover:from-gold-800 hover:to-gold-900 transition-all shadow-lg shadow-gold-500/25"
               >
                 <Plus size={18} />
                 Create Your First Trip

@@ -786,7 +786,7 @@ export default function AdminListingsPage() {
                       onClick={() => setFilter("page", String(p))}
                       className={`min-w-[32px] rounded-lg px-2 py-1 text-sm font-medium transition-colors ${
                         p === data.page
-                          ? "bg-gold-500 text-white"
+                          ? "bg-gold-700 text-white"
                           : "text-navy-500 hover:bg-cream-100"
                       }`}
                     >

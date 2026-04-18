@@ -328,7 +328,7 @@ export default function PricingRulesPage() {
                       onClick={() => toggleDay(i)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         formDays.includes(i)
-                          ? "bg-gold-500 text-white"
+                          ? "bg-gold-700 text-white"
                           : "bg-cream-100 text-navy-500 hover:bg-cream-200"
                       }`}
                     >

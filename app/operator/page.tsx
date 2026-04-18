@@ -343,7 +343,7 @@ export default function OperatorDashboard() {
                 key={item.step}
                 className="flex items-center gap-4 p-4 rounded-xl bg-cream-50 hover:bg-cream-100 transition-colors"
               >
-                <div className="w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+                <div className="w-10 h-10 bg-gold-700 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {item.step}
                 </div>
                 <div className="flex-1 min-w-0">
