@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   CalendarCheck,
   Clock,
@@ -153,9 +154,12 @@ export default function OperatorBookingsPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-navy-700">
+                      <Link
+                        href={`/operator/bookings/${booking.id}`}
+                        className="font-semibold text-navy-700 hover:text-gold-600 transition-colors"
+                      >
                         {booking.listingTitle}
-                      </h3>
+                      </Link>
                       <span
                         className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${status.color}`}
                       >

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, users, listings } from "@/drizzle/schema";
+import { bookings, users, listings, islands } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -11,6 +11,83 @@ import { awardBookingPoints } from "@/server/loyalty";
 
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ bookingId: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("session")?.value;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { payload } = await jwtVerify(token, SECRET);
+    const userId = payload.id as string;
+    const role = payload.role as string;
+    const { bookingId } = await params;
+
+    const db = drizzle(neon(process.env.DATABASE_URL!));
+
+    const [row] = await db
+      .select({
+        id: bookings.id,
+        bookingNumber: bookings.bookingNumber,
+        status: bookings.status,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        guestCount: bookings.guestCount,
+        subtotal: bookings.subtotal,
+        serviceFee: bookings.serviceFee,
+        totalAmount: bookings.totalAmount,
+        currency: bookings.currency,
+        paymentMethod: bookings.paymentMethod,
+        paidAt: bookings.paidAt,
+        guestNotes: bookings.guestNotes,
+        operatorNotes: bookings.operatorNotes,
+        cancellationReason: bookings.cancellationReason,
+        checkedIn: bookings.checkedIn,
+        checkedInAt: bookings.checkedInAt,
+        depositAmount: bookings.depositAmount,
+        depositPaid: bookings.depositPaid,
+        escrowReleased: bookings.escrowReleased,
+        escrowReleasedAt: bookings.escrowReleasedAt,
+        createdAt: bookings.createdAt,
+        travelerId: bookings.travelerId,
+        operatorId: bookings.operatorId,
+        travelerName: users.name,
+        travelerEmail: users.email,
+        travelerPhone: users.phone,
+        listingId: bookings.listingId,
+        listingTitle: listings.title,
+        listingType: listings.type,
+        listingSlug: listings.slug,
+        islandSlug: islands.slug,
+        islandName: islands.name,
+      })
+      .from(bookings)
+      .innerJoin(users, eq(bookings.travelerId, users.id))
+      .innerJoin(listings, eq(bookings.listingId, listings.id))
+      .innerJoin(islands, eq(listings.islandId, islands.id))
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!row) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    const isOwner = row.travelerId === userId || row.operatorId === userId;
+    if (!isOwner && role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json({ booking: row });
+  } catch (error) {
+    logger.error("Get booking error", error);
+    return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: Request,
