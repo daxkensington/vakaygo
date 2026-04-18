@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { media } from "@/drizzle/schema";
+import { media, listings } from "@/drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.sub as string;
+    const userId = payload.id as string;
+    const role = payload.role as string;
 
     // Parse form data
     const formData = await request.formData();
@@ -36,6 +37,23 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // If a listingId is supplied, the uploader must own it (or be admin).
+    // Without this gate any session could attach images to any listing.
+    if (listingId) {
+      const db = drizzle(neon(process.env.DATABASE_URL!));
+      const [target] = await db
+        .select({ operatorId: listings.operatorId })
+        .from(listings)
+        .where(eq(listings.id, listingId))
+        .limit(1);
+      if (!target) {
+        return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+      }
+      if (target.operatorId !== userId && role !== "admin") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     // Validate type

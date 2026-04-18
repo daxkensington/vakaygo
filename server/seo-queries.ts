@@ -54,6 +54,57 @@ export async function getActiveIslands(): Promise<IslandSeoData[]> {
     .orderBy(islands.sortOrder);
 }
 
+export type ListingSeoMeta = {
+  id: string;
+  title: string;
+  slug: string;
+  type: string;
+  headline: string | null;
+  description: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  islandSlug: string;
+  islandName: string;
+  status: string;
+};
+
+/**
+ * Resolve a listing by its (islandSlug, slug) pair for SEO/server gating.
+ * Returns null when the listing doesn't exist OR isn't on the named island
+ * OR isn't active. Used by the listing detail layout to issue a real 404.
+ */
+export async function getListingForSeo(
+  islandSlug: string,
+  listingSlug: string
+): Promise<ListingSeoMeta | null> {
+  const db = createDb();
+  const [row] = await db
+    .select({
+      id: listings.id,
+      title: listings.title,
+      slug: listings.slug,
+      type: listings.type,
+      headline: listings.headline,
+      description: listings.description,
+      metaTitle: listings.metaTitle,
+      metaDescription: listings.metaDescription,
+      islandSlug: islands.slug,
+      islandName: islands.name,
+      status: listings.status,
+    })
+    .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
+    .where(
+      and(
+        eq(listings.slug, listingSlug),
+        eq(islands.slug, islandSlug),
+        eq(listings.status, "active")
+      )
+    )
+    .limit(1);
+  return row || null;
+}
+
 /** Get island by slug */
 export async function getIslandBySlug(slug: string): Promise<IslandSeoData | null> {
   const db = createDb();

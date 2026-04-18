@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { media } from "@/drizzle/schema";
+import { media, listings } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -21,19 +21,26 @@ export async function DELETE(
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, SECRET);
+    const userId = payload.id as string;
+    const role = payload.role as string;
 
     const { id } = await params;
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
-    // Get media record
+    // Look up media + owning listing's operator so we can authorize the delete
     const [record] = await db
-      .select({ id: media.id, url: media.url })
+      .select({ id: media.id, url: media.url, operatorId: listings.operatorId })
       .from(media)
+      .innerJoin(listings, eq(media.listingId, listings.id))
       .where(eq(media.id, id));
 
     if (!record) {
       return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
+
+    if (record.operatorId !== userId && role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Delete from Vercel Blob

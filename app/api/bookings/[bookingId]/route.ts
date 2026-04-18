@@ -100,15 +100,49 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, SECRET);
+    const userId = payload.id as string;
+    const role = payload.role as string;
     const { bookingId } = await params;
     const { status, operatorNotes } = await request.json();
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
+    const [existing] = await db
+      .select({
+        id: bookings.id,
+        travelerId: bookings.travelerId,
+        operatorId: bookings.operatorId,
+      })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!existing) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    const isTraveler = existing.travelerId === userId;
+    const isOperator = existing.operatorId === userId;
+    const isAdmin = role === "admin";
+    if (!isTraveler && !isOperator && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Travelers can only cancel their own booking; status transitions and
+    // operatorNotes are for operators/admins.
+    if (isTraveler && !isOperator && !isAdmin) {
+      if (status && status !== "cancelled") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (operatorNotes !== undefined) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
-    if (operatorNotes) updateData.operatorNotes = operatorNotes;
+    if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
     if (status === "confirmed") updateData.paidAt = new Date();
 
     const [updated] = await db
