@@ -20,8 +20,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/for-restaurants`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
     { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
-    { url: `${BASE_URL}/auth/signin`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE_URL}/auth/signup`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    // /auth/* is intentionally not in the sitemap — robots.txt disallows
+    // /auth so Google would skip these anyway. Keeping them out avoids
+    // the "submitted URL blocked by robots" noise in Search Console.
     { url: `${BASE_URL}/guides`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE_URL}/map`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/trips/new`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },

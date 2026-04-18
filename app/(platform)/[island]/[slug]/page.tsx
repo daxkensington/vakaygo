@@ -209,62 +209,11 @@ export default function ListingDetailPage() {
     });
   }, [listing]);
 
-  // SEO: Update document title and inject JSON-LD structured data
+  // Inject rich JSON-LD structured data once the API fetch resolves.
+  // (Title/description/OG/Twitter are set server-side by the layout's
+  // generateMetadata — don't duplicate them here, it just causes flicker.)
   useEffect(() => {
     if (!listing) return;
-
-    document.title = `${listing.title} — ${listing.islandName} | VakayGo`;
-
-    // Set meta description
-    const metaDesc = document.querySelector('meta[name="description"]');
-    const desc = listing.description
-      ? listing.description.slice(0, 160)
-      : `${typeLabels[listing.type] || listing.type} in ${listing.parish}, ${listing.islandName}`;
-    if (metaDesc) {
-      metaDesc.setAttribute("content", desc);
-    } else {
-      const meta = document.createElement("meta");
-      meta.name = "description";
-      meta.content = desc;
-      document.head.appendChild(meta);
-    }
-
-    // Set Open Graph meta tags
-    const pageUrl = `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`;
-    const ogImageUrl = `/api/og?title=${encodeURIComponent(listing.title)}&subtitle=${encodeURIComponent(listing.islandName)}&type=${listing.type}&rating=${listing.avgRating || ""}&price=${listing.priceAmount || ""}`;
-
-    const ogTags: Record<string, string> = {
-      "og:title": `${listing.title} — ${listing.islandName} | VakayGo`,
-      "og:description": desc,
-      "og:image": ogImageUrl,
-      "og:url": pageUrl,
-      "og:type": "website",
-      "og:site_name": "VakayGo",
-      "twitter:card": "summary_large_image",
-      "twitter:title": `${listing.title} — ${listing.islandName} | VakayGo`,
-      "twitter:description": desc,
-      "twitter:image": ogImageUrl,
-    };
-
-    Object.entries(ogTags).forEach(([property, content]) => {
-      const isTwitter = property.startsWith("twitter:");
-      const selector = isTwitter
-        ? `meta[name="${property}"]`
-        : `meta[property="${property}"]`;
-      const existing = document.querySelector(selector);
-      if (existing) {
-        existing.setAttribute("content", content);
-      } else {
-        const meta = document.createElement("meta");
-        if (isTwitter) {
-          meta.setAttribute("name", property);
-        } else {
-          meta.setAttribute("property", property);
-        }
-        meta.setAttribute("content", content);
-        document.head.appendChild(meta);
-      }
-    });
 
     // Build JSON-LD
     const schemaType = schemaTypeMap[listing.type] || "LocalBusiness";

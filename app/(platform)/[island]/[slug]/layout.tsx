@@ -26,6 +26,8 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   if (!listing) return { title: "Not Found" };
 
   const typeLabel = typeLabels[listing.type] || "Listing";
+  // title.absolute bypasses the parent template chain so the title is
+  // identical regardless of nesting depth.
   const title =
     listing.metaTitle ||
     `${listing.title} — ${typeLabel} in ${listing.islandName} | VakayGo`;
@@ -37,7 +39,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   const url = `https://vakaygo.com/${island}/${slug}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {

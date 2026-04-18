@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createDb } from "@/server/db";
 import { islands, listings, media, categories } from "@/drizzle/schema";
 import { eq, and, desc, sql, count, avg } from "drizzle-orm";
@@ -72,57 +73,65 @@ export type ListingSeoMeta = {
  * Resolve a listing by its (islandSlug, slug) pair for SEO/server gating.
  * Returns null when the listing doesn't exist OR isn't on the named island
  * OR isn't active. Used by the listing detail layout to issue a real 404.
+ * cache()'d so generateMetadata + the layout share one DB query per request.
  */
-export async function getListingForSeo(
-  islandSlug: string,
-  listingSlug: string
-): Promise<ListingSeoMeta | null> {
-  const db = createDb();
-  const [row] = await db
-    .select({
-      id: listings.id,
-      title: listings.title,
-      slug: listings.slug,
-      type: listings.type,
-      headline: listings.headline,
-      description: listings.description,
-      metaTitle: listings.metaTitle,
-      metaDescription: listings.metaDescription,
-      islandSlug: islands.slug,
-      islandName: islands.name,
-      status: listings.status,
-    })
-    .from(listings)
-    .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(
-      and(
-        eq(listings.slug, listingSlug),
-        eq(islands.slug, islandSlug),
-        eq(listings.status, "active")
+export const getListingForSeo = cache(
+  async (
+    islandSlug: string,
+    listingSlug: string
+  ): Promise<ListingSeoMeta | null> => {
+    const db = createDb();
+    const [row] = await db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        slug: listings.slug,
+        type: listings.type,
+        headline: listings.headline,
+        description: listings.description,
+        metaTitle: listings.metaTitle,
+        metaDescription: listings.metaDescription,
+        islandSlug: islands.slug,
+        islandName: islands.name,
+        status: listings.status,
+      })
+      .from(listings)
+      .innerJoin(islands, eq(listings.islandId, islands.id))
+      .where(
+        and(
+          eq(listings.slug, listingSlug),
+          eq(islands.slug, islandSlug),
+          eq(listings.status, "active")
+        )
       )
-    )
-    .limit(1);
-  return row || null;
-}
+      .limit(1);
+    return row || null;
+  }
+);
 
-/** Get island by slug */
-export async function getIslandBySlug(slug: string): Promise<IslandSeoData | null> {
-  const db = createDb();
-  const results = await db
-    .select({
-      id: islands.id,
-      slug: islands.slug,
-      name: islands.name,
-      country: islands.country,
-      description: islands.description,
-      heroImage: islands.heroImage,
-      region: islands.region,
-    })
-    .from(islands)
-    .where(eq(islands.slug, slug))
-    .limit(1);
-  return results[0] || null;
-}
+/**
+ * Get island by slug. Wrapped in React cache() so the layout's metadata
+ * lookup and the layout's auth gate share one DB query per request.
+ */
+export const getIslandBySlug = cache(
+  async (slug: string): Promise<IslandSeoData | null> => {
+    const db = createDb();
+    const results = await db
+      .select({
+        id: islands.id,
+        slug: islands.slug,
+        name: islands.name,
+        country: islands.country,
+        description: islands.description,
+        heroImage: islands.heroImage,
+        region: islands.region,
+      })
+      .from(islands)
+      .where(eq(islands.slug, slug))
+      .limit(1);
+    return results[0] || null;
+  }
+);
 
 /** Get top listings by type for an island, sorted by rating */
 export async function getTopListingsByType(
