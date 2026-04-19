@@ -154,14 +154,20 @@ export default async function IslandPage({ params }: Props) {
                   >
                     <div className="relative h-44 overflow-hidden">
                       {image ? (
-                        <Image
+                        /* Raw <img> — listing images come from arbitrary
+                           host names (pulled from business websites), so
+                           next/image would need every domain whitelisted
+                           in remotePatterns. Not worth the churn for
+                           thumbs; they already lazy-load. */
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
                           src={image}
                           alt={listing.title}
-                          fill
                           loading="lazy"
-                          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                          quality={75}
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          decoding="async"
+                          width={800}
+                          height={600}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-cream-200" />
