@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Layers, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 
 const props = [
@@ -67,10 +68,15 @@ export function ValueProps() {
                 }`}
               >
                 {/* Image side */}
-                <div className="md:w-1/2 relative overflow-hidden">
-                  <div
-                    className="h-64 md:h-full min-h-[320px] bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${prop.image})` }}
+                <div className="md:w-1/2 relative overflow-hidden h-64 md:h-auto min-h-[320px]">
+                  <Image
+                    src={prop.image}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    quality={75}
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div
                     className={`absolute inset-0 bg-gradient-to-${
