@@ -145,7 +145,7 @@ export default async function IslandPage({ params }: Props) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featured.map((listing) => {
-                const image = getImageUrl(listing.image);
+                const image = getImageUrl(listing.image, { width: 400 });
                 return (
                   <Link
                     key={listing.id}

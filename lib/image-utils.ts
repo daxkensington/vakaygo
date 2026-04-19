@@ -15,7 +15,10 @@ const HOTLINK_BLOCKED_HOSTS = [
   "yelpcdn.com",
 ];
 
-export function getImageUrl(url: string | null | undefined): string | null {
+export function getImageUrl(
+  url: string | null | undefined,
+  opts?: { width?: number },
+): string | null {
   if (!url) return null;
 
   // Local paths, data URIs, blobs — leave alone
@@ -27,9 +30,17 @@ export function getImageUrl(url: string | null | undefined): string | null {
     return url;
   }
 
-  // Google Places — strip stale API key, proxy will append a fresh one
+  // Google Places — strip stale API key, optionally cap maxwidth for
+  // thumbnail contexts so a 600 KB hero JPG isn't shipped for a 200 px
+  // card. The proxy appends a fresh API key server-side.
   if (url.includes("googleapis.com/maps/api/place/photo")) {
-    const cleaned = url.replace(/[&?]key=[^&]*/g, "").replace(/\?&/, "?");
+    let cleaned = url.replace(/[&?]key=[^&]*/g, "").replace(/\?&/, "?");
+    if (opts?.width) {
+      cleaned = cleaned.replace(/([?&])maxwidth=\d+/, `$1maxwidth=${opts.width}`);
+      if (!/[?&]maxwidth=/.test(cleaned)) {
+        cleaned += (cleaned.includes("?") ? "&" : "?") + `maxwidth=${opts.width}`;
+      }
+    }
     return `/api/images/proxy?url=${encodeURIComponent(cleaned)}`;
   }
 

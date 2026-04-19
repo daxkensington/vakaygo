@@ -327,7 +327,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {diningListings.map((listing) => {
-                  const imageUrl = getImageUrl(listing.image);
+                  const imageUrl = getImageUrl(listing.image, { width: 400 });
                   const rating = listing.avgRating
                     ? parseFloat(listing.avgRating)
                     : 0;

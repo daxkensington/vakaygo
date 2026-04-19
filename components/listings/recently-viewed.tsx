@@ -60,7 +60,7 @@ export function RecentlyViewed() {
             >
               <div className="relative h-24 overflow-hidden">
                 <ImageWithFallback
-                  src={getImageUrl(item.image)}
+                  src={getImageUrl(item.image, { width: 400 })}
                   type={item.type}
                   className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
                   iconSize={24}

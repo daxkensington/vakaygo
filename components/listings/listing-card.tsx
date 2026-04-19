@@ -59,7 +59,9 @@ export function ListingCard(props: ListingCardProps) {
   const { isSaved, toggle } = useSaved();
   const { format } = useCurrency();
   const saved = isSaved(props.id);
-  const imageUrl = getImageUrl(props.image);
+  // Cards render at ~300-400 px wide; request 400 maxwidth from Google
+  // Places so retina devices get ~2x without shipping 800 px hero JPGs.
+  const imageUrl = getImageUrl(props.image, { width: 400 });
 
   return (
     <Link

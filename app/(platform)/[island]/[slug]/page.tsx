@@ -753,7 +753,7 @@ export default function ListingDetailPage() {
                         {guide.coverImage && (
                           <div className="relative h-32 overflow-hidden">
                             <ImageWithFallback
-                              src={getImageUrl(guide.coverImage)}
+                              src={getImageUrl(guide.coverImage, { width: 400 })}
                               type="tour"
                               className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
                             />
@@ -825,7 +825,7 @@ export default function ListingDetailPage() {
                   >
                     <div className="relative h-44 overflow-hidden">
                       <ImageWithFallback
-                        src={getImageUrl(item.image)}
+                        src={getImageUrl(item.image, { width: 400 })}
                         type={item.type}
                         className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
                       />
