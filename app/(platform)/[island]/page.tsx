@@ -23,6 +23,7 @@ import {
   getTopListingsForIsland,
 } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
+import { FeaturedListingsClient } from "./featured-listings-client";
 
 const typeConfig = [
   { type: "stay", label: "Stays", icon: Home, color: "bg-gold-500" },
@@ -137,9 +138,11 @@ export default async function IslandPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Featured Listings */}
+        {/* Featured Listings — client-mounted after requestIdleCallback
+            so the 8 external listing thumbnails (often 500 KB+ each
+            from random business CDNs) stay out of the LCP window. */}
         {featured.length > 0 && (
-          <div className="mx-auto max-w-7xl px-6 py-12 defer-offscreen">
+          <div className="mx-auto max-w-7xl px-6 py-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
                 Top experiences in {island.name}
@@ -148,60 +151,20 @@ export default async function IslandPage({ params }: Props) {
                 View all <ArrowRight size={14} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featured.map((listing) => {
-                const image = getImageUrl(listing.image, { width: 400 });
-                return (
-                  <Link
-                    key={listing.id}
-                    href={`/${islandSlug}/${listing.slug}`}
-                    className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className="relative h-44 overflow-hidden">
-                      {image ? (
-                        /* Raw <img> — listing images come from arbitrary
-                           host names (pulled from business websites), so
-                           next/image would need every domain whitelisted
-                           in remotePatterns. Not worth the churn for
-                           thumbs; they already lazy-load. */
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={image}
-                          alt={listing.title}
-                          loading="lazy"
-                          decoding="async"
-                          width={800}
-                          height={600}
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-cream-200" />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <p className="text-xs text-navy-400">{listing.parish || island.name}</p>
-                      <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
-                        {listing.title}
-                      </h3>
-                      <div className="flex items-center justify-between mt-2">
-                        {listing.priceAmount && (
-                          <span className="font-bold text-navy-700">
-                            ${parseFloat(listing.priceAmount).toFixed(0)}
-                            <span className="text-navy-400 text-sm font-normal"> / {listing.priceUnit}</span>
-                          </span>
-                        )}
-                        {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Star size={12} className="text-gold-700 fill-gold-500" />
-                            <span className="text-xs font-semibold">{parseFloat(listing.avgRating).toFixed(1)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            <FeaturedListingsClient
+              islandSlug={islandSlug}
+              islandName={island.name}
+              listings={featured.map((l) => ({
+                id: l.id,
+                slug: l.slug,
+                title: l.title,
+                image: l.image,
+                parish: l.parish,
+                priceAmount: l.priceAmount,
+                priceUnit: l.priceUnit,
+                avgRating: l.avgRating,
+              }))}
+            />
           </div>
         )}
       </main>
