@@ -39,12 +39,12 @@ const islandImages: Record<string, string> = {
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
-// Cards above the fold get eager + high-priority loading; the rest lazy.
-// On mobile (1-col) only card 0 is above the fold; priority 3 covers
-// the first row at sm (2-col) and the first row at lg (3-col) — but we
-// intentionally keep it small so non-LCP cards don't contend for
-// bandwidth with the hero/first-card LCP.
-const PRIORITY_COUNT = 3;
+// Mobile is the Lighthouse target and only card 0 is above the fold
+// on a 1-col layout. Priority/eager on a single card keeps the LCP
+// candidate uncontended; every other card defers its layout+paint
+// via content-visibility:auto (see `deferred` below) so Style & Layout
+// work doesn't inflate element render delay for the LCP card.
+const PRIORITY_COUNT = 1;
 
 export default async function IslandsPage() {
   const islands = await getActiveIslandsWithCounts();

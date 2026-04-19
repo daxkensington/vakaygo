@@ -169,7 +169,7 @@ export function Hero() {
       <div
         className="relative z-10 mx-auto max-w-7xl px-6 text-center"
       >
-        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
+        <div className="inline-flex items-center gap-2 bg-white/20 md:bg-white/10 md:backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
           7,100+ listings across 21 Caribbean islands
         </div>
@@ -196,7 +196,7 @@ export function Hero() {
           className="mt-8 md:mt-12 mx-auto max-w-6xl"
           onSubmit={handleSubmit}
         >
-          <div className="bg-white/[0.07] backdrop-blur-xl rounded-2xl p-2 shadow-[0_8px_60px_rgba(0,0,0,0.3)] border border-white/10">
+          <div className="bg-navy-900/30 md:bg-white/[0.07] md:backdrop-blur-xl rounded-2xl p-2 shadow-[0_8px_60px_rgba(0,0,0,0.3)] border border-white/10">
             <div className="flex flex-col md:flex-row gap-2">
               {/* Destination */}
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
