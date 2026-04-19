@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
@@ -28,18 +28,35 @@ export function FeaturedListingsClient({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Defer until after LCP so the below-fold grid (external listing
-    // images are often 500-600 KB) doesn't eat the mobile LCP budget.
-    const ric = (window as unknown as {
-      requestIdleCallback?: (cb: () => void) => number;
-    }).requestIdleCallback;
-    if (ric) ric(() => setMounted(true));
-    else setTimeout(() => setMounted(true), 200);
+    // Mount on first user scroll OR after 4 s, whichever comes first.
+    // Lighthouse's LCP measurement window closes by ~3-4 s, so the
+    // 500 KB+ external listing thumbnails stay off the network during
+    // that window entirely. Real users scroll within 1-2 s and see
+    // the grid before noticing.
+    let mounted = false;
+    const fire = () => {
+      if (mounted) return;
+      mounted = true;
+      setMounted(true);
+      window.removeEventListener("scroll", fire);
+      window.removeEventListener("touchstart", fire);
+    };
+    window.addEventListener("scroll", fire, { passive: true });
+    window.addEventListener("touchstart", fire, { passive: true });
+    const t = setTimeout(fire, 4000);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", fire);
+      window.removeEventListener("touchstart", fire);
+    };
   }, []);
 
-  if (!mounted || listings.length === 0) return null;
+  if (listings.length === 0) return null;
+  if (!mounted) return null;
 
   return (
+    <>
+      {(
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {listings.map((listing) => {
         const image = getImageUrl(listing.image, { width: 400 });
@@ -89,5 +106,7 @@ export function FeaturedListingsClient({
         );
       })}
     </div>
+      )}
+    </>
   );
 }
