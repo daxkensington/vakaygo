@@ -46,3 +46,9 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Lighthouse audit scripts/outputs (kept local, regenerated as needed)
+.lh-*
+lh-*.json
+sweep-lighthouse.mjs
+a11y-failures.mjs
