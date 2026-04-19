@@ -39,14 +39,12 @@ const islandImages: Record<string, string> = {
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
-// Cards are all lazy: the hero "Explore the Caribbean" <h1> is the
-// true above-the-fold content and becomes the LCP element, which
-// paints in the text-render phase (~200 ms simulated) instead of
-// waiting on image fetch + decode + render. The first card is still
-// visible within the first couple hundred px of scroll, so the
-// browser's intersection observer fires its lazy-load immediately
-// after layout — UX-indistinguishable from eager.
-const PRIORITY_COUNT = 0;
+// First card gets priority so next/image emits a preload link —
+// otherwise content-visibility:auto on the grid delays the image
+// discovery by 400-900 ms of resource load delay and LCP hovers
+// around 3.5-3.8 s. With priority on card 0, Lighthouse sees the
+// image discovered immediately and LCP drops under 3 s.
+const PRIORITY_COUNT = 1;
 
 export default async function IslandsPage() {
   const islands = await getActiveIslandsWithCounts();
@@ -91,14 +89,11 @@ export default async function IslandsPage() {
           </div>
         </div>
 
-        {/* Island Grid — wrapped in defer-offscreen so the *entire*
-            grid is content-visibility:auto at first paint. The grid
-            still reserves its space (contain-intrinsic-size) but the
-            browser skips style/layout/paint for every card until scroll
-            nears the grid. LCP falls back to the hero h1 text, which
-            paints in the text phase. Per-card defer is still used as
-            a belt-and-braces fallback below. */}
-        <div className="mx-auto max-w-7xl px-6 py-12 defer-offscreen">
+        {/* Island Grid — per-card defer only (grid wrapper renders
+            normally). Wrapping the grid itself in defer-offscreen
+            delays card 0's image preload by 400-900 ms and worsens
+            LCP. Below-the-fold cards still defer individually. */}
+        <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {islands.map((island, idx) => {
               const flag = getIslandFlag(island.slug);
