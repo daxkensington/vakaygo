@@ -82,8 +82,13 @@ export default async function IslandPage({ params }: Props) {
           />
         </div>
 
-        {/* Hero */}
-        <section className="relative h-[400px] md:h-[500px] flex items-end overflow-hidden">
+        {/* Hero — image is desktop-only. On mobile it was the LCP
+            candidate at 3-5 s element-render-delay even with priority
+            + preload (Lighthouse brutalizes mobile paint budgets).
+            Swapping to a solid navy/gold gradient on mobile makes
+            the h1 the LCP, which paints in the text phase. Desktop
+            perf is already green so it keeps the photo. */}
+        <section className="relative h-[400px] md:h-[500px] flex items-end overflow-hidden bg-gradient-to-br from-navy-800 via-navy-700 to-gold-900/40 md:bg-none">
           <Image
             src={heroImg}
             alt=""
@@ -92,7 +97,7 @@ export default async function IslandPage({ params }: Props) {
             fetchPriority="high"
             sizes="100vw"
             quality={80}
-            className="object-cover"
+            className="hidden md:block object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/30 to-transparent" />
           <div className="relative z-10 mx-auto max-w-7xl px-6 pb-12 w-full">
