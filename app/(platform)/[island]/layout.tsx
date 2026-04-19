@@ -94,8 +94,7 @@ export default async function IslandLayout({ children, params }: Props) {
   const island = await getIslandBySlug(slug);
   if (!island) notFound();
 
-  const heroPath = islandHeroPath[slug] || "/images/hero/caribbean-hero.jpg";
-  const heroImg = `https://vakaygo.com${heroPath}`;
+  const heroImg = `https://vakaygo.com${islandHeroPath[slug] || "/images/hero/caribbean-hero.jpg"}`;
   const geo = islandGeo[slug];
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -117,13 +116,10 @@ export default async function IslandLayout({ children, params }: Props) {
   return (
     <>
       {/*
-        The island page is a client component and sets its hero as a CSS
-        background-image only after API data resolves — Lighthouse measured
-        LCP at ~10s on /grenada because the browser couldn't discover the
-        URL until React hydrated. Server-side preload tells the browser to
-        open the connection in parallel with HTML parse.
+        next/image with priority on the hero emits its own preload
+        targeting the optimized AVIF/WebP URL; preloading the raw JPG
+        here would waste a round-trip on bytes the browser then ignores.
       */}
-      <link rel="preload" as="image" href={heroPath} fetchPriority="high" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

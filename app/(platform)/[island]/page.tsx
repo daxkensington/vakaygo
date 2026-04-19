@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -83,7 +84,16 @@ export default async function IslandPage({ params }: Props) {
 
         {/* Hero */}
         <section className="relative h-[400px] md:h-[500px] flex items-end overflow-hidden">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImg})` }} />
+          <Image
+            src={heroImg}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            sizes="100vw"
+            quality={80}
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/30 to-transparent" />
           <div className="relative z-10 mx-auto max-w-7xl px-6 pb-12 w-full">
             <h1 className="text-4xl md:text-6xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
@@ -144,15 +154,14 @@ export default async function IslandPage({ params }: Props) {
                   >
                     <div className="relative h-44 overflow-hidden">
                       {image ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
+                        <Image
                           src={image}
                           alt={listing.title}
+                          fill
                           loading="lazy"
-                          decoding="async"
-                          width={800}
-                          height={600}
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                          quality={75}
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-cream-200" />
