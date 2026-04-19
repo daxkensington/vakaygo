@@ -39,12 +39,14 @@ const islandImages: Record<string, string> = {
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
-// Mobile is the Lighthouse target and only card 0 is above the fold
-// on a 1-col layout. Priority/eager on a single card keeps the LCP
-// candidate uncontended; every other card defers its layout+paint
-// via content-visibility:auto (see `deferred` below) so Style & Layout
-// work doesn't inflate element render delay for the LCP card.
-const PRIORITY_COUNT = 1;
+// Cards are all lazy: the hero "Explore the Caribbean" <h1> is the
+// true above-the-fold content and becomes the LCP element, which
+// paints in the text-render phase (~200 ms simulated) instead of
+// waiting on image fetch + decode + render. The first card is still
+// visible within the first couple hundred px of scroll, so the
+// browser's intersection observer fires its lazy-load immediately
+// after layout — UX-indistinguishable from eager.
+const PRIORITY_COUNT = 0;
 
 export default async function IslandsPage() {
   const islands = await getActiveIslandsWithCounts();

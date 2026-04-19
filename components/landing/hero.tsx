@@ -185,7 +185,7 @@ export function Hero() {
           </span>
         </h1>
 
-        <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed font-light">
+        <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
           Stays. Tours. Dining. Events. Transport. Guides.
           <br className="hidden md:block" />
           Everything you need for the perfect Caribbean vacation.
