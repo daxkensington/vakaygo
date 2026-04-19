@@ -15,13 +15,17 @@ function getDb() {
 
 /**
  * GET — Return user's last 20 searches
+ *
+ * Anonymous callers get an empty list rather than a 401: /explore
+ * fetches this on every mount and the 401 pollutes the console with a
+ * network error for logged-out users (dinged Lighthouse Best Practices).
  */
 export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("session")?.value;
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ searches: [] });
     }
 
     const { payload } = await jwtVerify(token, SECRET);
