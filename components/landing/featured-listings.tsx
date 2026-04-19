@@ -28,11 +28,30 @@ export function FeaturedListings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/listings?sort=rating&limit=8")
-      .then((r) => r.json())
-      .then((data) => setListings(data.listings || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    // Defer the fetch (and therefore the thumbnail image loads) until
+    // the user interacts or 4 s has passed, so the home LCP budget
+    // isn't eaten by an external 100-300 KB listing photo from some
+    // random car-rental site's CDN.
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      window.removeEventListener("scroll", go);
+      window.removeEventListener("touchstart", go);
+      fetch("/api/listings?sort=rating&limit=8")
+        .then((r) => r.json())
+        .then((data) => setListings(data.listings || []))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    };
+    window.addEventListener("scroll", go, { passive: true });
+    window.addEventListener("touchstart", go, { passive: true });
+    const t = setTimeout(go, 4000);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", go);
+      window.removeEventListener("touchstart", go);
+    };
   }, []);
 
   if (loading) {
