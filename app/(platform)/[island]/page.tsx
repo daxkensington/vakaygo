@@ -111,7 +111,7 @@ export default async function IslandPage({ params }: Props) {
         </section>
 
         {/* Category Cards */}
-        <div className="mx-auto max-w-7xl px-6 -mt-8 relative z-10">
+        <div className="mx-auto max-w-7xl px-6 -mt-8 relative z-10 defer-offscreen">
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {typeConfig.map((tc) => {
               const count = stats.typeCounts[tc.type] || 0;
@@ -134,7 +134,7 @@ export default async function IslandPage({ params }: Props) {
 
         {/* Featured Listings */}
         {featured.length > 0 && (
-          <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="mx-auto max-w-7xl px-6 py-12 defer-offscreen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
                 Top experiences in {island.name}
