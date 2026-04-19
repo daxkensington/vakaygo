@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight, Shield, Plane, Sparkles } from "lucide-react";
 
 const categories = [
@@ -116,10 +117,14 @@ export function Categories() {
               href={`/explore?type=${cat.slug}`}
               className="group relative h-72 rounded-3xl overflow-hidden cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
             >
-              {/* Background image */}
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                style={{ backgroundImage: `url(${cat.image})` }}
+              <Image
+                src={cat.image}
+                alt=""
+                fill
+                loading="lazy"
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                quality={75}
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/90 via-navy-900/30 to-transparent" />
               <div className="absolute inset-0 bg-navy-900/10 group-hover:bg-navy-900/0 transition-colors duration-500" />
