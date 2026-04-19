@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/layout/header";
+
+export const metadata: Metadata = {
+  title: "Explore 21 Caribbean Islands | VakayGo",
+  description:
+    "Discover stays, tours, dining, and experiences across 21 Caribbean islands. Compare destinations and plan your trip with VakayGo.",
+  alternates: { canonical: "https://vakaygo.com/islands" },
+};
 import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
