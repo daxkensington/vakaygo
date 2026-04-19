@@ -424,7 +424,7 @@ export default function OperatorCalendarPage() {
   if (loadingListing) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-gold-500" />
+        <Loader2 size={32} className="animate-spin text-gold-700" />
       </div>
     );
   }
@@ -436,7 +436,7 @@ export default function OperatorCalendarPage() {
           <p className="text-navy-500">{listingError || "Listing not found"}</p>
           <Link
             href="/operator/listings"
-            className="inline-flex items-center gap-2 mt-4 text-gold-500 hover:text-gold-600 text-sm font-medium"
+            className="inline-flex items-center gap-2 mt-4 text-gold-700 hover:text-gold-600 text-sm font-medium"
           >
             <ArrowLeft size={16} />
             Back to Listings
@@ -475,7 +475,7 @@ export default function OperatorCalendarPage() {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 bg-white rounded-xl shadow-[var(--shadow-card)] px-4 py-2.5 text-sm font-medium text-navy-700 hover:bg-cream-50 transition-colors min-w-[200px]"
           >
-            <Calendar size={16} className="text-gold-500 flex-shrink-0" />
+            <Calendar size={16} className="text-gold-700 flex-shrink-0" />
             <span className="truncate">{listing.title}</span>
             <ChevronDown size={16} className="text-navy-400 ml-auto flex-shrink-0" />
           </button>
@@ -582,7 +582,7 @@ export default function OperatorCalendarPage() {
             <div className="grid grid-cols-7 gap-1 relative select-none">
               {loadingCal && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-xl">
-                  <Loader2 size={24} className="animate-spin text-gold-500" />
+                  <Loader2 size={24} className="animate-spin text-gold-700" />
                 </div>
               )}
 
@@ -765,7 +765,7 @@ export default function OperatorCalendarPage() {
               <div className="px-5 pb-5 space-y-5 border-t border-cream-200">
                 {icalLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 size={20} className="animate-spin text-gold-500" />
+                    <Loader2 size={20} className="animate-spin text-gold-700" />
                   </div>
                 ) : (
                   <>

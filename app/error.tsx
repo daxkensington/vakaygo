@@ -15,7 +15,7 @@ export default function Error({
       <div className="w-full max-w-md text-center">
         {/* Warning icon */}
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gold-100">
-          <AlertTriangle className="h-10 w-10 text-gold-500" />
+          <AlertTriangle className="h-10 w-10 text-gold-700" />
         </div>
 
         {/* Heading */}

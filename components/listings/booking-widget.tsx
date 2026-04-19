@@ -432,7 +432,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           )}
           {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
             <div className="flex items-center gap-1 mt-2">
-              <Star size={14} className="text-gold-500 fill-gold-500" />
+              <Star size={14} className="text-gold-700 fill-gold-500" />
               <span className="text-sm font-semibold text-navy-700">
                 {parseFloat(listing.avgRating).toFixed(1)}
               </span>
@@ -639,7 +639,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
                 25% now, remainder due before your experience
               </p>
             </div>
-            <CreditCard size={18} className="text-gold-500" />
+            <CreditCard size={18} className="text-gold-700" />
           </label>
         )}
 

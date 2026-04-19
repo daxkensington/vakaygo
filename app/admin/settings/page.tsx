@@ -63,7 +63,7 @@ export default function AdminSettingsPage() {
     <div>
       {/* Header */}
       <div className="mb-8 flex items-center gap-3">
-        <Settings className="h-7 w-7 text-gold-500" />
+        <Settings className="h-7 w-7 text-gold-700" />
         <h1
           className="text-3xl font-bold text-navy-700"
           style={{ fontFamily: "var(--font-display)" }}
@@ -193,7 +193,7 @@ export default function AdminSettingsPage() {
 
           {statsLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-gold-500" />
+              <Loader2 className="h-6 w-6 animate-spin text-gold-700" />
             </div>
           ) : stats ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

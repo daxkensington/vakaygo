@@ -277,7 +277,7 @@ export default function AdminUsersPage() {
       <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-gold-500" />
+            <Loader2 size={32} className="animate-spin text-gold-700" />
           </div>
         ) : !data || data.users.length === 0 ? (
           <div className="py-20 text-center">
@@ -362,7 +362,7 @@ export default function AdminUsersPage() {
                             {changingRole === user.id ? (
                               <Loader2
                                 size={16}
-                                className="animate-spin text-gold-500"
+                                className="animate-spin text-gold-700"
                               />
                             ) : (
                               <select

@@ -20,7 +20,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-500" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-700" /></div>}>
       <SignInContent />
     </Suspense>
   );
@@ -79,7 +79,7 @@ function SignInContent() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="text-3xl font-bold text-navy-700">
-            Vakay<span className="text-gold-500">Go</span>
+            Vakay<span className="text-gold-700">Go</span>
           </Link>
           <h1
             className="text-2xl font-bold text-navy-700 mt-6"
@@ -152,7 +152,7 @@ function SignInContent() {
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-500"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-navy-300 hover:text-navy-500"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

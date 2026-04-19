@@ -448,7 +448,7 @@ export default function AdminPromosPage() {
       {/* Promo Codes Table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center shadow-[var(--shadow-card)]">

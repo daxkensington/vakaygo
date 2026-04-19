@@ -24,8 +24,8 @@ const typeConfig: Record<
   string,
   { icon: typeof Bell; color: string; bg: string }
 > = {
-  booking: { icon: CalendarCheck, color: "text-gold-500", bg: "bg-gold-50" },
-  review: { icon: Star, color: "text-gold-500", bg: "bg-gold-50" },
+  booking: { icon: CalendarCheck, color: "text-gold-700", bg: "bg-gold-50" },
+  review: { icon: Star, color: "text-gold-700", bg: "bg-gold-50" },
   message: { icon: MessageSquare, color: "text-teal-500", bg: "bg-teal-50" },
   system: { icon: Info, color: "text-navy-500", bg: "bg-navy-50" },
 };
@@ -149,7 +149,7 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-gold-500 hover:text-gold-600 font-medium transition-colors"
+                className="text-xs text-gold-700 hover:text-gold-600 font-medium transition-colors"
               >
                 Mark all as read
               </button>

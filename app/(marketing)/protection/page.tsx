@@ -184,7 +184,7 @@ export default function ProtectionPage() {
         {/* CTA */}
         <section className="py-20 bg-cream-50">
           <div className="mx-auto max-w-2xl px-6 text-center">
-            <Shield className="w-12 h-12 text-gold-500 mx-auto mb-6" />
+            <Shield className="w-12 h-12 text-gold-700 mx-auto mb-6" />
             <h2
               className="text-3xl font-bold text-navy-700 mb-4"
               style={{ fontFamily: "var(--font-display)" }}

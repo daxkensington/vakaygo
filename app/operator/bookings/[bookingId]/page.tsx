@@ -154,7 +154,7 @@ export default function OperatorBookingDetailPage({
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto py-12 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-gold-500" />
+        <Loader2 size={32} className="animate-spin text-gold-700" />
       </div>
     );
   }
@@ -253,7 +253,7 @@ export default function OperatorBookingDetailPage({
         {/* Trip details */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="font-semibold text-navy-700 mb-4 flex items-center gap-2">
-            <Calendar size={16} className="text-gold-500" />
+            <Calendar size={16} className="text-gold-700" />
             Trip Details
           </h2>
           <dl className="space-y-3 text-sm">
@@ -285,7 +285,7 @@ export default function OperatorBookingDetailPage({
         {/* Traveler */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="font-semibold text-navy-700 mb-4 flex items-center gap-2">
-            <User size={16} className="text-gold-500" />
+            <User size={16} className="text-gold-700" />
             Traveler
           </h2>
           <dl className="space-y-3 text-sm">
@@ -331,7 +331,7 @@ export default function OperatorBookingDetailPage({
         {/* Payment */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="font-semibold text-navy-700 mb-4 flex items-center gap-2">
-            <DollarSign size={16} className="text-gold-500" />
+            <DollarSign size={16} className="text-gold-700" />
             Payment
           </h2>
           <dl className="space-y-3 text-sm">
@@ -388,7 +388,7 @@ export default function OperatorBookingDetailPage({
         {/* Notes */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="font-semibold text-navy-700 mb-4 flex items-center gap-2">
-            <StickyNote size={16} className="text-gold-500" />
+            <StickyNote size={16} className="text-gold-700" />
             Notes
           </h2>
           {booking.guestNotes && (

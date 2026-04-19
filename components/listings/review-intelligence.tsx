@@ -213,7 +213,7 @@ export function ReviewIntelligence({
                 <div className="flex items-start gap-2.5 p-3 bg-white/70 rounded-xl">
                   <Lightbulb
                     size={16}
-                    className="text-gold-500 shrink-0 mt-0.5"
+                    className="text-gold-700 shrink-0 mt-0.5"
                   />
                   <div>
                     <p className="text-xs font-semibold text-navy-500 mb-0.5">

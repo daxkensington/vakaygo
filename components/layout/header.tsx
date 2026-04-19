@@ -227,7 +227,7 @@ export function Header() {
               )}
               <Link
                 href="/rewards"
-                className="flex items-center gap-1 text-gold-500 hover:text-gold-600 transition-colors"
+                className="flex items-center gap-1 text-gold-700 hover:text-gold-600 transition-colors"
               >
                 <Star size={14} className="fill-gold-500" />
                 Rewards
@@ -295,7 +295,7 @@ export function Header() {
               <Link href="/bookings" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
                 My Bookings
               </Link>
-              <Link href="/rewards" className="block text-gold-500 font-medium py-2 flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+              <Link href="/rewards" className="block text-gold-700 font-medium py-2 flex items-center gap-2" onClick={() => setMobileOpen(false)}>
                 <Star size={16} className="fill-gold-500" />
                 Rewards
               </Link>
@@ -303,7 +303,7 @@ export function Header() {
                 Profile
               </Link>
               {user.role === "operator" && (
-                <Link href="/operator" className="block text-gold-500 font-medium py-2" onClick={() => setMobileOpen(false)}>
+                <Link href="/operator" className="block text-gold-700 font-medium py-2" onClick={() => setMobileOpen(false)}>
                   Operator Dashboard
                 </Link>
               )}

@@ -32,7 +32,7 @@ function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
           size={size}
           className={
             i <= rating
-              ? "text-gold-500 fill-gold-500"
+              ? "text-gold-700 fill-gold-500"
               : "text-navy-200 fill-navy-200"
           }
         />
@@ -218,7 +218,7 @@ export default function OperatorReviewsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] text-center">
           <div className="flex items-center justify-center gap-1 mb-2">
-            <Star size={24} className="text-gold-500 fill-gold-500" />
+            <Star size={24} className="text-gold-700 fill-gold-500" />
             <span className="text-3xl font-bold text-navy-700">
               {stats.totalReviews > 0 ? stats.avgRating : "—"}
             </span>

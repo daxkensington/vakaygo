@@ -108,7 +108,7 @@ export default function AdminMessagesPage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
-        <MessageSquare className="h-7 w-7 text-gold-500" />
+        <MessageSquare className="h-7 w-7 text-gold-700" />
         <h1
           className="text-3xl font-bold text-navy-700"
           style={{ fontFamily: "var(--font-display)" }}
@@ -119,7 +119,7 @@ export default function AdminMessagesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
         </div>
       ) : !data ? (
         <div className="py-20 text-center">

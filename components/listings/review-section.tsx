@@ -49,7 +49,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
           size={size}
           className={
             star <= rating
-              ? "text-gold-500 fill-gold-500"
+              ? "text-gold-700 fill-gold-500"
               : "text-cream-300"
           }
         />
@@ -270,7 +270,7 @@ export function ReviewSection({
                 {distribution.map(({ star, count }) => (
                   <div key={star} className="flex items-center gap-2">
                     <span className="text-xs text-navy-400 w-3">{star}</span>
-                    <Star size={10} className="text-gold-500 fill-gold-500" />
+                    <Star size={10} className="text-gold-700 fill-gold-500" />
                     <div className="flex-1 h-2 bg-cream-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gold-500 rounded-full transition-all"

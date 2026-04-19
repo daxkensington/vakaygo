@@ -66,7 +66,7 @@ export default function OperatorSettingsPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-gold-500" />
+        <Loader2 size={32} className="animate-spin text-gold-700" />
       </div>
     );
   }

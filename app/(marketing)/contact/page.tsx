@@ -229,7 +229,7 @@ export default function ContactPage() {
               <div className="lg:col-span-2 space-y-6">
                 <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
                   <div className="w-10 h-10 bg-gold-50 rounded-xl flex items-center justify-center mb-4">
-                    <Mail size={20} className="text-gold-500" />
+                    <Mail size={20} className="text-gold-700" />
                   </div>
                   <h3 className="font-bold text-navy-700 mb-1">Email Us</h3>
                   <p className="text-navy-400 text-sm mb-3">

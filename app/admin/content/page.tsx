@@ -123,7 +123,7 @@ export default function ContentManagement() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-gold-500" />
+        <Loader2 size={40} className="animate-spin text-gold-700" />
       </div>
     );
   }

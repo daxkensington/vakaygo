@@ -891,7 +891,7 @@ export default function ExplorePage() {
             <div className="bg-gradient-to-r from-gold-50 to-teal-50 rounded-2xl p-4 shadow-sm">
               {aiSummary && (
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={16} className="text-gold-500 shrink-0" />
+                  <Sparkles size={16} className="text-gold-700 shrink-0" />
                   <p className="text-sm font-medium text-navy-700">{aiSummary}</p>
                 </div>
               )}

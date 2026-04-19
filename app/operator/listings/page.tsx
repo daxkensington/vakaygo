@@ -102,7 +102,7 @@ export default function ListingsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center">
@@ -162,7 +162,7 @@ export default function ListingsPage() {
                       <>
                         <span>·</span>
                         <span className="flex items-center gap-0.5">
-                          <Star size={10} className="text-gold-500 fill-gold-500" />
+                          <Star size={10} className="text-gold-700 fill-gold-500" />
                           {rating.toFixed(1)}
                         </span>
                       </>

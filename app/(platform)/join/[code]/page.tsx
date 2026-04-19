@@ -18,7 +18,7 @@ export default function JoinPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-cream-50">
       <div className="text-center">
-        <Loader2 size={32} className="animate-spin text-gold-500 mx-auto mb-4" />
+        <Loader2 size={32} className="animate-spin text-gold-700 mx-auto mb-4" />
         <p className="text-navy-500">Redirecting to signup...</p>
       </div>
     </div>

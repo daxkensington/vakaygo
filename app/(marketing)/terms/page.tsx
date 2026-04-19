@@ -71,7 +71,7 @@ export default function TermsPage() {
 
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">8. Contact</h2>
-                <p>Questions about these terms? Email us at <a href="mailto:hello@vakaygo.com" className="text-gold-500 font-medium">hello@vakaygo.com</a>.</p>
+                <p>Questions about these terms? Email us at <a href="mailto:hello@vakaygo.com" className="text-gold-700 font-medium">hello@vakaygo.com</a>.</p>
               </section>
             </div>
           </div>

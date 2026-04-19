@@ -160,7 +160,7 @@ const TIME_SLOT_CONFIG: Record<
   morning: {
     label: "Morning",
     icon: Sun,
-    color: "text-gold-500",
+    color: "text-gold-700",
     bg: "bg-gold-50",
   },
   afternoon: {
@@ -469,7 +469,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-3">
                       <MapPin
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Where do you want to go?
                     </label>
@@ -521,7 +521,7 @@ export default function NewTripPage() {
                       <label className="block text-sm font-semibold text-navy-600 mb-2">
                         <Calendar
                           size={14}
-                          className="inline mr-1.5 text-gold-500"
+                          className="inline mr-1.5 text-gold-700"
                         />
                         Start Date
                       </label>
@@ -537,7 +537,7 @@ export default function NewTripPage() {
                       <label className="block text-sm font-semibold text-navy-600 mb-2">
                         <Calendar
                           size={14}
-                          className="inline mr-1.5 text-gold-500"
+                          className="inline mr-1.5 text-gold-700"
                         />
                         End Date
                       </label>
@@ -564,7 +564,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-2">
                       <Users
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Guests
                     </label>
@@ -611,7 +611,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-3">
                       <DollarSign
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Budget Level
                     </label>
@@ -658,7 +658,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-3">
                       <Compass
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Trip Pace
                     </label>
@@ -694,7 +694,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-3">
                       <Sparkles
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Interests (pick as many as you like)
                     </label>
@@ -792,7 +792,7 @@ export default function NewTripPage() {
                     <label className="block text-sm font-semibold text-navy-600 mb-2">
                       <Camera
                         size={14}
-                        className="inline mr-1.5 text-gold-500"
+                        className="inline mr-1.5 text-gold-700"
                       />
                       Anything else we should know?
                     </label>
@@ -869,7 +869,7 @@ export default function NewTripPage() {
                   <div className="absolute inset-1 rounded-full bg-cream-50 flex items-center justify-center">
                     <Sparkles
                       size={32}
-                      className="text-gold-500 animate-pulse"
+                      className="text-gold-700 animate-pulse"
                     />
                   </div>
                 </div>
@@ -922,15 +922,15 @@ export default function NewTripPage() {
                   </p>
                   <div className="flex flex-wrap gap-3 mt-3 text-sm text-navy-500">
                     <span className="flex items-center gap-1">
-                      <MapPin size={14} className="text-gold-500" />
+                      <MapPin size={14} className="text-gold-700" />
                       {selectedIsland?.name}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Calendar size={14} className="text-gold-500" />
+                      <Calendar size={14} className="text-gold-700" />
                       {days} day{days !== 1 ? "s" : ""}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Users size={14} className="text-gold-500" />
+                      <Users size={14} className="text-gold-700" />
                       {guestCount} guest{guestCount !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -1138,7 +1138,7 @@ export default function NewTripPage() {
                   {budgetData && (
                     <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-5 sticky top-24">
                       <h3 className="font-bold text-navy-700 mb-4 flex items-center gap-2">
-                        <DollarSign size={16} className="text-gold-500" />
+                        <DollarSign size={16} className="text-gold-700" />
                         Estimated Budget
                       </h3>
 

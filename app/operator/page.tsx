@@ -59,7 +59,7 @@ function StarRating({ rating }: { rating: number }) {
           size={14}
           className={
             i <= Math.round(rating)
-              ? "text-gold-500 fill-gold-500"
+              ? "text-gold-700 fill-gold-500"
               : "text-navy-200"
           }
         />
@@ -86,7 +86,7 @@ export default function OperatorDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-gold-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gold-700" />
       </div>
     );
   }
@@ -354,7 +354,7 @@ export default function OperatorDashboard() {
                 </div>
                 <Link
                   href={item.href}
-                  className="shrink-0 text-sm font-semibold text-gold-500 hover:text-gold-600"
+                  className="shrink-0 text-sm font-semibold text-gold-700 hover:text-gold-600"
                 >
                   {item.action} &rarr;
                 </Link>

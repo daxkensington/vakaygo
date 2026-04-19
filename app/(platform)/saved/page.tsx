@@ -180,7 +180,7 @@ export default function SavedPage() {
           {/* Loading */}
           {(authLoading || (user && loading)) && (
             <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-gold-500" />
+              <Loader2 size={32} className="animate-spin text-gold-700" />
             </div>
           )}
 

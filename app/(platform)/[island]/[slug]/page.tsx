@@ -314,7 +314,7 @@ export default function ListingDetailPage() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={40} className="animate-spin text-gold-500" />
+          <Loader2 size={40} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -388,12 +388,12 @@ export default function ListingDetailPage() {
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-navy-400">
                     <div className="flex items-center gap-1">
-                      <MapPin size={14} className="text-gold-500" />
+                      <MapPin size={14} className="text-gold-700" />
                       {listing.parish}, {getIslandFlag(listing.islandSlug)} {listing.islandName}
                     </div>
                     {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
                       <div className="flex items-center gap-1">
-                        <Star size={14} className="text-gold-500 fill-gold-500" />
+                        <Star size={14} className="text-gold-700 fill-gold-500" />
                         <span className="font-semibold text-navy-700">
                           {parseFloat(listing.avgRating).toFixed(1)}
                         </span>
@@ -530,7 +530,7 @@ export default function ListingDetailPage() {
                 <div className="flex flex-wrap gap-4 mt-8">
                   {td.duration && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                      <Clock size={16} className="text-gold-500" />
+                      <Clock size={16} className="text-gold-700" />
                       <span className="text-sm font-medium text-navy-600">
                         {td.duration as string}
                       </span>
@@ -538,7 +538,7 @@ export default function ListingDetailPage() {
                   )}
                   {td.maxGroupSize && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                      <UsersIcon size={16} className="text-gold-500" />
+                      <UsersIcon size={16} className="text-gold-700" />
                       <span className="text-sm font-medium text-navy-600">
                         Max {td.maxGroupSize as number} people
                       </span>
@@ -546,7 +546,7 @@ export default function ListingDetailPage() {
                   )}
                   {td.maxGuests && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                      <UsersIcon size={16} className="text-gold-500" />
+                      <UsersIcon size={16} className="text-gold-700" />
                       <span className="text-sm font-medium text-navy-600">
                         Up to {td.maxGuests as number} guests
                       </span>
@@ -575,7 +575,7 @@ export default function ListingDetailPage() {
                   )}
                   {td.hours && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                      <Clock size={16} className="text-gold-500" />
+                      <Clock size={16} className="text-gold-700" />
                       <span className="text-sm font-medium text-navy-600">
                         {td.hours as string}
                       </span>
@@ -642,7 +642,7 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {listing.minStay && listing.minStay > 0 && (
                       <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
-                        <Clock size={16} className="text-gold-500" />
+                        <Clock size={16} className="text-gold-700" />
                         <span className="text-sm font-medium text-navy-600">
                           Minimum stay: {listing.minStay} night{listing.minStay > 1 ? "s" : ""}
                         </span>
@@ -650,7 +650,7 @@ export default function ListingDetailPage() {
                     )}
                     {listing.maxStay && listing.maxStay > 0 && (
                       <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
-                        <Clock size={16} className="text-gold-500" />
+                        <Clock size={16} className="text-gold-700" />
                         <span className="text-sm font-medium text-navy-600">
                           Maximum stay: {listing.maxStay} night{listing.maxStay > 1 ? "s" : ""}
                         </span>
@@ -658,7 +658,7 @@ export default function ListingDetailPage() {
                     )}
                     {listing.advanceNotice && listing.advanceNotice > 0 && (
                       <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
-                        <Clock size={16} className="text-gold-500" />
+                        <Clock size={16} className="text-gold-700" />
                         <span className="text-sm font-medium text-navy-600">
                           Book at least {listing.advanceNotice} hour{listing.advanceNotice > 1 ? "s" : ""} in advance
                         </span>
@@ -666,7 +666,7 @@ export default function ListingDetailPage() {
                     )}
                     {listing.maxGuests && listing.maxGuests > 0 && (
                       <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
-                        <UsersIcon size={16} className="text-gold-500" />
+                        <UsersIcon size={16} className="text-gold-700" />
                         <span className="text-sm font-medium text-navy-600">
                           Up to {listing.maxGuests} guest{listing.maxGuests > 1 ? "s" : ""}
                         </span>
@@ -686,7 +686,7 @@ export default function ListingDetailPage() {
                     {(td.amenities as string[]).map((item) => (
                       <div key={item} className="flex items-center gap-3">
                         <div className="w-6 h-6 bg-gold-50 rounded-full flex items-center justify-center">
-                          <Check size={14} className="text-gold-500" />
+                          <Check size={14} className="text-gold-700" />
                         </div>
                         <span className="text-navy-600">{item}</span>
                       </div>
@@ -844,7 +844,7 @@ export default function ListingDetailPage() {
                         </span>
                         {item.avgRating && (
                           <div className="flex items-center gap-1">
-                            <Star size={12} className="text-gold-500 fill-gold-500" />
+                            <Star size={12} className="text-gold-700 fill-gold-500" />
                             <span className="text-xs font-semibold">
                               {parseFloat(item.avgRating).toFixed(1)}
                             </span>

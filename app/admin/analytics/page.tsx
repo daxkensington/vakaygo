@@ -239,7 +239,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
       </div>
     );
   }
@@ -334,7 +334,7 @@ export default function AnalyticsPage() {
       {/* ── 2. User Growth Chart ────────────────────────────────── */}
       <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
         <div className="mb-4 flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-gold-500" />
+          <TrendingUp className="h-5 w-5 text-gold-700" />
           <h2
             className="text-lg font-bold text-navy-800"
             style={{ fontFamily: "var(--font-display)" }}
@@ -401,7 +401,7 @@ export default function AnalyticsPage() {
       {/* ── 3. Booking Funnel ───────────────────────────────────── */}
       <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
         <div className="mb-4 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-gold-500" />
+          <Activity className="h-5 w-5 text-gold-700" />
           <h2
             className="text-lg font-bold text-navy-800"
             style={{ fontFamily: "var(--font-display)" }}
@@ -462,7 +462,7 @@ export default function AnalyticsPage() {
         {/* Top Listings */}
         <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
           <div className="mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-gold-500" />
+            <Trophy className="h-5 w-5 text-gold-700" />
             <h2
               className="text-sm font-bold text-navy-800"
               style={{ fontFamily: "var(--font-display)" }}
@@ -502,7 +502,7 @@ export default function AnalyticsPage() {
         {/* Top Islands */}
         <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
           <div className="mb-4 flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-gold-500" />
+            <MapPin className="h-5 w-5 text-gold-700" />
             <h2
               className="text-sm font-bold text-navy-800"
               style={{ fontFamily: "var(--font-display)" }}
@@ -538,7 +538,7 @@ export default function AnalyticsPage() {
         {/* Top Operators */}
         <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
           <div className="mb-4 flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-gold-500" />
+            <Briefcase className="h-5 w-5 text-gold-700" />
             <h2
               className="text-sm font-bold text-navy-800"
               style={{ fontFamily: "var(--font-display)" }}
@@ -574,7 +574,7 @@ export default function AnalyticsPage() {
       {/* ── 5. Platform Health ──────────────────────────────────── */}
       <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
         <div className="mb-6 flex items-center gap-2">
-          <Activity className="h-5 w-5 text-gold-500" />
+          <Activity className="h-5 w-5 text-gold-700" />
           <h2
             className="text-lg font-bold text-navy-800"
             style={{ fontFamily: "var(--font-display)" }}
@@ -609,7 +609,7 @@ export default function AnalyticsPage() {
       {/* ── 6. Booking Distribution by Island ───────────────────── */}
       <div className="rounded-2xl bg-white p-6 shadow-[var(--shadow-card)]">
         <div className="mb-4 flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-gold-500" />
+          <MapPin className="h-5 w-5 text-gold-700" />
           <h2
             className="text-lg font-bold text-navy-800"
             style={{ fontFamily: "var(--font-display)" }}

@@ -47,7 +47,7 @@ export default function PrivacyPage() {
 
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">7. Contact</h2>
-                <p>For privacy-related questions, contact us at <a href="mailto:hello@vakaygo.com" className="text-gold-500 font-medium">hello@vakaygo.com</a>.</p>
+                <p>For privacy-related questions, contact us at <a href="mailto:hello@vakaygo.com" className="text-gold-700 font-medium">hello@vakaygo.com</a>.</p>
               </section>
             </div>
           </div>

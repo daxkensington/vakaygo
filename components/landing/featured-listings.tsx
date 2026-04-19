@@ -39,7 +39,7 @@ export function FeaturedListings() {
     return (
       <section className="py-24 bg-white">
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </section>
     );

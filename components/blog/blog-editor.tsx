@@ -534,7 +534,7 @@ export function BlogEditor({
             ) : (
               <label className="flex flex-col items-center justify-center w-full aspect-video rounded-xl border-2 border-dashed border-cream-300 bg-cream-50 cursor-pointer hover:border-gold-400 transition-colors">
                 {uploadingImage ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+                  <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
                 ) : (
                   <>
                     <ImageIcon className="h-8 w-8 text-navy-300 mb-2" />
@@ -678,7 +678,7 @@ export function BlogEditor({
                 <div className="w-full aspect-square rounded-xl bg-cream-50 flex flex-col items-center justify-center mb-4">
                   <div className="w-full h-full rounded-xl bg-gradient-to-r from-cream-100 via-cream-50 to-cream-100 animate-pulse" />
                   <div className="absolute flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
                     <span className="text-sm text-navy-500 font-medium">Generating image...</span>
                   </div>
                 </div>

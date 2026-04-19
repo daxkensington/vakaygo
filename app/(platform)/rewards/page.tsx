@@ -149,7 +149,7 @@ export default function RewardsPage() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -295,7 +295,7 @@ export default function RewardsPage() {
                       <p className="text-navy-300 text-sm mt-1">Book an experience to start earning points!</p>
                       <Link
                         href="/explore"
-                        className="inline-flex items-center gap-2 mt-4 text-gold-500 font-medium text-sm hover:text-gold-600"
+                        className="inline-flex items-center gap-2 mt-4 text-gold-700 font-medium text-sm hover:text-gold-600"
                       >
                         Explore Listings <ArrowRight size={14} />
                       </Link>
@@ -338,7 +338,7 @@ export default function RewardsPage() {
                             <ul className="mt-2 space-y-1">
                               {t.benefits.map((b, i) => (
                                 <li key={i} className="text-sm text-navy-500 flex items-center gap-2">
-                                  <Check size={14} className={isCurrent ? "text-gold-500" : "text-teal-500"} />
+                                  <Check size={14} className={isCurrent ? "text-gold-700" : "text-teal-500"} />
                                   {b}
                                 </li>
                               ))}
@@ -383,7 +383,7 @@ export default function RewardsPage() {
               {/* Referral Section */}
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Gift size={20} className="text-gold-500" />
+                  <Gift size={20} className="text-gold-700" />
                   <h2 className="text-lg font-bold text-navy-700">Invite Friends</h2>
                 </div>
                 <p className="text-sm text-navy-500 mb-4">

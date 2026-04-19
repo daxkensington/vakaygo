@@ -98,7 +98,7 @@ export default function OperatorPayoutsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 size={32} className="animate-spin text-gold-500" />
+        <Loader2 size={32} className="animate-spin text-gold-700" />
       </div>
     );
   }

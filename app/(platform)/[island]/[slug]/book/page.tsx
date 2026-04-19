@@ -101,7 +101,7 @@ export default function BookingPage() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -317,7 +317,7 @@ export default function BookingPage() {
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-gold-500">{"\u2B50"}</span>
+                          <span className="text-gold-700">{"\u2B50"}</span>
                           <span className="font-semibold text-navy-700">Use Reward Points</span>
                         </div>
                         <p className="text-sm text-navy-400 mt-1">

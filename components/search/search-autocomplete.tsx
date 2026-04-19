@@ -220,10 +220,10 @@ export function SearchAutocomplete({
         {aiSearchLoading ? (
           <Loader2
             size={18}
-            className="text-gold-500 shrink-0 animate-spin"
+            className="text-gold-700 shrink-0 animate-spin"
           />
         ) : aiSearchActive ? (
-          <Sparkles size={18} className="text-gold-500 shrink-0" />
+          <Sparkles size={18} className="text-gold-700 shrink-0" />
         ) : (
           <Search size={18} className="text-navy-300 shrink-0" />
         )}

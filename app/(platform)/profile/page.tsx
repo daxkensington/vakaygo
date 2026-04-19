@@ -72,7 +72,7 @@ export default function ProfilePage() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -159,21 +159,21 @@ export default function ProfilePage() {
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
-              <CalendarCheck size={20} className="text-gold-500 mx-auto mb-2" />
+              <CalendarCheck size={20} className="text-gold-700 mx-auto mb-2" />
               <p className="text-2xl font-bold text-navy-700">
                 {statsLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : stats.bookings}
               </p>
               <p className="text-xs text-navy-400 mt-1">Bookings</p>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
-              <Star size={20} className="text-gold-500 mx-auto mb-2" />
+              <Star size={20} className="text-gold-700 mx-auto mb-2" />
               <p className="text-2xl font-bold text-navy-700">
                 {statsLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : stats.reviews}
               </p>
               <p className="text-xs text-navy-400 mt-1">Reviews</p>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
-              <Bookmark size={20} className="text-gold-500 mx-auto mb-2" />
+              <Bookmark size={20} className="text-gold-700 mx-auto mb-2" />
               <p className="text-2xl font-bold text-navy-700">
                 {statsLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : stats.saved}
               </p>
@@ -184,17 +184,17 @@ export default function ProfilePage() {
           {/* Quick Links */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <Link href="/bookings" className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all hover:-translate-y-1 text-center">
-              <CalendarCheck size={24} className="text-gold-500 mx-auto mb-3" />
+              <CalendarCheck size={24} className="text-gold-700 mx-auto mb-3" />
               <p className="font-semibold text-navy-700">My Bookings</p>
               <p className="text-sm text-navy-400 mt-1">View your trips</p>
             </Link>
             <Link href="/explore" className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all hover:-translate-y-1 text-center">
-              <Heart size={24} className="text-gold-500 mx-auto mb-3" />
+              <Heart size={24} className="text-gold-700 mx-auto mb-3" />
               <p className="font-semibold text-navy-700">Saved / Wishlist</p>
               <p className="text-sm text-navy-400 mt-1">Your favorites</p>
             </Link>
             <Link href="/explore" className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all hover:-translate-y-1 text-center">
-              <MapPin size={24} className="text-gold-500 mx-auto mb-3" />
+              <MapPin size={24} className="text-gold-700 mx-auto mb-3" />
               <p className="font-semibold text-navy-700">Explore</p>
               <p className="text-sm text-navy-400 mt-1">Find experiences</p>
             </Link>
@@ -283,7 +283,7 @@ export default function ProfilePage() {
               href="/operator"
               className="flex items-center gap-3 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all hover:-translate-y-1 mb-6"
             >
-              <LayoutDashboard size={24} className="text-gold-500" />
+              <LayoutDashboard size={24} className="text-gold-700" />
               <div>
                 <p className="font-semibold text-navy-700">Go to Dashboard</p>
                 <p className="text-sm text-navy-400">Manage your listings and bookings</p>

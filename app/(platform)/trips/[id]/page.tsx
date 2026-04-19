@@ -75,7 +75,7 @@ const TIME_SLOT_CONFIG: Record<
   morning: {
     label: "Morning",
     icon: Sun,
-    color: "text-gold-500",
+    color: "text-gold-700",
     bg: "bg-gold-50",
     border: "border-gold-200",
   },
@@ -268,7 +268,7 @@ export default function TripDetailPage({
           {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-gold-500" />
+              <Loader2 size={32} className="animate-spin text-gold-700" />
             </div>
           )}
 
@@ -344,13 +344,13 @@ export default function TripDetailPage({
                       <div className="flex flex-wrap items-center gap-4 text-sm text-navy-400">
                         {trip.islandName && (
                           <span className="flex items-center gap-1.5">
-                            <MapPin size={14} className="text-gold-500" />
+                            <MapPin size={14} className="text-gold-700" />
                             {trip.islandName}
                           </span>
                         )}
                         {trip.startDate && (
                           <span className="flex items-center gap-1.5">
-                            <Calendar size={14} className="text-gold-500" />
+                            <Calendar size={14} className="text-gold-700" />
                             {formatDate(trip.startDate)}
                             {trip.endDate &&
                               ` - ${formatDate(trip.endDate)}`}

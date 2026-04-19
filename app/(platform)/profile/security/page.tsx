@@ -239,7 +239,7 @@ export default function SecurityPage() {
       <>
         <Header />
         <main className="min-h-screen bg-cream-50 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gold-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-gold-700" />
         </main>
         <Footer />
       </>
@@ -309,7 +309,7 @@ export default function SecurityPage() {
 
             {totpLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gold-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-gold-700" />
               </div>
             ) : totp.enabled ? (
               <div>
@@ -406,7 +406,7 @@ export default function SecurityPage() {
 
             {phoneLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gold-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-gold-700" />
               </div>
             ) : phone.verified ? (
               <p className="text-sm text-navy-500">
@@ -497,7 +497,7 @@ export default function SecurityPage() {
 
             {idLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gold-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-gold-700" />
               </div>
             ) : idStatus.status === "approved" ? (
               <p className="text-sm text-navy-500">

@@ -119,7 +119,7 @@ export default function VerifyPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream-50">
         <div className="text-center">
-          <Loader2 size={40} className="animate-spin text-gold-500 mx-auto" />
+          <Loader2 size={40} className="animate-spin text-gold-700 mx-auto" />
           <p className="mt-4 text-navy-400 font-medium">Verifying booking...</p>
         </div>
       </div>

@@ -119,7 +119,7 @@ export function ListingCard(props: ListingCardProps) {
               itemScope
               itemType="https://schema.org/AggregateRating"
             >
-              <Star size={12} className="text-gold-500 fill-gold-500" />
+              <Star size={12} className="text-gold-700 fill-gold-500" />
               <span className="text-xs font-semibold text-navy-700" itemProp="ratingValue">
                 {rating.toFixed(1)}
               </span>

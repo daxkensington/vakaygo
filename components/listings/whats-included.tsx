@@ -33,13 +33,13 @@ export function WhatsIncluded({ typeData, listingType }: WhatsIncludedProps) {
         <div className="flex flex-wrap gap-3 mb-5">
           {duration && (
             <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 shadow-sm">
-              <Clock size={14} className="text-gold-500" />
+              <Clock size={14} className="text-gold-700" />
               <span className="text-sm font-medium text-navy-600">{duration}</span>
             </div>
           )}
           {groupSize && (
             <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 shadow-sm">
-              <Users size={14} className="text-gold-500" />
+              <Users size={14} className="text-gold-700" />
               <span className="text-sm font-medium text-navy-600">
                 Max {groupSize} people
               </span>
@@ -94,7 +94,7 @@ export function WhatsIncluded({ typeData, listingType }: WhatsIncludedProps) {
       {/* Meeting Point */}
       {meetingPoint && (
         <div className="mt-5 flex items-start gap-3 p-4 bg-cream-50 rounded-xl">
-          <MapPin size={16} className="text-gold-500 shrink-0 mt-0.5" />
+          <MapPin size={16} className="text-gold-700 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-navy-700">Meeting Point</p>
             <p className="text-sm text-navy-500 mt-0.5">{meetingPoint}</p>

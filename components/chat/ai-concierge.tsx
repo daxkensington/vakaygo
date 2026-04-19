@@ -330,7 +330,7 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
           )}
           {listing.rating !== null && listing.rating > 0 && (
             <div className="flex items-center gap-0.5">
-              <StarIcon className="w-3 h-3 text-gold-500" />
+              <StarIcon className="w-3 h-3 text-gold-700" />
               <span className="text-[10px] font-semibold text-navy-600">{listing.rating.toFixed(1)}</span>
             </div>
           )}
@@ -872,7 +872,7 @@ export function AIConcierge({
                     <div className="text-[11px] text-navy-400">{p.desc}</div>
                   </div>
                   {personality === p.id && (
-                    <svg className="w-4 h-4 text-gold-500 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><polyline points="20 6 9 17 4 12" /></svg>
+                    <svg className="w-4 h-4 text-gold-700 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><polyline points="20 6 9 17 4 12" /></svg>
                   )}
                 </button>
               ))}

@@ -96,7 +96,7 @@ export default function OperatorBookingsPage() {
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-2">
-            <DollarSign size={18} className="text-gold-500" />
+            <DollarSign size={18} className="text-gold-700" />
             <div>
               <p className="text-xs text-navy-400">Revenue</p>
               <p className="font-bold text-navy-700">
@@ -131,7 +131,7 @@ export default function OperatorBookingsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center">

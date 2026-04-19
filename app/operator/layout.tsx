@@ -48,7 +48,7 @@ export default function OperatorLayout({
           {/* Logo */}
           <div className="p-6 flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold text-navy-700">
-              Vakay<span className="text-gold-500">Go</span>
+              Vakay<span className="text-gold-700">Go</span>
             </Link>
             <button
               className="lg:hidden text-navy-400"

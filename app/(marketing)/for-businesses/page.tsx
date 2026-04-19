@@ -161,13 +161,13 @@ export default function ForBusinessesPage() {
                 className="text-3xl md:text-4xl font-bold text-navy-700"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Compare and see the <span className="text-gold-500">difference</span>
+                Compare and see the <span className="text-gold-700">difference</span>
               </h2>
             </div>
             <div className="bg-white rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
               <div className="grid grid-cols-4 bg-navy-700 text-white text-sm font-semibold">
                 <div className="p-4">Feature</div>
-                <div className="p-4 text-center bg-gold-500">VakayGo</div>
+                <div className="p-4 text-center bg-gold-700">VakayGo</div>
                 <div className="p-4 text-center">Viator</div>
                 <div className="p-4 text-center">Airbnb</div>
               </div>
@@ -254,7 +254,7 @@ export default function ForBusinessesPage() {
                 className="text-3xl md:text-4xl font-bold text-navy-700"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Trusted by <span className="text-gold-500">local operators</span>
+                Trusted by <span className="text-gold-700">local operators</span>
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -265,7 +265,7 @@ export default function ForBusinessesPage() {
                 >
                   <div className="flex gap-1 mb-4">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} size={16} className="text-gold-500 fill-gold-500" />
+                      <Star key={s} size={16} className="text-gold-700 fill-gold-500" />
                     ))}
                   </div>
                   <p className="text-navy-600 leading-relaxed italic">

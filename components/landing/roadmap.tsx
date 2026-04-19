@@ -60,7 +60,7 @@ export function Roadmap() {
                 <p className="font-bold mt-2 text-xs leading-tight">
                   {island.name}
                 </p>
-                <p className="text-[10px] mt-0.5 opacity-60">
+                <p className="text-[10px] mt-0.5 text-navy-500">
                   {island.tagline}
                 </p>
               </div>

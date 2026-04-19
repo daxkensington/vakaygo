@@ -168,7 +168,7 @@ export default function AdminBlogPage() {
       {/* Posts table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
         </div>
       ) : posts.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl shadow-[var(--shadow-card)]">

@@ -147,7 +147,7 @@ export function GuidesContent() {
             {/* Posts grid */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
               </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-20">

@@ -58,7 +58,7 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cream-50">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
       </div>
     );
   }
@@ -197,7 +197,7 @@ export default function AdminLayout({
             className="text-lg font-bold text-navy-800"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            VakayGo <span className="text-gold-500">Admin</span>
+            VakayGo <span className="text-gold-700">Admin</span>
           </span>
         </header>
 

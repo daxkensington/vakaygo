@@ -186,7 +186,7 @@ export default function AuditLogPage() {
       <div className="overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-card)]">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
           </div>
         ) : logs.length === 0 ? (
           <div className="py-20 text-center">

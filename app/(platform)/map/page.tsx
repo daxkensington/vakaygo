@@ -72,7 +72,7 @@ export default function MapPage() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200">
         <div className="flex items-center gap-2">
-          <MapIcon size={18} className="text-gold-500" />
+          <MapIcon size={18} className="text-gold-700" />
           <h1 className="text-sm font-semibold text-navy-700">Caribbean Map</h1>
           <span className="text-xs text-navy-400">
             {loading ? "Loading..." : `${listings.filter(l => l.latitude).length} listings`}

@@ -476,7 +476,7 @@ export default function AdminListingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ListPlus size={24} className="text-gold-500" />
+          <ListPlus size={24} className="text-gold-700" />
           <h1
             className="text-2xl font-bold text-navy-800 md:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
@@ -625,7 +625,7 @@ export default function AdminListingsPage() {
       <div className="overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-card)]">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-gold-500" />
+            <Loader2 size={32} className="animate-spin text-gold-700" />
           </div>
         ) : !data || data.listings.length === 0 ? (
           <div className="py-20 text-center">
@@ -646,7 +646,7 @@ export default function AdminListingsPage() {
                         data.listings.every((l) => selectedIds.has(l.id))
                       }
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-cream-300 text-gold-500 focus:ring-gold-400"
+                      className="h-4 w-4 rounded border-cream-300 text-gold-700 focus:ring-gold-400"
                     />
                   </th>
                   <th className="whitespace-nowrap px-5 py-3 font-semibold text-navy-500">Listing</th>
@@ -671,7 +671,7 @@ export default function AdminListingsPage() {
                         type="checkbox"
                         checked={selectedIds.has(listing.id)}
                         onChange={() => toggleSelect(listing.id)}
-                        className="h-4 w-4 rounded border-cream-300 text-gold-500 focus:ring-gold-400"
+                        className="h-4 w-4 rounded border-cream-300 text-gold-700 focus:ring-gold-400"
                       />
                     </td>
 

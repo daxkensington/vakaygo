@@ -189,7 +189,7 @@ export function Hero() {
             <div className="flex flex-col md:flex-row gap-2">
               {/* Destination */}
               <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
-                <MapPin size={20} className="text-gold-500 shrink-0" />
+                <MapPin size={20} className="text-gold-700 shrink-0" />
                 <div className="text-left w-full">
                   <label htmlFor="hero-destination" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                     Destination
@@ -231,7 +231,7 @@ export function Hero() {
               {/* Search with autocomplete */}
               <div className="flex-[1.5] relative" ref={searchRef}>
                 <div className="flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm h-full">
-                  <Search size={20} className="text-gold-500 shrink-0" />
+                  <Search size={20} className="text-gold-700 shrink-0" />
                   <div className="text-left w-full">
                     <label htmlFor="hero-search" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                       Search
@@ -358,19 +358,24 @@ export function Hero() {
         <ChevronDown size={28} className="text-white/40" />
       </div>
 
-      {/* Dot indicators */}
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+      {/* Dot indicators — visual dot is small but the button itself is
+          a 24px touch target so axe target-size passes */}
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex gap-1">
         {heroImages.map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrentImage(i)}
-            className={`w-2 h-2 rounded-full transition-all duration-500 ${
-              currentImage === i
-                ? "bg-gold-400 w-6"
-                : "bg-white/30 hover:bg-white/50"
-            }`}
+            className="p-2 group"
             aria-label={`Show image ${i + 1}`}
-          />
+          >
+            <span
+              className={`block h-2 rounded-full transition-all duration-500 ${
+                currentImage === i
+                  ? "bg-gold-400 w-6"
+                  : "bg-white/30 group-hover:bg-white/50 w-2"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </section>

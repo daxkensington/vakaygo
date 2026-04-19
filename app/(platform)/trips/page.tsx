@@ -135,7 +135,7 @@ export default function TripsPage() {
           {!authLoading && !user && (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="w-20 h-20 bg-gradient-to-br from-gold-100 to-teal-50 rounded-full flex items-center justify-center mb-6">
-                <Plane size={32} className="text-gold-500" />
+                <Plane size={32} className="text-gold-700" />
               </div>
               <h2 className="text-xl font-semibold text-navy-700 mb-2">
                 Sign in to plan your trips
@@ -156,7 +156,7 @@ export default function TripsPage() {
           {/* Loading */}
           {(authLoading || (user && loading)) && (
             <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-gold-500" />
+              <Loader2 size={32} className="animate-spin text-gold-700" />
             </div>
           )}
 
@@ -164,7 +164,7 @@ export default function TripsPage() {
           {user && !loading && trips.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="w-20 h-20 bg-gradient-to-br from-gold-100 to-teal-50 rounded-full flex items-center justify-center mb-6">
-                <Sparkles size={32} className="text-gold-500" />
+                <Sparkles size={32} className="text-gold-700" />
               </div>
               <h2 className="text-xl font-semibold text-navy-700 mb-2">
                 No trips yet
@@ -209,14 +209,14 @@ export default function TripsPage() {
 
                     {trip.islandName && (
                       <div className="flex items-center gap-1.5 text-sm text-navy-400 mb-2">
-                        <MapPin size={14} className="text-gold-500" />
+                        <MapPin size={14} className="text-gold-700" />
                         {trip.islandName}
                       </div>
                     )}
 
                     {trip.startDate && (
                       <div className="flex items-center gap-1.5 text-sm text-navy-400 mb-2">
-                        <Calendar size={14} className="text-gold-500" />
+                        <Calendar size={14} className="text-gold-700" />
                         {formatDate(trip.startDate)}
                         {trip.endDate && ` - ${formatDate(trip.endDate)}`}
                         <span className="text-navy-300 ml-1">

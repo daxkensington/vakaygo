@@ -94,7 +94,7 @@ export default function OperatorAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 size={36} className="animate-spin text-gold-500" />
+        <Loader2 size={36} className="animate-spin text-gold-700" />
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function OperatorAnalyticsPage() {
         <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-gold-50 rounded-xl flex items-center justify-center">
-              <DollarSign size={18} className="text-gold-500" />
+              <DollarSign size={18} className="text-gold-700" />
             </div>
           </div>
           <p className="text-2xl font-bold text-navy-700">
@@ -235,7 +235,7 @@ export default function OperatorAnalyticsPage() {
                     <span className="inline-flex items-center gap-1">
                       {label}
                       {sortKey === key && (
-                        <span className="text-gold-500">
+                        <span className="text-gold-700">
                           {sortDir === "asc" ? "\u2191" : "\u2193"}
                         </span>
                       )}

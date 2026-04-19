@@ -333,7 +333,7 @@ export default function AdminDisputesPage() {
       {/* Disputes table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center">
@@ -414,7 +414,7 @@ export default function AdminDisputesPage() {
                       <div className="flex items-center justify-center py-8">
                         <Loader2
                           size={24}
-                          className="animate-spin text-gold-500"
+                          className="animate-spin text-gold-700"
                         />
                       </div>
                     ) : detail ? (

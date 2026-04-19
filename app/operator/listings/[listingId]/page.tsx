@@ -216,7 +216,7 @@ export default function EditListingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-gold-500" />
+        <Loader2 size={32} className="animate-spin text-gold-700" />
       </div>
     );
   }
@@ -602,7 +602,7 @@ export default function EditListingPage() {
               <div className="space-y-1.5">
                 {pricingData.insights.map((insight, i) => (
                   <p key={i} className="text-xs text-navy-500 flex items-start gap-2">
-                    <span className="text-gold-500 mt-0.5 shrink-0">*</span>
+                    <span className="text-gold-700 mt-0.5 shrink-0">*</span>
                     {insight}
                   </p>
                 ))}

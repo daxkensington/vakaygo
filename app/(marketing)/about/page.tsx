@@ -64,7 +64,7 @@ export default function AboutPage() {
                   { icon: Shield, label: "100%", sublabel: "Verified operators" },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] text-center">
-                    <stat.icon size={24} className="text-gold-500 mx-auto mb-3" />
+                    <stat.icon size={24} className="text-gold-700 mx-auto mb-3" />
                     <p className="text-2xl font-bold text-navy-700">{stat.label}</p>
                     <p className="text-xs text-navy-400 mt-1">{stat.sublabel}</p>
                   </div>

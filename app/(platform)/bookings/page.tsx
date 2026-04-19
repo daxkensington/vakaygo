@@ -51,7 +51,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 
 export default function TravelerBookingsPage() {
   return (
-    <Suspense fallback={<><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-500" /></div></>}>
+    <Suspense fallback={<><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-700" /></div></>}>
       <BookingsContent />
     </Suspense>
   );
@@ -157,7 +157,7 @@ function BookingsContent() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -242,7 +242,7 @@ function BookingsContent() {
 
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 size={32} className="animate-spin text-gold-500" />
+              <Loader2 size={32} className="animate-spin text-gold-700" />
             </div>
           ) : bookings.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center mt-8">
@@ -311,7 +311,7 @@ function BookingsContent() {
                     {isPast && booking.status === "completed" && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                          <Star size={14} className="text-gold-500" />
+                          <Star size={14} className="text-gold-700" />
                           <p className="text-sm text-navy-400">How was your experience?</p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -342,7 +342,7 @@ function BookingsContent() {
                                 listingTitle: booking.listingTitle,
                               })
                             }
-                            className="text-sm font-semibold text-gold-500 hover:text-gold-600"
+                            className="text-sm font-semibold text-gold-700 hover:text-gold-600"
                           >
                             Leave a Review
                           </button>

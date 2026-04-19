@@ -295,7 +295,7 @@ export default async function BestHotelsPage({ params }: Props) {
               <p className="text-xs text-navy-400 mt-1">Price Range</p>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
-              <Star size={20} className="text-gold-500 mx-auto mb-1" />
+              <Star size={20} className="text-gold-700 mx-auto mb-1" />
               <p className="text-xs text-navy-400 mt-1">Traveler Verified</p>
             </div>
           </div>
@@ -317,7 +317,7 @@ export default async function BestHotelsPage({ params }: Props) {
                     key={type}
                     className="bg-white rounded-2xl px-5 py-3 shadow-[var(--shadow-card)] flex items-center gap-2"
                   >
-                    <Home size={16} className="text-gold-500" />
+                    <Home size={16} className="text-gold-700" />
                     <span className="font-medium text-navy-700 text-sm">
                       {type}
                     </span>
@@ -414,7 +414,7 @@ export default async function BestHotelsPage({ params }: Props) {
                             <div className="flex items-center gap-1 shrink-0 ml-2">
                               <Star
                                 size={12}
-                                className="text-gold-500 fill-gold-500"
+                                className="text-gold-700 fill-gold-500"
                               />
                               <span className="text-xs font-semibold text-navy-700">
                                 {rating.toFixed(1)}
@@ -525,7 +525,7 @@ export default async function BestHotelsPage({ params }: Props) {
                   className="bg-cream-50 rounded-2xl p-5 shadow-[var(--shadow-card)]"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <DollarSign size={16} className="text-gold-500" />
+                    <DollarSign size={16} className="text-gold-700" />
                     <span className="font-bold text-navy-700">
                       {tier.label}
                     </span>
@@ -566,7 +566,7 @@ export default async function BestHotelsPage({ params }: Props) {
                 href={`/best-restaurants-${slug}`}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
-                <UtensilsCrossed size={24} className="text-gold-500 mb-3" />
+                <UtensilsCrossed size={24} className="text-gold-700 mb-3" />
                 <h3 className="font-semibold text-navy-700 group-hover:text-gold-600 transition-colors">
                   Best Restaurants in {island.name}
                 </h3>

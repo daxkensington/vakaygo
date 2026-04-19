@@ -188,7 +188,7 @@ export default function MessagesPage() {
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -271,7 +271,7 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-center py-20">
                       <Loader2
                         size={24}
-                        className="animate-spin text-gold-500"
+                        className="animate-spin text-gold-700"
                       />
                     </div>
                   ) : conversations.length === 0 ? (
@@ -383,7 +383,7 @@ export default function MessagesPage() {
                         <div className="flex items-center justify-center py-12">
                           <Loader2
                             size={24}
-                            className="animate-spin text-gold-500"
+                            className="animate-spin text-gold-700"
                           />
                         </div>
                       ) : messages.length === 0 ? (
@@ -502,7 +502,7 @@ export default function MessagesPage() {
                             onClick={() => setShowTemplates(!showTemplates)}
                             className={`p-2.5 transition-colors shrink-0 ${
                               showTemplates
-                                ? "text-gold-500"
+                                ? "text-gold-700"
                                 : "text-navy-400 hover:text-gold-500"
                             }`}
                             aria-label="Message templates"
@@ -730,7 +730,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
           {isOwn && (
             <span className="text-navy-300">
               {msg.isRead ? (
-                <CheckCheck size={12} className="text-gold-500" />
+                <CheckCheck size={12} className="text-gold-700" />
               ) : (
                 <Check size={12} />
               )}

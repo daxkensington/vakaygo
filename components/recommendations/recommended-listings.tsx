@@ -65,7 +65,7 @@ export function RecommendedListings() {
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex items-center gap-3 mb-6">
-            <Sparkles size={20} className="text-gold-500" />
+            <Sparkles size={20} className="text-gold-700" />
             <h2
               className="text-2xl md:text-3xl font-bold text-navy-700"
               style={{ fontFamily: "var(--font-display)" }}
@@ -94,7 +94,7 @@ export function RecommendedListings() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex items-end justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Sparkles size={20} className="text-gold-500" />
+            <Sparkles size={20} className="text-gold-700" />
             <div>
               <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-1">
                 {isPersonalized ? "Personalized" : "Top Picks"}

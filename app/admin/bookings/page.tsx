@@ -98,7 +98,7 @@ export default function AdminBookingsPage() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <CalendarCheck className="h-7 w-7 text-gold-500" />
+          <CalendarCheck className="h-7 w-7 text-gold-700" />
           <h1
             className="text-3xl font-bold text-navy-700"
             style={{ fontFamily: "var(--font-display)" }}
@@ -181,7 +181,7 @@ export default function AdminBookingsPage() {
       <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
           </div>
         ) : !data || data.bookings.length === 0 ? (
           <div className="py-20 text-center">

@@ -304,7 +304,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
       <div className="grid grid-cols-7 gap-1 relative">
         {loading && (
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-xl">
-            <Loader2 size={24} className="animate-spin text-gold-500" />
+            <Loader2 size={24} className="animate-spin text-gold-700" />
           </div>
         )}
 

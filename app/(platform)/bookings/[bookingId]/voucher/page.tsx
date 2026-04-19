@@ -130,7 +130,7 @@ export default function VoucherPage({
       <>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-cream-50 pt-20">
-          <Loader2 size={32} className="animate-spin text-gold-500" />
+          <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
       </>
     );
@@ -145,7 +145,7 @@ export default function VoucherPage({
           <h1 className="text-xl font-bold text-navy-700">{error || "Voucher not found"}</h1>
           <Link
             href="/bookings"
-            className="mt-6 flex items-center gap-2 text-gold-500 hover:text-gold-700 font-semibold"
+            className="mt-6 flex items-center gap-2 text-gold-700 hover:text-gold-700 font-semibold"
           >
             <ArrowLeft size={16} />
             Back to Bookings

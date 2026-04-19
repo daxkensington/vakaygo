@@ -115,7 +115,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-gold-500" />
+        <Loader2 size={40} className="animate-spin text-gold-700" />
       </div>
     );
   }
@@ -233,7 +233,7 @@ export default function AdminDashboard() {
       {/* ── Live Activity Feed ── */}
       <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
         <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
-          <Activity size={18} className="text-gold-500" />
+          <Activity size={18} className="text-gold-700" />
           Live Activity
         </h2>
         {(!activity || activity.events.length === 0) ? (
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
       {/* ── Revenue Chart ── */}
       <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
         <h2 className="mb-6 flex items-center gap-2 font-bold text-navy-700">
-          <DollarSign size={18} className="text-gold-500" />
+          <DollarSign size={18} className="text-gold-700" />
           Monthly Revenue
         </h2>
         {last12.length === 0 ? (
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
         {/* Listings by Type */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
-            <ListPlus size={18} className="text-gold-500" />
+            <ListPlus size={18} className="text-gold-700" />
             Listings by Type
           </h2>
           <div className="space-y-4">
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
       {/* ── Recent Bookings Table ── */}
       <div className="mb-8 bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
         <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
-          <CalendarCheck size={18} className="text-gold-500" />
+          <CalendarCheck size={18} className="text-gold-700" />
           Recent Bookings
         </h2>
         {stats.recentBookings.length === 0 ? (
@@ -446,7 +446,7 @@ export default function AdminDashboard() {
       {/* ── Quick Actions ── */}
       <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
         <h2 className="mb-5 flex items-center gap-2 font-bold text-navy-700">
-          <Clock size={18} className="text-gold-500" />
+          <Clock size={18} className="text-gold-700" />
           Quick Actions
         </h2>
         <div className="flex flex-wrap gap-3">

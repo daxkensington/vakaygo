@@ -125,7 +125,7 @@ export default function ServicesPage() {
                 >
                   Your driver is
                   <br />
-                  <span className="text-gold-500">already waiting.</span>
+                  <span className="text-gold-700">already waiting.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
                   Skip the taxi hustle. Book your airport transfer before you land.

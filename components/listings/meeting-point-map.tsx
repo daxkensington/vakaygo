@@ -72,7 +72,7 @@ export function MeetingPointMap({
       />
       {note && (
         <div className="flex items-start gap-2 mt-3 text-sm text-navy-500">
-          <MapPin size={14} className="text-gold-500 shrink-0 mt-0.5" />
+          <MapPin size={14} className="text-gold-700 shrink-0 mt-0.5" />
           <span>{note}</span>
         </div>
       )}

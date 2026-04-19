@@ -43,7 +43,7 @@ export default function AdminRevenuePage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
       </div>
     );
   }
@@ -84,7 +84,7 @@ export default function AdminRevenuePage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
-        <DollarSign className="h-7 w-7 text-gold-500" />
+        <DollarSign className="h-7 w-7 text-gold-700" />
         <h1
           className="text-3xl font-bold text-navy-700"
           style={{ fontFamily: "var(--font-display)" }}
@@ -116,7 +116,7 @@ export default function AdminRevenuePage() {
       {/* Monthly Revenue Chart */}
       <div className="mb-8 bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
         <h2 className="mb-6 flex items-center gap-2 font-bold text-navy-700">
-          <BarChart3 className="h-5 w-5 text-gold-500" />
+          <BarChart3 className="h-5 w-5 text-gold-700" />
           Monthly Revenue
         </h2>
         {data.byMonth.length === 0 ? (
@@ -192,7 +192,7 @@ export default function AdminRevenuePage() {
         {/* Revenue by Type */}
         <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
           <h2 className="mb-4 flex items-center gap-2 font-bold text-navy-700">
-            <BarChart3 className="h-5 w-5 text-gold-500" />
+            <BarChart3 className="h-5 w-5 text-gold-700" />
             Revenue by Type
           </h2>
           {data.byType.length === 0 ? (

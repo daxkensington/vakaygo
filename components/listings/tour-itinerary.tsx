@@ -50,7 +50,7 @@ export function TourItinerary({ itinerary }: { itinerary: ItineraryStop[] }) {
                     )}
                     {stop.duration && (
                       <span className="inline-flex items-center gap-1 bg-cream-100 text-navy-500 text-xs font-medium px-2.5 py-1 rounded-full">
-                        <Clock size={10} className="text-gold-500" />
+                        <Clock size={10} className="text-gold-700" />
                         {stop.duration}
                       </span>
                     )}

@@ -114,7 +114,7 @@ function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: bool
         <ChevronDown
           size={20}
           className={`text-navy-300 shrink-0 transition-transform duration-300 ${
-            isOpen ? "rotate-180 text-gold-500" : ""
+            isOpen ? "rotate-180 text-gold-700" : ""
           }`}
         />
       </button>

@@ -263,7 +263,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
               <p className="text-xs text-navy-400 mt-1">Price Range</p>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
-              <Star size={20} className="text-gold-500 mx-auto mb-1" />
+              <Star size={20} className="text-gold-700 mx-auto mb-1" />
               <p className="text-xs text-navy-400 mt-1">Traveler Verified</p>
             </div>
           </div>
@@ -377,7 +377,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                             <div className="flex items-center gap-1 shrink-0 ml-2">
                               <Star
                                 size={12}
-                                className="text-gold-500 fill-gold-500"
+                                className="text-gold-700 fill-gold-500"
                               />
                               <span className="text-xs font-semibold text-navy-700">
                                 {rating.toFixed(1)}
@@ -443,7 +443,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                     className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)]"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <DollarSign size={16} className="text-gold-500" />
+                      <DollarSign size={16} className="text-gold-700" />
                       <span className="font-bold text-navy-700 text-lg">
                         {tier.label}
                       </span>
@@ -485,7 +485,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                 href={`/best-hotels-${slug}`}
                 className="bg-cream-50 rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
-                <Home size={24} className="text-gold-500 mb-3" />
+                <Home size={24} className="text-gold-700 mb-3" />
                 <h3 className="font-semibold text-navy-700 group-hover:text-gold-600 transition-colors">
                   Best Hotels in {island.name}
                 </h3>

@@ -172,7 +172,7 @@ export default async function IslandPage({ params }: Props) {
                         )}
                         {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
                           <div className="flex items-center gap-1">
-                            <Star size={12} className="text-gold-500 fill-gold-500" />
+                            <Star size={12} className="text-gold-700 fill-gold-500" />
                             <span className="text-xs font-semibold">{parseFloat(listing.avgRating).toFixed(1)}</span>
                           </div>
                         )}

@@ -12,7 +12,7 @@ import {
 
 const insightIcons = [
   <TrendingUp key="trending" size={16} className="text-emerald-500" />,
-  <Star key="star" size={16} className="text-gold-500" />,
+  <Star key="star" size={16} className="text-gold-700" />,
   <Clock key="clock" size={16} className="text-amber-500" />,
   <Eye key="eye" size={16} className="text-teal-500" />,
 ];

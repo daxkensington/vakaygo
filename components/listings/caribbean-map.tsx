@@ -1338,7 +1338,7 @@ export default function CaribbeanMap({
                 <div className="flex items-center gap-2 mt-1.5">
                   {flyoverListing.avgRating && parseFloat(flyoverListing.avgRating) > 0 && (
                     <span className="flex items-center gap-0.5 text-xs">
-                      <Star size={11} className="text-gold-500 fill-gold-500" />
+                      <Star size={11} className="text-gold-700 fill-gold-500" />
                       <span className="font-semibold text-navy-700">{parseFloat(flyoverListing.avgRating).toFixed(1)}</span>
                       {flyoverListing.reviewCount ? <span className="text-navy-400">({flyoverListing.reviewCount})</span> : null}
                     </span>

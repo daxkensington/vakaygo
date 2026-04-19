@@ -216,7 +216,7 @@ export function ReviewModal({
                         size={30}
                         className={
                           star <= (hoverRating || rating)
-                            ? "text-gold-500 fill-gold-500"
+                            ? "text-gold-700 fill-gold-500"
                             : "text-cream-300"
                         }
                       />
