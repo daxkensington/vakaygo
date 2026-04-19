@@ -33,7 +33,6 @@ interface AutocompleteResult {
 
 export function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
-  const [loaded, setLoaded] = useState(false);
   const [mountRotation, setMountRotation] = useState(false);
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState("");
@@ -45,7 +44,6 @@ export function Hero() {
   const router = useRouter();
 
   useEffect(() => {
-    setLoaded(true);
     const mountTimer = setTimeout(() => setMountRotation(true), 4000);
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % heroImages.length);
@@ -162,11 +160,14 @@ export function Hero() {
       <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/40 to-navy-900/90" />
       <div className="absolute inset-0 bg-gradient-to-r from-navy-900/30 to-transparent" />
 
-      {/* Content */}
+      {/* Content — intentionally not opacity-0 at first paint. The
+          fade-in used to be opacity-0 until a client useEffect flipped
+          `loaded`, but that forced Lighthouse to skip the <h1> as an
+          LCP candidate until hydration, pushing LCP ~1.5s past FCP for
+          no visual gain. Rendering at full opacity on SSR lets the
+          giant "Your Entire Trip" headline count as LCP immediately. */}
       <div
-        className={`relative z-10 mx-auto max-w-7xl px-6 text-center transition-all duration-1000 ${
-          loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
+        className="relative z-10 mx-auto max-w-7xl px-6 text-center"
       >
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
