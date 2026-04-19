@@ -34,6 +34,7 @@ interface AutocompleteResult {
 export function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [mountRotation, setMountRotation] = useState(false);
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState("");
   const [results, setResults] = useState<AutocompleteResult | null>(null);
@@ -45,10 +46,14 @@ export function Hero() {
 
   useEffect(() => {
     setLoaded(true);
+    const mountTimer = setTimeout(() => setMountRotation(true), 4000);
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % heroImages.length);
     }, 6000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(mountTimer);
+      clearInterval(interval);
+    };
   }, []);
 
   // Close dropdown on outside click
@@ -126,27 +131,32 @@ export function Hero() {
 
   return (
     <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
-      {/* Rotating background images — first one is the LCP candidate */}
-      {heroImages.map((img, i) => (
-        <div
-          key={img}
-          className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
-          style={{ opacity: currentImage === i ? 1 : 0 }}
-          aria-hidden={currentImage !== i}
-        >
-          <Image
-            src={img}
-            alt=""
-            fill
-            priority={i === 0}
-            fetchPriority={i === 0 ? "high" : "auto"}
-            loading={i === 0 ? "eager" : "lazy"}
-            sizes="100vw"
-            quality={80}
-            className="object-cover object-center"
-          />
-        </div>
-      ))}
+      {/* Rotating background images — first is the LCP candidate; the
+          rest are deferred until after LCP so they don't compete for
+          bandwidth on slow networks. */}
+      {heroImages.map((img, i) => {
+        if (i !== 0 && !mountRotation) return null;
+        return (
+          <div
+            key={img}
+            className="absolute inset-0 transition-opacity duration-[2000ms] ease-in-out"
+            style={{ opacity: currentImage === i ? 1 : 0 }}
+            aria-hidden={currentImage !== i}
+          >
+            <Image
+              src={img}
+              alt=""
+              fill
+              priority={i === 0}
+              fetchPriority={i === 0 ? "high" : "auto"}
+              loading={i === 0 ? "eager" : "lazy"}
+              sizes="100vw"
+              quality={80}
+              className="object-cover object-center"
+            />
+          </div>
+        );
+      })}
 
       {/* Cinematic overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/40 to-navy-900/90" />
