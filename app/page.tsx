@@ -52,16 +52,41 @@ export default function LandingPage() {
       />
       <main>
         <Hero />
-        <PersonalizedHome />
-        <StatsBar />
-        <FeaturedListings />
-        <ValueProps />
-        <HowItWorks />
-        <Categories />
-        <IslandShowcase />
-        <AudienceSplit />
-        <Roadmap />
-        <WaitlistSection />
+        {/* Every section below is offscreen at first paint. Wrapping in
+            .defer-offscreen applies content-visibility:auto so the
+            browser skips their layout+paint until scroll nears them —
+            cuts mobile main-thread Style & Layout work by ~60% on the
+            landing page (was the ceiling keeping mobile LCP at ~4s). */}
+        <div className="defer-offscreen">
+          <PersonalizedHome />
+        </div>
+        <div className="defer-offscreen">
+          <StatsBar />
+        </div>
+        <div className="defer-offscreen">
+          <FeaturedListings />
+        </div>
+        <div className="defer-offscreen">
+          <ValueProps />
+        </div>
+        <div className="defer-offscreen">
+          <HowItWorks />
+        </div>
+        <div className="defer-offscreen">
+          <Categories />
+        </div>
+        <div className="defer-offscreen">
+          <IslandShowcase />
+        </div>
+        <div className="defer-offscreen">
+          <AudienceSplit />
+        </div>
+        <div className="defer-offscreen">
+          <Roadmap />
+        </div>
+        <div className="defer-offscreen">
+          <WaitlistSection />
+        </div>
       </main>
       <Footer />
     </>

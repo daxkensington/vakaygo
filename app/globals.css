@@ -195,3 +195,14 @@ img {
   background: #d4c5a0;
   border-radius: 2px;
 }
+
+/* Skip layout + paint for sections that start offscreen until the user
+   scrolls near them. Big mobile LCP win on landing pages where the
+   hero is the only above-the-fold content but the DOM contains 50+
+   below-the-fold cards (islands, categories, value props, etc.).
+   contain-intrinsic-size is a placeholder height so layout still
+   reserves room — prevents scrollbar jank. */
+.defer-offscreen {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 900px;
+}

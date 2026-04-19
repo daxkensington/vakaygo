@@ -89,19 +89,23 @@ export default async function IslandsPage() {
           </div>
         </div>
 
-        {/* Island Grid */}
+        {/* Island Grid — every row past the first is offscreen at
+            first paint. defer-offscreen tells the browser to skip
+            layout+paint of each row until the scroll nears it. */}
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {islands.map((island, idx) => {
               const flag = getIslandFlag(island.slug);
               const image = islandImages[island.slug] || defaultImage;
               const isPriority = idx < PRIORITY_COUNT;
+              const deferred = idx >= PRIORITY_COUNT;
 
               return (
                 <Link
                   key={island.id}
                   href={`/${island.slug}`}
-                  className="group relative h-64 rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
+                  className={`group relative h-64 rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500${deferred ? " defer-offscreen" : ""}`}
+                  style={deferred ? { containIntrinsicSize: "1px 256px" } : undefined}
                 >
                   <Image
                     src={image}
