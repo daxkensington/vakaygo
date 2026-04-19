@@ -91,10 +91,14 @@ export default async function IslandsPage() {
           </div>
         </div>
 
-        {/* Island Grid — every row past the first is offscreen at
-            first paint. defer-offscreen tells the browser to skip
-            layout+paint of each row until the scroll nears it. */}
-        <div className="mx-auto max-w-7xl px-6 py-12">
+        {/* Island Grid — wrapped in defer-offscreen so the *entire*
+            grid is content-visibility:auto at first paint. The grid
+            still reserves its space (contain-intrinsic-size) but the
+            browser skips style/layout/paint for every card until scroll
+            nears the grid. LCP falls back to the hero h1 text, which
+            paints in the text phase. Per-card defer is still used as
+            a belt-and-braces fallback below. */}
+        <div className="mx-auto max-w-7xl px-6 py-12 defer-offscreen">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {islands.map((island, idx) => {
               const flag = getIslandFlag(island.slug);
