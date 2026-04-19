@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { Globe, Heart, Shield, Users, ArrowRight } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "About VakayGo",
+  description:
+    "Built by the Caribbean, for the Caribbean. VakayGo is a local-first travel platform connecting travelers with verified Caribbean operators.",
+  alternates: { canonical: "https://vakaygo.com/about" },
+};
 
 export default function AboutPage() {
   return (

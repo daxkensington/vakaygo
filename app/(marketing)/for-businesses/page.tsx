@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+
+export const metadata: Metadata = {
+  title: "List your Caribbean business on VakayGo",
+  description:
+    "Free listings, lowest commissions in travel, booking management, and payouts in XCD, USD, or CAD. Designed for Caribbean tourism operators.",
+  alternates: { canonical: "https://vakaygo.com/for-businesses" },
+};
 import {
   Check,
   ArrowRight,
