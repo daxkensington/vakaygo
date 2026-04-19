@@ -500,7 +500,7 @@ export default function ListingDetailPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
-                  <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xl">
+                  <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-xl">
                     {String(listing.operatorName || "V").charAt(0)}
                   </div>
                   <div>

@@ -255,7 +255,7 @@ export function SearchAutocomplete({
           }
         />
         {aiSearchActive && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gold-600 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gold-700 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
             AI-powered
           </span>
         )}

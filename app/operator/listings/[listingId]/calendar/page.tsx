@@ -504,7 +504,7 @@ export default function OperatorCalendarPage() {
       {/* Base price banner */}
       <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-4 flex items-center gap-3">
         <div className="w-10 h-10 bg-gold-50 rounded-xl flex items-center justify-center">
-          <DollarSign size={20} className="text-gold-600" />
+          <DollarSign size={20} className="text-gold-700" />
         </div>
         <div>
           <p className="text-sm text-navy-400">Base Price</p>
@@ -638,7 +638,7 @@ export default function OperatorCalendarPage() {
 
                     {/* Price override (gold text) */}
                     {hasOverride && !isPast && !isBlocked && (
-                      <span className="text-[10px] font-semibold text-gold-600 leading-tight">
+                      <span className="text-[10px] font-semibold text-gold-700 leading-tight">
                         ${parseFloat(avail!.priceOverride!).toFixed(0)}
                       </span>
                     )}
@@ -709,7 +709,7 @@ export default function OperatorCalendarPage() {
                   Has bookings
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-navy-500">
-                  <span className="text-[10px] font-semibold text-gold-600">$XX</span>
+                  <span className="text-[10px] font-semibold text-gold-700">$XX</span>
                   Price override
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-navy-500">

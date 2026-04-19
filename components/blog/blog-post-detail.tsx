@@ -125,7 +125,7 @@ function markdownToHtml(md: string): string {
   html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
 
   // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" class="text-gold-600 underline hover:text-gold-700">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" class="text-gold-700 underline hover:text-gold-700">$1</a>');
 
   // Images
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1" class="rounded-xl w-full my-6" />');
@@ -452,7 +452,7 @@ export function BlogPostDetail({
                     )}
                   </div>
                   <div className="p-5">
-                    <span className="text-xs font-semibold text-gold-600 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-gold-700 uppercase tracking-wider">
                       {CATEGORY_LABELS[r.category] || r.category}
                     </span>
                     <h3 className="mt-1 text-lg font-bold text-navy-700 group-hover:text-gold-600 transition-colors line-clamp-2">

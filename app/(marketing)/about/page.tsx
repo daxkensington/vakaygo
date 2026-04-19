@@ -143,7 +143,7 @@ export default function AboutPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link
                 href="/explore"
-                className="bg-white text-gold-600 px-8 py-3.5 rounded-xl font-semibold hover:bg-cream-100 transition-colors flex items-center justify-center gap-2"
+                className="bg-white text-gold-700 px-8 py-3.5 rounded-xl font-semibold hover:bg-cream-100 transition-colors flex items-center justify-center gap-2"
               >
                 Explore Experiences <ArrowRight size={16} />
               </Link>

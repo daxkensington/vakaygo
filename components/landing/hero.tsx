@@ -317,7 +317,7 @@ export function Hero() {
                     {/* View all results */}
                     <button
                       onClick={handleSubmit as any}
-                      className="w-full px-4 py-3 text-center text-sm font-medium text-gold-600 hover:bg-gold-50 border-t border-cream-100 transition-colors"
+                      className="w-full px-4 py-3 text-center text-sm font-medium text-gold-700 hover:bg-gold-50 border-t border-cream-100 transition-colors"
                     >
                       View all results for &ldquo;{query}&rdquo;
                     </button>

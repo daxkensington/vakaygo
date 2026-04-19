@@ -402,7 +402,7 @@ export default function BookingPage() {
                     </div>
                   )}
                   {usePoints && pointsToRedeem > 0 && (
-                    <div className="flex justify-between text-gold-600">
+                    <div className="flex justify-between text-gold-700">
                       <span>Points discount ({pointsToRedeem.toLocaleString()} pts)</span>
                       <span>-{formatCurrency(pointsToRedeem / 100)}</span>
                     </div>

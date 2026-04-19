@@ -25,7 +25,7 @@ const listingTypes = [
     label: "Stay",
     description: "Villa, guesthouse, apartment, or hotel",
     icon: Home,
-    color: "bg-gold-50 text-gold-600 border-gold-200",
+    color: "bg-gold-50 text-gold-700 border-gold-200",
     activeColor: "bg-gold-500 text-white border-gold-500",
   },
   {
@@ -49,7 +49,7 @@ const listingTypes = [
     label: "Restaurant / Dining",
     description: "Restaurant, bar, cafe, food truck",
     icon: UtensilsCrossed,
-    color: "bg-gold-50 text-gold-600 border-gold-200",
+    color: "bg-gold-50 text-gold-700 border-gold-200",
     activeColor: "bg-gold-600 text-white border-gold-600",
   },
   {
@@ -81,7 +81,7 @@ const listingTypes = [
     label: "VIP Services",
     description: "Security, concierge, luxury transfers, executive protection",
     icon: Users,
-    color: "bg-gold-50 text-gold-600 border-gold-200",
+    color: "bg-gold-50 text-gold-700 border-gold-200",
     activeColor: "bg-gold-600 text-white border-gold-600",
   },
   {
@@ -89,7 +89,7 @@ const listingTypes = [
     label: "Local Guide",
     description: "Private guides, cultural experiences, nature experts",
     icon: Users,
-    color: "bg-gold-50 text-gold-600 border-gold-200",
+    color: "bg-gold-50 text-gold-700 border-gold-200",
     activeColor: "bg-gold-500 text-white border-gold-500",
   },
   {

@@ -130,7 +130,7 @@ export default function AdminDashboard() {
       value: stats.totals.listings.toLocaleString(),
       icon: ListPlus,
       iconBg: "bg-gold-50",
-      iconColor: "text-gold-600",
+      iconColor: "text-gold-700",
       today: todayStats.listings,
     },
     {
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
       value: stats.totals.bookings.toLocaleString(),
       icon: CalendarCheck,
       iconBg: "bg-gold-50",
-      iconColor: "text-gold-600",
+      iconColor: "text-gold-700",
       today: todayStats.bookings,
     },
     {
@@ -162,7 +162,7 @@ export default function AdminDashboard() {
       value: formatCurrency(revenue.totalRevenue),
       icon: DollarSign,
       iconBg: "bg-gold-50",
-      iconColor: "text-gold-600",
+      iconColor: "text-gold-700",
       today: 0,
     },
     {
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
             {activity.events.map((event, i) => {
               const iconMap: Record<string, { icon: typeof Users; bg: string; color: string }> = {
                 signup: { icon: UserPlus, bg: "bg-teal-50", color: "text-teal-600" },
-                booking: { icon: CalendarCheck, bg: "bg-gold-50", color: "text-gold-600" },
+                booking: { icon: CalendarCheck, bg: "bg-gold-50", color: "text-gold-700" },
                 review: { icon: Star, bg: "bg-yellow-50", color: "text-yellow-600" },
                 listing_approved: { icon: CheckCircle, bg: "bg-green-50", color: "text-green-600" },
               };

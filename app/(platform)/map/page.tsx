@@ -68,7 +68,7 @@ export default function MapPage() {
   }, [activeIsland]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <main className="flex flex-col h-[calc(100vh-64px)]">
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200">
         <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function MapPage() {
 
         <Link
           href="/explore"
-          className="flex items-center gap-1 text-xs text-gold-600 hover:text-gold-700 font-medium"
+          className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-700 font-medium"
         >
           Explore <ChevronRight size={14} />
         </Link>
@@ -112,6 +112,6 @@ export default function MapPage() {
           onIslandChange={setActiveIsland}
         />
       </div>
-    </div>
+    </main>
   );
 }

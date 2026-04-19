@@ -74,7 +74,7 @@ const tierColors: Record<string, { gradient: string; ring: string; bg: string }>
 
 const typeIcons: Record<string, { icon: string; color: string }> = {
   earned_booking: { icon: "\uD83D\uDCB3", color: "text-teal-600" },
-  earned_review: { icon: "\u2B50", color: "text-gold-600" },
+  earned_review: { icon: "\u2B50", color: "text-gold-700" },
   earned_referral: { icon: "\uD83E\uDD1D", color: "text-blue-600" },
   redeemed: { icon: "\uD83C\uDF81", color: "text-red-500" },
   expired: { icon: "\u23F0", color: "text-gray-400" },

@@ -1142,6 +1142,8 @@ export default function CaribbeanMap({
         <div className="relative">
           <button
             onClick={() => setSearchOpen(!searchOpen)}
+            aria-label={searchOpen ? "Close search" : "Search the map"}
+            aria-expanded={searchOpen}
             className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
           >
             <Search size={16} className="text-navy-700" />

@@ -404,7 +404,7 @@ export default function ExplorePage() {
   return (
     <>
       <Header />
-      <div className="pt-20 bg-cream-50 min-h-screen">
+      <main className="pt-20 bg-cream-50 min-h-screen">
         {/* Search Header */}
         <div className="bg-white shadow-sm sticky top-16 z-40">
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
@@ -501,6 +501,7 @@ export default function ExplorePage() {
                 />
               </div>
               <select
+                aria-label="Filter by island"
                 value={activeIsland}
                 onChange={(e) => setActiveIsland(e.target.value)}
                 className="hidden md:block px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
@@ -551,6 +552,7 @@ export default function ExplorePage() {
               </div>
               {/* Rating Filter */}
               <select
+                aria-label="Filter by minimum rating"
                 value={minRating}
                 onChange={(e) => setMinRating(e.target.value)}
                 className="hidden md:block px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
@@ -754,7 +756,7 @@ export default function ExplorePage() {
                     setCuisineType("");
                     setOpenNow(false);
                   }}
-                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gold-600 hover:text-gold-700 transition-colors underline"
+                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gold-700 hover:text-gold-700 transition-colors underline"
                 >
                   Clear All
                 </button>
@@ -841,6 +843,7 @@ export default function ExplorePage() {
             {activeCategory === "dining" && (
               <div className="flex items-center gap-3 mt-3 overflow-x-auto pb-1 scrollbar-hide">
                 <select
+                  aria-label="Filter by cuisine"
                   value={cuisineType}
                   onChange={(e) => setCuisineType(e.target.value)}
                   className="px-3 py-1.5 rounded-full bg-cream-100 text-navy-500 text-xs font-medium outline-none appearance-none cursor-pointer hover:bg-cream-200 transition-colors min-w-[7rem]"
@@ -954,6 +957,7 @@ export default function ExplorePage() {
                 experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
               </p>
               <select
+                aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
@@ -1032,6 +1036,7 @@ export default function ExplorePage() {
                 experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
               </p>
               <select
+                aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
@@ -1083,7 +1088,7 @@ export default function ExplorePage() {
             )}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Mobile filters bottom sheet */}
       {showFilters && (

@@ -212,7 +212,7 @@ export default function OperatorBookingDetailPage({
             </p>
             <Link
               href={`/${booking.islandSlug}/${booking.listingSlug}`}
-              className="inline-flex items-center gap-1 mt-2 text-sm text-gold-600 hover:text-gold-700"
+              className="inline-flex items-center gap-1 mt-2 text-sm text-gold-700 hover:text-gold-700"
             >
               <MapPin size={12} /> {booking.islandName} · view listing
             </Link>
@@ -302,7 +302,7 @@ export default function OperatorBookingDetailPage({
               <dd className="text-right">
                 <a
                   href={`mailto:${booking.travelerEmail}`}
-                  className="text-gold-600 hover:text-gold-700 break-all"
+                  className="text-gold-700 hover:text-gold-700 break-all"
                 >
                   {booking.travelerEmail}
                 </a>
@@ -316,7 +316,7 @@ export default function OperatorBookingDetailPage({
                 {booking.travelerPhone ? (
                   <a
                     href={`tel:${booking.travelerPhone}`}
-                    className="text-gold-600 hover:text-gold-700"
+                    className="text-gold-700 hover:text-gold-700"
                   >
                     {booking.travelerPhone}
                   </a>

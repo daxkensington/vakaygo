@@ -131,7 +131,7 @@ function VerifyEmailContent() {
                 Didn&apos;t receive the email? Check your spam folder or{" "}
                 <Link
                   href="/contact"
-                  className="text-gold-600 hover:text-gold-700 underline"
+                  className="text-gold-700 hover:text-gold-700 underline"
                 >
                   contact support
                 </Link>

@@ -147,7 +147,7 @@ export default function OperatorPayoutsPage() {
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gold-50 rounded-xl flex items-center justify-center">
-              <DollarSign size={20} className="text-gold-600" />
+              <DollarSign size={20} className="text-gold-700" />
             </div>
             <p className="text-sm text-navy-400">Available Balance</p>
           </div>

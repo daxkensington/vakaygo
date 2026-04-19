@@ -278,7 +278,7 @@ export default function TripDetailPage({
               <p className="text-red-500 mb-4">{error}</p>
               <Link
                 href="/trips"
-                className="text-gold-600 hover:underline font-medium"
+                className="text-gold-700 hover:underline font-medium"
               >
                 Go back to trips
               </Link>
@@ -362,7 +362,7 @@ export default function TripDetailPage({
                           {trip.guestCount !== 1 ? "s" : ""}
                         </span>
                         {trip.budget && (
-                          <span className="text-gold-600 bg-gold-50 px-2 py-0.5 rounded-full text-xs font-medium">
+                          <span className="text-gold-700 bg-gold-50 px-2 py-0.5 rounded-full text-xs font-medium">
                             {trip.budget}
                           </span>
                         )}
@@ -529,7 +529,7 @@ export default function TripDetailPage({
                                   </span>
                                   {item.listing.avgRating &&
                                     parseFloat(item.listing.avgRating) > 0 && (
-                                      <span className="flex items-center gap-1 text-xs text-gold-600 font-medium">
+                                      <span className="flex items-center gap-1 text-xs text-gold-700 font-medium">
                                         <Star
                                           size={12}
                                           fill="currentColor"

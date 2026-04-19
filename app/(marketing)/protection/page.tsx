@@ -23,7 +23,7 @@ const pillars = [
       "Encrypted financial data",
     ],
     iconBg: "bg-gold-50",
-    iconColor: "text-gold-600",
+    iconColor: "text-gold-700",
   },
   {
     icon: CalendarCheck,
@@ -51,7 +51,7 @@ const pillars = [
       "Local on-island contacts",
     ],
     iconBg: "bg-gold-50",
-    iconColor: "text-gold-600",
+    iconColor: "text-gold-700",
   },
 ];
 

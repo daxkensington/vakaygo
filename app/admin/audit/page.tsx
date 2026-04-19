@@ -244,7 +244,7 @@ export default function AuditLogPage() {
                       </td>
                       <td className="px-4 py-3">
                         {log.details ? (
-                          <button className="inline-flex items-center gap-1 text-xs text-gold-600 hover:text-gold-700">
+                          <button className="inline-flex items-center gap-1 text-xs text-gold-700 hover:text-gold-700">
                             {expandedRow === log.id ? (
                               <ChevronUp className="h-3 w-3" />
                             ) : (

@@ -592,7 +592,7 @@ export default function EditListingPage() {
 
               {/* Seasonal tip */}
               <div className="p-3 bg-gold-50 rounded-xl">
-                <p className="text-xs font-semibold text-gold-600 mb-0.5">
+                <p className="text-xs font-semibold text-gold-700 mb-0.5">
                   Seasonal Tip
                 </p>
                 <p className="text-sm text-navy-600">{pricingData.seasonalTip}</p>

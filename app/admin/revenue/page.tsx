@@ -64,7 +64,7 @@ export default function AdminRevenuePage() {
       label: "Total Revenue",
       value: formatMoney(data.totalRevenue),
       icon: DollarSign,
-      color: "bg-gold-50 text-gold-600",
+      color: "bg-gold-50 text-gold-700",
     },
     {
       label: "Platform Fees",
@@ -76,7 +76,7 @@ export default function AdminRevenuePage() {
       label: "Avg Booking Value",
       value: formatMoney(data.avgBookingValue),
       icon: BarChart3,
-      color: "bg-gold-50 text-gold-600",
+      color: "bg-gold-50 text-gold-700",
     },
   ];
 

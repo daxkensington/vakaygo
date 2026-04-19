@@ -235,7 +235,7 @@ export default function ServicesPage() {
             </p>
             <Link
               href="/auth/signup"
-              className="inline-flex items-center gap-2 bg-white text-gold-600 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
+              className="inline-flex items-center gap-2 bg-white text-gold-700 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
             >
               List Your Service — Free <ArrowRight size={16} />
             </Link>

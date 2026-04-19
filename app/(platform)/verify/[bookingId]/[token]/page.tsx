@@ -259,7 +259,7 @@ export default function VerifyPage({
             )}
             <div className="flex justify-between items-center pt-3 border-t border-cream-200">
               <span className="text-sm font-semibold text-navy-600">Total Amount</span>
-              <span className="text-xl font-bold text-gold-600">
+              <span className="text-xl font-bold text-gold-700">
                 {currencySymbol}{parseFloat(data.totalAmount).toFixed(2)}
               </span>
             </div>

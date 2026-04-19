@@ -362,7 +362,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
 
               {/* Price override */}
               {avail?.priceOverride && !isPast && !isBlocked && (
-                <span className="text-[10px] font-semibold text-gold-600 leading-tight">
+                <span className="text-[10px] font-semibold text-gold-700 leading-tight">
                   ${parseFloat(avail.priceOverride).toFixed(0)}
                 </span>
               )}

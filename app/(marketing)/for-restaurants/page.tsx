@@ -121,7 +121,7 @@ export default function ForRestaurantsPage() {
                     href="/auth/signup"
                     className={`block text-center mt-8 px-6 py-3 rounded-xl font-semibold transition-colors ${
                       key === "essential"
-                        ? "bg-white text-gold-600 hover:bg-cream-100"
+                        ? "bg-white text-gold-700 hover:bg-cream-100"
                         : "bg-gold-700 text-white hover:bg-gold-800"
                     }`}
                   >
@@ -211,7 +211,7 @@ export default function ForRestaurantsPage() {
             </p>
             <Link
               href="/auth/signup"
-              className="inline-flex items-center gap-2 bg-white text-gold-600 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
+              className="inline-flex items-center gap-2 bg-white text-gold-700 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
             >
               Get Started Free <ArrowRight size={18} />
             </Link>

@@ -292,7 +292,7 @@ export default function SecurityPage() {
           {/* Two-Factor Authentication */}
           <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-6">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-600">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-700">
                 <QrCode size={20} />
               </div>
               <div>
@@ -482,7 +482,7 @@ export default function SecurityPage() {
           {/* ID Verification */}
           <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-600">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-700">
                 <Shield size={20} />
               </div>
               <div>

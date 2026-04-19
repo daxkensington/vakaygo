@@ -265,7 +265,7 @@ export default function VoucherPage({
                 <span className="text-sm font-semibold text-navy-700 uppercase tracking-wider">
                   Total Paid
                 </span>
-                <span className="text-2xl font-bold text-gold-600">
+                <span className="text-2xl font-bold text-gold-700">
                   {currencySymbol}{parseFloat(data.totalAmount).toFixed(2)}
                 </span>
               </div>

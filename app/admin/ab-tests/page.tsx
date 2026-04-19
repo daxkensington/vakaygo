@@ -264,7 +264,7 @@ export default function ABTestsPage() {
                   <button
                     type="button"
                     onClick={addVariant}
-                    className="text-xs text-gold-600 hover:text-gold-700 font-semibold"
+                    className="text-xs text-gold-700 hover:text-gold-700 font-semibold"
                   >
                     + Add Variant
                   </button>

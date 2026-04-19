@@ -220,7 +220,7 @@ export default function SavedPage() {
                 {!showCreateCollection ? (
                   <button
                     onClick={() => setShowCreateCollection(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gold-50 text-gold-600 hover:bg-gold-100 transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-gold-50 text-gold-700 hover:bg-gold-100 transition-all"
                   >
                     <Plus size={14} />
                     New Collection

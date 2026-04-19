@@ -340,7 +340,7 @@ export function ReviewSection({
                   className="p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-sm shrink-0">
                       {initial}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -398,7 +398,7 @@ export function ReviewSection({
                       {/* Operator reply */}
                       {review.operatorReply && (
                         <div className="mt-3 ml-4 pl-4 border-l-2 border-gold-200">
-                          <p className="text-xs font-semibold text-gold-600 mb-1">
+                          <p className="text-xs font-semibold text-gold-700 mb-1">
                             Operator Response
                           </p>
                           <p className="text-sm text-navy-500 leading-relaxed">

@@ -282,7 +282,7 @@ export default function PricingRulesPage() {
                   required
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
                 />
-                <span className="text-lg font-bold text-gold-600 shrink-0">
+                <span className="text-lg font-bold text-gold-700 shrink-0">
                   {parseFloat(formMultiplier || "1").toFixed(2)}x
                 </span>
               </div>
@@ -376,7 +376,7 @@ export default function PricingRulesPage() {
               key={rule.id}
               className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] flex items-center gap-4"
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-600 shrink-0">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-700 shrink-0">
                 <TrendingUp size={20} />
               </div>
               <div className="flex-1 min-w-0">
@@ -402,7 +402,7 @@ export default function PricingRulesPage() {
                   )}
                 </div>
               </div>
-              <span className="text-lg font-bold text-gold-600 shrink-0 bg-gold-50 px-3 py-1.5 rounded-xl">
+              <span className="text-lg font-bold text-gold-700 shrink-0 bg-gold-50 px-3 py-1.5 rounded-xl">
                 {rule.multiplier.toFixed(2)}x
               </span>
               <div className="flex items-center gap-1 shrink-0">

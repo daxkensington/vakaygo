@@ -1082,7 +1082,7 @@ export default function NewTripPage() {
 
                                         {item.rating != null &&
                                           item.rating > 0 && (
-                                            <span className="flex items-center gap-0.5 text-xs text-gold-600">
+                                            <span className="flex items-center gap-0.5 text-xs text-gold-700">
                                               <Star
                                                 size={10}
                                                 fill="currentColor"

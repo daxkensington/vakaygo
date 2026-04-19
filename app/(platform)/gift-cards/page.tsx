@@ -112,7 +112,7 @@ export default function GiftCardsPage() {
           {/* Page Header */}
           <div className="text-center mb-10">
             <div className="w-16 h-16 bg-gold-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Gift size={28} className="text-gold-600" />
+              <Gift size={28} className="text-gold-700" />
             </div>
             <h1
               className="text-3xl md:text-4xl font-bold text-navy-700"

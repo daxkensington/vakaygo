@@ -298,7 +298,7 @@ export default function MessagesPage() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-sm shrink-0">
+                            <div className="w-10 h-10 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-sm shrink-0">
                               {conv.name.charAt(0)}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -357,7 +357,7 @@ export default function MessagesPage() {
                       >
                         <ArrowLeft size={20} />
                       </button>
-                      <div className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-xs shrink-0">
+                      <div className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-xs shrink-0">
                         {activeConvData?.name?.charAt(0) || "?"}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -452,7 +452,7 @@ export default function MessagesPage() {
                     {partnerTyping && (
                       <div className="px-4 pb-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-[10px] shrink-0">
+                          <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-[10px] shrink-0">
                             {activeConvData?.name?.charAt(0) || "?"}
                           </div>
                           <div className="bg-cream-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
@@ -631,7 +631,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} group`}>
       {/* Avatar for received messages */}
       {!isOwn && (
-        <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-[10px] shrink-0 mt-1 mr-2">
+        <div className="w-7 h-7 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-[10px] shrink-0 mt-1 mr-2">
           {msg.senderName?.charAt(0) || "?"}
         </div>
       )}

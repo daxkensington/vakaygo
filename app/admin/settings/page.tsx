@@ -114,7 +114,7 @@ export default function AdminSettingsPage() {
         <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-50">
-              <Percent className="h-5 w-5 text-gold-600" />
+              <Percent className="h-5 w-5 text-gold-700" />
             </div>
             <div>
               <h2

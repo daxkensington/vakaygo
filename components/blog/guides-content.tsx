@@ -194,9 +194,9 @@ export function GuidesContent() {
 
                     {/* Content */}
                     <div className="p-5">
-                      <h3 className="text-lg font-bold text-navy-700 group-hover:text-gold-600 transition-colors line-clamp-2 leading-snug">
+                      <h2 className="text-lg font-bold text-navy-700 group-hover:text-gold-600 transition-colors line-clamp-2 leading-snug">
                         {post.title}
-                      </h3>
+                      </h2>
                       {post.excerpt && (
                         <p className="mt-2 text-sm text-navy-400 line-clamp-2 leading-relaxed">
                           {post.excerpt}
@@ -211,7 +211,7 @@ export function GuidesContent() {
                               className="h-6 w-6 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="h-6 w-6 rounded-full bg-gold-100 flex items-center justify-center text-gold-600 font-bold text-[10px]">
+                            <div className="h-6 w-6 rounded-full bg-gold-100 flex items-center justify-center text-gold-700 font-bold text-[10px]">
                               {post.authorName?.charAt(0) || "V"}
                             </div>
                           )}
@@ -296,7 +296,7 @@ export function GuidesContent() {
               </p>
               <Link
                 href="/islands"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-gold-600 hover:text-gold-700 transition-colors"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-gold-700 hover:text-gold-700 transition-colors"
               >
                 Browse all islands
                 <ChevronRight className="h-4 w-4" />

@@ -131,7 +131,7 @@ export default function OperatorLayout({
             >
               + New Listing
             </Link>
-            <div className="w-8 h-8 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-sm">
+            <div className="w-8 h-8 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-sm">
               {user?.name?.charAt(0) || "O"}
             </div>
           </div>

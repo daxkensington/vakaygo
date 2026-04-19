@@ -236,7 +236,7 @@ export function Header() {
               <NotificationBell scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
-                className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-sm hover:bg-gold-200 transition-colors"
+                className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-sm hover:bg-gold-200 transition-colors"
               >
                 {user.name?.charAt(0) || <User size={16} />}
               </Link>

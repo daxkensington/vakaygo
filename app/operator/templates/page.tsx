@@ -263,7 +263,7 @@ export default function MessageTemplatesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-navy-700">{template.title}</h3>
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 bg-gold-50 px-2 py-0.5 rounded-full mt-0.5">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gold-700 bg-gold-50 px-2 py-0.5 rounded-full mt-0.5">
                       <Zap size={10} />
                       {template.shortcut}
                     </span>

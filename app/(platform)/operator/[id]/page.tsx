@@ -193,7 +193,7 @@ export default function OperatorProfilePage() {
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2">
-                    <p className="font-display text-2xl sm:text-3xl font-bold text-gold-600">
+                    <p className="font-display text-2xl sm:text-3xl font-bold text-gold-700">
                       {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "--"}
                     </p>
                   </div>

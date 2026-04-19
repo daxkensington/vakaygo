@@ -142,7 +142,7 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-3xl px-6 py-10">
           {/* Profile Header */}
           <div className="flex items-center gap-6 mb-8">
-            <div className="w-20 h-20 bg-gold-100 rounded-full flex items-center justify-center text-gold-600 font-bold text-3xl shadow-sm">
+            <div className="w-20 h-20 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-3xl shadow-sm">
               {user.name?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <div>

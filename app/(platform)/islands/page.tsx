@@ -109,9 +109,9 @@ export default async function IslandsPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{flag}</span>
                       <div>
-                        <h3 className="text-xl font-bold text-white">
+                        <h2 className="text-xl font-bold text-white">
                           {island.name}
-                        </h3>
+                        </h2>
                         <p className="text-white/60 text-sm flex items-center gap-1">
                           <MapPin size={12} />
                           {island.listingCount.toLocaleString()} listings

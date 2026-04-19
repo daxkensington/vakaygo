@@ -316,7 +316,7 @@ export default function AdminUsersPage() {
                               {user.email}
                             </p>
                             {user.businessName && (
-                              <p className="truncate text-xs text-gold-600">
+                              <p className="truncate text-xs text-gold-700">
                                 {user.businessName}
                               </p>
                             )}

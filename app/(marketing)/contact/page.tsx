@@ -158,6 +158,7 @@ export default function ContactPage() {
                           </label>
                           <select
                             required
+                            aria-label="Category"
                             value={form.category}
                             onChange={(e) => setForm({ ...form, category: e.target.value })}
                             className="w-full rounded-xl border border-navy-100 bg-cream-50 px-4 py-3 text-navy-700 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 transition-all appearance-none"

@@ -115,7 +115,7 @@ export default function OperatorDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-600">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-700">
               <DollarSign size={20} />
             </div>
             <TrendingUp size={16} className="text-navy-200" />
@@ -147,7 +147,7 @@ export default function OperatorDashboard() {
 
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-600">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-50 text-gold-700">
               <Star size={20} />
             </div>
             {stats && stats.avgRating > 0 && <StarRating rating={stats.avgRating} />}

@@ -39,7 +39,7 @@ export function LoyaltyBadge({
 
 export function LoyaltyPointsBadge({ points }: { points: number }) {
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-gold-600 bg-gold-50 px-2 py-1 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-gold-700 bg-gold-50 px-2 py-1 rounded-full">
       <span className="text-gold-500">{"\u2B50"}</span>
       {points.toLocaleString()}
     </span>

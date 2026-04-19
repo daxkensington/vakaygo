@@ -453,6 +453,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               <Calendar size={16} className="text-navy-300" />
               <input
                 type="date"
+                aria-label={listing.type === "stay" ? "Check-in date" : "Date"}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full bg-transparent text-navy-700 outline-none text-sm"
@@ -468,6 +469,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
                 <Calendar size={16} className="text-navy-300" />
                 <input
                   type="date"
+                  aria-label="Check-out date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-transparent text-navy-700 outline-none text-sm"
@@ -482,6 +484,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
             <div className="flex items-center gap-2 mt-1">
               <UsersIcon size={16} className="text-navy-300" />
               <select
+                aria-label="Number of guests"
                 value={guests}
                 onChange={(e) => setGuests(parseInt(e.target.value))}
                 className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none"

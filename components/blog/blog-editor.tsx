@@ -657,7 +657,7 @@ export function BlogEditor({
                         : "bg-cream-50 hover:bg-cream-100"
                     }`}
                   >
-                    <s.icon className={`h-6 w-6 ${imageStyle === s.id ? "text-gold-600" : "text-navy-400"}`} />
+                    <s.icon className={`h-6 w-6 ${imageStyle === s.id ? "text-gold-700" : "text-navy-400"}`} />
                     <span className={`text-sm font-medium ${imageStyle === s.id ? "text-gold-700" : "text-navy-600"}`}>
                       {s.label}
                     </span>

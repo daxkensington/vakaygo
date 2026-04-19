@@ -100,6 +100,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
             <input
               type="date"
               required
+              aria-label="Reservation date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
@@ -115,6 +116,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
             <Clock size={16} className="text-navy-300" />
             <select
               required
+              aria-label="Reservation time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none cursor-pointer"
@@ -140,6 +142,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
           <div className="flex items-center gap-2 mt-1">
             <Users size={16} className="text-navy-300" />
             <select
+              aria-label="Party size"
               value={guests}
               onChange={(e) => setGuests(parseInt(e.target.value))}
               className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none cursor-pointer"

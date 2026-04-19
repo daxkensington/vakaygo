@@ -177,7 +177,7 @@ export default function ForBusinessesPage() {
                   className={`grid grid-cols-4 text-sm ${i % 2 === 0 ? "bg-white" : "bg-cream-50"}`}
                 >
                   <div className="p-4 font-medium text-navy-700">{row.feature}</div>
-                  <div className="p-4 text-center font-semibold text-gold-600 bg-gold-50/50">
+                  <div className="p-4 text-center font-semibold text-gold-700 bg-gold-50/50">
                     {row.vakaygo}
                   </div>
                   <div className="p-4 text-center text-navy-400">{row.viator}</div>
@@ -299,7 +299,7 @@ export default function ForBusinessesPage() {
             </p>
             <Link
               href="/auth/signup"
-              className="inline-flex items-center gap-2 bg-white text-gold-600 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
+              className="inline-flex items-center gap-2 bg-white text-gold-700 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
             >
               Create Your Free Listing
               <ArrowRight size={18} />

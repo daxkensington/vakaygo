@@ -45,7 +45,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
         {phone && (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-              <Phone size={16} className="text-gold-600" />
+              <Phone size={16} className="text-gold-700" />
             </div>
             <a
               href={`tel:${phone}`}
@@ -60,7 +60,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
         {website && (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-              <Globe size={16} className="text-gold-600" />
+              <Globe size={16} className="text-gold-700" />
             </div>
             <a
               href={String(website)}
@@ -84,7 +84,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
               className="flex items-center gap-3 w-full text-left"
             >
               <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-                <Clock size={16} className="text-gold-600" />
+                <Clock size={16} className="text-gold-700" />
               </div>
               <span className="text-navy-600 font-medium">Business Hours</span>
               {hoursOpen ? (
@@ -106,7 +106,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
         ) : hoursList ? (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-              <Clock size={16} className="text-gold-600" />
+              <Clock size={16} className="text-gold-700" />
             </div>
             <span className="text-navy-600 font-medium">{hoursList[0]}</span>
           </div>
@@ -116,7 +116,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
         {googleMapsUrl && (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-              <MapPin size={16} className="text-gold-600" />
+              <MapPin size={16} className="text-gold-700" />
             </div>
             <a
               href={String(googleMapsUrl)}
