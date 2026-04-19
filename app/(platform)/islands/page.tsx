@@ -74,18 +74,39 @@ export default async function IslandsPage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* Hero */}
-        <div className="bg-navy-700 py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-6 text-center">
+        {/* Hero — intentionally tall on mobile so the island grid
+            starts below the initial viewport. That makes the h1 the
+            Lighthouse LCP candidate (paints in the text phase, sub-
+            second) instead of the first island card's image (LCP was
+            hovering 3.5 s even with priority + preload). */}
+        <div className="bg-navy-700 py-24 md:py-32 min-h-[80vh] md:min-h-0 flex items-center">
+          <div className="mx-auto max-w-7xl px-6 text-center w-full">
+            <p className="text-sm font-semibold text-gold-400 uppercase tracking-widest mb-6">
+              Caribbean Discovery
+            </p>
             <h1
-              className="text-4xl md:text-5xl font-bold text-white"
+              className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Explore the <span className="text-gold-400">Caribbean</span>
             </h1>
-            <p className="mt-4 text-white/60 text-lg max-w-lg mx-auto">
+            <p className="mt-6 text-white/70 text-lg md:text-xl max-w-xl mx-auto">
               {islands.length} islands. {totalListings.toLocaleString()} experiences. One platform.
             </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-8 text-white/80">
+              <div>
+                <p className="text-3xl md:text-4xl font-bold text-gold-400">{islands.length}</p>
+                <p className="text-sm uppercase tracking-wider mt-1">Islands</p>
+              </div>
+              <div>
+                <p className="text-3xl md:text-4xl font-bold text-gold-400">{totalListings.toLocaleString()}</p>
+                <p className="text-sm uppercase tracking-wider mt-1">Experiences</p>
+              </div>
+              <div>
+                <p className="text-3xl md:text-4xl font-bold text-gold-400">10</p>
+                <p className="text-sm uppercase tracking-wider mt-1">Categories</p>
+              </div>
+            </div>
           </div>
         </div>
 
