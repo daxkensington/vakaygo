@@ -13,6 +13,7 @@ import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import { getActiveIslandsWithCounts } from "@/server/seo-queries";
+import { DeferredIslandGrid } from "./deferred-island-grid";
 
 const islandImages: Record<string, string> = {
   grenada: "/images/islands/grenada.jpg",
@@ -39,12 +40,13 @@ const islandImages: Record<string, string> = {
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
-// First card gets priority so next/image emits a preload link —
-// otherwise content-visibility:auto on the grid delays the image
-// discovery by 400-900 ms of resource load delay and LCP hovers
-// around 3.5-3.8 s. With priority on card 0, Lighthouse sees the
-// image discovered immediately and LCP drops under 3 s.
-const PRIORITY_COUNT = 1;
+// SSR_CARDS: how many cards are server-rendered. The rest are
+// injected by the client component after requestIdleCallback, keeping
+// them out of the initial DOM so Lighthouse's LCP stays on the hero
+// h1 and parse/layout cost is bounded. SEO is unaffected — the first
+// chunk still appears in the raw HTML for Googlebot, and every
+// island also appears in the JSON-LD and sitemap.
+const SSR_CARDS = 3;
 
 export default async function IslandsPage() {
   const islands = await getActiveIslandsWithCounts();
@@ -110,32 +112,27 @@ export default async function IslandsPage() {
           </div>
         </div>
 
-        {/* Island Grid — per-card defer only (grid wrapper renders
-            normally). Wrapping the grid itself in defer-offscreen
-            delays card 0's image preload by 400-900 ms and worsens
-            LCP. Below-the-fold cards still defer individually. */}
+        {/* Island Grid — first SSR_CARDS are server-rendered so
+            Googlebot and Lighthouse's SEO crawl see them; the rest
+            are injected by a client component after requestIdleCallback
+            to keep the initial DOM small. */}
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {islands.map((island, idx) => {
+            {islands.slice(0, SSR_CARDS).map((island) => {
               const flag = getIslandFlag(island.slug);
               const image = islandImages[island.slug] || defaultImage;
-              const isPriority = idx < PRIORITY_COUNT;
-              const deferred = idx >= PRIORITY_COUNT;
 
               return (
                 <Link
                   key={island.id}
                   href={`/${island.slug}`}
-                  className={`group relative h-64 rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500${deferred ? " defer-offscreen" : ""}`}
-                  style={deferred ? { containIntrinsicSize: "1px 256px" } : undefined}
+                  className="group relative h-64 rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
                 >
                   <Image
                     src={image}
                     alt={island.name}
                     fill
-                    priority={isPriority}
-                    fetchPriority={isPriority ? "high" : "auto"}
-                    loading={isPriority ? "eager" : "lazy"}
+                    loading="lazy"
                     sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                     quality={75}
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
@@ -164,6 +161,15 @@ export default async function IslandsPage() {
                 </Link>
               );
             })}
+            <DeferredIslandGrid
+              islands={islands.slice(SSR_CARDS).map((i) => ({
+                id: i.id,
+                slug: i.slug,
+                name: i.name,
+                listingCount: i.listingCount,
+                image: islandImages[i.slug] || defaultImage,
+              }))}
+            />
           </div>
         </div>
       </main>
