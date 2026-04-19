@@ -29,7 +29,7 @@ export function Footer() {
 
           <div>
             <h3 className="font-semibold text-white mb-4">Platform</h3>
-            <ul className="space-y-3 text-sm text-cream-300">
+            <ul className="space-y-6 text-sm text-cream-300">
               <li><a href="/explore" className="flex items-center h-12 hover:text-gold-400 transition-colors">Explore</a></li>
               <li><a href="/islands" className="flex items-center h-12 hover:text-gold-400 transition-colors">Islands</a></li>
               <li><a href="/guides" className="flex items-center h-12 hover:text-gold-400 transition-colors">Guides</a></li>
@@ -41,7 +41,7 @@ export function Footer() {
 
           <div>
             <h3 className="font-semibold text-white mb-4">Company</h3>
-            <ul className="space-y-3 text-sm text-cream-300">
+            <ul className="space-y-6 text-sm text-cream-300">
               <li><a href="/about" className="flex items-center h-12 hover:text-gold-400 transition-colors">About</a></li>
               <li><a href="/privacy" className="flex items-center h-12 hover:text-gold-400 transition-colors">Privacy Policy</a></li>
               <li><a href="/terms" className="flex items-center h-12 hover:text-gold-400 transition-colors">Terms of Service</a></li>
@@ -53,7 +53,7 @@ export function Footer() {
         {/* Popular Destinations */}
         <div className="mt-12 pt-8 border-t border-navy-600">
           <h3 className="font-semibold text-white mb-4">Popular Destinations</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm text-cream-300">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-6 text-sm text-cream-300">
             <a href="/things-to-do-in-grenada" className="flex items-center h-12 hover:text-gold-400 transition-colors">Things to Do in Grenada</a>
             <a href="/things-to-do-in-barbados" className="flex items-center h-12 hover:text-gold-400 transition-colors">Things to Do in Barbados</a>
             <a href="/things-to-do-in-jamaica" className="flex items-center h-12 hover:text-gold-400 transition-colors">Things to Do in Jamaica</a>
