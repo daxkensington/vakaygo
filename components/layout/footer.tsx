@@ -29,23 +29,23 @@ export function Footer() {
 
           <div>
             <h3 className="font-semibold text-white mb-4">Platform</h3>
-            <ul className="space-y-2 text-base text-cream-300">
-              <li><a href="/explore" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Explore</a></li>
-              <li><a href="/islands" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Islands</a></li>
-              <li><a href="/guides" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Guides</a></li>
-              <li><a href="/services" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Services</a></li>
-              <li><a href="/for-businesses" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">For Businesses</a></li>
-              <li><a href="/for-restaurants" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">For Restaurants</a></li>
+            <ul className="text-base text-cream-300">
+              <li><a href="/explore" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Explore</a></li>
+              <li><a href="/islands" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Islands</a></li>
+              <li><a href="/guides" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Guides</a></li>
+              <li><a href="/services" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Services</a></li>
+              <li><a href="/for-businesses" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Businesses</a></li>
+              <li><a href="/for-restaurants" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Restaurants</a></li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold text-white mb-4">Company</h3>
-            <ul className="space-y-2 text-base text-cream-300">
-              <li><a href="/about" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">About</a></li>
-              <li><a href="/privacy" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Privacy Policy</a></li>
-              <li><a href="/terms" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Terms of Service</a></li>
-              <li><a href="mailto:hello@vakaygo.com" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Contact</a></li>
+            <ul className="text-base text-cream-300">
+              <li><a href="/about" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">About</a></li>
+              <li><a href="/privacy" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Terms of Service</a></li>
+              <li><a href="mailto:hello@vakaygo.com" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Contact</a></li>
             </ul>
           </div>
         </div>
@@ -53,19 +53,19 @@ export function Footer() {
         {/* Popular Destinations */}
         <div className="mt-12 pt-8 border-t border-navy-600">
           <h3 className="font-semibold text-white mb-4">Popular Destinations</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2 text-base text-cream-300">
-            <a href="/things-to-do-in-grenada" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in Grenada</a>
-            <a href="/things-to-do-in-barbados" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in Barbados</a>
-            <a href="/things-to-do-in-jamaica" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in Jamaica</a>
-            <a href="/things-to-do-in-st-lucia" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in St. Lucia</a>
-            <a href="/things-to-do-in-bahamas" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in Bahamas</a>
-            <a href="/things-to-do-in-aruba" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Things to Do in Aruba</a>
-            <a href="/best-restaurants-grenada" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Restaurants in Grenada</a>
-            <a href="/best-restaurants-barbados" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Restaurants in Barbados</a>
-            <a href="/best-restaurants-jamaica" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Restaurants in Jamaica</a>
-            <a href="/best-hotels-grenada" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Hotels in Grenada</a>
-            <a href="/best-hotels-barbados" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Hotels in Barbados</a>
-            <a href="/best-hotels-jamaica" className="inline-flex items-center min-h-[32px] leading-8 hover:text-gold-400 transition-colors">Best Hotels in Jamaica</a>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 text-base text-cream-300">
+            <a href="/things-to-do-in-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Grenada</a>
+            <a href="/things-to-do-in-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Barbados</a>
+            <a href="/things-to-do-in-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Jamaica</a>
+            <a href="/things-to-do-in-st-lucia" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in St. Lucia</a>
+            <a href="/things-to-do-in-bahamas" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Bahamas</a>
+            <a href="/things-to-do-in-aruba" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Aruba</a>
+            <a href="/best-restaurants-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Grenada</a>
+            <a href="/best-restaurants-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Barbados</a>
+            <a href="/best-restaurants-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Jamaica</a>
+            <a href="/best-hotels-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Grenada</a>
+            <a href="/best-hotels-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Barbados</a>
+            <a href="/best-hotels-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Jamaica</a>
           </div>
         </div>
 
