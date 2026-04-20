@@ -282,7 +282,9 @@ async function main() {
     FROM listings l
     JOIN islands i ON i.id = l.island_id
     WHERE l.status = 'active'
-      AND (l.description LIKE '%claim it for free%'
+      AND (l.description IS NULL
+           OR l.description = ''
+           OR l.description LIKE '%claim it for free%'
            OR l.description LIKE '%Claim this listing%'
            OR l.headline LIKE 'Discover %')
       ${typeCondition}
