@@ -1,257 +1,15 @@
 severity,issue,listingId,title,type,island,detail
-high,duplicate-desc,089cff9a-f4ea-4db1-9e86-1670b49c784f,Antigua Sailing Week,tour,Antigua & Barbuda,"Same description shared by 2 listings (e.g., ""Craibbean Sailing Events"")"
-high,duplicate-desc,0fb2d483-e915-405d-aae0-3f672d20e466,Craibbean Sailing Events,tour,Antigua & Barbuda,"Same description shared by 2 listings (e.g., ""Antigua Sailing Week"")"
-high,duplicate-desc,acae58ec-4153-4eb1-9675-79be6cfabc2f,TradeWinds Antigua,tour,Antigua & Barbuda,"Same description shared by 3 listings (e.g., ""TradeWinds British Virgin Islands"")"
-high,duplicate-desc,697c1837-7794-4e23-9e80-25340f8c1d44,Pelican Pier / Pelican Nest Restaurant,dining,Aruba,"Same description shared by 2 listings (e.g., ""Pelican Adventures"")"
-high,duplicate-desc,addf15f4-95b3-45db-b17a-8ec91c4a41a0,Pelican Adventures,tour,Aruba,"Same description shared by 2 listings (e.g., ""Pelican Pier / Pelican Nest Restaurant"")"
-high,duplicate-desc,d3ad1087-0f70-4514-9ec4-1b84f7b6940b,Barbados Snorkeling,tour,Barbados,"Same description shared by 2 listings (e.g., ""Barbados Snorkeling Tours by Hayden Browne"")"
-high,duplicate-desc,edba90bd-f0f2-4372-8648-873bc30e8d02,Barbados Snorkeling Tours by Hayden Browne,tour,Barbados,"Same description shared by 2 listings (e.g., ""Barbados Snorkeling"")"
-high,duplicate-desc,1ad0daf5-bab9-4908-916a-7939de9de1fd,1000 Steps (16),tour,Bonaire,"Same description shared by 2 listings (e.g., ""Salt Pier (49)"")"
-high,duplicate-desc,3e1fbbd9-0818-4dde-8bb2-8be39202099d,Salt Pier (49),tour,Bonaire,"Same description shared by 2 listings (e.g., ""1000 Steps (16)"")"
-high,duplicate-desc,28f75c63-e1c0-4846-b8b2-6e02d46adfb8,Prins Car Rental,transport,Bonaire,"Same description shared by 2 listings (e.g., ""Prins Car Rental B.V."")"
-high,duplicate-desc,5e4a690d-51a3-4e24-a6fa-e947ca1431cb,Dive Friends Bonaire @ Hamlet Oasis,tour,Bonaire,"Same description shared by 2 listings (e.g., ""Dive Friends Bonaire @ Dive Inn"")"
-high,duplicate-desc,fdc903bb-44cb-41a3-93ad-345a906e213a,Dive Friends Bonaire @ Dive Inn,tour,Bonaire,"Same description shared by 2 listings (e.g., ""Dive Friends Bonaire @ Hamlet Oasis"")"
-high,duplicate-desc,818e227d-53b5-4b1e-a6a1-b37f17f187d8,Glassbottom Boat Tours and Snorkel Bonaire,tour,Bonaire,"Same description shared by 2 listings (e.g., ""Eye Sea Bonaire"")"
-high,duplicate-desc,b7fe5c76-3337-498a-b875-35adb34c3081,Eye Sea Bonaire,tour,Bonaire,"Same description shared by 2 listings (e.g., ""Glassbottom Boat Tours and Snorkel Bonaire"")"
-high,duplicate-desc,2e765ce5-0b90-4864-ae83-1bedcfd86e0c,Peter Island Resort,stay,British Virgin Islands,"Same description shared by 2 listings (e.g., ""The Peter Island Spa"")"
-high,duplicate-desc,37b1cf54-e934-46ae-8eb5-a07332845ac5,Island Roots Cafe at the Moorings,dining,British Virgin Islands,"Same description shared by 4 listings (e.g., ""Island Roots Cafe on Main Street"")"
-high,duplicate-desc,5ecbbe8f-d5c6-49d9-989d-278f48e64ee9,Island Roots Cafe on Main Street,dining,British Virgin Islands,"Same description shared by 4 listings (e.g., ""Island Roots Cafe at the Moorings"")"
-high,duplicate-desc,84cdb9a5-2ba8-4ffe-9294-1a4647201a44,Island Roots Cafe at Nanny Cay,dining,British Virgin Islands,"Same description shared by 4 listings (e.g., ""Island Roots Cafe at the Moorings"")"
-high,duplicate-desc,e6f1bbb8-80b9-4bea-b15e-9f3dccf42a08,Island Roots Cafe at Pockwood Pond,dining,British Virgin Islands,"Same description shared by 4 listings (e.g., ""Island Roots Cafe at the Moorings"")"
-high,duplicate-desc,ce4f7d30-fe8e-4bad-bbcb-331e3d5984b2,TradeWinds British Virgin Islands,tour,British Virgin Islands,"Same description shared by 3 listings (e.g., ""TradeWinds Antigua"")"
-high,duplicate-desc,543d02e6-cb4e-4a06-8b87-7a76ba50fba2,Shore Excursions,tour,Cayman Islands,"Same description shared by 2 listings (e.g., ""Stingray City Cayman Islands"")"
-high,duplicate-desc,ae4ef23c-7ed5-4d81-b03e-ca54045f0b48,Stingray City Cayman Islands,tour,Cayman Islands,"Same description shared by 2 listings (e.g., ""Shore Excursions"")"
-high,duplicate-desc,b263954d-b9d1-400d-bfb2-73fab8afabdb,Prins Car Rental B.V.,transport,Curaçao,"Same description shared by 2 listings (e.g., ""Prins Car Rental"")"
-high,duplicate-desc,64c401f8-12b2-4ddd-aa13-95da9b542fa4,BlueFinn Tourdesk Caracasbaai,tour,Curaçao,"Same description shared by 2 listings (e.g., ""Blue Finn Charters Curaçao"")"
-high,duplicate-desc,bf8bdeeb-7a4d-4b40-b6a6-3dad8a557694,Blue Finn Charters Curaçao,tour,Curaçao,"Same description shared by 2 listings (e.g., ""BlueFinn Tourdesk Caracasbaai"")"
-high,duplicate-desc,3725d31d-26df-4e93-a730-d07607bc4440,Onno's Beach Club,dining,Dominican Republic,"Same description shared by 2 listings (e.g., ""Onno's Zona Colonial Bar & Restaurant"")"
-high,duplicate-desc,60035411-0c56-470d-93f2-a93b1fb49ddc,Onno's Zona Colonial Bar & Restaurant,dining,Dominican Republic,"Same description shared by 2 listings (e.g., ""Onno's Beach Club"")"
-high,duplicate-desc,ce9a994e-e79a-4faf-bde9-c0c3fd877aad,Dams Rent A Car LLC,transport,Dominican Republic,"Same description shared by 2 listings (e.g., ""Dams Rent A Car"")"
-high,duplicate-desc,f9651410-43c3-41f6-896a-76211f2b721c,Dams Rent A Car,transport,Dominican Republic,"Same description shared by 2 listings (e.g., ""Dams Rent A Car LLC"")"
-high,duplicate-desc,46e0d7e6-2111-41d7-8ac6-aadc2d2a917e,Grand Étang National Park,tour,Grenada,"Same description shared by 5 listings (e.g., ""Welcome Rock"")"
-high,duplicate-desc,6d47cef2-00f0-4bcf-a64c-920fb69ca561,Welcome Rock,tour,Grenada,"Same description shared by 5 listings (e.g., ""Grand Étang National Park"")"
-high,duplicate-desc,773c62cb-ae7b-48bb-98f0-22c3152ee0c0,Levera Beach,tour,Grenada,"Same description shared by 5 listings (e.g., ""Grand Étang National Park"")"
-high,duplicate-desc,c4e6b69d-1351-42c7-a6fd-b49d0c7422ed,Explorer Grenada Tours,tour,Grenada,"Same description shared by 5 listings (e.g., ""Grand Étang National Park"")"
-high,duplicate-desc,ca3c3ec7-53f9-4c2b-90e3-c9d37c962ce5,Mt Carmel Falls trailhead,tour,Grenada,"Same description shared by 5 listings (e.g., ""Grand Étang National Park"")"
-high,duplicate-desc,4d2247e6-6f95-4937-bbf6-abd9e9fe2561,The Moorings: Grenada Yacht Charters,tour,Grenada,"Same description shared by 2 listings (e.g., ""The Moorings Grenada"")"
-high,duplicate-desc,78e33fc2-f93f-403a-a97c-c548f4ecf283,The Moorings Grenada,tour,Grenada,"Same description shared by 2 listings (e.g., ""The Moorings: Grenada Yacht Charters"")"
-high,duplicate-desc,ee723b25-af68-40ee-8bc0-7f5ce787dd48,Sailing Collective Grenada,tour,Grenada,"Same description shared by 2 listings (e.g., ""Sailing Collective Bahamas"")"
-high,duplicate-desc,8e7e6ae8-0588-4d76-afe0-48ff5cd67529,Secret Harbour Boutique Hotel and Marina,stay,Grenada,"Same description shared by 2 listings (e.g., ""Secret Harbour Grenada Restaurant"")"
-high,duplicate-desc,ed334146-8742-4602-a59d-7da8a24ca4f4,Secret Harbour Grenada Restaurant,dining,Grenada,"Same description shared by 2 listings (e.g., ""Secret Harbour Boutique Hotel and Marina"")"
-high,duplicate-desc,1a0ccdcd-d96c-40b2-a2b6-141e5f4266ee,Discount Auto Rental,transport,Guadeloupe,"Same description shared by 2 listings (e.g., ""Auto Discount Location"")"
-high,duplicate-desc,889f7e13-9fbb-4fbb-9428-8435b97d0443,Le Tipsy Bar,dining,Guadeloupe,"Same description shared by 2 listings (e.g., ""Le Zamana Restaurant (Hôtel Le Relais du Moulin****)"")"
-high,duplicate-desc,e708d3a9-d078-4854-a2fd-16cd32cc2a52,Le Zamana Restaurant (Hôtel Le Relais du Moulin****),dining,Guadeloupe,"Same description shared by 2 listings (e.g., ""Le Tipsy Bar"")"
-high,duplicate-desc,8f159719-a5f8-402e-8a90-b31fc1e34c32,Spa Blu-Mandeville,spa,Jamaica,"Same description shared by 2 listings (e.g., ""Spa Blu-Kingston"")"
-high,duplicate-desc,9520ce9b-1707-4296-98e0-6bfab3e014c5,Spa Blu-Kingston,spa,Jamaica,"Same description shared by 2 listings (e.g., ""Spa Blu-Mandeville"")"
-high,duplicate-desc,f3f3400d-da63-4f68-8561-8543737ba599,Auto Discount Location,transport,Martinique,"Same description shared by 2 listings (e.g., ""Discount Auto Rental"")"
-high,duplicate-desc,5bccc39a-6c10-4699-a89c-0bd0fd7234be,Aqua Adventures | Snorkeling & Boat tours in Fajardo PR,tour,Puerto Rico,"Same description shared by 2 listings (e.g., ""Aqua Adventures PR | Snorkeling & Scuba diving in San Juan PR"")"
-high,duplicate-desc,ca8e145d-3fb6-463c-a799-1e2cf1127940,Aqua Adventures PR | Snorkeling & Scuba diving in San Juan PR,tour,Puerto Rico,"Same description shared by 2 listings (e.g., ""Aqua Adventures | Snorkeling & Boat tours in Fajardo PR"")"
-high,duplicate-desc,6d4cda94-6b1c-4681-aac3-9980162cd6f5,Puerto Rico Sailing Trips,tour,Puerto Rico,"Same description shared by 2 listings (e.g., ""Janise Sailing Day & Afternoon Charters"")"
-high,duplicate-desc,bf59f32a-5a26-4474-b0c6-700b2ce8ad02,Janise Sailing Day & Afternoon Charters,tour,Puerto Rico,"Same description shared by 2 listings (e.g., ""Puerto Rico Sailing Trips"")"
-high,duplicate-desc,b2fe7b9c-7f70-4cdf-9ae9-b01e58cce1e5,Rituals Cafe,dining,St. Kitts & Nevis,"Same description shared by 2 listings (e.g., ""Rituals Coffee Shop - Choc"")"
-high,duplicate-desc,3d048026-4303-4e53-9f65-2b020c0a47e2,Rituals Coffee Shop - Choc,dining,St. Lucia,"Same description shared by 2 listings (e.g., ""Rituals Cafe"")"
-high,duplicate-desc,488b7bb8-17a8-4074-a436-9263976148a5,The Cricketer's Pub,dining,St. Lucia,"Same description shared by 2 listings (e.g., ""Armando's"")"
-high,duplicate-desc,916df103-c2ce-4f91-aad9-6fd230acc34c,Armando's,dining,St. Lucia,"Same description shared by 2 listings (e.g., ""The Cricketer's Pub"")"
-high,duplicate-desc,565415ea-b881-4ba9-b2c3-839dfbc6f219,St Lucia Sea Trek Adventure at Pigeon Island,tour,St. Lucia,"Same description shared by 2 listings (e.g., ""Sealife Paradise"")"
-high,duplicate-desc,9ed94eff-cc5a-407d-a0b4-5d727d4af459,Sealife Paradise,tour,St. Lucia,"Same description shared by 2 listings (e.g., ""St Lucia Sea Trek Adventure at Pigeon Island"")"
-high,duplicate-desc,243de156-a38b-49a2-83fa-e8af03d6cde3,Salt Cafe and Bar,dining,St. Vincent & the Grenadines,"Same description shared by 2 listings (e.g., ""Grenadine Sea Salt"")"
-high,duplicate-desc,f5cf46db-96b3-49fa-9596-b2159eaa989c,Grenadine Sea Salt,dining,St. Vincent & the Grenadines,"Same description shared by 2 listings (e.g., ""Salt Cafe and Bar"")"
-high,duplicate-desc,38686cc1-6b4c-42a3-a1fb-ca472aacf3f0,Flow Wine Bar and Kitchen,dining,St. Vincent & the Grenadines,"Same description shared by 3 listings (e.g., ""Bungalow"")"
-high,duplicate-desc,5e693523-d0a2-484c-8fa9-5cbfd1d2ebe6,Bungalow,dining,St. Vincent & the Grenadines,"Same description shared by 3 listings (e.g., ""Flow Wine Bar and Kitchen"")"
-high,duplicate-desc,a985ac9b-0c07-4f7f-b41a-51572b4abfd3,Flowt Beach Bar,dining,St. Vincent & the Grenadines,"Same description shared by 3 listings (e.g., ""Flow Wine Bar and Kitchen"")"
-high,duplicate-desc,f05ca91f-fb70-43bc-8e55-0a5d209c079f,TradeWinds Experience: St Vincent and the Grenadines,tour,St. Vincent & the Grenadines,"Same description shared by 3 listings (e.g., ""TradeWinds Antigua"")"
-high,duplicate-desc,6b684929-c1dd-46be-b73a-0e90a1711759,Sailing Collective Bahamas,tour,The Bahamas,"Same description shared by 2 listings (e.g., ""Sailing Collective Grenada"")"
-high,duplicate-desc,7e5afdc6-d87f-40b7-9f77-fd1ad47e3414,Sail Tomorrow at Montagu Beach (Departures only),tour,The Bahamas,"Same description shared by 2 listings (e.g., ""Pig Beach Turtles Snorkeling daily tour Nassau Bahamas boat PHOENIX"")"
-high,duplicate-desc,f4ce0bc9-c9c9-4549-8a0c-694317422e70,Pig Beach Turtles Snorkeling daily tour Nassau Bahamas boat PHOENIX,tour,The Bahamas,"Same description shared by 2 listings (e.g., ""Sail Tomorrow at Montagu Beach (Departures only)"")"
-high,duplicate-desc,8d747547-6f88-4378-9cc1-73053d30a9e0,Port of Scarborough,tour,Trinidad & Tobago,"Same description shared by 2 listings (e.g., ""Port Authority of Trinidad & Tobago"")"
-high,duplicate-desc,d4e24be4-a563-4217-b43c-d817fc5d8c58,Port Authority of Trinidad & Tobago,tour,Trinidad & Tobago,"Same description shared by 2 listings (e.g., ""Port of Scarborough"")"
-high,duplicate-desc,0e483b9b-5d74-4845-90f8-ae8a5ec27918,Caicos Adventures Marina,tour,Turks & Caicos,"Same description shared by 2 listings (e.g., ""Caicos Adventures"")"
-high,duplicate-desc,a5fb21b8-12c8-4dc8-a4a4-777479dafaf6,Caicos Adventures,tour,Turks & Caicos,"Same description shared by 2 listings (e.g., ""Caicos Adventures Marina"")"
-high,duplicate-desc,3a224c9e-13f7-4121-afb7-583d7ed9f52a,Rock House,stay,Turks & Caicos,"Same description shared by 2 listings (e.g., ""Vita Rock House"")"
-high,duplicate-desc,a31f80c0-379b-47f3-9a85-c034b8df4b7f,Vita Rock House,dining,Turks & Caicos,"Same description shared by 2 listings (e.g., ""Rock House"")"
-high,duplicate-desc,6ca00311-0b40-45aa-b484-1f18e9b8d4cc,The Cove Restaurant,dining,Turks & Caicos,"Same description shared by 2 listings (e.g., ""The Cove Beach Bar"")"
-high,duplicate-desc,86cc6d87-8900-4ca7-9cb2-7741a93271fb,The Cove Beach Bar,dining,Turks & Caicos,"Same description shared by 2 listings (e.g., ""The Cove Restaurant"")"
-high,duplicate-desc,679e3c92-9e57-4942-8ec9-aa9e87f4e2bd,The Peter Island Spa,spa,US Virgin Islands,"Same description shared by 2 listings (e.g., ""Peter Island Resort"")"
-high,duplicate-desc,78d86920-8a4c-4050-bcff-129a3015ea9d,Aqua Marine Dive Shop,tour,US Virgin Islands,"Same description shared by 2 listings (e.g., ""Aqua Marine Dive Center"")"
-high,duplicate-desc,b0657125-f8bc-4a3d-8bde-0dff9759e47d,Aqua Marine Dive Center,tour,US Virgin Islands,"Same description shared by 2 listings (e.g., ""Aqua Marine Dive Shop"")"
-high,duplicate-desc,79cc3261-91d4-4163-a4fe-05843a947606,"Island Adventures (New Horizons & Breakaway Charters, Snorkel Cat & Watersports",tour,US Virgin Islands,"Same description shared by 2 listings (e.g., ""Power Boat & Catamaran Snorkeling Excursions"")"
-high,duplicate-desc,af99e3fd-7acf-453d-bf52-c804ea8e74a8,Power Boat & Catamaran Snorkeling Excursions,tour,US Virgin Islands,"Same description shared by 2 listings (e.g., ""Island Adventures (New Horizons & Breakaway Charters, Snorkel Cat & Watersports"")"
-high,title-desc-subject-mismatch,f3b8fa59-973b-4e26-bbc9-c04500f504b0,"The Hut, Little Jumby",dining,Antigua & Barbuda,"Desc (189 chars) shares no distinctive words with title: [little, jumby]"
-high,title-desc-subject-mismatch,f3e34e2a-62ab-4c69-8070-2926ca713082,Salt Plage,dining,Antigua & Barbuda,"Desc (343 chars) shares no distinctive words with title: [salt, plage]"
 high,title-desc-subject-mismatch,1488982e-282a-4565-acad-2a84bb30fd65,Aruba Outdoor Adventures,tour,Aruba,"Desc (136 chars) shares no distinctive words with title: [outdoor, adventures]"
-high,title-desc-subject-mismatch,25b3503b-49cc-4a97-81f5-323f45a5a0cf,5 O’Clock Somewhere Bar & Grill,dining,Aruba,"Desc (150 chars) shares no distinctive words with title: [clock, somewhere]"
-high,title-desc-subject-mismatch,40d1298a-aff9-4c2d-8c6d-22038bb52b2b,Drive 4 Cheap Car Rental,transport,Aruba,"Desc (104 chars) shares no distinctive words with title: [drive, cheap]"
 high,title-desc-subject-mismatch,412baf08-072b-41c7-a740-4ed29218d98e,Sand Aruba by Brickell Bay,dining,Aruba,"Desc (146 chars) shares no distinctive words with title: [sand, brickell]"
-high,title-desc-subject-mismatch,552459d5-8c61-4205-88d3-48f4b53c631d,Mandara Spa at the Marriott Resort & Aruba Ocean Club,spa,Aruba,"Desc (156 chars) shares no distinctive words with title: [mandara, marriott, ocean, club]"
-high,title-desc-subject-mismatch,6101b22b-5944-42bc-9055-2ce3ce1f2dc0,Organic Bodega Café,dining,Aruba,"Desc (126 chars) shares no distinctive words with title: [organic, bodega]"
 high,title-desc-subject-mismatch,cfd5ce05-c6ec-4d24-afd7-7c1ecbba879b,Delphi Watersports Aruba,tour,Aruba,"Desc (128 chars) shares no distinctive words with title: [delphi, watersports]"
-high,title-desc-subject-mismatch,dd47628d-9063-4e80-a62f-7a39c713ce87,Aruba Sunset Beach Studios,stay,Aruba,"Desc (250 chars) shares no distinctive words with title: [sunset, beach, studios]"
-high,title-desc-subject-mismatch,fb681105-bf45-4dc0-8fe9-a8e1ab67c3a0,Sea Trek Underwater Helmet Walk at De Palm Island,tour,Aruba,"Desc (139 chars) shares no distinctive words with title: [trek, underwater, helmet, walk]"
 high,title-desc-subject-mismatch,feaf54c9-361e-4853-82e9-ba78947c1527,Aruba Deluxe Sailing,tour,Aruba,"Desc (155 chars) shares no distinctive words with title: [deluxe, sailing]"
-high,title-desc-subject-mismatch,1a900aab-6b6f-4eb8-bcc9-80e9e566db20,Royal Westmoreland Beach Club,dining,Barbados,"Desc (183 chars) shares no distinctive words with title: [royal, westmoreland, beach, club]"
-high,title-desc-subject-mismatch,1c23925e-e609-43cf-92fc-418f27057afb,Folkestone Marine Park & Visitors' Centre,tour,Barbados,"Desc (100 chars) shares no distinctive words with title: [folkestone, marine, park, visitors]"
 high,title-desc-subject-mismatch,351524f7-ac64-4ddf-9b4a-0892c587664b,Barbados Snorkeling Adventure,tour,Barbados,"Desc (172 chars) shares no distinctive words with title: [snorkeling, adventure]"
-high,title-desc-subject-mismatch,431d4c8d-51d3-4870-a53b-e4bc496afe1f,First Gear Car Rentals,transport,Barbados,"Desc (124 chars) shares no distinctive words with title: [first, gear]"
 high,title-desc-subject-mismatch,4511d891-5d7d-4e27-8ae6-47a8d4856169,Barbados Blue Water Sports,tour,Barbados,"Desc (183 chars) shares no distinctive words with title: [blue, water, sports]"
-high,title-desc-subject-mismatch,535d220e-b15f-4e75-adf5-e61104496405,Farley Hill National Park,tour,Barbados,"Desc (119 chars) shares no distinctive words with title: [farley, hill, national, park]"
-high,title-desc-subject-mismatch,545a8ba7-eea7-422f-accf-a2f132a03693,Worrell Island Tours Inc,tour,Barbados,"Desc (346 chars) shares no distinctive words with title: [worrell, island]"
-high,title-desc-subject-mismatch,a72b7e5d-6230-4f87-9d45-d0c1e2674ebf,SUNCARS - Drive-A-Matic Car Rentals - Grantley Adams International Airport,transport,Barbados,"Desc (135 chars) shares no distinctive words with title: [suncars, drive, matic, grantley]"
-high,title-desc-subject-mismatch,edba90bd-f0f2-4372-8648-873bc30e8d02,Barbados Snorkeling Tours by Hayden Browne,tour,Barbados,"Desc (112 chars) shares no distinctive words with title: [snorkeling, hayden, browne]"
-high,title-desc-subject-mismatch,1ad0daf5-bab9-4908-916a-7939de9de1fd,1000 Steps (16),tour,Bonaire,"Desc (102 chars) shares no distinctive words with title: [1000, steps]"
-high,title-desc-subject-mismatch,3e1fbbd9-0818-4dde-8bb2-8be39202099d,Salt Pier (49),tour,Bonaire,"Desc (102 chars) shares no distinctive words with title: [salt, pier]"
-high,title-desc-subject-mismatch,48077dc3-0fac-4776-a23a-13f90e39ce1e,Terramar Museum,tour,Bonaire,"Desc (211 chars) shares no distinctive words with title: [terramar, museum]"
-high,title-desc-subject-mismatch,6ccb88ac-dc2f-489e-a454-1125e526fb40,Xprodiver Bonaire,tour,Bonaire,"Desc (152 chars) shares no distinctive words with title: [xprodiver, bonaire]"
-high,title-desc-subject-mismatch,be6eb070-f667-45e9-8974-4d958e1faf2c,Washington-Slagbaai National Park,tour,Bonaire,"Desc (100 chars) shares no distinctive words with title: [washington, slagbaai, national, park]"
-high,title-desc-subject-mismatch,becd4f41-d510-42e6-8974-e94e83eed5a1,Windhoek Boutique Resort Bonaire,stay,Bonaire,"Desc (100 chars) shares no distinctive words with title: [windhoek, boutique, bonaire]"
-high,title-desc-subject-mismatch,eb6d0916-7505-44c7-bde4-6f23c32e6cd5,D'Angels Spa kralendijk Bonaire,spa,Bonaire,"Desc (232 chars) shares no distinctive words with title: [angels, kralendijk, bonaire]"
-high,title-desc-subject-mismatch,1dbaa02f-673e-4756-9a14-9e8d1f0b64ea,Celtic Powerboats,tour,British Virgin Islands,"Desc (137 chars) shares no distinctive words with title: [celtic, powerboats]"
-high,title-desc-subject-mismatch,5a726ff0-c9cb-4d07-9f85-b36e24a728de,BVI Island Surf and Sail,tour,British Virgin Islands,"Desc (157 chars) shares no distinctive words with title: [island, surf, sail]"
-high,title-desc-subject-mismatch,b46bc73e-f8ab-45fc-8d36-4561c12dc2d7,Loose Mongoose,dining,British Virgin Islands,"Desc (154 chars) shares no distinctive words with title: [loose, mongoose]"
-high,title-desc-subject-mismatch,fa13a7e6-765c-40f0-8c2e-6d31fed45f2c,Courtesy Charters,tour,British Virgin Islands,"Desc (159 chars) shares no distinctive words with title: [courtesy, charters]"
-high,title-desc-subject-mismatch,543d02e6-cb4e-4a06-8b87-7a76ba50fba2,Shore Excursions,tour,Cayman Islands,"Desc (176 chars) shares no distinctive words with title: [shore, excursions]"
-high,title-desc-subject-mismatch,752ae6c0-0c25-4716-b6ab-980faa480c29,Rowan Watersports LTD,tour,Cayman Islands,"Desc (143 chars) shares no distinctive words with title: [rowan, watersports]"
-high,title-desc-subject-mismatch,796ad959-a3a4-4078-8576-f6d4155b76b2,Captain Marvins Watersports,tour,Cayman Islands,"Desc (154 chars) shares no distinctive words with title: [captain, marvins, watersports]"
-high,title-desc-subject-mismatch,9553c3c9-adbe-472b-a757-00dbe8833f4e,Anytime Wellness Ltd.,spa,Cayman Islands,"Desc (110 chars) shares no distinctive words with title: [anytime, wellness]"
-high,title-desc-subject-mismatch,cf4af3f3-5362-49a6-8231-a77570691255,Europcar Grand Cayman,transport,Cayman Islands,"Desc (103 chars) shares no distinctive words with title: [europcar, grand, cayman]"
-high,title-desc-subject-mismatch,158cea3a-332a-4eef-bbf4-38310c7ac8ad,All Boat Charters,tour,Curaçao,"Desc (157 chars) shares no distinctive words with title: [boat, charters]"
-high,title-desc-subject-mismatch,2f187325-e42d-4fb9-b941-d7f41916106a,Substation Curacao,tour,Curaçao,"Desc (100 chars) shares no distinctive words with title: [substation, curacao]"
-high,title-desc-subject-mismatch,56ce94a6-7f74-430a-9b94-194d3a462128,The Lemon Tree Curaçao,dining,Curaçao,"Desc (148 chars) shares no distinctive words with title: [lemon, tree, cura]"
-high,title-desc-subject-mismatch,65b4e248-8741-45b5-8744-0281bed193d8,Fort Beekenburg,tour,Curaçao,"Desc (100 chars) shares no distinctive words with title: [fort, beekenburg]"
-high,title-desc-subject-mismatch,70c4a684-6e4f-435c-a169-ec9a0cee71d2,Baoase Luxury Resort,stay,Curaçao,"Desc (100 chars) shares no distinctive words with title: [baoase, luxury]"
-high,title-desc-subject-mismatch,7670c9d0-b869-467e-ba0c-0112a4efea5a,Landhuis Chobolobo,tour,Curaçao,"Desc (100 chars) shares no distinctive words with title: [landhuis, chobolobo]"
-high,title-desc-subject-mismatch,7b8d3e15-d8c4-4d57-8d48-e0845d05bb0d,Paqari Spa and Wellness,spa,Curaçao,"Desc (168 chars) shares no distinctive words with title: [paqari, wellness]"
-high,title-desc-subject-mismatch,a0a1456f-0c73-43dd-b968-bbd59e7d10d0,MosaCaña Bar & Kitchen,dining,Curaçao,"Desc (300 chars) shares no distinctive words with title: [mosaca, kitchen]"
-high,title-desc-subject-mismatch,a6c77cec-f139-426e-b5e1-ca9b46b11f1c,Wet & Wild Beach Club,dining,Curaçao,"Desc (125 chars) shares no distinctive words with title: [wild, beach, club]"
-high,title-desc-subject-mismatch,d782b478-c849-4bcb-83f9-1f040fba3212,Blue Lobster Car Rentals,transport,Curaçao,"Desc (127 chars) shares no distinctive words with title: [blue, lobster]"
-high,title-desc-subject-mismatch,0d44998b-e20a-4512-9a8b-75adc6521bbc,Nature Island Dive,tour,Dominica,"Desc (154 chars) shares no distinctive words with title: [nature, island, dive]"
-high,title-desc-subject-mismatch,a818a2eb-e839-451a-bf24-ed8043da7843,Serenity Lodges Dominica,stay,Dominica,"Desc (152 chars) shares no distinctive words with title: [serenity, lodges, dominica]"
-high,title-desc-subject-mismatch,05100fc7-d01e-4137-b3cc-38de867c8184,JOIA Bávaro by Iberostar,stay,Dominican Republic,"Desc (100 chars) shares no distinctive words with title: [joia, varo, iberostar]"
-high,title-desc-subject-mismatch,0d1d68b7-8d5c-444a-a061-e747d839e318,Paradisus Grand Cana - All Suites,vip,Dominican Republic,"Desc (100 chars) shares no distinctive words with title: [paradisus, grand, cana, suites]"
-high,title-desc-subject-mismatch,3725d31d-26df-4e93-a730-d07607bc4440,Onno's Beach Club,dining,Dominican Republic,"Desc (156 chars) shares no distinctive words with title: [onno, beach, club]"
-high,title-desc-subject-mismatch,3ce6a55c-d45b-4940-82ea-8f2e4b0fa483,Coastline Catamarans,tour,Dominican Republic,"Desc (140 chars) shares no distinctive words with title: [coastline, catamarans]"
-high,title-desc-subject-mismatch,4561212b-45c1-44af-abfd-2df806286fcf,Ultra Marine Divers,tour,Dominican Republic,"Desc (154 chars) shares no distinctive words with title: [ultra, marine, divers]"
-high,title-desc-subject-mismatch,60035411-0c56-470d-93f2-a93b1fb49ddc,Onno's Zona Colonial Bar & Restaurant,dining,Dominican Republic,"Desc (156 chars) shares no distinctive words with title: [onno, zona, colonial]"
-high,title-desc-subject-mismatch,7368762e-d77e-46c1-bd18-9d45874bd047,Grand Bávaro Princess,stay,Dominican Republic,"Desc (100 chars) shares no distinctive words with title: [grand, varo, princess]"
-high,title-desc-subject-mismatch,87d33509-44ca-4594-96bf-b5bc6b24d74e,GOLD RENT CAR,transport,Dominican Republic,"Desc (111 chars) shares no distinctive words with title: [gold, rent]"
-high,title-desc-subject-mismatch,9a924b79-c768-415d-8d70-cd09cd06fec7,Playa Blanca Restaurant,dining,Dominican Republic,"Desc (134 chars) shares no distinctive words with title: [playa, blanca]"
-high,title-desc-subject-mismatch,abc99050-b13a-4079-9954-19c8213e9321,Rosario R Rent Car,transport,Dominican Republic,"Desc (177 chars) shares no distinctive words with title: [rosario, rent]"
-high,title-desc-subject-mismatch,b0aa7a91-24ef-4cf6-9701-04b8d3bdd022,Jhoraji Tour Operador,tour,Dominican Republic,"Desc (133 chars) shares no distinctive words with title: [jhoraji, operador]"
-high,title-desc-subject-mismatch,b761cc7b-8b5c-40bf-950e-9f18f1bf7b86,Adonis Rent A Car,transport,Dominican Republic,"Desc (127 chars) shares no distinctive words with title: [adonis, rent]"
-high,title-desc-subject-mismatch,ca8d776f-25a7-42b2-981f-3aabbf3646bc,El Patrón Tour Operador,tour,Dominican Republic,"Desc (155 chars) shares no distinctive words with title: [patr, operador]"
-high,title-desc-subject-mismatch,d4152694-3504-4d79-9334-f0e1892a1502,HM Bavaro Beach,stay,Dominican Republic,"Desc (141 chars) shares no distinctive words with title: [bavaro, beach]"
-high,title-desc-subject-mismatch,dab1d97a-f0c5-4543-a8de-1ba54e80cdc0,Base Dynautic,tour,Dominican Republic,"Desc (121 chars) shares no distinctive words with title: [base, dynautic]"
-high,title-desc-subject-mismatch,dfb3b05d-f035-4c64-b494-5a6c4fd7e079,"Taíno Bay Cruise Port, Shore Excursions",tour,Dominican Republic,"Desc (131 chars) shares no distinctive words with title: [cruise, port, shore, excursions]"
-high,title-desc-subject-mismatch,ebfa236f-6e10-49d3-92ba-6168d1eb8854,Dominican Divers,tour,Dominican Republic,"Desc (108 chars) shares no distinctive words with title: [dominican, divers]"
-high,title-desc-subject-mismatch,ecce4ebb-ff44-4be4-88a8-a2665736cfb5,Casa Vera,dining,Dominican Republic,"Desc (273 chars) shares no distinctive words with title: [casa, vera]"
-high,title-desc-subject-mismatch,0e87139b-234b-4c80-b0fc-211896ac2cb4,Lavo Lanes,dining,Grenada,"Desc (140 chars) shares no distinctive words with title: [lavo, lanes]"
 high,title-desc-subject-mismatch,18881fe8-64f6-4ba0-906e-90b3bce2bf4a,Carib Cats Grenada,excursion,Grenada,"Desc (152 chars) shares no distinctive words with title: [carib, cats]"
-high,title-desc-subject-mismatch,1a5b3109-c0aa-4bf9-b30f-68500df726e5,L'Esterre Estate,tour,Grenada,"Desc (156 chars) shares no distinctive words with title: [esterre, estate]"
-high,title-desc-subject-mismatch,273713d7-f0a2-422a-9a7a-922b425292a9,Grenada Gold Guest House,stay,Grenada,"Desc (116 chars) shares no distinctive words with title: [gold, guest, house]"
-high,title-desc-subject-mismatch,46e0d7e6-2111-41d7-8ac6-aadc2d2a917e,Grand Étang National Park,tour,Grenada,"Desc (430 chars) shares no distinctive words with title: [grand, tang, national, park]"
-high,title-desc-subject-mismatch,6d47cef2-00f0-4bcf-a64c-920fb69ca561,Welcome Rock,tour,Grenada,"Desc (430 chars) shares no distinctive words with title: [welcome, rock]"
-high,title-desc-subject-mismatch,773c62cb-ae7b-48bb-98f0-22c3152ee0c0,Levera Beach,tour,Grenada,"Desc (430 chars) shares no distinctive words with title: [levera, beach]"
-high,title-desc-subject-mismatch,88b043df-2f3c-444d-8b2a-555148d3c80f,Faith Peace Guest House - Single Room,stay,Grenada,"Desc (136 chars) shares no distinctive words with title: [faith, peace, guest, house]"
-high,title-desc-subject-mismatch,cf911740-5786-451f-9262-28bb9622b2d6,Home Hospitality Grenada,tour,Grenada,"Desc (161 chars) shares no distinctive words with title: [home, hospitality]"
-high,title-desc-subject-mismatch,cfdf1f8b-9945-4580-ba7c-a4c5d1c991ea,Dodgy Dock Restaurant Grenada,dining,Grenada,"Desc (137 chars) shares no distinctive words with title: [dodgy, dock]"
-high,title-desc-subject-mismatch,e5fd2807-d461-42fc-8a8d-021163bfb3d3,Concord Falls,tour,Grenada,"Desc (100 chars) shares no distinctive words with title: [concord, falls]"
-high,title-desc-subject-mismatch,033cdd77-1de0-4bb5-9c16-359fa9ce6668,Serpico Excursions,tour,Guadeloupe,"Desc (153 chars) shares no distinctive words with title: [serpico, excursions]"
-high,title-desc-subject-mismatch,0665ee92-e2be-46ef-aba9-9c4b249f74cb,Seatrip Guadeloupe,tour,Guadeloupe,"Desc (119 chars) shares no distinctive words with title: [seatrip, guadeloupe]"
-high,title-desc-subject-mismatch,1427a02b-2f87-4ad2-923b-65f6cdfe1401,MAHOGANY HOTEL RESIDENCE & SPA,stay,Guadeloupe,"Desc (100 chars) shares no distinctive words with title: [mahogany, residence]"
-high,title-desc-subject-mismatch,273e4f95-d930-4578-a864-f83d9c0f6e23,Alizés Adventure,tour,Guadeloupe,"Desc (129 chars) shares no distinctive words with title: [aliz, adventure]"
-high,title-desc-subject-mismatch,57884c53-0ea5-4189-9c10-c2b9189449b6,Heart of the Islands,tour,Guadeloupe,"Desc (154 chars) shares no distinctive words with title: [heart, islands]"
-high,title-desc-subject-mismatch,5b4e3d0c-8b58-4ecd-9bad-c4fbaad37f9e,Le Pélican - Bar Tapas,dining,Guadeloupe,"Desc (132 chars) shares no distinctive words with title: [lican, tapas]"
-high,title-desc-subject-mismatch,67374523-4c78-467c-8579-fa126887824b,Diving center of islets,tour,Guadeloupe,"Desc (198 chars) shares no distinctive words with title: [diving, center, islets]"
-high,title-desc-subject-mismatch,73b3ec1c-3ac6-408f-b7f8-95540172a544,Gardens Valombreuse MTL,tour,Guadeloupe,"Desc (133 chars) shares no distinctive words with title: [gardens, valombreuse]"
-high,title-desc-subject-mismatch,aa3c9ff7-fdf4-4344-a6b3-4046774c4c70,La Plage Crystal Beach,dining,Guadeloupe,"Desc (416 chars) shares no distinctive words with title: [plage, crystal, beach]"
-high,title-desc-subject-mismatch,c44f2265-6efc-415e-9d87-e2683868dbe0,The Healthy Hours,tour,Guadeloupe,"Desc (142 chars) shares no distinctive words with title: [healthy, hours]"
-high,title-desc-subject-mismatch,ed5e07d1-d113-4e32-86a8-3a1fcf82f9fd,"TENDANCE SPA CARAÏBES - Vente de Spas, Saunas & Hammams",spa,Guadeloupe,"Desc (160 chars) shares no distinctive words with title: [tendance, cara, vente, spas]"
-high,title-desc-subject-mismatch,ff89490b-7b11-4736-ace0-414ecff18225,Memorial ACTe,tour,Guadeloupe,"Desc (100 chars) shares no distinctive words with title: [memorial, acte]"
-high,title-desc-subject-mismatch,11590860-ddb8-45c2-a77a-1a06101e24d3,Konoko Falls,tour,Jamaica,"Desc (100 chars) shares no distinctive words with title: [konoko, falls]"
-high,title-desc-subject-mismatch,2972af70-ffe8-4c39-aaf5-e9918e812ddd,Ocean Palms Hotel,stay,Jamaica,"Desc (100 chars) shares no distinctive words with title: [ocean, palms]"
-high,title-desc-subject-mismatch,5bc6cbf3-8b26-4c3f-ad71-765369b76069,Rose Hall Great House,tour,Jamaica,"Desc (100 chars) shares no distinctive words with title: [rose, hall, great, house]"
-high,title-desc-subject-mismatch,d017e47f-3188-4cf3-81eb-1ed7c3752509,Grand Palladium Jamaica Resort & Spa - All Inclusive,stay,Jamaica,"Desc (100 chars) shares no distinctive words with title: [grand, palladium, inclusive]"
-high,title-desc-subject-mismatch,6a38e8ab-b963-4fd0-93df-c659f9ab135b,Au Sphair De Lune,stay,Martinique,"Desc (167 chars) shares no distinctive words with title: [sphair, lune]"
-high,title-desc-subject-mismatch,745db54c-a4ea-4b7e-8c72-72b40c411388,KATA MAMBO,tour,Martinique,"Desc (107 chars) shares no distinctive words with title: [kata, mambo]"
-high,title-desc-subject-mismatch,894d06fe-bf0c-4a32-947d-716fbf83c572,Malongo Martinique,dining,Martinique,"Desc (107 chars) shares no distinctive words with title: [malongo, martinique]"
-high,title-desc-subject-mismatch,94b9e342-b604-4715-aa5e-0fc76faa2dfd,O'PUB Cocktails et Tapas,dining,Martinique,"Desc (154 chars) shares no distinctive words with title: [cocktails, tapas]"
-high,title-desc-subject-mismatch,987049dc-7477-4ae4-b181-9c789d0b9326,Eden Paradise Spa,dining,Martinique,"Desc (135 chars) shares no distinctive words with title: [eden, paradise]"
-high,title-desc-subject-mismatch,f445ab7f-57dd-4f5d-bacb-76b3c15df3d7,Rentals Saint Pierre Airport,transport,Martinique,"Desc (154 chars) shares no distinctive words with title: [saint, pierre, airport]"
-high,title-desc-subject-mismatch,2e8c7de2-df8f-4db6-9521-0e1460f81514,Mar Chiquita Beach,tour,Puerto Rico,"Desc (100 chars) shares no distinctive words with title: [chiquita, beach]"
-high,title-desc-subject-mismatch,3f8de80c-66a4-4bb7-a1cc-8d655b32daf8,La Piedra Escrita,tour,Puerto Rico,"Desc (100 chars) shares no distinctive words with title: [piedra, escrita]"
-high,title-desc-subject-mismatch,4ca57fb0-46ca-487f-aefe-8db304a4ed46,Waterland Adventure PR,tour,Puerto Rico,"Desc (180 chars) shares no distinctive words with title: [waterland, adventure]"
-high,title-desc-subject-mismatch,67e32b9b-a6ce-4ed9-98e7-4c484cf5b946,Westside Adventures Cave Tubing,tour,Puerto Rico,"Desc (152 chars) shares no distinctive words with title: [westside, adventures, cave, tubing]"
-high,title-desc-subject-mismatch,86ebe819-511b-41a5-9cfd-cc2f418d2944,Puerta de San Juan,tour,Puerto Rico,"Desc (100 chars) shares no distinctive words with title: [puerta, juan]"
-high,title-desc-subject-mismatch,8bc675ad-e487-4829-8fba-e1a6a3ae996c,Café Terra Vida,dining,Puerto Rico,"Desc (293 chars) shares no distinctive words with title: [terra, vida]"
-high,title-desc-subject-mismatch,98cf9961-9b4d-40c9-bb00-960090f2901d,Chico Cabaret,dining,Puerto Rico,"Desc (119 chars) shares no distinctive words with title: [chico, cabaret]"
-high,title-desc-subject-mismatch,cf00fba8-9c25-4c97-a07b-265573f6fa4d,SOKZO Picuas,stay,Puerto Rico,"Desc (208 chars) shares no distinctive words with title: [sokzo, picuas]"
-high,title-desc-subject-mismatch,fe6caf05-2e89-49aa-a7e9-fd143aaa364d,Casita Miramar,dining,Puerto Rico,"Desc (100 chars) shares no distinctive words with title: [casita, miramar]"
-high,title-desc-subject-mismatch,100110e2-1ce8-44ac-b85f-c4c2548770a1,Fairview Great House & Botanical Gardens,tour,St. Kitts & Nevis,"Desc (117 chars) shares no distinctive words with title: [fairview, great, house, botanical]"
-high,title-desc-subject-mismatch,202735c4-0d7d-49e5-80aa-bc3621a8951e,Aquamax Adventures,tour,St. Kitts & Nevis,"Desc (158 chars) shares no distinctive words with title: [aquamax, adventures]"
-high,title-desc-subject-mismatch,2d61663e-73be-4b4c-b23c-0b4b32d2ede7,Emerald Mist Spa,spa,St. Kitts & Nevis,"Desc (165 chars) shares no distinctive words with title: [emerald, mist]"
-high,title-desc-subject-mismatch,3e781402-20f8-4d88-848f-338568c675ac,Xpress Auto Rental,transport,St. Kitts & Nevis,"Desc (146 chars) shares no distinctive words with title: [xpress, auto]"
-high,title-desc-subject-mismatch,4b368482-78a6-4715-80c7-095dd1da8717,Nevis Auto Rental,transport,St. Kitts & Nevis,"Desc (209 chars) shares no distinctive words with title: [nevis, auto]"
-high,title-desc-subject-mismatch,0972c0ef-dc15-451e-8cd2-4d38fdd0941a,Enbas Saut Waterfalls,tour,St. Lucia,"Desc (211 chars) shares no distinctive words with title: [enbas, saut, waterfalls]"
-high,title-desc-subject-mismatch,0f8a3813-7f1d-44c0-99a9-19ed170243ba,Dive Fair Helen,tour,St. Lucia,"Desc (142 chars) shares no distinctive words with title: [dive, fair, helen]"
-high,title-desc-subject-mismatch,1c2d7f29-5c72-4a81-9a75-e5d34efe0c9a,Morne Coubaril Historical Adventure Park,tour,St. Lucia,"Desc (100 chars) shares no distinctive words with title: [morne, coubaril, historical, adventure]"
-high,title-desc-subject-mismatch,6df78c9d-f67f-4999-b86a-712adc3dd999,"St. James's Club Morgan Bay, St. Lucia",stay,St. Lucia,"Desc (100 chars) shares no distinctive words with title: [james, club, morgan, lucia]"
-high,title-desc-subject-mismatch,9326e202-3610-4ecc-be54-cd8367dd2907,Sandals Dive Center,tour,St. Lucia,"Desc (148 chars) shares no distinctive words with title: [sandals, dive, center]"
-high,title-desc-subject-mismatch,9ed94eff-cc5a-407d-a0b4-5d727d4af459,Sealife Paradise,tour,St. Lucia,"Desc (343 chars) shares no distinctive words with title: [sealife, paradise]"
-high,title-desc-subject-mismatch,16bce155-cf19-482d-9cdd-547b491ab4c9,Prestige Auto Rentals,transport,St. Vincent & the Grenadines,"Desc (154 chars) shares no distinctive words with title: [prestige, auto]"
-high,title-desc-subject-mismatch,21177496-bdf9-40ae-84b1-3435dce84f19,Sailor's Wilderness Tours,tour,St. Vincent & the Grenadines,"Desc (139 chars) shares no distinctive words with title: [sailor, wilderness]"
-high,title-desc-subject-mismatch,5bf663ed-237f-464e-a7f0-4a4e98b4548f,Sail Relax Explore,tour,St. Vincent & the Grenadines,"Desc (267 chars) shares no distinctive words with title: [sail, relax, explore]"
-high,title-desc-subject-mismatch,9695a1e4-0ca4-45a6-9614-b7f8666b4170,Cotton House,stay,St. Vincent & the Grenadines,"Desc (100 chars) shares no distinctive words with title: [cotton, house]"
-high,title-desc-subject-mismatch,a985ac9b-0c07-4f7f-b41a-51572b4abfd3,Flowt Beach Bar,dining,St. Vincent & the Grenadines,"Desc (358 chars) shares no distinctive words with title: [flowt, beach]"
-high,title-desc-subject-mismatch,0d20d4f9-71f5-455f-829b-16fd1cc783d1,Marine Habitat At Atlantis,tour,The Bahamas,"Desc (100 chars) shares no distinctive words with title: [marine, habitat, atlantis]"
 high,title-desc-subject-mismatch,10c57a94-ff7e-437c-9737-53e424a62fb0,Simon's Transports Bahamas,transfer,The Bahamas,"Desc (124 chars) shares no distinctive words with title: [simon, transports]"
-high,title-desc-subject-mismatch,3f5c69ab-24c0-4a00-a154-6de4db6a9415,Aquanaut Adventures,tour,The Bahamas,"Desc (117 chars) shares no distinctive words with title: [aquanaut, adventures]"
-high,title-desc-subject-mismatch,4175201f-09d3-47c5-b837-979ed859f174,Drive Green Car Rentals,transport,The Bahamas,"Desc (155 chars) shares no distinctive words with title: [drive, green]"
-high,title-desc-subject-mismatch,44804f1e-b64f-4bf1-a6c9-c31d2f2dff05,Sea Trek Helmet Diving,tour,The Bahamas,"Desc (155 chars) shares no distinctive words with title: [trek, helmet, diving]"
-high,title-desc-subject-mismatch,71b99128-3181-437c-a007-29d65bbd1ca1,Predator Lagoon,tour,The Bahamas,"Desc (158 chars) shares no distinctive words with title: [predator, lagoon]"
-high,title-desc-subject-mismatch,7dd84acf-7367-4774-b206-556aa232516a,British Colonial Nassau,stay,The Bahamas,"Desc (100 chars) shares no distinctive words with title: [british, colonial, nassau]"
-high,title-desc-subject-mismatch,7e5afdc6-d87f-40b7-9f77-fd1ad47e3414,Sail Tomorrow at Montagu Beach (Departures only),tour,The Bahamas,"Desc (102 chars) shares no distinctive words with title: [sail, tomorrow, montagu, beach]"
-high,title-desc-subject-mismatch,85f1ffbb-a3f6-4298-9af3-a82853aca8a2,Rosewood Baha Mar,stay,The Bahamas,"Desc (100 chars) shares no distinctive words with title: [rosewood, baha]"
 high,title-desc-subject-mismatch,cf8a4f9b-9b88-44a3-b7c5-cc23aadf9e5f,Bahamas Private Transport and Tours Company Ltd,tour,The Bahamas,"Desc (141 chars) shares no distinctive words with title: [private, company]"
-high,title-desc-subject-mismatch,fef75144-6b02-4c74-96f5-b14d62bbf31e,Island Car Rental and Sales,transport,The Bahamas,"Desc (147 chars) shares no distinctive words with title: [island, sales]"
-high,title-desc-subject-mismatch,06d366b4-7cfd-4775-aa02-287428dd6116,L'image Parfaite Day Spa & Salon,spa,Trinidad & Tobago,"Desc (149 chars) shares no distinctive words with title: [image, parfaite, salon]"
-high,title-desc-subject-mismatch,08745fd5-c7e4-41ee-af7a-c473c3d4aae4,Kariwak Village and Holistic Haven,stay,Trinidad & Tobago,"Desc (100 chars) shares no distinctive words with title: [kariwak, village, holistic, haven]"
-high,title-desc-subject-mismatch,1aa1080a-6a3f-4c2e-a2d5-763d7ea1c232,The House Of Aesthetics Spa,spa,Trinidad & Tobago,"Desc (152 chars) shares no distinctive words with title: [house, aesthetics]"
-high,title-desc-subject-mismatch,9f3c903f-1495-4be9-b177-a3f0a5c9d97a,Rizzoni's Ristorante Italiano,dining,Trinidad & Tobago,"Desc (141 chars) shares no distinctive words with title: [rizzoni, ristorante, italiano]"
-high,title-desc-subject-mismatch,f62aef8f-1823-4de8-b30a-8b1ebdf6450a,Rincon Waterfall,tour,Trinidad & Tobago,"Desc (163 chars) shares no distinctive words with title: [rincon, waterfall]"
-high,title-desc-subject-mismatch,2c5e0075-6249-428a-8244-981046d1c0f1,Grace Bay Club,stay,Turks & Caicos,"Desc (100 chars) shares no distinctive words with title: [grace, club]"
-high,title-desc-subject-mismatch,34535911-a188-4b67-a18b-ccf31b4545b0,Smart Choice Rentals,transport,Turks & Caicos,"Desc (216 chars) shares no distinctive words with title: [smart, choice]"
-high,title-desc-subject-mismatch,50be5e5b-a409-4ecb-b67b-effd690b613e,Danny Buoy's,dining,Turks & Caicos,"Desc (154 chars) shares no distinctive words with title: [danny, buoy]"
-high,title-desc-subject-mismatch,656fb9f7-5350-4d5d-ab88-09de492bc4c5,Dune Spa Turks & Caicos,spa,Turks & Caicos,"Desc (191 chars) shares no distinctive words with title: [dune, turks, caicos]"
-high,title-desc-subject-mismatch,7c616482-d6b6-441f-bb2b-46829f3e36c4,CastAways Conch Bar,dining,Turks & Caicos,"Desc (238 chars) shares no distinctive words with title: [castaways, conch]"
-high,title-desc-subject-mismatch,801d9991-ad1c-4a3c-b1fd-a2d437d952cd,Princess Alexandra National Park,tour,Turks & Caicos,"Desc (385 chars) shares no distinctive words with title: [princess, alexandra, national, park]"
-high,title-desc-subject-mismatch,8086368f-d635-4af1-9a90-bbd41ed251e4,Ambra Beach Club & Restaurant,dining,Turks & Caicos,"Desc (145 chars) shares no distinctive words with title: [ambra, beach, club]"
-high,title-desc-subject-mismatch,9ac48807-4f65-41a3-8cb7-87501591cfb1,Cheshire Hall Plantation,tour,Turks & Caicos,"Desc (363 chars) shares no distinctive words with title: [cheshire, hall, plantation]"
-high,title-desc-subject-mismatch,a1309e03-e24a-4692-8177-266a8f67201c,Deliver Me Auto Rentals And Sales,transport,Turks & Caicos,"Desc (133 chars) shares no distinctive words with title: [deliver, auto, sales]"
-high,title-desc-subject-mismatch,abbe451d-8510-42b3-a847-c279f6b9db7e,Blue Haven Resort – All-Inclusive,stay,Turks & Caicos,"Desc (100 chars) shares no distinctive words with title: [blue, haven, inclusive]"
-high,title-desc-subject-mismatch,b2eb774d-9527-4a7e-b86b-f9a824463878,Turks and Caicos National Museum,tour,Turks & Caicos,"Desc (100 chars) shares no distinctive words with title: [turks, caicos, national, museum]"
-high,title-desc-subject-mismatch,b4e9b927-6f40-4116-919d-f80d266787df,Ocean Breeze Resort,stay,Turks & Caicos,"Desc (160 chars) shares no distinctive words with title: [ocean, breeze]"
-high,title-desc-subject-mismatch,d10521b7-c5f4-4fa8-8cd8-4ea10b4b7c5f,Ports of Call Resort,stay,Turks & Caicos,"Desc (100 chars) shares no distinctive words with title: [ports, call]"
-high,title-desc-subject-mismatch,e64009ed-71e9-45f0-adce-8951867dc249,Luxury Experiences Turks and Caicos,tour,Turks & Caicos,"Desc (132 chars) shares no distinctive words with title: [luxury, experiences, turks, caicos]"
-high,title-desc-subject-mismatch,0cac438e-0aea-4f00-bb5d-1a23a2efac04,Sunchaser Scuba,tour,US Virgin Islands,"Desc (154 chars) shares no distinctive words with title: [sunchaser, scuba]"
-high,title-desc-subject-mismatch,2f65f761-9bd2-4cb1-9507-2cbba8f8d3d0,Olga's Fancy,stay,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [olga, fancy]"
-high,title-desc-subject-mismatch,46c3d3fc-682b-476d-8214-efe9f29292f0,"Virgin Islands Auto Rental, LLC",transport,US Virgin Islands,"Desc (248 chars) shares no distinctive words with title: [virgin, islands, auto]"
-high,title-desc-subject-mismatch,5371af3f-b42d-4236-b5d5-a2cd3036356d,Edgewood Therapeutics,spa,US Virgin Islands,"Desc (154 chars) shares no distinctive words with title: [edgewood, therapeutics]"
-high,title-desc-subject-mismatch,550a8564-4c6c-4ef1-9b94-f3ba36ecd6b9,Old Stone Farmhouse,dining,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [stone, farmhouse]"
-high,title-desc-subject-mismatch,57e774e3-27ca-464c-918e-66d6ac44e7f9,Three Queens Statue at Blackbeard's Castle,tour,US Virgin Islands,"Desc (150 chars) shares no distinctive words with title: [three, queens, statue, blackbeard]"
-high,title-desc-subject-mismatch,64795748-c398-4a59-88c9-30902f6a1dc2,Drake's Seat,tour,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [drake, seat]"
-high,title-desc-subject-mismatch,719058e5-06d0-49f5-90e2-74578a17d074,Tree Limin' Extreme Zipline St. Thomas,tour,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [tree, limin, extreme, zipline]"
-high,title-desc-subject-mismatch,774b28e4-7948-49bd-bb29-8b51f9549a04,IslandBuddy Tours St Thomas,tour,US Virgin Islands,"Desc (155 chars) shares no distinctive words with title: [islandbuddy, thomas]"
-high,title-desc-subject-mismatch,886b7026-526e-40cd-a5ff-621fdabdfa4f,The Twisted Cork Cafe,dining,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [twisted, cork]"
-high,title-desc-subject-mismatch,914a97a2-608c-481c-92cd-fffdace10b9a,The Shack at Hull Bay,dining,US Virgin Islands,"Desc (122 chars) shares no distinctive words with title: [shack, hull]"
-high,title-desc-subject-mismatch,925844c3-45e9-4024-a7d8-a336bf83cf88,Emerald Beach Resort,stay,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [emerald, beach]"
-high,title-desc-subject-mismatch,99112ddc-aeab-4fe2-9161-74211b47235c,The Parrot Club,dining,US Virgin Islands,"Desc (108 chars) shares no distinctive words with title: [parrot, club]"
-high,title-desc-subject-mismatch,af99e3fd-7acf-453d-bf52-c804ea8e74a8,Power Boat & Catamaran Snorkeling Excursions,tour,US Virgin Islands,"Desc (274 chars) shares no distinctive words with title: [power, boat, catamaran, snorkeling]"
-high,title-desc-subject-mismatch,bda1aa01-3a26-4f2a-873b-bd9c0c0ced9b,Cruise Ship Excursions,tour,US Virgin Islands,"Desc (152 chars) shares no distinctive words with title: [cruise, ship, excursions]"
-high,title-desc-subject-mismatch,c872cfa2-8a27-4108-917f-8f97be77e632,Mango Bliss Spa,spa,US Virgin Islands,"Desc (151 chars) shares no distinctive words with title: [mango, bliss]"
-high,title-desc-subject-mismatch,cad6973a-5160-49fe-88b9-ca4a2824ab57,Iggies Beach Bar,dining,US Virgin Islands,"Desc (100 chars) shares no distinctive words with title: [iggies, beach]"
-high,title-desc-subject-mismatch,cbec3c2a-e1de-443a-aa9a-846d62f633a4,Sail BelieveN,tour,US Virgin Islands,"Desc (147 chars) shares no distinctive words with title: [sail, believen]"
-high,wrong-island-mention,0e88c6d8-266e-49c9-9493-94fe0c4be341,Great Escape Excursions LTD,tour,British Virgin Islands,"Desc mentions usvi, bvi but listing is on British Virgin Islands"
+high,wrong-island-mention,0e88c6d8-266e-49c9-9493-94fe0c4be341,Great Escape Excursions LTD,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,2baaae2c-e6e9-4919-aef0-7d63c451643d,Rebel Yell Charters,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
-high,wrong-island-mention,2d12b81a-a8e5-4b90-92ee-3801291f13b9,Big Blue Excursions,tour,British Virgin Islands,Desc mentions usvi but listing is on British Virgin Islands
 high,wrong-island-mention,303129a3-9e7d-45a9-8050-4b12a11639d0,Dive BVI - Spanish Town,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,31a68182-5d27-494f-a470-41f0e5360ccb,BVI SNUBA,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,344fd41c-0cbe-4885-bbe9-576c12274f5d,British Virgin Islands (BVI) Yacht Charters - Sunsail,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
@@ -259,12 +17,11 @@ high,wrong-island-mention,37dad61b-f69d-4be4-ad09-9e851ddfef54,Tortola Tours,tou
 high,wrong-island-mention,3fce3c02-f7da-4f24-944c-55cb932a4508,Royal BVI Yacht Club,dining,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,4a4e8a76-42d7-4d5d-846a-54c75243c66e,Aristocat Daysails,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,5db35ff9-6219-4470-89c3-3d3d3a4214d8,British Virgin Islands charters - Dream Yacht Worldwide,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
-high,wrong-island-mention,66025b7a-ec9f-410c-bbb9-ccc08bc36729,Swain Sailing School and Charters,tour,British Virgin Islands,"Desc mentions antigua, usvi, bvi but listing is on British Virgin Islands"
+high,wrong-island-mention,66025b7a-ec9f-410c-bbb9-ccc08bc36729,Swain Sailing School and Charters,tour,British Virgin Islands,"Desc mentions antigua, bvi but listing is on British Virgin Islands"
 high,wrong-island-mention,81b2cad6-a1f8-4991-8166-f7c8513a7225,VOYAGE Charters,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,8637ac4c-884b-4005-84c9-55667ceb2db5,iTGO Car Rental,transport,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
-high,wrong-island-mention,a8f5ec4d-e4dd-440a-b4a1-97f9a161a16a,Chillout Charters & Water Taxi,transfer,British Virgin Islands,"Desc mentions usvi, bvi but listing is on British Virgin Islands"
+high,wrong-island-mention,a8f5ec4d-e4dd-440a-b4a1-97f9a161a16a,Chillout Charters & Water Taxi,transfer,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,af3c6787-201f-4592-bfc3-e273a1365b6c,Omar's Coffee House,dining,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
-high,wrong-island-mention,b46bc73e-f8ab-45fc-8d36-4561c12dc2d7,Loose Mongoose,dining,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,b6e51a8a-10bd-4113-939c-318e89d338b3,Allure Charters & Water Taxi - B.V.I.,transfer,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,bbd50d79-3541-4508-8c15-e5ceb7925f58,Adventure Charters BVI,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,c486b2fd-b766-4de2-98b5-d1bd7a00dacc,Top Tier Sailing,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
@@ -273,97 +30,20 @@ high,wrong-island-mention,e6ebe50d-c802-4077-b8a3-f2542e1b403a,The Moorings: Bri
 high,wrong-island-mention,f018a1fa-bb96-410d-943f-0e5b38f7f2d9,Bubbly Pool,tour,British Virgin Islands,Desc mentions bvi but listing is on British Virgin Islands
 high,wrong-island-mention,c289a17e-4fe4-4c42-900c-5214dcdc1810,Tours Grenada Yacht Excursions,excursion,Grenada,Desc mentions tobago but listing is on Grenada
 high,wrong-island-mention,df319ae4-a506-4d5a-b660-59c7d0b7d542,Casa Nonna,dining,Turks & Caicos,Desc mentions aruba but listing is on Turks & Caicos
-high,wrong-island-mention,0cac438e-0aea-4f00-bb5d-1a23a2efac04,Sunchaser Scuba,tour,US Virgin Islands,"Desc mentions bvi, british virgin but listing is on US Virgin Islands"
 high,wrong-island-mention,26770e77-6945-4212-9dd1-fe6ca85d2569,USVI Shark Diving,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,3149147c-efe7-4e97-bf4f-0572f3f8bc0b,St Thomas Cultural Tours,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,42aceea9-f336-489c-9a53-c45e0211c3ba,Jeep Surfari,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,446191d8-7956-4a7a-bb2d-6252bcc84254,Ocean Spa BVI,spa,US Virgin Islands,Desc mentions bvi but listing is on US Virgin Islands
 high,wrong-island-mention,6629f7df-26cb-43ce-a7ea-6c5cde6e1622,The Windmill Bar,dining,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,664c4705-339a-4f8c-be8b-5885ceae38fe,Sweet Pea Catamaran Charters,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,679e3c92-9e57-4942-8ec9-aa9e87f4e2bd,The Peter Island Spa,spa,US Virgin Islands,Desc mentions british virgin but listing is on US Virgin Islands
 high,wrong-island-mention,74a4e6cb-8855-43ea-97cc-d41aabcf732c,The Dive Bar,dining,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,78d86920-8a4c-4050-bcff-129a3015ea9d,Aqua Marine Dive Shop,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,7c566bc5-9598-4e8a-83ba-5990a62bfcb0,Antillean Yacht Charters,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,8213dc67-13f1-44b0-b45b-bc4d09daedad,Sail Meow Charters,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,87704282-9362-4642-9c1f-e3d599fe46c1,Low Key Watersports,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,8ab2f3aa-9f62-4026-927d-aaa7e01eec0b,Tropical Adventure - Car Rental,transport,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,8c1586f2-ac43-4e6b-bce4-3a90b3adb5d7,Aqua Action Dive Center,stay,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,95649865-4260-4f62-99eb-7e9a328e1453,"The Aerial, BVI All-Inclusive Private Island",stay,US Virgin Islands,Desc mentions bvi but listing is on US Virgin Islands
-high,wrong-island-mention,b0657125-f8bc-4a3d-8bde-0dff9759e47d,Aqua Marine Dive Center,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,c88603e0-9860-46be-9cd6-6acb7f15d962,Sense Spa at Rosewood Little Dix Bay,spa,US Virgin Islands,Desc mentions bvi but listing is on US Virgin Islands
 high,wrong-island-mention,cc773b69-4bd7-4572-9f7c-76b802b67217,St Thomas Adventures,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 high,wrong-island-mention,dc234b73-d165-4111-b43f-6271c062f2e8,Little Rock Car Rental,transport,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
-high,wrong-island-mention,f2500c09-e10a-4d69-bfc7-a2a746c75816,Virgin Islands Yacht Charters,tour,US Virgin Islands,"Desc mentions usvi, bvi, british virgin but listing is on US Virgin Islands"
-high,wrong-island-mention,ff051908-0eed-4b2d-9e7d-22fcf53144e2,Nardie's Beach Bar,dining,US Virgin Islands,Desc mentions british virgin but listing is on US Virgin Islands
-medium,empty-desc,5a9891c9-b9c1-4d18-9b2a-fbc181478d54,Antigua Nature Tours,tour,Antigua & Barbuda,Description is 32 chars
-medium,empty-desc,d7b17960-5370-47e7-bdb4-4a5c1255681b,ZuriEudoxie,spa,Antigua & Barbuda,Description is 44 chars
-medium,empty-desc,fa2179fa-23f9-4b30-8479-bf6d1dd224fa,Humble and Free Wadadli,tour,Antigua & Barbuda,Description is 32 chars
-medium,empty-desc,bbfe2794-a478-4c7a-941e-b3da8e795fa2,Mambo Jambo,dining,Aruba,Description is 33 chars
-medium,empty-desc,178f1c32-4e92-425d-a874-68055a6793bb,A Plus Tours and Events Ltd Barbados,tour,Barbados,Description is 47 chars
-medium,empty-desc,39306731-8d74-43f8-b8ab-65b46e3c58da,Cool Runnings Catamaran Cruises,tour,Barbados,Description is 48 chars
-medium,empty-desc,5b7346cb-d925-4a85-ba5a-1dc75e6094b7,El Tigre Catamaran Sailing Cruises,tour,Barbados,Description is 32 chars
-medium,empty-desc,9bcc6bdb-7e5a-499e-a254-a0c1bf96cd44,A'S & P Rentals,transport,Barbados,Description is 47 chars
-medium,empty-desc,c232eeec-e62a-4201-83be-48466b7d45de,TML One Love Bar,dining,Barbados,Description is 40 chars
-medium,empty-desc,da999c7c-56f5-4506-8595-fd601cd6ebba,Zemi East Coast Cafe,dining,Barbados,Description is 47 chars
-medium,empty-desc,f89009dc-518f-47dc-a9d5-abb199de79f4,The Park Café,dining,Barbados,Description is 33 chars
-medium,empty-desc,c41846c9-40af-4340-a4b3-25e6402e5bf1,Summer Spa,spa,Bonaire,Description is 33 chars
-medium,empty-desc,ff2c33d6-0230-4e9e-86d8-7198447efee6,Boca Slagbaai,tour,Bonaire,Description is 49 chars
-medium,empty-desc,355ecb76-a2c1-4eb2-9946-62b9995162d9,Lamothes Island Experience,tour,British Virgin Islands,Description is 40 chars
-medium,empty-desc,3591806a-e8d9-4df7-92ec-c2f93f521ff7,Bonita Concierge,tour,British Virgin Islands,Description is 39 chars
-medium,empty-desc,548e9a4a-ab0e-434f-908f-0a38e5fcc7f3,Apex of Grand Cayman,transport,Cayman Islands,Description is 41 chars
-medium,empty-desc,821ef411-b106-460d-bafc-3659d0ca18bd,Off The Wall Divers,tour,Cayman Islands,Description is 48 chars
-medium,empty-desc,d44be9e4-4aaf-4110-90c1-08565118579d,The Village Café & Bar,dining,Cayman Islands,Description is 46 chars
-medium,empty-desc,f6df9b00-9e42-41f1-9f63-99d355a09179,Island Naturals Cafe,dining,Cayman Islands,Description is 30 chars
-medium,empty-desc,22ae24a3-14a6-440d-9d9e-b80ca2c19e71,The Soft Life Spa,spa,Dominica,Description is 44 chars
-medium,empty-desc,a970c322-8511-41b1-84ea-bc81e803fbe6,miah's bar n grill,dining,Dominica,Description is 36 chars
-medium,empty-desc,17f52b1c-c765-4ef6-a1a0-354fad2374b5,Villa Blanca Beach Club,dining,Dominican Republic,Description is 44 chars
-medium,empty-desc,25e24d36-50be-49e0-8847-28d9e1f0f131,La EX Tours,tour,Dominican Republic,Description is 46 chars
-medium,empty-desc,c64d896f-f4f5-45ba-abf7-78eaa24df884,Elegant day Spa Hildania Colon SRL,spa,Dominican Republic,Description is 34 chars
-medium,empty-desc,e920d9bf-9cba-4bf5-88ad-e866776158b5,Pat'e Palo European Brasserie,dining,Dominican Republic,Description is 46 chars
-medium,empty-desc,edf6f31a-47bd-4046-805d-1464cb0f8931,Marina ZarPar,tour,Dominican Republic,Description is 34 chars
-medium,empty-desc,70154bba-64c4-4b1e-ad0f-4c49f17944bc,Gallery Cafe,dining,Grenada,Description is 48 chars
-medium,empty-desc,781fbcd9-1f06-4fb7-a310-e477763960d4,The Lab,dining,Grenada,Description is 42 chars
-medium,empty-desc,8b273f5e-4081-4415-bea8-99e60ace326a,"The Cove Marina, Restaurant & Bar (fomerly Whisper Cove)",dining,Grenada,Description is 41 chars
-medium,empty-desc,c98288be-8415-4a55-88d6-5ee424e37ffa,Dodgy Dock Bar & Restaurant,dining,Grenada,Description is 0 chars
-medium,empty-desc,eddd71a4-0680-4ddb-9667-c395fd54b1a8,Esther's Bar,dining,Grenada,Description is 47 chars
-medium,empty-desc,f4896f2a-03e3-4eb5-a47a-9d2841402c02,50 Shades Bar,dining,Grenada,Description is 48 chars
-medium,empty-desc,fe25480d-ae0e-4a5a-8bed-76ce8855d8f0,Cilantro,dining,Grenada,Description is 32 chars
-medium,empty-desc,ff63ac6c-b2f0-4710-8937-32da0d1898f6,The Grind,dining,Grenada,Description is 45 chars
-medium,empty-desc,100e8d77-a2d2-4737-b507-653a7e0f1c4a,Villas Boubou location villas luxe Guadeloupe,stay,Guadeloupe,Description is 40 chars
-medium,empty-desc,1875b99c-5381-420d-9855-e481c5e05fdd,Nico Excursions Guadeloupe en bateau,tour,Guadeloupe,Description is 44 chars
-medium,empty-desc,48787bfd-4dce-4b1b-9cef-979d9da02d39,DDD Diving Solutions Limited,tour,Jamaica,Description is 41 chars
-medium,empty-desc,a74c99a0-6ad0-4f46-a461-dd9355460ced,Plantation Smokehouse,dining,Jamaica,Description is 32 chars
-medium,empty-desc,3a34385c-28be-4600-b1a5-21c0beaabfa0,SPA Martinique,spa,Martinique,Description is 30 chars
-medium,empty-desc,427c4677-ac03-4a57-a9ee-3a0b814cbe26,Restaurant 1643,dining,Martinique,Description is 36 chars
-medium,empty-desc,4b312d03-dbbc-4a2c-86a5-51b86e00e36d,Shell's,dining,Martinique,Description is 41 chars
-medium,empty-desc,c568602a-1a1e-433c-bc3b-d0c7b1e2dd5f,ABC Dive 972 Plongée Martinique,tour,Martinique,Description is 31 chars
-medium,empty-desc,c9b4852f-8a0b-4111-87e0-b2854aa9ca19,CLIKOCAR Martinique Location de voitures,transport,Martinique,Description is 34 chars
-medium,empty-desc,f9b5d026-f39b-468b-8e00-fc28ecfa4f58,K'FECO,dining,Martinique,Description is 47 chars
-medium,empty-desc,0018639d-b3db-4e3e-892c-7f880c618716,Alamo,transport,Puerto Rico,Description is 30 chars
-medium,empty-desc,44730fa2-7156-4683-8b86-497c2ea27a90,Club Brava,dining,Puerto Rico,Description is 34 chars
-medium,empty-desc,560ebb83-4886-4f23-861f-fb457738e1fe,The Yacht Club Marina at Palmas del Mar,tour,Puerto Rico,Description is 43 chars
-medium,empty-desc,b93fe35c-44c9-4786-adb0-81d16003de34,La Casita Restaurant by Chef Javier,dining,Puerto Rico,Description is 33 chars
-medium,empty-desc,e907d976-cbb8-448e-9466-e247659b77e5,El Batey Bar,dining,Puerto Rico,Description is 42 chars
-medium,empty-desc,1e3f0b32-606c-4e0a-9949-50bb162b265d,Big Banana Tours,tour,St. Kitts & Nevis,Description is 31 chars
-medium,empty-desc,6a991ba4-104b-458a-94be-93187645387f,Sealofts On The Beach,stay,St. Kitts & Nevis,Description is 35 chars
-medium,empty-desc,9723ad79-ef6b-41d5-b3f7-4373696659f0,Vibes Beach Bar,dining,St. Kitts & Nevis,Description is 31 chars
-medium,empty-desc,b1a92372-fc76-44ed-a04f-6b920430b509,Bullseye Car Rental,transport,St. Kitts & Nevis,Description is 45 chars
-medium,empty-desc,02c3b663-9d9b-46e2-8d4d-ae0a6aece4f8,Edmund Tours St.Lucia,tour,St. Lucia,Description is 30 chars
-medium,empty-desc,741d88fb-c28d-4a1e-a194-105ed4f12cd3,The Upper Deck Restaurant,dining,St. Lucia,Description is 46 chars
-medium,empty-desc,181c07a0-7c92-4634-807c-9f8ae1748f8f,C Jones Beach,tour,St. Vincent & the Grenadines,Description is 39 chars
-medium,empty-desc,60fb0588-2157-47f9-9ee5-144d73cbaca1,The Onyx Spa,spa,St. Vincent & the Grenadines,Description is 37 chars
-medium,empty-desc,9a530065-a27a-46e4-997d-b01646c02272,Carnivale Bahamas,dining,The Bahamas,Description is 37 chars
-medium,empty-desc,a143476f-83ff-4d38-979e-2372962a78ff,Out and Under,tour,Trinidad & Tobago,Description is 35 chars
-medium,empty-desc,eff6c03d-6658-49bd-a010-5a3d4a4c922a,Corbin Local Wildlife,tour,Trinidad & Tobago,Description is 42 chars
-medium,empty-desc,151a6afa-2f45-423a-8244-43082d2509fb,Jet Cars Turks,tour,Turks & Caicos,Description is 48 chars
-medium,empty-desc,341d110d-28ca-48bf-a3d6-db4a59c0d153,TURQUOISE CAR RENTAL,transport,Turks & Caicos,Description is 49 chars
-medium,empty-desc,5f568882-2392-47d7-a73b-baea725918c8,Alexandra Resort – All-Inclusive,stay,Turks & Caicos,Description is 37 chars
-medium,empty-desc,2c72ba06-01fb-4de7-a962-68639875eab7,Random Excursions Trike/ATV/UTV Tours & Rentals,tour,US Virgin Islands,Description is 44 chars
-medium,empty-desc,484cc15b-5d3d-4879-9b02-2adc205d1b12,Salty Sol Charters,tour,US Virgin Islands,Description is 42 chars
-medium,empty-desc,5503b914-54b3-41d4-9d26-df7a46982372,Alamo Rent A Car,transport,US Virgin Islands,Description is 30 chars
-medium,empty-desc,977f5720-b80a-4528-917b-c629be2cc969,My Car Rental VI,transport,US Virgin Islands,Description is 38 chars
-medium,empty-desc,a1b08e14-b061-40a2-ab78-5b6528a646ac,St Thomas Social,dining,US Virgin Islands,Description is 44 chars
-medium,empty-desc,f97ab7bb-aa29-45d4-80fb-afb8908a1631,Gladys' Café,dining,US Virgin Islands,Description is 47 chars
+high,wrong-island-mention,f2500c09-e10a-4d69-bfc7-a2a746c75816,Virgin Islands Yacht Charters,tour,US Virgin Islands,Desc mentions usvi but listing is on US Virgin Islands
 medium,missing-price-with-signal,9810c3d0-9fab-4816-80d0-13a1d7893c76,Passions On The Beach,dining,Aruba,"No price set, but Google price_level=3 — should be populated"
 medium,missing-price-with-signal,f0eb5ec6-4897-4235-8216-b0da16c5daf2,Valley Breeze Guest House,stay,Grenada,"No price set, but Google price_level=1 — should be populated"
 medium,statistical-outlier,f7812485-961e-438b-b9cb-f262f1a1d64f,Jabberwocky - Adventure Caribbean Sailing Yacht Charters,tour,Antigua & Barbuda,$625 — 6.6x robust-σ from tour median $95
@@ -420,6 +100,6 @@ low,currency-outlier,2b0e0bb8-1f9f-45d5-a37a-dcca711179dc,The Beach House Restau
 low,currency-outlier,705cbb28-9f7b-4b1c-9010-c19f0537e623,Airport to Grand Anse — Private Transfer,transport,Grenada,Currency USD — transport is overwhelmingly XCD
 low,currency-outlier,f49c9d3e-4e0a-4d33-9c0e-46732a1377ce,BB's Crabback Restaurant,dining,Grenada,Currency USD — dining is overwhelmingly XCD
 low,currency-outlier,1a58fc31-1f49-443c-b77a-15f4f261509f,Full Island Tour — Private Driver,transport,Grenada,Currency USD — transport is overwhelmingly XCD
-low,currency-outlier,c98288be-8415-4a55-88d6-5ee424e37ffa,Dodgy Dock Bar & Restaurant,dining,Grenada,Currency USD — dining is overwhelmingly XCD
 low,currency-outlier,8cf5a635-925b-4818-a69a-0e76dd211de9,Sunset Sailing & Snorkeling Adventure,tour,Grenada,Currency USD — tour is overwhelmingly XCD
 low,currency-outlier,84a405c3-227b-4bae-bceb-0a8510a98747,Underwater Sculpture Park Dive,tour,Grenada,Currency USD — tour is overwhelmingly XCD
+low,currency-outlier,c98288be-8415-4a55-88d6-5ee424e37ffa,Dodgy Dock Bar & Restaurant,dining,Grenada,Currency USD — dining is overwhelmingly XCD

@@ -54,6 +54,18 @@ const CARIBBEAN_ISLANDS = [
   "bvi", "british virgin",
 ];
 
+// Sibling islands often share services legitimately (ferries,
+// charters, taxi networks). Mentioning the sibling in a description
+// isn't a bug — skip the wrong-island flag when pairs are linked.
+const SIBLING_ISLANDS: Record<string, string[]> = {
+  "us-virgin-islands": ["bvi", "british virgin"],
+  "british-virgin-islands": ["usvi"],
+  "trinidad-and-tobago": ["trinidad", "tobago"],
+  "st-kitts": ["nevis"],
+  "st-vincent": ["grenadines"],
+  "turks-and-caicos": ["turks", "caicos"],
+};
+
 // Vocabulary fingerprints per listing type. If a description hits terms
 // from the WRONG type more than its own type, it's probably mislabeled
 // content.
@@ -202,8 +214,12 @@ async function main() {
     const ownSlug = l.island_slug.toLowerCase().replace(/[-_]/g, " ");
     const ownName = l.island_name.toLowerCase();
     const hitsOwn = d.includes(ownName) || d.includes(ownSlug);
+    const siblings = SIBLING_ISLANDS[l.island_slug.toLowerCase()] || [];
     const wrongHits = CARIBBEAN_ISLANDS.filter((isl) => {
       if (ownName.includes(isl) || ownSlug.includes(isl)) return false;
+      // Sibling islands (USVI↔BVI etc) share services legitimately;
+      // mentioning them is not a bug.
+      if (siblings.some((s) => isl.includes(s) || s.includes(isl))) return false;
       // Word-boundary match so "aruba" doesn't match inside "arubabcd".
       const rx = new RegExp("\\b" + isl.replace(/\./g, "\\.") + "\\b");
       return rx.test(d);
