@@ -6,6 +6,10 @@ import { put } from "@vercel/blob";
 
 import { logger } from "@/lib/logger";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
