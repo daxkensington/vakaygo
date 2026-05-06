@@ -15,24 +15,28 @@ describe("getImageUrl", () => {
     );
   });
 
-  it("strips key= from Google Places URLs and routes through proxy", () => {
+  it("returns null for legacy googleapis Place Photo URLs (cost-killing fallback)", () => {
     const url =
       "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=abc&key=STALE";
-    const out = getImageUrl(url)!;
-    expect(out).toMatch(/^\/api\/images\/proxy\?url=/);
-    expect(decodeURIComponent(out)).not.toMatch(/key=/);
-    expect(decodeURIComponent(out)).toMatch(/photoreference=abc/);
+    expect(getImageUrl(url)).toBeNull();
   });
 
-  it("proxies Unsplash URLs", () => {
+  it("passes Vercel Blob URLs through unchanged", () => {
+    const url = "https://md5ccwdrtwgglaeh.public.blob.vercel-storage.com/places/abc.jpg";
+    expect(getImageUrl(url)).toBe(url);
+  });
+
+  it("proxies hotlink-blocked CDNs (Facebook, Yelp)", () => {
+    expect(getImageUrl("https://scontent.fbcdn.net/abc.jpg")).toMatch(
+      /^\/api\/images\/proxy\?url=/
+    );
+    expect(getImageUrl("https://s3-media0.fl.yelpcdn.com/x.jpg")).toMatch(
+      /^\/api\/images\/proxy\?url=/
+    );
+  });
+
+  it("passes generic third-party URLs through (no proxy)", () => {
     const url = "https://images.unsplash.com/photo-123";
-    const out = getImageUrl(url)!;
-    expect(out).toMatch(/^\/api\/images\/proxy\?url=/);
-    expect(decodeURIComponent(out)).toContain(url);
-  });
-
-  it("proxies Grok-generated images", () => {
-    const url = "https://imgen.x.ai/abc";
-    expect(getImageUrl(url)).toMatch(/^\/api\/images\/proxy\?url=/);
+    expect(getImageUrl(url)).toBe(url);
   });
 });
