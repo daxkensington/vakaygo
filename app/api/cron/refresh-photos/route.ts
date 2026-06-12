@@ -56,12 +56,13 @@ export async function GET(req: Request) {
     WHERE l.status = 'active'
       AND l.type_data->>'googlePlaceId' IS NOT NULL
       AND m.url LIKE '%googleapis.com%'
-    ORDER BY l.id
+    ORDER BY 1
     LIMIT ${BATCH_SIZE}
   `);
 
   let refreshed = 0;
   let failed = 0;
+  let pruned = 0;
   let photosUploaded = 0;
 
   for (const listing of stale.rows as Array<{ id: string; title: string; place_id: string }>) {
@@ -72,7 +73,21 @@ export async function GET(req: Request) {
       const data = await detailsRes.json();
 
       if (data.status !== "OK" || !data.result?.photos) {
-        failed++;
+        // A place that no longer exists (or has no photos) can never be
+        // refreshed — its googleapis URLs are dead weight that would
+        // otherwise occupy a slot in every future batch. getImageUrl()
+        // already renders googleapis URLs as the gradient fallback, so
+        // deleting them changes nothing visually and unclogs the queue.
+        if (data.status === "NOT_FOUND" || data.status === "INVALID_REQUEST" || data.status === "ZERO_RESULTS" || (data.status === "OK" && !data.result?.photos)) {
+          await db.execute(sql`
+            DELETE FROM media
+            WHERE listing_id = ${listing.id}::uuid
+              AND url LIKE '%googleapis.com%'
+          `);
+          pruned++;
+        } else {
+          failed++; // transient (quota, denied, etc.) — retry next run
+        }
         continue;
       }
 
@@ -136,6 +151,7 @@ export async function GET(req: Request) {
   logger.info("Photo refresh cron complete", {
     refreshed,
     failed,
+    pruned,
     photosUploaded,
     total: stale.rows.length,
   });
@@ -144,6 +160,7 @@ export async function GET(req: Request) {
     ok: true,
     refreshed,
     failed,
+    pruned,
     photosUploaded,
     total: stale.rows.length,
   });
