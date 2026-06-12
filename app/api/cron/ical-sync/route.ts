@@ -6,6 +6,9 @@ import { eq, and, isNotNull } from "drizzle-orm";
 import { parseICal } from "@/lib/ical-parser";
 
 import { logger } from "@/lib/logger";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }

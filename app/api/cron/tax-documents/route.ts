@@ -5,6 +5,9 @@ import { payouts, taxDocuments, users } from "@/drizzle/schema";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 /**
  * GET — Annual tax document generation cron.
  * Runs once a year on January 15 at 8 AM UTC.

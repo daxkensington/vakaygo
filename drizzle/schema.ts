@@ -323,6 +323,9 @@ export const bookings = pgTable(
     depositPaid: boolean("deposit_paid").default(false),
     escrowReleased: boolean("escrow_released").default(false),
     escrowReleasedAt: timestamp("escrow_released_at"),
+    // Set when the weekly payouts cron records this booking on a payout
+    // ledger entry — the claim that prevents double-counting.
+    payoutId: uuid("payout_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -434,6 +437,8 @@ export const savedListings = pgTable(
     listingId: uuid("listing_id")
       .notNull()
       .references(() => listings.id, { onDelete: "cascade" }),
+    // Price when last seen by the price-alerts cron; alerts fire on drops.
+    lastKnownPrice: decimal("last_known_price", { precision: 10, scale: 2 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [

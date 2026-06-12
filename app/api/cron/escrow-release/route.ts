@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, users } from "@/drizzle/schema";
-import { eq, and, lt, sql } from "drizzle-orm";
-import { releaseEscrowTransfer } from "@/server/stripe";
+import { bookings } from "@/drizzle/schema";
+import { eq, and, lt } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 /**
  * GET — Release escrow for completed trips.
  * Runs every 6 hours. Finds bookings that are completed, escrow not yet
- * released, and endDate was more than 48 hours ago. Creates Stripe
- * transfers to operators.
+ * released, and endDate was more than 48 hours ago, and flips the
+ * escrowReleased flag.
+ *
+ * NOTE: this cron moves NO money. Checkout uses Stripe destination
+ * charges (transfer_data.destination + application_fee_amount), so the
+ * operator's share lands in their connected account at charge time and
+ * Stripe pays it out on their weekly schedule. The escrowReleased flag
+ * only marks the end of the 48-hour dispute/refund window for
+ * bookkeeping — the old version ALSO created a Stripe transfer here,
+ * which would have paid operators twice.
  *
  * Protected by CRON_SECRET.
  */
@@ -27,103 +38,24 @@ export async function GET(request: Request) {
     const now = new Date();
     const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000); // 48 hours ago
 
-    // Find eligible bookings
-    const eligibleBookings = await db
-      .select({
-        id: bookings.id,
-        operatorId: bookings.operatorId,
-        totalAmount: bookings.totalAmount,
-        serviceFee: bookings.serviceFee,
-        subtotal: bookings.subtotal,
-        currency: bookings.currency,
-        paymentId: bookings.paymentId,
-        endDate: bookings.endDate,
+    const released = await db
+      .update(bookings)
+      .set({
+        escrowReleased: true,
+        escrowReleasedAt: now,
+        updatedAt: now,
       })
-      .from(bookings)
       .where(
         and(
           eq(bookings.status, "completed"),
           eq(bookings.escrowReleased, false),
           lt(bookings.endDate, cutoff)
         )
-      );
-
-    const results: Array<{
-      bookingId: string;
-      status: string;
-      amount?: number;
-      error?: string;
-    }> = [];
-
-    for (const booking of eligibleBookings) {
-      try {
-        if (!booking.paymentId) {
-          results.push({
-            bookingId: booking.id,
-            status: "skipped",
-            error: "No payment ID on booking",
-          });
-          continue;
-        }
-
-        // Get operator Stripe account
-        const [operator] = await db
-          .select({ stripeAccountId: users.digipayMerchantId })
-          .from(users)
-          .where(eq(users.id, booking.operatorId))
-          .limit(1);
-
-        if (!operator?.stripeAccountId) {
-          results.push({
-            bookingId: booking.id,
-            status: "skipped",
-            error: "Operator has no Stripe account",
-          });
-          continue;
-        }
-
-        // Calculate operator amount (total minus platform commission)
-        const subtotalCents = Math.round(parseFloat(booking.subtotal || "0") * 100);
-        const platformCommissionCents = Math.round(subtotalCents * 0.05);
-        const operatorAmountCents = subtotalCents - platformCommissionCents;
-
-        // Create Stripe transfer
-        await releaseEscrowTransfer({
-          paymentIntentId: booking.paymentId,
-          amount: operatorAmountCents,
-          destinationAccountId: operator.stripeAccountId,
-        });
-
-        // Mark escrow as released
-        await db
-          .update(bookings)
-          .set({
-            escrowReleased: true,
-            escrowReleasedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(bookings.id, booking.id));
-
-        results.push({
-          bookingId: booking.id,
-          status: "success",
-          amount: operatorAmountCents / 100,
-        });
-      } catch (err) {
-        results.push({
-          bookingId: booking.id,
-          status: "error",
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
-    }
+      )
+      .returning({ id: bookings.id });
 
     return NextResponse.json({
-      released: results.filter((r) => r.status === "success").length,
-      skipped: results.filter((r) => r.status === "skipped").length,
-      failed: results.filter((r) => r.status === "error").length,
-      total: eligibleBookings.length,
-      results,
+      released: released.length,
       timestamp: now.toISOString(),
     });
   } catch (error) {

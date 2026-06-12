@@ -6,24 +6,20 @@ export const runtime = "edge";
 // Cap upstream response so a malicious link can't tie up the proxy.
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
-// Reject SSRF targets even if a caller hand-crafts the URL.
-const BLOCKED_HOSTS = new Set([
-  "localhost",
-  "127.0.0.1",
-  "0.0.0.0",
-  "::1",
-]);
+// Only the hosts getImageUrl() actually proxies (hotlink-blocked CDNs)
+// plus legacy Google Places. An allowlist kills the whole SSRF class —
+// the old blocklist missed IPv6 literals, decimal IPs, and DNS rebinds.
+const ALLOWED_HOST_SUFFIXES = [
+  "fbcdn.net",
+  "fbsbx.com",
+  "yelpcdn.com",
+  "googleapis.com",
+];
 
-function isPrivateIPv4(host: string): boolean {
-  const m = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (!m) return false;
-  const a = parseInt(m[1], 10);
-  const b = parseInt(m[2], 10);
-  if (a === 10) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 169 && b === 254) return true;
-  return false;
+function isAllowedHost(host: string): boolean {
+  return ALLOWED_HOST_SUFFIXES.some(
+    (suffix) => host === suffix || host.endsWith(`.${suffix}`)
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -44,7 +40,7 @@ export async function GET(req: NextRequest) {
   }
 
   const host = parsed.hostname.toLowerCase();
-  if (BLOCKED_HOSTS.has(host) || isPrivateIPv4(host)) {
+  if (!isAllowedHost(host)) {
     return NextResponse.json({ error: "Host not allowed" }, { status: 400 });
   }
 

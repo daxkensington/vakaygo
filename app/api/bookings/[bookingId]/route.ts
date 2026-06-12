@@ -113,6 +113,8 @@ export async function PATCH(
         id: bookings.id,
         travelerId: bookings.travelerId,
         operatorId: bookings.operatorId,
+        paymentId: bookings.paymentId,
+        paidAt: bookings.paidAt,
       })
       .from(bookings)
       .where(eq(bookings.id, bookingId))
@@ -140,10 +142,19 @@ export async function PATCH(
       }
     }
 
+    // "confirmed" means PAID — only the Stripe webhook confirms bookings.
+    // Without this gate an operator could confirm (and retroactively stamp
+    // paidAt on) a booking that was never paid for.
+    if (status === "confirmed" && !(existing.paymentId && existing.paidAt)) {
+      return NextResponse.json(
+        { error: "Bookings are confirmed automatically when payment completes" },
+        { status: 400 }
+      );
+    }
+
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
-    if (status === "confirmed") updateData.paidAt = new Date();
 
     const [updated] = await db
       .update(bookings)

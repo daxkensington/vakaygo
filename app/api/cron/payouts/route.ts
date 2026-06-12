@@ -1,16 +1,30 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, payouts, payoutSchedules, users } from "@/drizzle/schema";
-import { eq, and, sql, lte, isNull } from "drizzle-orm";
-import { createTransfer } from "@/server/stripe";
+import { bookings, listings, payouts, payoutSchedules } from "@/drizzle/schema";
+import { eq, and, isNull, inArray } from "drizzle-orm";
+import { CATEGORY_RATES } from "@/lib/pricing";
 
 import { logger } from "@/lib/logger";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 /**
- * GET — Automated weekly payout cron.
- * Runs every Monday at 8 AM UTC. Collects operator earnings from completed
- * bookings that haven't been paid out yet, deducts platform fees, and
- * sends Stripe transfers.
+ * GET — Weekly payout ledger cron.
+ * Runs every Monday at 8 AM UTC.
+ *
+ * NOTE: this cron moves NO money. Checkout uses Stripe destination
+ * charges, so operators receive their share at charge time and Stripe
+ * pays out their connected account on its weekly schedule. This cron
+ * only writes the payout ledger: it groups each operator's completed,
+ * escrow-released, not-yet-recorded bookings into a payouts row and
+ * stamps those bookings with payoutId so they are never counted twice.
+ * (The old version created a Stripe transfer per run with no
+ * idempotency marker — every run re-paid all historical bookings.)
+ *
+ * Operator earnings use the type-specific operatorFee from
+ * lib/pricing.ts, matching what travelers were charged.
  *
  * Protected by CRON_SECRET.
  */
@@ -26,10 +40,7 @@ export async function GET(request: Request) {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const now = new Date();
 
-    // Get all operator payout schedules
-    const schedules = await db
-      .select()
-      .from(payoutSchedules);
+    const schedules = await db.select().from(payoutSchedules);
 
     const results: Array<{
       operatorId: string;
@@ -41,31 +52,22 @@ export async function GET(request: Request) {
 
     for (const schedule of schedules) {
       try {
-        if (!schedule.stripeAccountId) {
-          results.push({
-            operatorId: schedule.operatorId,
-            status: "skipped",
-            error: "No Stripe account configured",
-          });
-          continue;
-        }
-
-        // Find completed bookings for this operator that haven't been paid out
-        // A booking is "unpaid" if there's no payout record covering it
+        // Completed + escrow-released bookings not yet on any payout record
         const operatorBookings = await db
           .select({
             id: bookings.id,
-            totalAmount: bookings.totalAmount,
-            serviceFee: bookings.serviceFee,
             subtotal: bookings.subtotal,
             currency: bookings.currency,
+            listingType: listings.type,
           })
           .from(bookings)
+          .innerJoin(listings, eq(bookings.listingId, listings.id))
           .where(
             and(
               eq(bookings.operatorId, schedule.operatorId),
               eq(bookings.status, "completed"),
-              eq(bookings.escrowReleased, true)
+              eq(bookings.escrowReleased, true),
+              isNull(bookings.payoutId)
             )
           );
 
@@ -73,60 +75,57 @@ export async function GET(request: Request) {
           results.push({
             operatorId: schedule.operatorId,
             status: "skipped",
-            error: "No completed bookings to pay out",
+            error: "No new completed bookings to record",
           });
           continue;
         }
 
-        // Calculate total earnings: subtotal minus platform commission (5%)
+        // Operator earnings = subtotal minus the type-specific commission
         let totalEarningsCents = 0;
         const currency = operatorBookings[0]?.currency || "usd";
 
         for (const b of operatorBookings) {
-          const subtotal = parseFloat(b.subtotal || "0");
-          const platformCommission = subtotal * 0.05;
-          const operatorEarning = subtotal - platformCommission;
-          totalEarningsCents += Math.round(operatorEarning * 100);
+          const rates = CATEGORY_RATES[b.listingType] || CATEGORY_RATES.tour;
+          const subtotalCents = Math.round(parseFloat(b.subtotal || "0") * 100);
+          const commissionCents = Math.round(subtotalCents * rates.operatorFee);
+          totalEarningsCents += subtotalCents - commissionCents;
         }
 
-        const minPayoutCents = Math.round(parseFloat(schedule.minPayout || "10") * 100);
-        if (totalEarningsCents < minPayoutCents) {
-          results.push({
-            operatorId: schedule.operatorId,
-            status: "skipped",
-            error: `Below minimum payout threshold (${totalEarningsCents / 100} < ${minPayoutCents / 100})`,
-          });
-          continue;
-        }
-
-        // Create Stripe transfer
-        const transfer = await createTransfer({
-          amount: totalEarningsCents,
-          currency,
-          destinationAccountId: schedule.stripeAccountId,
-          description: `VakayGo payout — ${operatorBookings.length} booking(s)`,
-          metadata: {
-            operatorId: schedule.operatorId,
-            bookingCount: String(operatorBookings.length),
-          },
-        });
-
-        // Calculate the period covered
         const periodStart = new Date(now);
         periodStart.setDate(periodStart.getDate() - 7);
 
-        // Insert payout record
-        await db.insert(payouts).values({
-          operatorId: schedule.operatorId,
-          amount: (totalEarningsCents / 100).toFixed(2),
-          currency,
-          status: "completed",
-          periodStart,
-          periodEnd: now,
-          bookingCount: operatorBookings.length,
-          paymentReference: transfer.id,
-          paidAt: now,
-        });
+        // Insert the ledger record first, then claim the bookings. The
+        // isNull(payoutId) guard in the UPDATE makes the claim idempotent
+        // even if two runs race.
+        const [payout] = await db
+          .insert(payouts)
+          .values({
+            operatorId: schedule.operatorId,
+            amount: (totalEarningsCents / 100).toFixed(2),
+            currency,
+            status: "completed",
+            periodStart,
+            periodEnd: now,
+            bookingCount: operatorBookings.length,
+            // Funds moved at charge time via destination charge — there is
+            // no separate transfer to reference.
+            paymentReference: "destination-charge",
+            paidAt: now,
+          })
+          .returning({ id: payouts.id });
+
+        await db
+          .update(bookings)
+          .set({ payoutId: payout.id, updatedAt: now })
+          .where(
+            and(
+              inArray(
+                bookings.id,
+                operatorBookings.map((b) => b.id)
+              ),
+              isNull(bookings.payoutId)
+            )
+          );
 
         results.push({
           operatorId: schedule.operatorId,

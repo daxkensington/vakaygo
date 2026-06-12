@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { createCheckoutSession } from "@/server/stripe";
+import { CATEGORY_RATES } from "@/lib/pricing";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
     // Get listing and operator
     const [listing] = await db
-      .select({ title: listings.title, operatorId: listings.operatorId })
+      .select({ title: listings.title, operatorId: listings.operatorId, type: listings.type })
       .from(listings)
       .where(eq(listings.id, booking.listingId))
       .limit(1);
@@ -68,9 +69,13 @@ export async function POST(request: Request) {
     }
 
     const totalCents = Math.round(parseFloat(booking.totalAmount || "0") * 100);
+    // Platform keeps the traveler service fee plus the type-specific
+    // operator commission — must match lib/pricing.ts or the operator's
+    // displayed earnings diverge from what actually lands in their account.
+    const rates = CATEGORY_RATES[listing?.type || "tour"] || CATEGORY_RATES.tour;
     const platformFeeCents = Math.round(
       (parseFloat(booking.serviceFee || "0") +
-        parseFloat(booking.subtotal || "0") * 0.05) * 100 // operator commission
+        parseFloat(booking.subtotal || "0") * rates.operatorFee) * 100
     );
 
     const [traveler] = await db

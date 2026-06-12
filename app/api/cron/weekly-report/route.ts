@@ -5,6 +5,9 @@ import { bookings, users, listings } from "@/drizzle/schema";
 import { gt, sql, eq, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
