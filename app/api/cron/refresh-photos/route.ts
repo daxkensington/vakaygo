@@ -131,10 +131,18 @@ export async function GET(req: Request) {
           AND url LIKE '%googleapis.com%'
       `);
 
+      // A non-Google photo may still hold is_primary — don't create a second one.
+      const existingPrimary = await db.execute(sql`
+        SELECT 1 FROM media
+        WHERE listing_id = ${listing.id}::uuid AND is_primary
+        LIMIT 1
+      `);
+      const hasPrimary = existingPrimary.rows.length > 0;
+
       for (let i = 0; i < blobUrls.length; i++) {
         await db.execute(sql`
           INSERT INTO media (listing_id, url, alt, type, sort_order, is_primary)
-          VALUES (${listing.id}::uuid, ${blobUrls[i]}, ${listing.title}, 'image', ${i}, ${i === 0})
+          VALUES (${listing.id}::uuid, ${blobUrls[i]}, ${listing.title}, 'image', ${i}, ${!hasPrimary && i === 0})
         `);
       }
 

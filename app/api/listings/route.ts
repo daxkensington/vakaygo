@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands, media, availability } from "@/drizzle/schema";
 import { eq, and, ilike, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
+import { requireOperator } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 function getDb() {
@@ -229,9 +230,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
+
     const body = await request.json();
     const {
-      operatorId,
+      operatorId: requestedOperatorId,
       islandId,
       type,
       title,
@@ -251,7 +255,14 @@ export async function POST(request: Request) {
       maxGuests,
     } = body;
 
-    if (!operatorId || !title || !type) {
+    // Operators can only create listings for themselves; admins may create
+    // on behalf of any operator.
+    const operatorId =
+      auth.role === "admin" && requestedOperatorId
+        ? requestedOperatorId
+        : auth.userId;
+
+    if (!title || !type) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
