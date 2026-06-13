@@ -140,13 +140,22 @@ export async function releaseEscrowTransfer(params: {
 }
 
 /**
- * Create checkout session for a booking (redirect-based)
+ * Create checkout session for a booking (redirect-based).
+ *
+ * Two modes:
+ * - operatorStripeAccountId set → Connect destination charge: operator's
+ *   share lands in their connected account, platform keeps platformFee.
+ * - operatorStripeAccountId absent → platform charge: the full amount is
+ *   collected on the platform account and operators are paid out-of-band
+ *   from the payouts ledger. This is the default — most Caribbean islands
+ *   are not supported Stripe Connect countries, so operators there can
+ *   never onboard via Express.
  */
 export async function createCheckoutSession(params: {
   amount: number;
   currency: string;
   platformFee: number;
-  operatorStripeAccountId: string;
+  operatorStripeAccountId?: string | null;
   bookingId: string;
   listingTitle: string;
   travelerEmail: string;
@@ -154,6 +163,15 @@ export async function createCheckoutSession(params: {
   cancelUrl: string;
   paymentMethodTypes?: string[];
 }) {
+  const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
+    metadata: { bookingId: params.bookingId },
+    statement_descriptor_suffix: "VAKAYGO",
+  };
+  if (params.operatorStripeAccountId) {
+    paymentIntentData.application_fee_amount = params.platformFee;
+    paymentIntentData.transfer_data = { destination: params.operatorStripeAccountId };
+  }
+
   return getStripe().checkout.sessions.create({
     payment_method_types: (params.paymentMethodTypes || ["card"]) as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
     mode: "payment",
@@ -168,11 +186,7 @@ export async function createCheckoutSession(params: {
       },
       quantity: 1,
     }],
-    payment_intent_data: {
-      application_fee_amount: params.platformFee,
-      transfer_data: { destination: params.operatorStripeAccountId },
-      metadata: { bookingId: params.bookingId },
-    },
+    payment_intent_data: paymentIntentData,
     customer_email: params.travelerEmail,
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,

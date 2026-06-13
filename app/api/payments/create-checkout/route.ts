@@ -57,16 +57,11 @@ export async function POST(request: Request) {
       .where(eq(users.id, booking.operatorId))
       .limit(1);
 
-    // If operator doesn't have Stripe account, fall back to platform-only payment
-    const operatorStripeId = operator?.stripeAccountId;
-
-    if (!operatorStripeId) {
-      // For now, collect payment to platform account — we'll payout manually later
-      return NextResponse.json({
-        error: "This operator hasn't set up payments yet. Please contact them directly.",
-        fallback: true,
-      }, { status: 422 });
-    }
+    // Operators with a connected Stripe account get a destination charge;
+    // everyone else (most Caribbean islands aren't Connect-supported
+    // countries) gets a platform charge — earnings are tracked on the
+    // payouts ledger and settled out-of-band.
+    const operatorStripeId = operator?.stripeAccountId || null;
 
     const totalCents = Math.round(parseFloat(booking.totalAmount || "0") * 100);
     // Platform keeps the traveler service fee plus the type-specific
