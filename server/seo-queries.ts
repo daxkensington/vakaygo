@@ -239,6 +239,27 @@ export async function getTopListingsForIsland(
     .limit(limit);
 }
 
+/**
+ * Lightweight: every active listing's slug/title/type for an island, A→Z.
+ * Powers the SSR "Browse all experiences" crawl index on the island hub so
+ * Googlebot can reach every listing in 2 clicks from the homepage (no media
+ * join, no limit — kept cheap).
+ */
+export async function getAllListingSlugsForIsland(
+  islandId: number
+): Promise<Array<{ slug: string; title: string; type: string }>> {
+  const db = createDb();
+  return db
+    .select({
+      slug: listings.slug,
+      title: listings.title,
+      type: listings.type,
+    })
+    .from(listings)
+    .where(and(eq(listings.islandId, islandId), eq(listings.status, "active")))
+    .orderBy(listings.title);
+}
+
 /** Get island stats: listing counts by type and average rating */
 export async function getIslandStats(islandId: number): Promise<IslandStats> {
   const db = createDb();

@@ -89,6 +89,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   type={type}
                   className="hover:opacity-95 transition-opacity"
                   iconSize={56}
+                  priority
                 />
               )}
             </div>
@@ -139,6 +140,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   type={type}
                   className="hover:opacity-95 transition-opacity"
                   iconSize={56}
+                  priority
                 />
               )}
             </div>
@@ -183,6 +185,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                 type={type}
                 className="h-full"
                 iconSize={56}
+                priority
               />
             )}
           </div>

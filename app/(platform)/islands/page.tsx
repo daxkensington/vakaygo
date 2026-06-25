@@ -14,7 +14,6 @@ import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import { getActiveIslandsWithCounts } from "@/server/seo-queries";
-import { DeferredIslandGrid } from "./deferred-island-grid";
 
 const islandImages: Record<string, string> = {
   grenada: "/images/islands/grenada.jpg",
@@ -40,14 +39,6 @@ const islandImages: Record<string, string> = {
   "puerto-rico": "/images/islands/puerto-rico.jpg",
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
-
-// SSR_CARDS: how many cards are server-rendered. The rest are
-// injected by the client component after requestIdleCallback, keeping
-// them out of the initial DOM so Lighthouse's LCP stays on the hero
-// h1 and parse/layout cost is bounded. SEO is unaffected — the first
-// chunk still appears in the raw HTML for Googlebot, and every
-// island also appears in the JSON-LD and sitemap.
-const SSR_CARDS = 3;
 
 export default async function IslandsPage() {
   const islands = await getActiveIslandsWithCounts();
@@ -113,13 +104,14 @@ export default async function IslandsPage() {
           </div>
         </div>
 
-        {/* Island Grid — first SSR_CARDS are server-rendered so
-            Googlebot and Lighthouse's SEO crawl see them; the rest
-            are injected by a client component after requestIdleCallback
-            to keep the initial DOM small. */}
+        {/* Island Grid — ALL islands are server-rendered so Googlebot gets a
+            crawlable <a> link to every island hub (the hubs are the entry
+            point into the listing graph). Card images are lazy-loaded and the
+            tall hero keeps the LCP on the h1, so SSR-ing all 21 doesn't
+            regress paint. */}
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {islands.slice(0, SSR_CARDS).map((island) => {
+            {islands.map((island) => {
               const flag = getIslandFlag(island.slug);
               const image = islandImages[island.slug] || defaultImage;
 
@@ -162,15 +154,6 @@ export default async function IslandsPage() {
                 </Link>
               );
             })}
-            <DeferredIslandGrid
-              islands={islands.slice(SSR_CARDS).map((i) => ({
-                id: i.id,
-                slug: i.slug,
-                name: i.name,
-                listingCount: i.listingCount,
-                image: islandImages[i.slug] || defaultImage,
-              }))}
-            />
           </div>
         </div>
       </main>

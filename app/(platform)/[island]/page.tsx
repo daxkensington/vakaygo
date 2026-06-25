@@ -21,6 +21,7 @@ import {
   getIslandBySlug,
   getIslandStats,
   getTopListingsForIsland,
+  getAllListingSlugsForIsland,
 } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
 import { FeaturedListingsClient } from "./featured-listings-client";
@@ -61,9 +62,10 @@ export default async function IslandPage({ params }: Props) {
   const island = await getIslandBySlug(islandSlug);
   if (!island) notFound();
 
-  const [stats, featured] = await Promise.all([
+  const [stats, featured, allListings] = await Promise.all([
     getIslandStats(island.id),
     getTopListingsForIsland(island.id, 8),
+    getAllListingSlugsForIsland(island.id),
   ]);
 
   const heroImg = heroImages[islandSlug] || defaultHero;
@@ -166,6 +168,34 @@ export default async function IslandPage({ params }: Props) {
               }))}
             />
           </div>
+        )}
+
+        {/* Browse-all crawl index — server-rendered links to EVERY listing on
+            the island. This is the discovery path that makes each listing
+            reachable in 2 clicks from the homepage (homepage → hub → listing),
+            so Googlebot can actually crawl the deep pages instead of treating
+            them as sitemap-only orphans. */}
+        {allListings.length > 0 && (
+          <section className="mx-auto max-w-7xl px-6 pb-16">
+            <h2
+              className="text-xl font-bold text-navy-700 mb-4"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Browse all {stats.totalListings} experiences in {island.name}
+            </h2>
+            <ul className="columns-1 sm:columns-2 lg:columns-3 gap-x-8 text-sm">
+              {allListings.map((l) => (
+                <li key={l.slug} className="mb-1.5 break-inside-avoid">
+                  <Link
+                    href={`/${islandSlug}/${l.slug}`}
+                    className="text-navy-500 hover:text-gold-700 transition-colors"
+                  >
+                    {l.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </main>
       <Footer />
