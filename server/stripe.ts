@@ -195,17 +195,57 @@ export async function createCheckoutSession(params: {
 }
 
 /**
- * Refund a booking payment
+ * Refund a booking payment.
+ *
+ * Whether this was a Connect destination charge (operator transfer must be
+ * reversed, else the platform eats the operator's share) is determined from
+ * the ACTUAL PaymentIntent/charge — NOT the operator's current onboarding
+ * state, which may differ from charge time (operators often onboard later).
+ * `refund_application_fee` claws back the platform fee on a full refund.
+ *
+ * Pass `idempotencyKey` (e.g. `refund_<bookingId>`) so concurrent or
+ * double-submitted refund requests collapse to a single Stripe refund.
  */
 export async function refundBooking(params: {
   paymentIntentId: string;
   amount?: number;
+  fullRefund?: boolean;
+  idempotencyKey?: string;
 }) {
-  return getStripe().refunds.create({
+  const stripe = getStripe();
+
+  let reverseTransfer = false;
+  let hadApplicationFee = false;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId, {
+      expand: ["latest_charge"],
+    });
+    const charge = pi.latest_charge as Stripe.Charge | null;
+    reverseTransfer = !!(charge && charge.transfer) || !!pi.transfer_data;
+    hadApplicationFee = !!(charge && charge.application_fee_amount);
+  } catch {
+    // If the lookup fails, fall back to a plain refund (no reversal) — the
+    // platform-charge case, which is the default for most operators.
+    reverseTransfer = false;
+    hadApplicationFee = false;
+  }
+
+  const refundParams: Stripe.RefundCreateParams = {
     payment_intent: params.paymentIntentId,
     amount: params.amount,
     reason: "requested_by_customer",
-  });
+  };
+  if (reverseTransfer) {
+    refundParams.reverse_transfer = true;
+    if (hadApplicationFee && params.fullRefund) {
+      refundParams.refund_application_fee = true;
+    }
+  }
+
+  return stripe.refunds.create(
+    refundParams,
+    params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined
+  );
 }
 
 /**

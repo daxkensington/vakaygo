@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { reviews, listings, users } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { requireUser } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 // In-memory cache for review summaries
@@ -14,6 +15,11 @@ const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 export async function POST(request: Request) {
   try {
+    // Require a session — paid LLM call, and this endpoint has no anonymous
+    // use case (no public caller).
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+
     const { listingId } = await request.json();
 
     if (!listingId) {

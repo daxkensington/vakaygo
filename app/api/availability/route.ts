@@ -124,6 +124,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Bound the batch — at most a year of dates per request — so a single call
+    // can't queue an unbounded number of per-date DB round trips.
+    if (dates.length > 366) {
+      return NextResponse.json(
+        { error: "Too many dates in one request (max 366)" },
+        { status: 400 }
+      );
+    }
+
     const owns = await assertListingOwnership(listingId, auth.userId, auth.role);
     if (!owns.ok) return owns.error;
 

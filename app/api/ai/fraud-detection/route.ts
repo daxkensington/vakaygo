@@ -3,11 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, reviews } from "@/drizzle/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireAdmin } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -22,13 +20,11 @@ function getDb() {
  */
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await jwtVerify(token, SECRET);
+    // SECURITY: admin-only. proxy.ts does not gate /api/ai/*, and this route
+    // exposes aggregate counts about arbitrary users; previously any logged-in
+    // user could query it with a caller-supplied travelerId.
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     const { type, data } = await request.json();
 

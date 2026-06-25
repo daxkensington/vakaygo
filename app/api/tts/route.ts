@@ -14,6 +14,10 @@ const PERSONALITY_VOICES: Record<string, { voice: string; speed: number }> = {
 
 export async function POST(request: Request) {
   try {
+    // NOTE: the AI concierge that calls this is mounted in the root layout and
+    // is usable by anonymous visitors, so we do NOT hard-gate behind auth.
+    // Cost is bounded by the per-IP 'ai' rate limit (see lib/rate-limit.ts)
+    // plus the hard text-length cap below.
     const { text, personality } = await request.json() as {
       text: string;
       personality?: string;

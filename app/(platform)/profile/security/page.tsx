@@ -112,7 +112,9 @@ export default function SecurityPage() {
       const res = await fetch("/api/auth/totp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: totpCode }),
+        // Send the 6-digit code as `token` (the field the API reads) plus the
+        // secret returned by GET, which the server persists only on success.
+        body: JSON.stringify({ token: totpCode, secret: totp.secret }),
       });
       const data = await res.json();
       if (!res.ok) {

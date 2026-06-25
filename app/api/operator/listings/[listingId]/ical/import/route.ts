@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, availability } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { parseICal } from "@/lib/ical-parser";
+import { safeFetchText } from "@/lib/safe-fetch";
 
 import { logger } from "@/lib/logger";
 import { requireOperator, assertListingOwnership } from "@/server/admin-auth";
@@ -51,20 +52,24 @@ export async function POST(
       );
     }
 
-    // Fetch the iCal feed
-    const icalRes = await fetch(url, {
-      headers: { "User-Agent": "VakayGo/1.0 Calendar Sync" },
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!icalRes.ok) {
+    // SECURITY: operator-supplied URL fetched server-side — guard against SSRF
+    // (internal hosts, cloud metadata, redirect-to-internal, oversized bodies).
+    let icalText: string;
+    try {
+      icalText = await safeFetchText(url, {
+        maxBytes: 5 * 1024 * 1024,
+        timeoutMs: 15000,
+      });
+    } catch (fetchErr) {
+      logger.warn("iCal import fetch blocked/failed", {
+        listingId,
+        error: fetchErr instanceof Error ? fetchErr.message : "unknown",
+      });
       return NextResponse.json(
-        { error: `Failed to fetch iCal feed: HTTP ${icalRes.status}` },
+        { error: "Could not fetch the iCal feed from that URL" },
         { status: 422 }
       );
     }
-
-    const icalText = await icalRes.text();
 
     if (!icalText.includes("BEGIN:VCALENDAR")) {
       return NextResponse.json(

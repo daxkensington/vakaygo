@@ -39,36 +39,43 @@ export async function POST(request: Request) {
       .where(eq(users.email, normalizedEmail))
       .limit(1);
 
-    let user;
-
+    // SECURITY: the guest flow must NEVER mint a session for a pre-existing
+    // credentialed account based only on a matching email — that is
+    // passwordless account takeover (an attacker who knows an admin/operator
+    // email could obtain their session). If the email already exists, force
+    // the real, password-authenticated sign-in flow instead.
     if (existingUser) {
-      user = existingUser;
-    } else {
-      // Generate random password for guest account
-      const randomPassword = crypto.randomBytes(32).toString("hex");
-      const passwordHash = await bcrypt.hash(randomPassword, 12);
-
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          email: normalizedEmail,
-          name,
-          phone: phone || null,
-          role: "traveler",
-          passwordHash,
-          emailVerified: false,
-        })
-        .returning({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          role: users.role,
-          avatarUrl: users.avatarUrl,
-          businessName: users.businessName,
-        });
-
-      user = newUser;
+      return NextResponse.json(
+        {
+          error: "An account with this email already exists. Please sign in.",
+          code: "account_exists",
+        },
+        { status: 409 }
+      );
     }
+
+    // Generate random password for the brand-new guest account
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+    const passwordHash = await bcrypt.hash(randomPassword, 12);
+
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        name,
+        phone: phone || null,
+        role: "traveler",
+        passwordHash,
+        emailVerified: false,
+      })
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        avatarUrl: users.avatarUrl,
+        businessName: users.businessName,
+      });
 
     await setSessionCookie({
       id: user.id,

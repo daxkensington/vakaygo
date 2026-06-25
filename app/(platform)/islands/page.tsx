@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { safeJsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/layout/header";
@@ -74,7 +75,7 @@ export default async function IslandsPage() {
       <main className="pt-20 bg-cream-50 min-h-screen">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
         {/* Hero — intentionally tall on mobile so the island grid
             starts below the initial viewport. That makes the h1 the

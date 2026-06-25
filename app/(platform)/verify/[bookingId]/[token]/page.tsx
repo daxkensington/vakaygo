@@ -27,11 +27,9 @@ type VerifyData = {
   guestCount: number;
   totalAmount: string;
   currency: string;
-  verificationToken: string;
   checkedIn: boolean;
   checkedInAt: string | null;
   guestName: string;
-  guestEmail: string;
 };
 
 function formatDate(iso: string) {
@@ -67,19 +65,16 @@ export default function VerifyPage({
   useEffect(() => {
     async function verify() {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}/verify`);
+        const res = await fetch(
+          `/api/bookings/${bookingId}/verify?token=${encodeURIComponent(token)}`
+        );
         if (!res.ok) {
           setError("Booking not found or invalid");
           return;
         }
         const result = await res.json();
 
-        // Verify the token matches
-        if (result.verificationToken !== token) {
-          setError("Invalid verification link");
-          return;
-        }
-
+        // The server validates the token; an invalid one yields a 404 above.
         setData(result);
         setCheckedIn(result.checkedIn || false);
         setCheckInTime(result.checkedInAt);

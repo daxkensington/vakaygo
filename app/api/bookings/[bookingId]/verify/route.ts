@@ -5,6 +5,7 @@ import { bookings, listings, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import crypto from "crypto";
 
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
@@ -13,12 +14,22 @@ function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
 
+/** Constant-time string comparison that never throws on length mismatch. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
     const { bookingId } = await params;
+    const { searchParams } = new URL(request.url);
+    const providedToken = searchParams.get("token") || "";
     const db = getDb();
 
     // Look up by bookingNumber (from QR code) or by UUID
@@ -54,16 +65,25 @@ export async function GET(
       .where(condition)
       .limit(1);
 
-    if (!booking) {
+    // SECURITY: this endpoint is unauthenticated (operators scan a QR), so the
+    // caller MUST prove possession of the booking's verification token. Without
+    // this gate anyone could enumerate booking ids/numbers and harvest the
+    // check-in token + guest PII. Never echo the token or guest email back.
+    if (
+      !booking ||
+      !booking.verificationToken ||
+      !providedToken ||
+      !safeEqual(providedToken, booking.verificationToken)
+    ) {
       return NextResponse.json(
         { error: "Booking not found", valid: false },
         { status: 404 }
       );
     }
 
-    // Get traveler info
+    // Get traveler display name only (no email).
     const [traveler] = await db
-      .select({ name: users.name, email: users.email })
+      .select({ name: users.name })
       .from(users)
       .where(eq(users.id, booking.travelerId))
       .limit(1);
@@ -81,11 +101,9 @@ export async function GET(
       guestCount: booking.guestCount,
       totalAmount: booking.totalAmount,
       currency: booking.currency,
-      verificationToken: booking.verificationToken,
       checkedIn: booking.checkedIn,
       checkedInAt: booking.checkedInAt,
       guestName: traveler?.name || "Guest",
-      guestEmail: traveler?.email,
     });
   } catch (error) {
     logger.error("Verify booking error", error);

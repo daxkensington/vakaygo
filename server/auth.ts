@@ -18,12 +18,18 @@ export async function createUser(
   const db = getDb();
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // SECURITY: defense-in-depth — never persist a privileged role from a
+  // self-registration path. Only "operator" or "traveler" are ever accepted;
+  // anything else (e.g. an injected "admin") collapses to "traveler".
+  const safeRole: "traveler" | "operator" =
+    role === "operator" ? "operator" : "traveler";
+
   const [user] = await db
     .insert(users)
     .values({
       email: email.toLowerCase(),
       name,
-      role,
+      role: safeRole,
       passwordHash,
       emailVerified: false,
     })
@@ -58,6 +64,10 @@ export async function verifyCredentials(email: string, password: string) {
     role: user.role,
     avatarUrl: user.avatarUrl,
     businessName: user.businessName,
+    // Returned so the sign-in route can enforce a 2FA challenge before
+    // minting a session. totpSecret never leaves the server.
+    totpEnabled: user.totpEnabled ?? false,
+    totpSecret: user.totpSecret ?? null,
   };
 }
 

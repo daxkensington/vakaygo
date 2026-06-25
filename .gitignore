@@ -50,5 +50,7 @@ next-env.d.ts
 # Lighthouse audit scripts/outputs (kept local, regenerated as needed)
 .lh-*
 lh-*.json
+lighthouse-latest
+lighthouse-report.*
 sweep-lighthouse.mjs
 a11y-failures.mjs

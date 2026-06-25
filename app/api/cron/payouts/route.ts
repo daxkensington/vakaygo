@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, payouts, payoutSchedules } from "@/drizzle/schema";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
 import { CATEGORY_RATES } from "@/lib/pricing";
 
 import { logger } from "@/lib/logger";
@@ -67,6 +67,8 @@ export async function GET(request: Request) {
               eq(bookings.operatorId, schedule.operatorId),
               eq(bookings.status, "completed"),
               eq(bookings.escrowReleased, true),
+              // Defense-in-depth: never pay out an unpaid booking.
+              isNotNull(bookings.paidAt),
               isNull(bookings.payoutId)
             )
           );
@@ -80,28 +82,32 @@ export async function GET(request: Request) {
           continue;
         }
 
-        // Operator earnings = subtotal minus the type-specific commission
-        let totalEarningsCents = 0;
         const currency = operatorBookings[0]?.currency || "usd";
-
-        for (const b of operatorBookings) {
-          const rates = CATEGORY_RATES[b.listingType] || CATEGORY_RATES.tour;
-          const subtotalCents = Math.round(parseFloat(b.subtotal || "0") * 100);
-          const commissionCents = Math.round(subtotalCents * rates.operatorFee);
-          totalEarningsCents += subtotalCents - commissionCents;
-        }
-
         const periodStart = new Date(now);
         periodStart.setDate(periodStart.getDate() - 7);
 
-        // Insert the ledger record first, then claim the bookings. The
-        // isNull(payoutId) guard in the UPDATE makes the claim idempotent
-        // even if two runs race.
+        // Compute the full earnings UPFRONT so the inserted ledger row always
+        // carries a correct (never $0.00) amount — if the post-claim
+        // reconciliation below ever fails mid-run, the operator is never
+        // UNDER-paid. We then claim with an isNull(payoutId) guard + RETURNING
+        // so concurrent/retried runs can't double-claim; the loser claims zero
+        // rows and deletes its phantom row.
+        const earningsFor = (b: { subtotal: string | null; listingType: string }) => {
+          const rates = CATEGORY_RATES[b.listingType] || CATEGORY_RATES.tour;
+          const subtotalCents = Math.round(parseFloat(b.subtotal || "0") * 100);
+          return subtotalCents - Math.round(subtotalCents * rates.operatorFee);
+        };
+
+        const fullEarningsCents = operatorBookings.reduce(
+          (sum, b) => sum + earningsFor(b),
+          0
+        );
+
         const [payout] = await db
           .insert(payouts)
           .values({
             operatorId: schedule.operatorId,
-            amount: (totalEarningsCents / 100).toFixed(2),
+            amount: (fullEarningsCents / 100).toFixed(2),
             currency,
             status: "completed",
             periodStart,
@@ -114,7 +120,7 @@ export async function GET(request: Request) {
           })
           .returning({ id: payouts.id });
 
-        await db
+        const claimed = await db
           .update(bookings)
           .set({ payoutId: payout.id, updatedAt: now })
           .where(
@@ -125,13 +131,44 @@ export async function GET(request: Request) {
               ),
               isNull(bookings.payoutId)
             )
-          );
+          )
+          .returning({ id: bookings.id });
+
+        if (claimed.length === 0) {
+          // Another run beat us to every booking — remove the phantom row.
+          await db.delete(payouts).where(eq(payouts.id, payout.id));
+          results.push({
+            operatorId: schedule.operatorId,
+            status: "skipped",
+            error: "Bookings already claimed by a concurrent run",
+          });
+          continue;
+        }
+
+        // If a concurrent run claimed SOME of our rows, reconcile the amount
+        // DOWN to only what we actually won. (If this update fails the row is
+        // at worst over-stated, never under-stated — far safer than $0.00.)
+        let totalEarningsCents = fullEarningsCents;
+        if (claimed.length !== operatorBookings.length) {
+          const claimedIds = new Set(claimed.map((c) => c.id));
+          totalEarningsCents = operatorBookings
+            .filter((b) => claimedIds.has(b.id))
+            .reduce((sum, b) => sum + earningsFor(b), 0);
+
+          await db
+            .update(payouts)
+            .set({
+              amount: (totalEarningsCents / 100).toFixed(2),
+              bookingCount: claimed.length,
+            })
+            .where(eq(payouts.id, payout.id));
+        }
 
         results.push({
           operatorId: schedule.operatorId,
           status: "success",
           amount: totalEarningsCents / 100,
-          bookingCount: operatorBookings.length,
+          bookingCount: claimed.length,
         });
       } catch (err) {
         results.push({

@@ -11,9 +11,8 @@ import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
-const resend = new Resend(
-  process.env.RESEND_API_KEY || "re_9veHwfmR_EfQt6FpKGS8MwUJgJcejmPDz"
-);
+// Key comes only from the environment — never hardcode secrets in source.
+const resend = new Resend(process.env.RESEND_API_KEY || "");
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 

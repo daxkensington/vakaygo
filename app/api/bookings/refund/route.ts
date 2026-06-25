@@ -4,41 +4,12 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { refundBooking } from "@/server/stripe";
+import { calculateRefundPercent } from "@/lib/cancellation";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-/**
- * Calculate refund percentage based on cancellation policy and time until start.
- */
-function calculateRefundPercent(
-  policy: string | null,
-  hoursUntilStart: number
-): number {
-  switch (policy) {
-    case "flexible":
-      return hoursUntilStart > 24 ? 100 : 0;
-
-    case "moderate":
-      if (hoursUntilStart > 5 * 24) return 100;
-      if (hoursUntilStart > 24) return 50;
-      return 0;
-
-    case "strict":
-      return hoursUntilStart > 7 * 24 ? 50 : 0;
-
-    case "non_refundable":
-      return 0;
-
-    default:
-      // Default to moderate if not set
-      if (hoursUntilStart > 5 * 24) return 100;
-      if (hoursUntilStart > 24) return 50;
-      return 0;
-  }
-}
 
 /**
  * POST — Traveler-initiated refund with cancellation policy enforcement.
@@ -120,10 +91,14 @@ export async function POST(request: Request) {
     const totalCents = Math.round(parseFloat(booking.totalAmount || "0") * 100);
     const refundAmountCents = Math.round(totalCents * (refundPercent / 100));
 
-    // Process Stripe refund
+    // Process Stripe refund. refundBooking inspects the actual charge to decide
+    // whether to reverse the operator transfer; the idempotency key keyed on
+    // the booking collapses concurrent/double refund attempts to one refund.
     await refundBooking({
       paymentIntentId: booking.paymentId,
       amount: refundAmountCents,
+      fullRefund: refundPercent === 100,
+      idempotencyKey: `refund_${booking.id}`,
     });
 
     // Update booking status

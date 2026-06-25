@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { safeJsonLd } from "@/lib/json-ld";
 import { notFound } from "next/navigation";
 import { getIslandBySlug } from "@/server/seo-queries";
 
@@ -122,7 +123,7 @@ export default async function IslandLayout({ children, params }: Props) {
       */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       {children}
     </>

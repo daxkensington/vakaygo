@@ -26,7 +26,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await createUser(email, password, name, role || "traveler");
+    // SECURITY: never trust a client-supplied role. Only travelers and
+    // operators may self-register; admin accounts are provisioned out-of-band.
+    // (createUser also coerces defensively.)
+    const safeRole = role === "operator" ? "operator" : "traveler";
+
+    const user = await createUser(email, password, name, safeRole);
 
     // Handle referral code if provided
     if (referralCode) {

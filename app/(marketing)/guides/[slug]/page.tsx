@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header";
+import { safeJsonLd } from "@/lib/json-ld";
 import { Footer } from "@/components/layout/footer";
 import { BlogPostDetail } from "@/components/blog/blog-post-detail";
 import { neon } from "@neondatabase/serverless";
@@ -149,7 +150,7 @@ export default async function GuidePage({ params }: Props) {
       <main id="main-content">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
         <BlogPostDetail post={post} related={related} />
       </main>

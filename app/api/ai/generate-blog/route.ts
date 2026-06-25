@@ -18,23 +18,30 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    // Auth check
+    // Auth check — blog generation is an operator/admin authoring tool and
+    // calls a paid LLM, so it must not be available to every logged-in user.
     const cookieStore = await cookies();
     const token = cookieStore.get("session")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, SECRET);
+    if (payload.role !== "operator" && payload.role !== "admin") {
+      return NextResponse.json({ error: "Operators only" }, { status: 403 });
+    }
 
-    const { title, category, island, tone = "informative", outline } =
+    const { title: rawTitle, category, island, tone = "informative", outline } =
       await request.json();
 
-    if (!title || typeof title !== "string") {
+    if (!rawTitle || typeof rawTitle !== "string") {
       return NextResponse.json(
         { error: "title is required" },
         { status: 400 }
       );
     }
+
+    // Bound free-text inputs to cap per-request cost.
+    const title = rawTitle.slice(0, 200);
 
     const toneInstruction =
       TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.informative;

@@ -47,20 +47,41 @@ export type EndpointType = keyof typeof RATE_LIMITS;
 export function getEndpointType(pathname: string, method: string): EndpointType {
   if (pathname.startsWith("/api/auth")) return "auth";
   if (pathname.startsWith("/api/admin")) return "admin";
-  if (pathname.startsWith("/api/ai") || pathname.startsWith("/api/chat")) return "ai";
+  if (
+    pathname.startsWith("/api/ai") ||
+    pathname.startsWith("/api/chat") ||
+    pathname.startsWith("/api/tts")
+  )
+    return "ai";
   if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") return "write";
   return "read";
 }
 
 /**
  * Extract client IP from request headers.
+ *
+ * SECURITY: a client can spoof the LEFTMOST X-Forwarded-For entry (it prepends
+ * its own value and the platform appends the real IP), which would let an
+ * attacker rotate the rate-limit bucket key at will. On Vercel, `x-real-ip`
+ * (and `x-vercel-forwarded-for`) are set by the platform to the true client IP
+ * and cannot be prepended by the client, so we trust those first. Only as a
+ * last resort do we fall back to the RIGHTMOST XFF entry (closest to our infra,
+ * not the client-controlled leftmost).
  */
 export function getClientIp(headers: Headers): string {
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    "unknown"
-  );
+  const realIp =
+    headers.get("x-real-ip") || headers.get("x-vercel-forwarded-for");
+  if (realIp) return realIp.split(",")[0].trim();
+
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return "unknown";
 }
 
 /**

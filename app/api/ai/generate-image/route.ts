@@ -17,13 +17,18 @@ const STYLE_PREFIXES: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    // Auth check
+    // Auth check — paid image generation is restricted to operators/admins
+    // (matches generate-description). Previously any logged-in traveler could
+    // run billable Grok image generations with no quota.
     const cookieStore = await cookies();
     const token = cookieStore.get("session")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, SECRET);
+    if (payload.role !== "operator" && payload.role !== "admin") {
+      return NextResponse.json({ error: "Operators only" }, { status: 403 });
+    }
 
     const { prompt, style = "photo" } = await request.json();
 
@@ -35,7 +40,8 @@ export async function POST(request: Request) {
     }
 
     const stylePrefix = STYLE_PREFIXES[style] || STYLE_PREFIXES.photo;
-    const fullPrompt = `${stylePrefix}${prompt}`;
+    // Bound prompt length to cap per-request cost.
+    const fullPrompt = `${stylePrefix}${prompt.slice(0, 1000)}`;
 
     // Generate image via Grok API
     const grokRes = await fetch("https://api.x.ai/v1/images/generations", {

@@ -132,6 +132,22 @@ export async function redeemPoints(params: {
 
 // ─── AWARD BOOKING POINTS ──────────────────────────────────────
 export async function awardBookingPoints(userId: string, bookingId: string, totalAmount: number) {
+  const db = getDb();
+
+  // Idempotency: never award booking points more than once for the same
+  // booking, no matter how many times the booking is PATCHed to "completed".
+  const [already] = await db
+    .select({ id: loyaltyTransactions.id })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.bookingId, bookingId),
+        eq(loyaltyTransactions.type, "earned_booking")
+      )
+    )
+    .limit(1);
+  if (already) return;
+
   const points = Math.floor(totalAmount * POINTS_PER_DOLLAR);
   if (points <= 0) return;
 
@@ -144,7 +160,6 @@ export async function awardBookingPoints(userId: string, bookingId: string, tota
   });
 
   // Check if this is user's first completed booking → bonus
-  const db = getDb();
   const completedBookings = await db
     .select({ id: bookings.id })
     .from(bookings)

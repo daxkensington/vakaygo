@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings } from "@/drizzle/schema";
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, lt, isNotNull } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 
@@ -49,6 +49,9 @@ export async function GET(request: Request) {
         and(
           eq(bookings.status, "completed"),
           eq(bookings.escrowReleased, false),
+          // Defense-in-depth: an unpaid booking must never enter the
+          // escrow/payout pipeline even if its status was forced to completed.
+          isNotNull(bookings.paidAt),
           lt(bookings.endDate, cutoff)
         )
       )

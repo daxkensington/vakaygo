@@ -59,12 +59,9 @@ export async function GET() {
     const secret = totp.secret.base32;
     const uri = totp.toString();
 
-    // Temporarily store the secret (will be committed on POST verify)
-    await db
-      .update(users)
-      .set({ totpSecret: secret })
-      .where(eq(users.id, userId));
-
+    // SECURITY: a GET must not mutate state (it's reachable via CSRF top-level
+    // navigation). We return the freshly generated secret to the client and
+    // only persist it on POST, once the user proves possession with a code.
     return NextResponse.json({ secret, uri });
   } catch (error) {
     logger.error("TOTP setup error", error);
@@ -90,9 +87,15 @@ export async function POST(request: Request) {
     const { payload } = await jwtVerify(token, SECRET);
     const userId = payload.id as string;
 
-    const { token: otpToken } = await request.json();
+    const { token: otpToken, secret } = await request.json();
     if (!otpToken) {
       return NextResponse.json({ error: "token required" }, { status: 400 });
+    }
+    if (!secret || typeof secret !== "string") {
+      return NextResponse.json(
+        { error: "secret required — call GET first to generate one" },
+        { status: 400 }
+      );
     }
 
     const db = getDb();
@@ -100,7 +103,6 @@ export async function POST(request: Request) {
     const [user] = await db
       .select({
         email: users.email,
-        totpSecret: users.totpSecret,
         totpEnabled: users.totpEnabled,
       })
       .from(users)
@@ -118,21 +120,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!user.totpSecret) {
-      return NextResponse.json(
-        { error: "No TOTP secret found. Call GET first to generate one." },
-        { status: 400 }
-      );
-    }
-
-    // Verify the token
+    // Verify the token against the secret the user is enrolling (proof of
+    // possession), then persist the secret AND enable 2FA together.
     const totp = new TOTP({
       issuer: "VakayGo",
       label: user.email,
       algorithm: "SHA1",
       digits: 6,
       period: 30,
-      secret: user.totpSecret,
+      secret,
     });
 
     const delta = totp.validate({ token: otpToken, window: 1 });
@@ -147,7 +143,7 @@ export async function POST(request: Request) {
     // Enable 2FA
     await db
       .update(users)
-      .set({ totpEnabled: true })
+      .set({ totpSecret: secret, totpEnabled: true })
       .where(eq(users.id, userId));
 
     return NextResponse.json({ enabled: true });

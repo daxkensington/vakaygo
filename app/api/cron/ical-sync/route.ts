@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, availability } from "@/drizzle/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { parseICal } from "@/lib/ical-parser";
+import { safeFetchText } from "@/lib/safe-fetch";
 
 import { logger } from "@/lib/logger";
 
@@ -52,22 +53,11 @@ export async function GET(request: Request) {
       if (!listing.icalImportUrl) continue;
 
       try {
-        const icalRes = await fetch(listing.icalImportUrl, {
-          headers: { "User-Agent": "VakayGo/1.0 Calendar Sync" },
-          signal: AbortSignal.timeout(15000),
+        // SSRF-guarded fetch of the operator-supplied calendar URL.
+        const icalText = await safeFetchText(listing.icalImportUrl, {
+          maxBytes: 5 * 1024 * 1024,
+          timeoutMs: 15000,
         });
-
-        if (!icalRes.ok) {
-          results.push({
-            listingId: listing.id,
-            title: listing.title,
-            status: "error",
-            error: `HTTP ${icalRes.status}`,
-          });
-          continue;
-        }
-
-        const icalText = await icalRes.text();
 
         if (!icalText.includes("BEGIN:VCALENDAR")) {
           results.push({

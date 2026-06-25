@@ -3,14 +3,18 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
-    const { query } = await request.json();
+    const { query: rawQuery } = await request.json();
 
-    if (!query || typeof query !== "string") {
+    if (!rawQuery || typeof rawQuery !== "string") {
       return NextResponse.json(
         { error: "query is required" },
         { status: 400 }
       );
     }
+
+    // Bound input to cap per-request cost (this endpoint is public so the
+    // per-IP 'ai' rate limit + this cap are the abuse controls).
+    const query = rawQuery.slice(0, 400);
 
     const systemPrompt = `You are VakayGo's search intelligence. Parse natural language travel queries into structured filters AND generate a friendly search summary.
 
@@ -55,6 +59,7 @@ Examples:
       },
       body: JSON.stringify({
         model: "grok-3-mini",
+        max_tokens: 500,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: query },

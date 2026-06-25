@@ -35,6 +35,8 @@ function SignInContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [requires2fa, setRequires2fa] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -55,12 +57,21 @@ function SignInContent() {
       const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(
+          requires2fa ? { email, password, totpCode } : { email, password }
+        ),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // The account has 2FA enabled — surface the code field and let the
+        // user complete the challenge before a session is issued.
+        if (data.requires2fa) {
+          setRequires2fa(true);
+          setError(totpCode ? data.error || "Invalid two-factor code" : "");
+          return;
+        }
         setError(data.error || "Something went wrong");
         return;
       }
@@ -159,12 +170,42 @@ function SignInContent() {
               </div>
             </div>
 
+            {requires2fa && (
+              <div>
+                <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                  Two-factor code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  value={totpCode}
+                  onChange={(e) =>
+                    setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50 tracking-widest text-center"
+                  placeholder="123456"
+                  autoFocus
+                />
+                <p className="text-xs text-navy-400 mt-1.5">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (requires2fa && totpCode.length !== 6)}
               className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : "Sign In"}
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : requires2fa ? (
+                "Verify & Sign In"
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
         </div>

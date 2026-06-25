@@ -153,13 +153,14 @@ describe("Stripe webhook handler", () => {
     });
   });
 
-  it("charge.refunded looks up booking by paymentId and marks refunded", async () => {
+  it("charge.refunded (full) looks up booking by paymentId and marks refunded", async () => {
     const dbMock = makeDbMock();
     dbMock.selectMatches.push({ id: "bk_found" });
 
     const event = {
       type: "charge.refunded",
-      data: { object: { payment_intent: "pi_999" } },
+      // A fully-refunded charge — Stripe sets refunded:true.
+      data: { object: { payment_intent: "pi_999", refunded: true } },
     };
     const { POST } = await loadHandler({
       constructEvent: () => event,
@@ -169,6 +170,31 @@ describe("Stripe webhook handler", () => {
     expect(res.status).toBe(200);
     expect(dbMock.updateCalls).toHaveLength(1);
     expect(dbMock.updateCalls[0].values).toMatchObject({ status: "refunded" });
+  });
+
+  it("charge.refunded (partial) does NOT overwrite the booking to refunded", async () => {
+    const dbMock = makeDbMock();
+    dbMock.selectMatches.push({ id: "bk_found" });
+
+    const event = {
+      type: "charge.refunded",
+      // A partial refund (e.g. 50% cancellation) — must not be flagged refunded.
+      data: {
+        object: {
+          payment_intent: "pi_999",
+          refunded: false,
+          amount: 10000,
+          amount_refunded: 5000,
+        },
+      },
+    };
+    const { POST } = await loadHandler({
+      constructEvent: () => event,
+      db: dbMock,
+    });
+    const res = await POST(mkRequest(JSON.stringify(event), "sig"));
+    expect(res.status).toBe(200);
+    expect(dbMock.updateCalls).toHaveLength(0);
   });
 
   it("charge.refunded with no matching booking does NOT update", async () => {

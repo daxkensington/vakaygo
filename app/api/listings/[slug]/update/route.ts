@@ -28,7 +28,7 @@ export async function PATCH(
 
     // Verify ownership
     const [listing] = await db
-      .select({ id: listings.id, operatorId: listings.operatorId })
+      .select({ id: listings.id, operatorId: listings.operatorId, status: listings.status })
       .from(listings)
       .where(eq(listings.slug, slug))
       .limit(1);
@@ -37,7 +37,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (listing.operatorId !== payload.id) {
+    const role = payload.role as string;
+    if (listing.operatorId !== payload.id && role !== "admin") {
       return NextResponse.json({ error: "Not your listing" }, { status: 403 });
     }
 
@@ -50,7 +51,37 @@ export async function PATCH(
     if (body.priceAmount !== undefined) updateData.priceAmount = body.priceAmount?.toString();
     if (body.priceUnit) updateData.priceUnit = body.priceUnit;
     if (body.typeData) updateData.typeData = body.typeData;
-    if (body.status) updateData.status = body.status;
+    if (body.status !== undefined) {
+      // SECURITY: operators must NOT be able to self-publish past moderation.
+      // Constrain the SOURCE state of every operator-initiated transition, not
+      // just transitions into "active" — otherwise an operator could two-step
+      // a draft live via draft→paused→active. "active"/"paused" (live states)
+      // are only reachable from an already-approved (active/paused) listing;
+      // unapproved listings may only move between draft/pending_review.
+      const requested = body.status;
+      if (role !== "admin") {
+        // target status -> the source states an operator may transition FROM.
+        // The live states (active/paused) require an already-approved source;
+        // "rejected" is admin-only (absent here).
+        const ALLOWED_SOURCES: Record<string, string[]> = {
+          active: ["active", "paused"],
+          paused: ["active", "paused"],
+          draft: ["draft", "pending_review", "active", "paused", "rejected"],
+          pending_review: ["draft", "pending_review", "active", "paused", "rejected"],
+        };
+        const allowedSources = ALLOWED_SOURCES[requested];
+        if (!allowedSources || !allowedSources.includes(listing.status)) {
+          return NextResponse.json(
+            {
+              error:
+                "This listing must be approved by VakayGo before it can be published",
+            },
+            { status: 403 }
+          );
+        }
+      }
+      updateData.status = requested;
+    }
     if (body.cancellationPolicy !== undefined) updateData.cancellationPolicy = body.cancellationPolicy;
     if (body.minStay !== undefined) updateData.minStay = body.minStay;
     if (body.maxStay !== undefined) updateData.maxStay = body.maxStay;

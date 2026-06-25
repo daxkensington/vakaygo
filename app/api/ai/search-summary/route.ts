@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   try {
-    const { query, resultCount, topResults } = await request.json();
+    const { query: rawQuery, resultCount, topResults } = await request.json();
 
     if (typeof resultCount !== "number") {
       return NextResponse.json(
@@ -11,6 +11,9 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Public endpoint — bound input; output is already capped at 150 tokens.
+    const query = typeof rawQuery === "string" ? rawQuery.slice(0, 300) : rawQuery;
 
     const topResultsText =
       Array.isArray(topResults) && topResults.length > 0

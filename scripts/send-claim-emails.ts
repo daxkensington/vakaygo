@@ -18,7 +18,10 @@ import { listings, islands } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "re_9veHwfmR_EfQt6FpKGS8MwUJgJcejmPDz";
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+if (!RESEND_API_KEY) {
+  throw new Error("RESEND_API_KEY env var is required");
+}
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");

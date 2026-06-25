@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { giftCards } from "@/drizzle/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import Stripe from "stripe";
@@ -67,7 +67,8 @@ export async function GET(request: Request) {
     }
 
     if (!card.isActive) {
-      return NextResponse.json({ error: "This gift card has been deactivated" }, { status: 410 });
+      // Inactive covers both purchaser-deactivated and not-yet-paid cards.
+      return NextResponse.json({ error: "This gift card is not active" }, { status: 410 });
     }
 
     if (card.expiresAt && new Date(card.expiresAt) < new Date()) {
@@ -133,6 +134,11 @@ export async function POST(request: Request) {
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
+    // SECURITY: the card is created INACTIVE and carries no spendable balance
+    // until Stripe confirms the payment. The webhook (payment_intent.succeeded
+    // with metadata.type === "gift_card") flips it active. Otherwise anyone
+    // could mint a fully-funded gift card by calling this endpoint and never
+    // completing the payment.
     await db.insert(giftCards).values({
       code,
       purchaserId: userId,
@@ -142,7 +148,7 @@ export async function POST(request: Request) {
       amount: amount.toFixed(2),
       balance: amount.toFixed(2),
       currency: cardCurrency,
-      isActive: true,
+      isActive: false,
       expiresAt,
     });
 
@@ -181,48 +187,65 @@ export async function PUT(request: Request) {
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const normalizedCode = code.trim().toUpperCase();
+    const now = new Date();
 
-    const [card] = await db
-      .select()
-      .from(giftCards)
-      .where(eq(giftCards.code, normalizedCode))
-      .limit(1);
+    // SECURITY: deduct atomically in a single conditional UPDATE so concurrent
+    // redemptions can never double-spend. The database itself enforces
+    // active + not-expired + sufficient-balance; zero affected rows means the
+    // redemption is not allowed (and we then disambiguate the reason).
+    const deducted = await db
+      .update(giftCards)
+      .set({
+        balance: sql`(${giftCards.balance} - ${amount})`,
+        isActive: sql`(${giftCards.balance} - ${amount}) > 0`,
+      })
+      .where(
+        and(
+          eq(giftCards.code, normalizedCode),
+          eq(giftCards.isActive, true),
+          sql`${giftCards.balance} >= ${amount}`,
+          sql`(${giftCards.expiresAt} IS NULL OR ${giftCards.expiresAt} > ${now})`
+        )
+      )
+      .returning({ balance: giftCards.balance, currency: giftCards.currency });
 
-    if (!card) {
-      return NextResponse.json({ error: "Gift card not found" }, { status: 404 });
-    }
+    if (deducted.length === 0) {
+      // Disambiguate the failure for a clear client error.
+      const [card] = await db
+        .select({
+          isActive: giftCards.isActive,
+          balance: giftCards.balance,
+          expiresAt: giftCards.expiresAt,
+        })
+        .from(giftCards)
+        .where(eq(giftCards.code, normalizedCode))
+        .limit(1);
 
-    if (!card.isActive) {
-      return NextResponse.json({ error: "This gift card has been deactivated" }, { status: 410 });
-    }
-
-    if (card.expiresAt && new Date(card.expiresAt) < new Date()) {
-      return NextResponse.json({ error: "This gift card has expired" }, { status: 410 });
-    }
-
-    const currentBalance = parseFloat(card.balance || "0");
-    if (amount > currentBalance) {
+      if (!card) {
+        return NextResponse.json({ error: "Gift card not found" }, { status: 404 });
+      }
+      if (!card.isActive) {
+        return NextResponse.json(
+          { error: "This gift card is not active" },
+          { status: 410 }
+        );
+      }
+      if (card.expiresAt && new Date(card.expiresAt) < now) {
+        return NextResponse.json({ error: "This gift card has expired" }, { status: 410 });
+      }
       return NextResponse.json(
-        { error: "Insufficient balance", balance: currentBalance },
+        { error: "Insufficient balance", balance: parseFloat(card.balance || "0") },
         { status: 422 }
       );
     }
 
-    const newBalance = currentBalance - amount;
-
-    await db
-      .update(giftCards)
-      .set({
-        balance: newBalance.toFixed(2),
-        isActive: newBalance > 0,
-      })
-      .where(eq(giftCards.code, normalizedCode));
+    const remaining = parseFloat(deducted[0].balance || "0");
 
     return NextResponse.json({
       success: true,
       deducted: amount,
-      remaining: newBalance,
-      currency: card.currency,
+      remaining,
+      currency: deducted[0].currency,
     });
   } catch (error) {
     logger.error("Gift card redeem error", error);

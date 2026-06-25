@@ -21,7 +21,10 @@ const BATCH_SIZE = 50;
  */
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  // Fail closed if the secret is unset — otherwise `Bearer undefined` would
+  // authenticate an anonymous caller and burn Google Places quota.
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

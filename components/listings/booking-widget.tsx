@@ -203,7 +203,14 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        // A returning customer's email already has an account — guest checkout
+        // can't silently log them in (that was an account-takeover hole), so
+        // direct them to sign in instead of dead-ending on a raw error.
+        if (data.code === "account_exists") {
+          setError("You've booked with us before with this email — please sign in to continue.");
+        } else {
+          setError(data.error || "Something went wrong");
+        }
         return;
       }
 

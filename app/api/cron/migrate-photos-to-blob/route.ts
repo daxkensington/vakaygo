@@ -22,7 +22,9 @@ const MAX_BYTES = 10 * 1024 * 1024;
  */
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  // Fail closed if the secret is unset (avoid a `Bearer undefined` bypass).
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

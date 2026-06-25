@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { reviews, listings, users, reviewPhotos, reviewSubRatings } from "@/drizzle/schema";
+import { reviews, listings, users, reviewPhotos, reviewSubRatings, bookings } from "@/drizzle/schema";
 import { sendNewReviewNotification } from "@/server/email";
 import { createNotification } from "@/server/notifications";
 import { awardReviewPoints } from "@/server/loyalty";
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
     // Fetch photos for all reviews in one query
     const reviewIds = result.map((r) => r.id);
-    let photosMap: Record<string, { id: string; url: string; alt: string | null; width: number | null; height: number | null }[]> = {};
+    const photosMap: Record<string, { id: string; url: string; alt: string | null; width: number | null; height: number | null }[]> = {};
     if (reviewIds.length > 0) {
       const photos = await db
         .select({
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch sub-ratings for all reviews
-    let subRatingsMap: Record<string, { category: string; rating: number }[]> = {};
+    const subRatingsMap: Record<string, { category: string; rating: number }[]> = {};
     if (reviewIds.length > 0) {
       const subRatings = await db
         .select({
@@ -114,9 +114,11 @@ export async function POST(request: Request) {
     const { payload } = await jwtVerify(token, SECRET);
     const travelerId = payload.id as string;
 
-    const { bookingId, listingId, rating, title, comment, photoUrls } = await request.json();
+    // listingId is intentionally NOT taken from the client — it is derived
+    // from the verified booking below.
+    const { bookingId, rating, title, comment, photoUrls } = await request.json();
 
-    if (!bookingId || !listingId || !rating) {
+    if (!bookingId || !rating) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -125,6 +127,48 @@ export async function POST(request: Request) {
     }
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
+
+    // SECURITY: the booking must belong to the reviewer and be completed,
+    // otherwise anyone could post (and inflate/deflate) ratings on arbitrary
+    // listings. Derive the listingId from the booking, never the client.
+    const [booking] = await db
+      .select({
+        id: bookings.id,
+        travelerId: bookings.travelerId,
+        listingId: bookings.listingId,
+        status: bookings.status,
+      })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!booking || booking.travelerId !== travelerId) {
+      return NextResponse.json(
+        { error: "You can only review your own bookings" },
+        { status: 403 }
+      );
+    }
+    if (booking.status !== "completed") {
+      return NextResponse.json(
+        { error: "You can only review a completed booking" },
+        { status: 400 }
+      );
+    }
+
+    const listingId = booking.listingId;
+
+    // One review per booking.
+    const [existingReview] = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(eq(reviews.bookingId, bookingId))
+      .limit(1);
+    if (existingReview) {
+      return NextResponse.json(
+        { error: "You have already reviewed this booking" },
+        { status: 409 }
+      );
+    }
 
     const [review] = await db
       .insert(reviews)
@@ -135,6 +179,7 @@ export async function POST(request: Request) {
         rating,
         title,
         comment,
+        isVerifiedPurchase: true,
       })
       .returning({ id: reviews.id });
 
@@ -221,6 +266,17 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ review });
   } catch (error) {
+    // The SELECT dedupe above is racy; reviews.bookingId also has a UNIQUE
+    // constraint, so a concurrent double-submit surfaces here as a unique
+    // violation — translate it to the friendly 409 rather than a 500.
+    const code = (error as { code?: string })?.code;
+    const msg = error instanceof Error ? error.message.toLowerCase() : "";
+    if (code === "23505" || msg.includes("duplicate key") || msg.includes("unique")) {
+      return NextResponse.json(
+        { error: "You have already reviewed this booking" },
+        { status: 409 }
+      );
+    }
     logger.error("Create review error", error);
     return NextResponse.json({ error: "Failed to create review" }, { status: 500 });
   }

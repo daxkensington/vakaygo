@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { bookings, giftCards } from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { constructWebhookEvent } from "@/server/stripe";
 
 import { logger } from "@/lib/logger";
@@ -55,6 +55,29 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "payment_intent.succeeded": {
+        // Gift cards are created INACTIVE and only become spendable once
+        // Stripe confirms the payment here. Matched by code from metadata;
+        // the isActive=false guard makes replays idempotent.
+        const intent = event.data.object;
+        if (
+          intent.metadata?.type === "gift_card" &&
+          intent.metadata?.giftCardCode
+        ) {
+          await db
+            .update(giftCards)
+            .set({ isActive: true })
+            .where(
+              and(
+                eq(giftCards.code, intent.metadata.giftCardCode),
+                eq(giftCards.isActive, false)
+              )
+            );
+          logger.info("Gift card activated", { code: intent.metadata.giftCardCode });
+        }
+        break;
+      }
+
       case "payment_intent.payment_failed": {
         const intent = event.data.object;
         const bookingId = intent.metadata?.bookingId;
@@ -78,8 +101,17 @@ export async function POST(request: Request) {
         const charge = event.data.object;
         const paymentIntentId = charge.payment_intent as string;
 
-        if (paymentIntentId) {
-          // Find booking by payment intent ID and mark as refunded
+        // Only mark the booking fully "refunded" when the charge is fully
+        // refunded. Our cancel/refund routes issue PARTIAL refunds (and set
+        // status='cancelled'); a partial charge.refunded must NOT overwrite
+        // that to 'refunded' and misrepresent how much was returned.
+        const fullyRefunded =
+          charge.refunded === true ||
+          (typeof charge.amount_refunded === "number" &&
+            typeof charge.amount === "number" &&
+            charge.amount_refunded >= charge.amount);
+
+        if (paymentIntentId && fullyRefunded) {
           const [booking] = await db
             .select({ id: bookings.id })
             .from(bookings)

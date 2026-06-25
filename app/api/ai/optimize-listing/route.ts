@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { listings, media, reviews, islands, users } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { assertListingOwnership } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
@@ -29,6 +30,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // SECURITY: operators may only run paid AI analysis on their OWN listings
+    // (admins bypass). Previously any operator could analyze any listingId.
+    const owns = await assertListingOwnership(
+      listingId,
+      payload.id as string,
+      payload.role as string
+    );
+    if (!owns.ok) return owns.error;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 

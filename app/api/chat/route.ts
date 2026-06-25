@@ -410,6 +410,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Messages are required" }, { status: 400 });
     }
 
+    // SECURITY: bound the request so anonymous traffic can't drive an unbounded
+    // (and billable) Claude tool loop. Cap turn count and total input size; the
+    // per-IP 'ai' rate limit is the second control.
+    if (messages.length > 40) {
+      return NextResponse.json(
+        { error: "Conversation is too long. Please start a new chat." },
+        { status: 400 }
+      );
+    }
+    const totalChars = messages.reduce(
+      (n, m) => n + (typeof m.content === "string" ? m.content.length : 0),
+      0
+    );
+    if (totalChars > 24000) {
+      return NextResponse.json(
+        { error: "Message is too long." },
+        { status: 400 }
+      );
+    }
+
     // Get authenticated user for memory
     const userId = await getUserId();
 

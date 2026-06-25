@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email";
@@ -111,6 +111,7 @@ export async function PATCH(
     const [existing] = await db
       .select({
         id: bookings.id,
+        status: bookings.status,
         travelerId: bookings.travelerId,
         operatorId: bookings.operatorId,
         paymentId: bookings.paymentId,
@@ -142,12 +143,17 @@ export async function PATCH(
       }
     }
 
-    // "confirmed" means PAID — only the Stripe webhook confirms bookings.
-    // Without this gate an operator could confirm (and retroactively stamp
-    // paidAt on) a booking that was never paid for.
-    if (status === "confirmed" && !(existing.paymentId && existing.paidAt)) {
+    // "confirmed" AND "completed" both imply the booking was PAID. Without
+    // this gate an operator could move a never-paid booking straight to
+    // "completed", which the escrow-release + payouts crons then turn into a
+    // real payout-ledger credit. Only allow these transitions once payment
+    // is on record (the webhook stamps paymentId + paidAt).
+    if (
+      (status === "confirmed" || status === "completed") &&
+      !(existing.paymentId && existing.paidAt)
+    ) {
       return NextResponse.json(
-        { error: "Bookings are confirmed automatically when payment completes" },
+        { error: "A booking can only be confirmed or completed after payment is received" },
         { status: 400 }
       );
     }
@@ -156,18 +162,32 @@ export async function PATCH(
     if (status) updateData.status = status;
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
 
+    // Make the transition INTO "completed" atomic: guard the UPDATE on the row
+    // not already being completed, so concurrent PATCHes produce exactly one
+    // winner and loyalty points are awarded once (no check-then-act race).
+    const isCompleting = status === "completed";
+    const whereClause = isCompleting
+      ? and(eq(bookings.id, bookingId), ne(bookings.status, "completed"))
+      : eq(bookings.id, bookingId);
+
     const [updated] = await db
       .update(bookings)
       .set(updateData)
-      .where(eq(bookings.id, bookingId))
+      .where(whereClause)
       .returning();
 
     if (!updated) {
+      if (isCompleting) {
+        // Lost the race (already completed) — idempotent success, no re-award.
+        return NextResponse.json({ booking: { id: bookingId, status: "completed" } });
+      }
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Award loyalty points when booking is completed
-    if (status === "completed") {
+    // Award loyalty points only when THIS request performed the transition into
+    // "completed". awardBookingPoints is also idempotent per booking as a
+    // second line of defense. Payment is already guaranteed by the gate above.
+    if (isCompleting) {
       try {
         const totalAmount = parseFloat(updated.totalAmount);
         awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
