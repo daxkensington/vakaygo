@@ -91,6 +91,9 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").default(false),
     emailVerificationToken: varchar("email_verification_token", { length: 128 }),
     emailVerificationExpires: timestamp("email_verification_expires"),
+    // Passwordless sign-in (magic link) — single-use, short-lived
+    magicLinkToken: varchar("magic_link_token", { length: 128 }),
+    magicLinkExpires: timestamp("magic_link_expires"),
     businessName: varchar("business_name", { length: 256 }),
     businessDescription: text("business_description"),
     businessPhone: varchar("business_phone", { length: 20 }),
@@ -115,6 +118,7 @@ export const users = pgTable(
   (t) => [
     index("users_email_idx").on(t.email),
     index("users_role_idx").on(t.role),
+    index("users_magic_link_token_idx").on(t.magicLinkToken),
   ]
 );
 

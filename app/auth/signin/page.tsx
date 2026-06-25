@@ -16,6 +16,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   callback_failed: "Something went wrong during sign-in. Please try again.",
   oauth_not_configured: "Google sign-in is not available at this time.",
   server_error: "A server error occurred. Please try again later.",
+  invalid_link: "That sign-in link is invalid or has expired. Please request a new one.",
+  use_password: "This account uses two-factor authentication. Please sign in with your password below.",
 };
 
 export default function SignInPage() {
@@ -37,6 +39,8 @@ function SignInContent() {
   const [loading, setLoading] = useState(false);
   const [requires2fa, setRequires2fa] = useState(false);
   const [totpCode, setTotpCode] = useState("");
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -82,6 +86,32 @@ function SignInContent() {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMagicLink() {
+    setError("");
+    if (!email) {
+      setError("Enter your email first, then request a sign-in link.");
+      return;
+    }
+    setMagicLoading(true);
+    try {
+      const res = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not send a sign-in link.");
+        return;
+      }
+      setMagicSent(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setMagicLoading(false);
     }
   }
 
@@ -208,6 +238,26 @@ function SignInContent() {
               )}
             </button>
           </form>
+
+          {!requires2fa && (
+            <div className="mt-4 text-center">
+              {magicSent ? (
+                <p className="text-sm text-teal-700 bg-teal-50 rounded-xl px-4 py-3">
+                  Check your email — if an account exists, a one-time sign-in link is on its way.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleMagicLink}
+                  disabled={magicLoading}
+                  className="text-sm text-gold-700 font-semibold hover:text-gold-600 disabled:opacity-60 inline-flex items-center gap-2"
+                >
+                  {magicLoading && <Loader2 size={14} className="animate-spin" />}
+                  Forgot your password? Email me a sign-in link
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <p className="text-center text-navy-400 text-sm mt-6">

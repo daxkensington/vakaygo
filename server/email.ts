@@ -294,6 +294,42 @@ export async function sendVerificationEmail(params: {
   });
 }
 
+export async function sendMagicLinkEmail(params: {
+  to: string;
+  name: string;
+  url: string;
+}) {
+  const { to, name, url } = params;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: "Your VakayGo sign-in link",
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:linear-gradient(135deg,#1A6B6A,#1C2333);border-radius:16px;padding:40px 32px;text-align:center;margin-bottom:24px">
+    <h1 style="color:white;font-size:24px;margin:0">Sign in to VakayGo</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Click the button below to sign in to your VakayGo account. No password needed.</p>
+    <div style="text-align:center;margin-bottom:16px">
+      <a href="${url}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Sign In</a>
+    </div>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 15 minutes and can be used once. If you didn't request it, you can safely ignore this email.</p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
 // ─── PAYOUT & FINANCIAL EMAILS ────────────────────────────────
 
 export async function sendPayoutNotification(params: {
