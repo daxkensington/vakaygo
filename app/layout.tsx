@@ -1,3 +1,4 @@
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import type { Metadata } from "next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
@@ -154,6 +155,7 @@ export default async function RootLayout({
         <ServiceWorkerRegister />
         <Analytics />
         <GoogleAnalytics />
+              <ServiceWorkerRegistrar />
       </body>
     </html>
   );
