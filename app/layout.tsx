@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
@@ -26,8 +26,16 @@ const dmSerif = DM_Serif_Display({
   weight: "400",
 });
 
+export const viewport: Viewport = {
+  // In the root export so /admin's own themeColor can override it — a hardcoded
+  // <meta> in <head> always wins and could not be overridden per-route.
+  themeColor: "#1A6B6A",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://vakaygo.com"),
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true },
   title: {
     default: "VakayGo — Caribbean Travel Platform",
     template: "%s | VakayGo",
@@ -99,9 +107,10 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} data-dir={dir} className={`${dmSans.variable} ${dmSerif.variable}`}>
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1A6B6A" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/* manifest + theme-color moved to the metadata/viewport exports below.
+            A hardcoded <link>/<meta> always wins (the browser takes the first),
+            so /admin's own manifest and theme could never override these and the
+            installed admin app got the customer manifest. */}
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-screen flex flex-col">
