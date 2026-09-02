@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Bed,
   Compass,
@@ -62,10 +63,38 @@ export function ImageFallback({
 }
 
 /**
- * Listing-card image with fallback. Uses a real <img> (not a CSS
- * background-image) so the browser can lazy-load below-the-fold cards
- * and so explicit width/height prevent layout shift. Falls back to the
- * gradient placeholder on load failure or when src is null.
+ * Hosts next/image may optimise (must match next.config remotePatterns).
+ * Anything else — operator-pasted URLs on arbitrary hosts, our own
+ * /api/images/proxy — falls back to a plain <img>, because next/image
+ * THROWS at render time for an unconfigured host.
+ */
+const OPTIMIZABLE_HOSTS = [
+  ".public.blob.vercel-storage.com",
+  "images.unsplash.com",
+  "lh3.googleusercontent.com",
+  "imgen.x.ai",
+];
+
+function isOptimizable(src: string): boolean {
+  if (src.startsWith("/") && !src.startsWith("/api/")) return true; // static asset
+  try {
+    const { protocol, hostname } = new URL(src);
+    if (protocol !== "https:") return false;
+    return OPTIMIZABLE_HOSTS.some((h) => (h.startsWith(".") ? hostname.endsWith(h) : hostname === h));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Listing image with fallback.
+ *
+ * Renders through next/image when the host allows it, so a 400px card
+ * gets a 400px WebP instead of the 300–500 KB Blob original (a listing
+ * page was shipping 2.3 MB of images on mobile). `sizes` tells the
+ * browser how wide the slot is — pass it for anything that isn't a
+ * third-of-the-row card. Falls back to the gradient placeholder on load
+ * failure or when src is null.
  *
  * Pass `priority` for above-the-fold images (hero, first card) so the
  * browser fetches them eagerly with high priority.
@@ -79,6 +108,7 @@ export function ImageWithFallback({
   children,
   onClick,
   priority = false,
+  sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
 }: {
   src: string | null;
   type: string;
@@ -88,6 +118,8 @@ export function ImageWithFallback({
   children?: React.ReactNode;
   onClick?: () => void;
   priority?: boolean;
+  /** CSS `sizes` for srcset selection. Default fits a 1/2/3-column card grid. */
+  sizes?: string;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -101,18 +133,32 @@ export function ImageWithFallback({
 
   return (
     <div className={`relative overflow-hidden ${className}`} onClick={onClick}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt || ""}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        fetchPriority={priority ? "high" : "auto"}
-        width={800}
-        height={600}
-        onError={() => setFailed(true)}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      {isOptimizable(src) ? (
+        <Image
+          src={src}
+          alt={alt || ""}
+          fill
+          sizes={sizes}
+          priority={priority}
+          loading={priority ? "eager" : "lazy"}
+          quality={75}
+          onError={() => setFailed(true)}
+          className="object-cover"
+        />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src}
+          alt={alt || ""}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
+          width={800}
+          height={600}
+          onError={() => setFailed(true)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       {children}
     </div>
   );

@@ -19,6 +19,12 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig: NextConfig = {
   images: {
     qualities: [75, 80],
+    // Listing photos are immutable Blob objects (new photo = new URL), so
+    // cache each optimised variant for 31 days. Fewer breakpoints = fewer
+    // transformations billed per source image.
+    minimumCacheTTL: 2678400,
+    deviceSizes: [640, 828, 1200, 1920],
+    imageSizes: [96, 200, 400],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "maps.googleapis.com" },

@@ -90,6 +90,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   className="hover:opacity-95 transition-opacity"
                   iconSize={56}
                   priority
+                  sizes="(max-width: 768px) 100vw, 66vw"
                 />
               )}
             </div>
@@ -106,6 +107,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   </>
                 ) : (
                   <ImageWithFallback
+                    sizes="(max-width: 768px) 50vw, 25vw"
                     src={photo.url || null}
                     type={type}
                     className="hover:opacity-90 transition-opacity relative"
@@ -141,6 +143,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   className="hover:opacity-95 transition-opacity"
                   iconSize={56}
                   priority
+                  sizes="(max-width: 768px) 100vw, 66vw"
                 />
               )}
             </div>
@@ -158,6 +161,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                     </>
                   ) : (
                     <ImageWithFallback
+                    sizes="(max-width: 768px) 50vw, 25vw"
                       src={photo.url || null}
                       type={type}
                       className="hover:opacity-90 transition-opacity"
@@ -186,6 +190,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                 className="h-full"
                 iconSize={56}
                 priority
+                  sizes="(max-width: 768px) 100vw, 66vw"
               />
             )}
           </div>

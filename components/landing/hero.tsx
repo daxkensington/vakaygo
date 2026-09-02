@@ -44,10 +44,17 @@ export function Hero() {
   const router = useRouter();
 
   useEffect(() => {
-    const mountTimer = setTimeout(() => setMountRotation(true), 4000);
+    // Crossfading full-viewport images every 6s from t=4s kept the page
+    // visually "unfinished" for the whole load window (Speed Index 18.7s
+    // on mobile) and burns battery. Start later, rotate slower, and
+    // don't animate at all for people who asked for reduced motion or
+    // when the tab is hidden.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const mountTimer = setTimeout(() => setMountRotation(true), 9000);
     const interval = setInterval(() => {
+      if (document.hidden) return;
       setCurrentImage((prev) => (prev + 1) % heroImages.length);
-    }, 6000);
+    }, 9000);
     return () => {
       clearTimeout(mountTimer);
       clearInterval(interval);
