@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands, media, availability } from "@/drizzle/schema";
-import { eq, and, ilike, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, inArray, notInArray, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { requireOperator } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
+import { parseSearchQuery, likeEscape } from "@/lib/search-terms";
+
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
@@ -67,8 +69,28 @@ export async function GET(request: Request) {
         .limit(1);
       if (islandRow) conditions.push(eq(listings.islandId, islandRow.id));
     }
-    if (search) {
-      conditions.push(ilike(listings.title, `%${search}%`));
+    // Free-text search: every stemmed term must appear somewhere in the
+    // listing's text (title, headline, description, cuisine, typeData —
+    // which holds Google types, "serves", tags). See lib/search-terms.ts.
+    let relevance: ReturnType<typeof sql> | null = null;
+    if (search && search.trim()) {
+      const parsed = parseSearchQuery(search.slice(0, 120));
+      const haystack = sql`(coalesce(${listings.title}, '') || ' ' || coalesce(${listings.headline}, '') || ' ' || coalesce(${listings.description}, '') || ' ' || coalesce(${listings.cuisineType}, '') || ' ' || coalesce(${listings.typeData}::text, ''))`;
+      const termClauses = parsed.terms.map((t) => sql`${haystack} ILIKE ${"%" + likeEscape(t) + "%"}`);
+      const compactClause = parsed.compact
+        ? sql`replace(lower(${listings.title}), ' ', '') LIKE ${"%" + likeEscape(parsed.compact) + "%"}`
+        : null;
+      if (termClauses.length > 0) {
+        const allTerms = sql.join(termClauses, sql` AND `);
+        conditions.push(compactClause ? sql`((${allTerms}) OR ${compactClause})` : sql`(${allTerms})`);
+      }
+      // Rank: exact phrase in title, then all terms in title, then title
+      // contains the first term, then everything else (featured/rating).
+      const phrasePat = "%" + likeEscape(parsed.phrase) + "%";
+      const titleTerms = parsed.terms.length
+        ? sql.join(parsed.terms.map((t) => sql`${listings.title} ILIKE ${"%" + likeEscape(t) + "%"}`), sql` AND `)
+        : sql`false`;
+      relevance = sql`(CASE WHEN ${listings.title} ILIKE ${phrasePat} THEN 0 WHEN ${titleTerms} THEN 1 ELSE 2 END)`;
     }
     if (minPrice) {
       conditions.push(gte(listings.priceAmount, minPrice));
@@ -155,6 +177,8 @@ export async function GET(request: Request) {
                 ? desc(listings.reviewCount)
                 : desc(listings.isFeatured);
 
+    const orderClauses = relevance && sort === "recommended" ? [relevance, orderBy, desc(listings.reviewCount)] : [orderBy];
+
     const results = await db
       .select({
         id: listings.id,
@@ -177,7 +201,7 @@ export async function GET(request: Request) {
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))
       .where(and(...conditions))
-      .orderBy(orderBy)
+      .orderBy(...orderClauses)
       .limit(limit)
       .offset(offset);
 
