@@ -59,7 +59,7 @@ function makeDbMock() {
   return { db, updateCalls, selectMatches, returningRows };
 }
 
-const sendBookingConfirmation = vi.fn(async () => {});
+const sendBookingConfirmation = vi.fn(async (_params: Record<string, unknown>) => {});
 
 async function loadHandler(opts: {
   constructEvent: () => unknown;
