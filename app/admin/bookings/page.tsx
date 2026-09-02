@@ -39,6 +39,7 @@ const STATUS_TABS = [
 ] as const;
 
 const STATUS_COLORS: Record<string, string> = {
+  requested: "bg-gold-100 text-gold-700",
   pending: "bg-amber-100 text-amber-700",
   confirmed: "bg-green-100 text-green-700",
   completed: "bg-blue-100 text-blue-700",
@@ -48,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",

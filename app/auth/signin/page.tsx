@@ -81,6 +81,12 @@ function SignInContent() {
       }
 
       await refresh();
+      const next = searchParams.get("next");
+      // Only same-origin relative paths — never an absolute URL from the query string.
+      if (next && /^\/(?!\/)[\w\-./?=&%]*$/.test(next)) {
+        router.push(next);
+        return;
+      }
       router.push(data.user.role === "operator" ? "/operator" : "/explore");
     } catch {
       setError("Something went wrong. Please try again.");

@@ -36,6 +36,7 @@ export const listingTypeEnum = pgEnum("listing_type", [
 ]);
 
 export const bookingStatusEnum = pgEnum("booking_status", [
+  "requested",
   "pending",
   "confirmed",
   "cancelled",
@@ -188,7 +189,7 @@ export const listings = pgTable(
     longitude: decimal("longitude", { precision: 10, scale: 7 }),
     parish: varchar("parish", { length: 128 }),
     priceAmount: decimal("price_amount", { precision: 10, scale: 2 }),
-    priceCurrency: varchar("price_currency", { length: 8 }).default("XCD"),
+    priceCurrency: varchar("price_currency", { length: 8 }).default("USD"),
     priceUnit: varchar("price_unit", { length: 32 }),
     priceFrom: boolean("price_from").default(false),
     // Type-specific data stored as JSON
@@ -310,7 +311,7 @@ export const bookings = pgTable(
       "0.00"
     ),
     totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-    currency: varchar("currency", { length: 8 }).default("XCD"),
+    currency: varchar("currency", { length: 8 }).default("USD"),
     paymentMethod: varchar("payment_method", { length: 32 }),
     paymentId: varchar("payment_id", { length: 256 }),
     paidAt: timestamp("paid_at"),
@@ -389,7 +390,7 @@ export const payouts = pgTable("payouts", {
     .notNull()
     .references(() => users.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("XCD"),
+  currency: varchar("currency", { length: 8 }).default("USD"),
   status: payoutStatusEnum("status").default("pending").notNull(),
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
@@ -647,7 +648,7 @@ export const promoCodes = pgTable("promo_codes", {
   description: text("description"),
   discountType: varchar("discount_type", { length: 16 }).notNull(), // "percentage" or "fixed"
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("XCD"),
+  currency: varchar("currency", { length: 8 }).default("USD"),
   minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
   maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }),
   maxUses: integer("max_uses"),
@@ -909,4 +910,35 @@ export const wishlistItems = pgTable("wishlist_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   primaryKey({ columns: [t.collectionId, t.listingId] }),
+]);
+
+// ─── LISTING CLAIMS ─────────────────────────────────────────────
+// A business asking to take over one of the ~7,100 listings created from
+// public data. Claims are reviewed by an admin (verified by phone) before
+// ownership transfers — an unreviewed claim would let anyone receive the
+// bookings and payouts of a real hotel or restaurant.
+export const listingClaimStatusEnum = pgEnum("listing_claim_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+export const listingClaims = pgTable("listing_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: listingClaimStatusEnum("status").default("pending").notNull(),
+  contactName: varchar("contact_name", { length: 256 }).notNull(),
+  contactPhone: varchar("contact_phone", { length: 40 }).notNull(),
+  roleAtBusiness: varchar("role_at_business", { length: 128 }),
+  notes: text("notes"),
+  adminNotes: text("admin_notes"),
+  reviewedBy: uuid("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("listing_claims_listing_idx").on(t.listingId),
+  index("listing_claims_operator_idx").on(t.operatorId),
+  index("listing_claims_status_idx").on(t.status),
 ]);

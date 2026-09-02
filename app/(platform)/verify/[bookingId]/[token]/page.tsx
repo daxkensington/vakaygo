@@ -33,7 +33,7 @@ type VerifyData = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC",
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -42,7 +42,7 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", {
+  return new Date(iso).toLocaleTimeString("en-US", { timeZone: "UTC",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,

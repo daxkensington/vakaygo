@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { formatBookingDateTime } from "@/lib/booking-time";
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY is not set");
@@ -6,6 +7,8 @@ if (!process.env.RESEND_API_KEY) {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "VakayGo <hello@vakaygo.com>";
+// hello@ is send-only — replies must land in a real mailbox.
+const REPLY_TO = "bookings@vakaygo.com";
 
 export async function sendBookingConfirmation(params: {
   to: string;
@@ -21,6 +24,7 @@ export async function sendBookingConfirmation(params: {
   await resend.emails.send({
     from: FROM,
     to,
+    replyTo: REPLY_TO,
     subject: `Booking Confirmed — ${listingTitle}`,
     html: `
 <!DOCTYPE html>
@@ -40,7 +44,7 @@ export async function sendBookingConfirmation(params: {
     <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
       <table style="width:100%;font-size:14px;color:#4A4F73">
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Booking #</td><td style="text-align:right">${bookingNumber}</td></tr>
-        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Date</td><td style="text-align:right">${new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</td></tr>
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">When</td><td style="text-align:right">${formatBookingDateTime(startDate)}</td></tr>
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Guests</td><td style="text-align:right">${guestCount}</td></tr>
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Total</td><td style="text-align:right;color:#1A6B6A;font-weight:700">$${totalAmount}</td></tr>
       </table>
@@ -88,7 +92,7 @@ export async function sendBookingNotificationToOperator(params: {
       <table style="width:100%;font-size:14px;color:#4A4F73">
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Booking #</td><td style="text-align:right">${bookingNumber}</td></tr>
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Traveler</td><td style="text-align:right">${travelerName}</td></tr>
-        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Date</td><td style="text-align:right">${new Date(startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</td></tr>
+        <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">When</td><td style="text-align:right">${formatBookingDateTime(startDate)}</td></tr>
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Guests</td><td style="text-align:right">${guestCount}</td></tr>
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Your Earnings</td><td style="text-align:right;color:#1A6B6A;font-weight:700">$${subtotal}</td></tr>
       </table>

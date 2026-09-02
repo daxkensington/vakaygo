@@ -48,6 +48,7 @@ export default function BookingPage() {
   const [includeInsurance, setIncludeInsurance] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
   const [usePoints, setUsePoints] = useState(false);
@@ -146,6 +147,7 @@ export default function BookingPage() {
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
       setBooked(true);
+      setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {
       setError("Something went wrong");
@@ -164,16 +166,18 @@ export default function BookingPage() {
               <Check size={40} className="text-white" />
             </div>
             <h1 className="text-3xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
-              Booking Confirmed!
+              {requested ? "Request received" : "Booking Confirmed!"}
             </h1>
             <p className="text-navy-400 mt-4">
-              Booking #{bookingNumber}
+              {requested ? "Request" : "Booking"} #{bookingNumber}
             </p>
             <p className="text-navy-500 mt-2">
-              {listing.title} · {formatCurrency(pricing.total)}
+              {listing.title}{requested ? "" : ` · ${formatCurrency(pricing.total)}`}
             </p>
             <p className="text-sm text-navy-400 mt-6">
-              A confirmation email has been sent to {user.email}. The operator will be notified of your booking.
+              {requested
+                ? `Nothing is confirmed or charged yet. We've emailed ${user.email} and will contact the business to confirm your date, usually within 24 hours.`
+                : `A confirmation email has been sent to ${user.email}. The operator will be notified of your booking.`}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link href="/bookings" className="bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">

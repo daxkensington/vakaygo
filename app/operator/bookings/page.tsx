@@ -30,6 +30,7 @@ type Booking = {
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Check }> = {
+  requested: { label: "Requested", color: "bg-gold-50 text-gold-700", icon: Clock },
   pending: { label: "Pending", color: "bg-yellow-50 text-yellow-700", icon: Clock },
   confirmed: { label: "Confirmed", color: "bg-teal-50 text-teal-700", icon: Check },
   cancelled: { label: "Cancelled", color: "bg-red-50 text-red-600", icon: X },
@@ -170,7 +171,7 @@ export default function OperatorBookingsPage() {
                     <div className="flex flex-wrap gap-4 text-sm text-navy-400">
                       <span>#{booking.bookingNumber}</span>
                       <span>
-                        {new Date(booking.startDate).toLocaleDateString("en-US", {
+                        {new Date(booking.startDate).toLocaleDateString("en-US", { timeZone: "UTC",
                           month: "short",
                           day: "numeric",
                           year: "numeric",

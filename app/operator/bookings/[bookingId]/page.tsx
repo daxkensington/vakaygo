@@ -1,5 +1,7 @@
 "use client";
 
+import { formatBookingDateTime } from "@/lib/booking-time";
+
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import {
@@ -56,6 +58,7 @@ const statusConfig: Record<
   string,
   { label: string; color: string; icon: typeof Check }
 > = {
+  requested: { label: "Requested", color: "bg-gold-50 text-gold-700", icon: Clock },
   pending: { label: "Pending", color: "bg-yellow-50 text-yellow-700", icon: Clock },
   confirmed: { label: "Confirmed", color: "bg-teal-50 text-teal-700", icon: Check },
   cancelled: { label: "Cancelled", color: "bg-red-50 text-red-600", icon: X },
@@ -63,6 +66,12 @@ const statusConfig: Record<
   refunded: { label: "Refunded", color: "bg-navy-50 text-navy-600", icon: AlertCircle },
   no_show: { label: "No Show", color: "bg-red-50 text-red-600", icon: AlertCircle },
 };
+
+// Booking start/end are WALL-CLOCK values at the listing (see lib/booking-time).
+function formatWhen(value: string | null) {
+  if (!value) return "—";
+  return formatBookingDateTime(value);
+}
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -259,11 +268,11 @@ export default function OperatorBookingDetailPage({
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-navy-400">Start</dt>
-              <dd className="text-navy-700 font-medium">{formatDate(booking.startDate)}</dd>
+              <dd className="text-navy-700 font-medium">{formatWhen(booking.startDate)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-navy-400">End</dt>
-              <dd className="text-navy-700 font-medium">{formatDate(booking.endDate)}</dd>
+              <dd className="text-navy-700 font-medium">{formatWhen(booking.endDate)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-navy-400">Guests</dt>

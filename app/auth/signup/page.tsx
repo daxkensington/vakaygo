@@ -17,8 +17,13 @@ export default function SignUpPage() {
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [step, setStep] = useState<"role" | "details">("role");
-  const [role, setRole] = useState<"traveler" | "operator">("traveler");
+  // "Claim This Business" links here with ?role=operator&claim=<listingId>.
+  // Without the preselect, businesses landed on the traveler default and
+  // could never claim (five did exactly that in Aug 2026).
+  const presetRole = searchParams.get("role") === "operator" ? "operator" : null;
+  const claimListingId = (searchParams.get("claim") || "").match(/^[0-9a-f-]{36}$/i)?.[0] || null;
+  const [step, setStep] = useState<"role" | "details">(presetRole ? "details" : "role");
+  const [role, setRole] = useState<"traveler" | "operator">(presetRole || "traveler");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,6 +78,10 @@ function SignUpContent() {
         body: JSON.stringify({ email, password }),
       });
 
+      if (role === "operator" && claimListingId) {
+        router.push(`/operator/claim/${claimListingId}`);
+        return;
+      }
       router.push(role === "operator" ? "/operator" : "/explore");
     } catch {
       setError("Something went wrong. Please try again.");
@@ -258,7 +267,7 @@ function SignUpContent() {
 
         <p className="text-center text-navy-400 text-sm mt-6">
           Already have an account?{" "}
-          <Link href="/auth/signin" className="text-gold-700 font-semibold hover:text-gold-600">
+          <Link href={claimListingId ? `/auth/signin?next=/operator/claim/${claimListingId}` : "/auth/signin"} className="text-gold-700 font-semibold hover:text-gold-600">
             Sign in
           </Link>
         </p>

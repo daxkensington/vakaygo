@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
+import { formatBookingDateTime } from "@/lib/booking-time";
 import Link from "next/link";
 import {
   CalendarCheck,
@@ -38,10 +39,12 @@ type Booking = {
   listingTitle: string;
   listingType: string;
   listingSlug: string;
+  islandSlug?: string | null;
   paidAt: string | null;
 };
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+  requested: { label: "Request sent", color: "text-gold-700", bg: "bg-gold-50" },
   pending: { label: "Pending", color: "text-yellow-700", bg: "bg-yellow-50" },
   confirmed: { label: "Confirmed", color: "text-teal-700", bg: "bg-teal-50" },
   cancelled: { label: "Cancelled", color: "text-red-600", bg: "bg-red-50" },
@@ -273,7 +276,7 @@ function BookingsContent() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <Link
-                            href={`/grenada/${booking.listingSlug}`}
+                            href={`/${booking.islandSlug || "grenada"}/${booking.listingSlug}`}
                             className="font-semibold text-navy-700 hover:text-gold-600 transition-colors text-lg"
                           >
                             {booking.listingTitle}
@@ -285,12 +288,7 @@ function BookingsContent() {
                         <div className="flex flex-wrap gap-4 text-sm text-navy-400">
                           <span className="flex items-center gap-1">
                             <CalendarCheck size={14} />
-                            {new Date(booking.startDate).toLocaleDateString("en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            {formatBookingDateTime(booking.startDate)}
                           </span>
                           <span>#{booking.bookingNumber}</span>
                           <span className="capitalize">{booking.listingType}</span>
@@ -298,12 +296,20 @@ function BookingsContent() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-navy-700">
-                          ${parseFloat(booking.totalAmount).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-navy-400">
-                          {booking.paidAt ? "total paid" : "total due"}
-                        </p>
+                        {booking.status === "requested" ? (
+                          <p className="text-xs text-navy-400 max-w-[12rem]">
+                            We&apos;re confirming with the business — nothing charged yet
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-xl font-bold text-navy-700">
+                              ${parseFloat(booking.totalAmount).toFixed(2)}
+                            </p>
+                            <p className="text-xs text-navy-400">
+                              {booking.paidAt ? "total paid" : "total due"}
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
 

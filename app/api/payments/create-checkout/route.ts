@@ -44,6 +44,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Already paid" }, { status: 400 });
     }
 
+    // A REQUESTED booking (unclaimed or unpriced listing) has nothing to
+    // pay and nobody to confirm it. Stripe happily completes a $0 session,
+    // and the webhook then marked these "confirmed" — four travelers got a
+    // paid-looking confirmation for restaurants that had never heard of
+    // them. Fail closed here regardless of what the UI offered.
+    if (booking.status === "requested") {
+      return NextResponse.json(
+        { error: "This request is being confirmed with the business — there is nothing to pay yet." },
+        { status: 409 }
+      );
+    }
+    if (Math.round(parseFloat(booking.totalAmount || "0") * 100) <= 0) {
+      return NextResponse.json({ error: "Nothing to pay for this booking" }, { status: 409 });
+    }
+
     // Get listing and operator
     const [listing] = await db
       .select({ title: listings.title, operatorId: listings.operatorId, type: listings.type })

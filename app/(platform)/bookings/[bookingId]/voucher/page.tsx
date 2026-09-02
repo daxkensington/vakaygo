@@ -38,7 +38,7 @@ type VoucherData = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC",
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -47,7 +47,7 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", {
+  return new Date(iso).toLocaleTimeString("en-US", { timeZone: "UTC",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -57,7 +57,7 @@ function formatTime(iso: string) {
 function getGoogleCalendarUrl(data: VoucherData) {
   const start = new Date(data.date);
   const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
-  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: data.listingTitle,

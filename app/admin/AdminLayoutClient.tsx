@@ -23,6 +23,7 @@ import {
   Loader2,
   BookOpen,
   Tag,
+  BadgeCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/promos", label: "Promo Codes", icon: Tag },
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle },
+  { href: "/admin/claims", label: "Claims", icon: BadgeCheck },
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/blog", label: "Blog", icon: BookOpen },
   { href: "/admin/settings", label: "Settings", icon: Settings },

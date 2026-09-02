@@ -32,9 +32,11 @@ type BookingWidgetProps = {
     reviewCount: number | null;
     isInstantBook: boolean | null;
   };
+  /** Listing built from public data — nobody at the business sees bookings. */
+  unclaimed?: boolean;
 };
 
-export function BookingWidget({ listing }: BookingWidgetProps) {
+export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
   const router = useRouter();
   const { user, refresh } = useAuth();
   const { currency, format: formatConverted } = useCurrency();
@@ -44,6 +46,7 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
   const [includeInsurance, setIncludeInsurance] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [paymentStep, setPaymentStep] = useState(false);
   const [bookingId, setBookingId] = useState("");
@@ -265,6 +268,13 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
 
       setBookingId(data.booking.id);
       setBookingNumber(data.booking.bookingNumber);
+      if (data.mode === "request" || data.booking?.status === "requested") {
+        // Unclaimed / unpriced listing: nothing to pay, nobody on the
+        // platform can confirm it. Never show the Stripe step.
+        setRequested(true);
+        setBooked(true);
+        return;
+      }
       setPaymentStep(true);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -397,14 +407,24 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
           <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check size={32} className="text-white" />
           </div>
-          <h3 role="status" className="text-xl font-bold text-navy-700">Booking Confirmed!</h3>
+          <h3 role="status" className="text-xl font-bold text-navy-700">
+            {requested ? "Request received" : "Booking Confirmed!"}
+          </h3>
           <p className="text-navy-400 mt-2">
-            Booking #{bookingNumber}
+            {requested ? "Request" : "Booking"} #{bookingNumber}
           </p>
-          <p className="text-sm text-navy-400 mt-1">
-            Total: {formatCurrency(pricing.total)}
-          </p>
-          {directPayment ? (
+          {!requested && (
+            <p className="text-sm text-navy-400 mt-1">
+              Total: {formatCurrency(pricing.total)}
+            </p>
+          )}
+          {requested ? (
+            <p className="text-sm text-navy-500 mt-4 leading-relaxed">
+              Nothing is confirmed or charged yet. We&apos;ll contact the business to
+              confirm your date{pricePerUnit > 0 ? "" : " and price"} and email you,
+              usually within 24 hours.
+            </p>
+          ) : directPayment ? (
             <p className="text-xs text-navy-300 mt-4">
               This operator accepts direct payment. Your booking has been
               submitted — the operator will confirm it shortly.
@@ -800,25 +820,44 @@ export function BookingWidget({ listing }: BookingWidgetProps) {
               )}
             </button>
             <p className="text-center text-navy-300 text-xs mt-3">
-              {user ? "You won't be charged yet" : "Continue as guest or sign in"}
+              {unclaimed
+                ? "No payment now — we confirm with the business first"
+                : user
+                  ? "You won't be charged yet"
+                  : "Continue as guest or sign in"}
             </p>
           </>
         )}
 
         {/* Trust Signals */}
         <div className="mt-6 pt-6 border-t border-cream-200 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-navy-400">
-            <Shield size={16} className="text-teal-500" />
-            Verified local operator
-          </div>
-          <div className="flex items-center gap-2 text-sm text-navy-400">
-            <Check size={16} className="text-teal-500" />
-            Free cancellation up to 24h
-          </div>
-          <div className="flex items-center gap-2 text-sm text-navy-400">
-            <Check size={16} className="text-teal-500" />
-            Secure payment via VakayGo
-          </div>
+          {unclaimed ? (
+            <>
+              <div className="flex items-center gap-2 text-sm text-navy-400">
+                <Shield size={16} className="text-teal-500" />
+                Listed from public data — VakayGo confirms by phone
+              </div>
+              <div className="flex items-center gap-2 text-sm text-navy-400">
+                <Check size={16} className="text-teal-500" />
+                Nothing charged until the business confirms
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-sm text-navy-400">
+                <Shield size={16} className="text-teal-500" />
+                Verified local operator
+              </div>
+              <div className="flex items-center gap-2 text-sm text-navy-400">
+                <Check size={16} className="text-teal-500" />
+                Free cancellation up to 24h
+              </div>
+              <div className="flex items-center gap-2 text-sm text-navy-400">
+                <Check size={16} className="text-teal-500" />
+                Secure payment via VakayGo
+              </div>
+            </>
+          )}
         </div>
 
         {/* Operator Earnings Transparency */}

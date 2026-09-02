@@ -12,6 +12,8 @@ type TransferBookingProps = {
   priceUnit: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   typeData: Record<string, any> | null;
+  /** Listing built from public data — the operator cannot see bookings. */
+  unclaimed?: boolean;
 };
 
 const vehicleTypes = [
@@ -21,7 +23,7 @@ const vehicleTypes = [
   { id: "luxury", label: "Luxury", capacity: "1-3 passengers", multiplier: 2.2 },
 ];
 
-export function TransferBooking({ listingId, listingTitle, priceAmount, priceUnit, typeData }: TransferBookingProps) {
+export function TransferBooking({ listingId, listingTitle, priceAmount, priceUnit, typeData, unclaimed = false }: TransferBookingProps) {
   const { user } = useAuth();
   const [pickup, setPickup] = useState("airport");
   const [dropoff, setDropoff] = useState("");
@@ -33,6 +35,7 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
   const [roundTrip, setRoundTrip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
 
@@ -63,6 +66,7 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed"); return; }
       setBooked(true);
+      setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {
       setError("Something went wrong");
@@ -77,17 +81,23 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
         <div className="w-14 h-14 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check size={28} className="text-white" />
         </div>
-        <h3 className="text-xl font-bold text-navy-700">Transfer Booked!</h3>
+        <h3 className="text-xl font-bold text-navy-700">{requested ? "Request received" : "Transfer Booked!"}</h3>
         <p className="text-navy-400 mt-2">#{bookingNumber}</p>
-        <p className="text-sm text-navy-500 mt-3">Your driver will meet you with a name sign.</p>
+        <p className="text-sm text-navy-500 mt-3">
+          {requested
+            ? "Nothing is confirmed or charged yet. We'll confirm availability and the exact price with the operator and email you, usually within 24 hours."
+            : "Your driver will meet you with a name sign."}
+        </p>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)]">
-      <h3 className="font-bold text-navy-700 mb-1">Book This Transfer</h3>
-      <p className="text-sm text-navy-400 mb-5">Fixed pricing — no surprises</p>
+      <h3 className="font-bold text-navy-700 mb-1">{unclaimed ? "Request This Transfer" : "Book This Transfer"}</h3>
+      <p className="text-sm text-navy-400 mb-5">
+        {unclaimed ? "Price confirmed with the operator before anything is charged" : "Fixed pricing — no surprises"}
+      </p>
 
       <form onSubmit={handleBook} className="space-y-4">
         {/* Pickup */}

@@ -8,6 +8,8 @@ type DiningReservationProps = {
   listingId: string;
   listingTitle: string;
   operatorId: string;
+  /** Listing built from public data — the restaurant cannot see reservations. */
+  unclaimed?: boolean;
 };
 
 const timeSlots = [
@@ -16,7 +18,7 @@ const timeSlots = [
   "20:00", "20:30", "21:00",
 ];
 
-export function DiningReservation({ listingId, listingTitle, operatorId }: DiningReservationProps) {
+export function DiningReservation({ listingId, listingTitle, operatorId, unclaimed = false }: DiningReservationProps) {
   const { user } = useAuth();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -24,6 +26,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [reserved, setReserved] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
 
@@ -61,6 +64,7 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
       }
 
       setReserved(true);
+      setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {
       setError("Something went wrong");
@@ -75,8 +79,14 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
         <div className="w-14 h-14 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check size={28} className="text-white" />
         </div>
-        <h3 className="text-xl font-bold text-navy-700">Reservation Confirmed!</h3>
+        <h3 className="text-xl font-bold text-navy-700">{requested ? "Request received" : "Reservation Confirmed!"}</h3>
         <p className="text-navy-400 mt-2">#{bookingNumber}</p>
+        {requested && (
+          <p className="text-sm text-navy-500 mt-3 leading-relaxed">
+            Nothing is confirmed yet. We&apos;ll contact {listingTitle} to confirm your table and
+            email you, usually within 24 hours.
+          </p>
+        )}
         <div className="mt-4 p-4 bg-cream-50 rounded-xl text-sm text-navy-600">
           <p>{listingTitle}</p>
           <p className="mt-1">{new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at {time}</p>
@@ -88,8 +98,12 @@ export function DiningReservation({ listingId, listingTitle, operatorId }: Dinin
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)]">
-      <h3 className="font-bold text-navy-700 mb-1">Make a Reservation</h3>
-      <p className="text-sm text-navy-400 mb-5">No cover fees — free to book</p>
+      <h3 className="font-bold text-navy-700 mb-1">{unclaimed ? "Request a Table" : "Make a Reservation"}</h3>
+      <p className="text-sm text-navy-400 mb-5">
+        {unclaimed
+          ? "We confirm with the restaurant by phone and email you back — no charge."
+          : "No cover fees — free to book"}
+      </p>
 
       <form onSubmit={handleReserve} className="space-y-4">
         {/* Date */}

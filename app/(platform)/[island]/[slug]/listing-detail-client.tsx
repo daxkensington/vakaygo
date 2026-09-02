@@ -501,11 +501,15 @@ export function ListingDetailClient({
                     bookings.
                   </p>
                   <a
-                    href="/auth/signup"
+                    href={`/auth/signup?role=operator&claim=${listing.id}`}
                     className="inline-flex items-center gap-2 bg-white text-gold-700 px-5 py-2.5 rounded-xl font-semibold mt-4 hover:bg-cream-100 transition-colors text-sm"
                   >
                     Claim This Business — Free
                   </a>
+                  <p className="text-white/70 text-xs mt-3">
+                    Already have a business account?{" "}
+                    <a href={`/auth/signin?next=/operator/claim/${listing.id}`} className="underline">Sign in to claim</a>
+                  </p>
                 </div>
               ) : (
                 <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
@@ -796,6 +800,7 @@ export function ListingDetailClient({
                     listingId={listing.id}
                     listingTitle={listing.title}
                     operatorId={listing.operatorId}
+                    unclaimed={!!td.unclaimed}
                   />
                 </div>
               </div>
@@ -808,11 +813,12 @@ export function ListingDetailClient({
                     priceAmount={listing.priceAmount}
                     priceUnit={listing.priceUnit}
                     typeData={listing.typeData}
+                    unclaimed={!!td.unclaimed}
                   />
                 </div>
               </div>
             ) : (
-              <BookingWidget listing={listing} />
+              <BookingWidget listing={listing} unclaimed={!!td.unclaimed} />
             )}
           </div>
 
