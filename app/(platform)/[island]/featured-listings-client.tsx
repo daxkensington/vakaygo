@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
 
 export type FeaturedListing = {
   id: string;
@@ -67,20 +68,15 @@ export function FeaturedListingsClient({
             className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
           >
             <div className="relative h-44 overflow-hidden">
-              {image ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={image}
-                  alt={listing.title}
-                  loading="lazy"
-                  decoding="async"
-                  width={800}
-                  height={600}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <div className="absolute inset-0 bg-cream-200" />
-              )}
+              {/* Same component as every other card so the Blob original
+                  (200–3,300 KB) is served as a ~400px WebP. */}
+              <ImageWithFallback
+                src={image}
+                type="tour"
+                alt={listing.title}
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+              />
             </div>
             <div className="p-4">
               <p className="text-xs text-navy-400">{listing.parish || islandName}</p>
