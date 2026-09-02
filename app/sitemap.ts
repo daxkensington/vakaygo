@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, blogPosts } from "@/drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const BASE_URL = "https://vakaygo.com";
 
@@ -132,9 +132,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // blog_posts table may not exist yet — skip
   }
 
+  // Explore landings: /explore?island=x and /explore?island=x&type=y for
+  // every combination that has active listings. These are ISR pages
+  // (next.config rewrites them to /explore/f/...) with their own title,
+  // description and canonical.
+  const facetCounts = await db
+    .select({ slug: islands.slug, type: listings.type, n: sql<number>`count(*)::int` })
+    .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
+    .where(and(eq(islands.isActive, true), eq(listings.status, "active")))
+    .groupBy(islands.slug, listings.type);
+  const facetIslands = Array.from(new Set(facetCounts.map((r) => r.slug)));
+  const explorePages: MetadataRoute.Sitemap = [
+    ...facetIslands.map((slug) => ({
+      url: `${BASE_URL}/explore?island=${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
+    ...facetCounts
+      .filter((r) => r.n >= 3)
+      .map((r) => ({
+        // Next does not XML-escape <loc>; a raw & would invalidate the whole sitemap.
+        url: `${BASE_URL}/explore?island=${r.slug}&amp;type=${r.type}`,
+        lastModified: new Date(),
+        changeFrequency: "daily" as const,
+        priority: 0.6,
+      })),
+  ];
+
   return [
     ...staticPages,
     ...islandPages,
+    ...explorePages,
     ...thingsToDoPages,
     ...restaurantPages,
     ...hotelPages,
