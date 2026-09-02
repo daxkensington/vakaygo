@@ -6,7 +6,6 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { Categories } from "@/components/landing/categories";
 import { IslandShowcase } from "@/components/landing/island-showcase";
 import { AudienceSplit } from "@/components/landing/audience-split";
-import { Roadmap } from "@/components/landing/roadmap";
 import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
@@ -83,9 +82,6 @@ export default function LandingPage() {
         </div>
         <div className="defer-offscreen">
           <AudienceSplit />
-        </div>
-        <div className="defer-offscreen">
-          <Roadmap />
         </div>
         <div className="defer-offscreen">
           <WaitlistSection />
