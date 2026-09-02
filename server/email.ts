@@ -57,6 +57,99 @@ export async function sendBookingConfirmation(params: {
   });
 }
 
+/**
+ * Sent when a card booking is CREATED — before any payment. The booking
+ * is pending until Stripe reports payment (then sendBookingConfirmation
+ * goes out from the webhook), and it expires unpaid after
+ * `expiresAfterHours`. This replaced a "Booking Confirmed" email that
+ * used to go out at creation, i.e. before the traveler had paid.
+ */
+export async function sendBookingReceived(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  startDate: string;
+  guestCount: number;
+  totalAmount: string;
+  expiresAfterHours: number;
+}) {
+  const { to, travelerName, bookingNumber, listingTitle, startDate, guestCount, totalAmount, expiresAfterHours } = params;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    replyTo: REPLY_TO,
+    subject: `Complete your booking — ${listingTitle}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#1C2333;border-radius:16px;padding:32px;text-align:center;margin-bottom:24px">
+    <p style="color:#C8912E;font-size:14px;margin:0 0 8px">Booking received — not yet confirmed</p>
+    <h1 style="color:white;font-size:22px;margin:0">${listingTitle}</h1>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${travelerName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">We have your booking details. <strong>Nothing is confirmed until payment is complete.</strong> Pay from My Bookings within ${expiresAfterHours} hours — after that the booking expires and you would need to book again.</p>
+    <table style="width:100%;font-size:14px;color:#4A4F73">
+      <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Booking #</td><td style="text-align:right">${bookingNumber}</td></tr>
+      <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">When</td><td style="text-align:right">${formatBookingDateTime(startDate)}</td></tr>
+      <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Guests</td><td style="text-align:right">${guestCount}</td></tr>
+      <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Total to pay</td><td style="text-align:right;color:#1A6B6A;font-weight:700">${totalAmount} USD</td></tr>
+    </table>
+    <div style="text-align:center;margin:24px 0 8px">
+      <a href="https://vakaygo.com/bookings" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Complete payment</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
+/** Sent by the abandoned-bookings cron when an unpaid booking is closed. */
+export async function sendBookingExpired(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  listingUrl: string;
+  expiresAfterHours: number;
+}) {
+  const { to, travelerName, bookingNumber, listingTitle, listingUrl, expiresAfterHours } = params;
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    replyTo: REPLY_TO,
+    subject: `Booking expired — ${listingTitle}`,
+    html: `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:40px 24px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${travelerName},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your booking <strong>#${bookingNumber}</strong> for <strong>${listingTitle}</strong> was not paid within ${expiresAfterHours} hours, so we have closed it. <strong>You have not been charged</strong> and nothing was reserved.</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Still want to go? You can book again in a minute:</p>
+    <div style="text-align:center;margin:24px 0 8px">
+      <a href="${listingUrl}" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Book again</a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`.trim(),
+  });
+}
+
 export async function sendBookingNotificationToOperator(params: {
   to: string;
   operatorName: string;

@@ -55,6 +55,12 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+    if (booking.status === "cancelled") {
+      return NextResponse.json(
+        { error: "This booking has expired or been cancelled — please book again." },
+        { status: 409 }
+      );
+    }
     if (Math.round(parseFloat(booking.totalAmount || "0") * 100) <= 0) {
       return NextResponse.json({ error: "Nothing to pay for this booking" }, { status: 409 });
     }

@@ -428,8 +428,8 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             </p>
           ) : payLater ? (
             <p className="text-sm text-navy-500 mt-4 leading-relaxed">
-              Your spot is held but <strong>not confirmed until paid</strong>. Pay any time from{" "}
-              <a href="/bookings" className="text-gold-700 font-semibold">My Bookings</a>.
+              <strong>Not confirmed until paid.</strong> Pay within 48 hours from{" "}
+              <a href="/bookings" className="text-gold-700 font-semibold">My Bookings</a> — after that the booking expires and nothing is charged.
             </p>
           ) : directPayment ? (
             <p className="text-xs text-navy-300 mt-4">

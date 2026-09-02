@@ -391,7 +391,7 @@ function BookingsContent() {
                           <Clock size={14} className="text-yellow-500" />
                           <p className="text-sm text-navy-400">
                             {booking.status === "pending"
-                              ? "Waiting for operator confirmation"
+                              ? "Not confirmed until paid — expires 48 h after booking"
                               : "Payment required to finalize booking"}
                           </p>
                         </div>

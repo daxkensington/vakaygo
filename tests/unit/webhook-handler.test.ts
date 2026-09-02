@@ -13,7 +13,9 @@ beforeEach(() => {
 // the final values.
 function makeDbMock() {
   const updateCalls: { table: unknown; values: unknown; where: unknown }[] = [];
-  const selectMatches: { id: string }[] = [];
+  const selectMatches: Record<string, unknown>[] = [];
+  // Rows handed back by `.returning()` after an update.
+  const returningRows: Record<string, unknown>[] = [];
 
   const updateChain = (table: unknown) => {
     let captured: { values?: unknown; where?: unknown } = {};
@@ -25,7 +27,10 @@ function makeDbMock() {
       where(cond: unknown) {
         captured.where = cond;
         updateCalls.push({ table, values: captured.values, where: cond });
-        return Promise.resolve();
+        // Awaitable directly, or chained with .returning()
+        return Object.assign(Promise.resolve(), {
+          returning: () => Promise.resolve(returningRows),
+        });
       },
     };
     return chain;
@@ -51,13 +56,19 @@ function makeDbMock() {
     select: (_cols?: unknown) => selectChain(),
   };
 
-  return { db, updateCalls, selectMatches };
+  return { db, updateCalls, selectMatches, returningRows };
 }
+
+const sendBookingConfirmation = vi.fn(async () => {});
 
 async function loadHandler(opts: {
   constructEvent: () => unknown;
-  db: { db: unknown; updateCalls: unknown[]; selectMatches: { id: string }[] };
+  db: { db: unknown; updateCalls: unknown[]; selectMatches: Record<string, unknown>[] };
 }) {
+  sendBookingConfirmation.mockClear();
+  // The route emails the traveler on payment; the real module throws at
+  // load without RESEND_API_KEY.
+  vi.doMock("@/server/email", () => ({ sendBookingConfirmation }));
   vi.doMock("stripe", () => {
     class StripeMock {
       webhooks = { constructEvent: opts.constructEvent };
@@ -108,13 +119,23 @@ describe("Stripe webhook handler", () => {
     expect(res.status).toBe(400);
   });
 
-  it("checkout.session.completed marks the booking confirmed", async () => {
+  it("checkout.session.completed marks the booking confirmed and emails the traveler", async () => {
     const dbMock = makeDbMock();
+    dbMock.returningRows.push({
+      bookingNumber: "VG-TEST-1",
+      travelerId: "u1",
+      listingId: "l1",
+      startDate: new Date("2026-12-01T00:00:00Z"),
+      guestCount: 2,
+      totalAmount: "120.00",
+    });
+    dbMock.selectMatches.push({ email: "traveler@example.com", name: "Pat", title: "Sunset Sail" });
     const event = {
       type: "checkout.session.completed",
       data: {
         object: {
           payment_intent: "pi_123",
+          amount_total: 12000,
           metadata: { bookingId: "bk_abc" },
         },
       },
@@ -132,6 +153,33 @@ describe("Stripe webhook handler", () => {
       paymentId: "pi_123",
       paymentMethod: "card",
     });
+    expect(sendBookingConfirmation).toHaveBeenCalledTimes(1);
+    expect(sendBookingConfirmation.mock.calls[0][0]).toMatchObject({
+      to: "traveler@example.com",
+      bookingNumber: "VG-TEST-1",
+      totalAmount: "120.00",
+    });
+  });
+
+  it("checkout.session.completed with no payment_intent ($0 session) confirms NOTHING", async () => {
+    // Stripe completes a $0 Checkout as paid with payment_intent null.
+    // That marked four unpaid bookings "confirmed" in Aug 2026.
+    const dbMock = makeDbMock();
+    const event = {
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          payment_intent: null,
+          amount_total: 0,
+          metadata: { bookingId: "bk_free" },
+        },
+      },
+    };
+    const { POST } = await loadHandler({ constructEvent: () => event, db: dbMock });
+    const res = await POST(mkRequest(JSON.stringify(event), "sig"));
+    expect(res.status).toBe(200);
+    expect(dbMock.updateCalls).toHaveLength(0);
+    expect(sendBookingConfirmation).not.toHaveBeenCalled();
   });
 
   it("payment_intent.payment_failed cancels the booking", async () => {

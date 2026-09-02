@@ -108,7 +108,7 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 | escrow-release | Every 6h | Release escrow for completed bookings |
 | refresh-photos | Sundays 3am UTC | Refresh expired Google Places photo refs |
 | enrich-listings | Wednesdays 4am UTC | Pull Google Places data for listings missing info |
-| abandoned-bookings | Every 2h | Send reminders for abandoned bookings |
+| abandoned-bookings | Every 2h | Unpaid card bookings: one recovery email at 2h, cancelled at 48h (or start date) — `lib/abandoned-bookings.ts` |
 | weekly-report | Mondays 8am UTC | Send operator weekly reports |
 | price-alerts | Daily 9am UTC | Notify travelers of price drops |
 | tax-documents | Jan 15 8am UTC | Generate annual tax documents |

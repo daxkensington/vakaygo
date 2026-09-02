@@ -4,7 +4,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users, islands, promoCodes, promoCodeUses } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
-import { sendBookingConfirmation, sendBookingNotificationToOperator } from "@/server/email";
+import { sendBookingReceived, sendBookingNotificationToOperator } from "@/server/email";
+import { EXPIRE_AFTER_HOURS } from "@/lib/abandoned-bookings";
 import { sendBookingRequestReceived, sendBookingRequestToTeam } from "@/server/email-requests";
 import { createNotification } from "@/server/notifications";
 import { shouldRequestBooking, isUnclaimedTypeData, isUnclaimedOperatorEmail } from "@/lib/booking-request";
@@ -336,16 +337,19 @@ export async function POST(request: Request) {
         }).catch(() => {});
       }
     } else {
+      // Nothing is paid yet: the real "Booking Confirmed" email goes out
+      // from the Stripe webhook. This one says pay within 48 h or it expires.
       if (traveler?.email) {
-        sendBookingConfirmation({
+        sendBookingReceived({
           to: traveler.email,
           travelerName: traveler.name || "Traveler",
           bookingNumber: booking.bookingNumber,
           listingTitle: listing.title,
           startDate,
           guestCount,
-          totalAmount: pricing.total.toFixed(2),
-        }).catch(() => {});
+          totalAmount: finalTotal.toFixed(2),
+          expiresAfterHours: EXPIRE_AFTER_HOURS,
+        }).catch((err) => logger.error("Booking received email failed", err));
       }
 
       if (listing.operatorEmail && !unclaimed) {

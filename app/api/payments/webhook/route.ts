@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, giftCards } from "@/drizzle/schema";
+import { bookings, giftCards, users, listings } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { constructWebhookEvent } from "@/server/stripe";
+import { sendBookingConfirmation } from "@/server/email";
 
 import { logger } from "@/lib/logger";
 /**
@@ -38,19 +39,56 @@ export async function POST(request: Request) {
         const session = event.data.object;
         const bookingId = session.metadata?.bookingId;
 
+        // A $0 session completes as "paid" with payment_intent null —
+        // that is not a payment. Refuse to confirm anything on it.
+        const paymentIntent = typeof session.payment_intent === "string" ? session.payment_intent : null;
+        if (bookingId && (!paymentIntent || !(session.amount_total && session.amount_total > 0))) {
+          logger.warn("Checkout completed without a payment; booking left as is", { bookingId, amountTotal: session.amount_total });
+          break;
+        }
+
         if (bookingId) {
-          await db
+          const [paid] = await db
             .update(bookings)
             .set({
               status: "confirmed",
-              paymentId: session.payment_intent as string,
+              paymentId: paymentIntent,
               paymentMethod: "card",
               paidAt: new Date(),
               updatedAt: new Date(),
             })
-            .where(eq(bookings.id, bookingId));
+            .where(eq(bookings.id, bookingId))
+            .returning({
+              bookingNumber: bookings.bookingNumber,
+              travelerId: bookings.travelerId,
+              listingId: bookings.listingId,
+              startDate: bookings.startDate,
+              guestCount: bookings.guestCount,
+              totalAmount: bookings.totalAmount,
+            });
 
           logger.info("Booking paid", { bookingId });
+
+          // Now — and only now — the traveler gets "Booking Confirmed".
+          if (paid) {
+            try {
+              const [traveler] = await db.select({ email: users.email, name: users.name }).from(users).where(eq(users.id, paid.travelerId)).limit(1);
+              const [listing] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, paid.listingId)).limit(1);
+              if (traveler?.email) {
+                await sendBookingConfirmation({
+                  to: traveler.email,
+                  travelerName: traveler.name || "Traveler",
+                  bookingNumber: paid.bookingNumber,
+                  listingTitle: listing?.title || "your booking",
+                  startDate: paid.startDate.toISOString(),
+                  guestCount: paid.guestCount || 1,
+                  totalAmount: parseFloat(paid.totalAmount).toFixed(2),
+                });
+              }
+            } catch (err) {
+              logger.error("Booking confirmation email failed", { bookingId, err });
+            }
+          }
         }
         break;
       }

@@ -315,6 +315,9 @@ export const bookings = pgTable(
     paymentMethod: varchar("payment_method", { length: 32 }),
     paymentId: varchar("payment_id", { length: 256 }),
     paidAt: timestamp("paid_at"),
+    // Set by the abandoned-bookings cron when the one "complete your
+    // booking" email goes out; the claim that stops it repeating.
+    recoveryEmailSentAt: timestamp("recovery_email_sent_at"),
     guestNotes: text("guest_notes"),
     operatorNotes: text("operator_notes"),
     cancellationReason: text("cancellation_reason"),
