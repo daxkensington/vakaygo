@@ -8,11 +8,31 @@ type TrustBadgesProps = {
   reviewCount?: number | null;
   isFeatured?: boolean | null;
   type?: string;
+  /** Listing built from public data: no operator has verified it, nothing
+   *  can be cancelled, and the rating is Google's. */
+  unclaimed?: boolean;
 };
 
-export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured, type }: TrustBadgesProps) {
+export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured, type, unclaimed = false }: TrustBadgesProps) {
   const rating = avgRating ? parseFloat(avgRating) : 0;
   const badges: { icon: typeof Shield; label: string; color: string }[] = [];
+
+  if (unclaimed) {
+    if (rating >= 4.5 && (reviewCount || 0) >= 10) {
+      badges.push({ icon: Star, label: `${rating.toFixed(1)} on Google`, color: "bg-gold-50 text-gold-700" });
+    }
+    badges.push({ icon: Shield, label: "Listed from public data", color: "bg-cream-200 text-navy-600" });
+    return (
+      <div className="flex flex-wrap gap-2">
+        {badges.map((badge) => (
+          <span key={badge.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${badge.color}`}>
+            <badge.icon size={12} />
+            {badge.label}
+          </span>
+        ))}
+      </div>
+    );
+  }
 
   // Free cancellation — always show
   badges.push({

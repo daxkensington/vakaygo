@@ -244,7 +244,12 @@ export function ListingDetailClient({
           : undefined,
     };
 
-    if (listing.avgRating && listing.reviewCount && listing.reviewCount > 0) {
+    // Google's structured-data policy: aggregateRating must come from reviews
+    // collected on THIS site. Imported Google ratings stay visible on the
+    // page but out of the markup (a mismatch is a manual-action risk).
+    const tdForLd = (listing.typeData || {}) as Record<string, unknown>;
+    const importedRating = tdForLd.unclaimed === true || tdForLd.source === "google-places";
+    if (!importedRating && listing.avgRating && listing.reviewCount && listing.reviewCount > 0) {
       jsonLd.aggregateRating = {
         "@type": "AggregateRating",
         ratingValue: parseFloat(listing.avgRating).toFixed(1),
@@ -406,7 +411,7 @@ export function ListingDetailClient({
                         <span className="font-semibold text-navy-700">
                           {parseFloat(listing.avgRating).toFixed(1)}
                         </span>
-                        ({listing.reviewCount} reviews)
+                        ({listing.reviewCount} {td.unclaimed || td.source === "google-places" ? "Google reviews" : "reviews"})
                       </div>
                     )}
                   </div>
@@ -481,6 +486,7 @@ export function ListingDetailClient({
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
                   type={listing.type}
+                  unclaimed={!!td.unclaimed}
                 />
               </div>
 
@@ -727,10 +733,13 @@ export function ListingDetailClient({
                 </div>
               )}
 
-              {/* Cancellation Policy */}
-              <div className="mt-8">
-                <CancellationPolicy policy={listing.cancellationPolicy} />
-              </div>
+              {/* Cancellation Policy — a request on a public-data listing has
+                  nothing to cancel, so don't promise a policy nobody set. */}
+              {!td.unclaimed && (
+                <div className="mt-8">
+                  <CancellationPolicy policy={listing.cancellationPolicy} />
+                </div>
+              )}
 
               {/* Contact Operator */}
               {!td.unclaimed && listing.operatorId && (

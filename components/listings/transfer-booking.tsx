@@ -39,7 +39,10 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
   const [bookingNumber, setBookingNumber] = useState("");
   const [error, setError] = useState("");
 
-  const basePrice = parseFloat(priceAmount || "30");
+  // No listing price ⇒ we cannot quote. The old default of "30" showed a
+  // made-up fare on 473 of 500 transfer listings.
+  const hasPrice = !!priceAmount && parseFloat(priceAmount) > 0;
+  const basePrice = hasPrice ? parseFloat(priceAmount as string) : 0;
   const selectedVehicle = vehicleTypes.find(v => v.id === vehicle) || vehicleTypes[0];
   const price = basePrice * selectedVehicle.multiplier * (roundTrip ? 1.8 : 1);
 
@@ -191,7 +194,7 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
         <div className="p-4 bg-cream-50 rounded-xl">
           <div className="flex justify-between text-sm">
             <span className="text-navy-400">{selectedVehicle.label} {roundTrip ? "(round trip)" : "(one way)"}</span>
-            <span className="font-bold text-navy-700">{formatCurrency(price)}</span>
+            <span className="font-bold text-navy-700">{hasPrice && !unclaimed ? formatCurrency(price) : "Quoted by the operator"}</span>
           </div>
         </div>
 
@@ -199,7 +202,7 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
 
         <button type="submit" disabled={loading}
           className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2">
-          {loading ? <Loader2 size={18} className="animate-spin" /> : `Book Transfer — ${formatCurrency(price)}`}
+          {loading ? <Loader2 size={18} className="animate-spin" /> : hasPrice && !unclaimed ? `Book Transfer — ${formatCurrency(price)}` : "Request Transfer"}
         </button>
       </form>
     </div>

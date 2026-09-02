@@ -471,7 +471,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
                 {parseFloat(listing.avgRating).toFixed(1)}
               </span>
               <span className="text-sm text-navy-400">
-                · {listing.reviewCount} reviews
+                · {listing.reviewCount} {unclaimed ? "Google reviews" : "reviews"}
               </span>
             </div>
           )}

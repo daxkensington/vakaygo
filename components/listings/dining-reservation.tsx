@@ -186,11 +186,11 @@ export function DiningReservation({ listingId, listingTitle, operatorId, unclaim
           disabled={loading}
           className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
         >
-          {loading ? <Loader2 size={18} className="animate-spin" /> : "Reserve a Table"}
+          {loading ? <Loader2 size={18} className="animate-spin" /> : unclaimed ? "Request a Table" : "Reserve a Table"}
         </button>
 
         <p className="text-center text-navy-300 text-xs">
-          Free reservation — no cover fees on VakayGo
+          {unclaimed ? "No charge — we confirm with the restaurant and email you" : "Free reservation — no cover fees on VakayGo"}
         </p>
       </form>
     </div>
