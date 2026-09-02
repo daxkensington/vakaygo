@@ -7,6 +7,7 @@ import { requireAdmin } from "@/server/admin-auth";
 import { createNotification } from "@/server/notifications";
 import { sendClaimDecision } from "@/server/email-requests";
 import { logger } from "@/lib/logger";
+import { revalidateListing } from "@/lib/revalidate-listing";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -129,6 +130,10 @@ export async function PATCH(request: Request) {
           updatedAt: now,
         })
         .where(eq(listings.id, listing.id));
+
+      // The public page shows a "claim this business" banner keyed on
+      // typeData.unclaimed — drop the cached copy now.
+      await revalidateListing(listing.id);
 
       // Any other pending claims on this listing lose.
       await db

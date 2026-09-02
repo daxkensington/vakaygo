@@ -6,7 +6,15 @@ import {
   type SimilarListing,
 } from "./listing-detail-client";
 
-export const dynamic = "force-dynamic";
+// ISR: rendered on first request, served from the CDN for an hour, then
+// refreshed in the background. Nothing on this page is per-user (auth UI is
+// client-fetched), so caching is safe.
+export const revalidate = 3600;
+// No build-time enumeration (7k listings / DB fan-out): every path renders
+// on first request and is then served from the cache until revalidated.
+export async function generateStaticParams() {
+  return [];
+}
 
 /**
  * Server component wrapper — fetches the listing from the DB and hands it

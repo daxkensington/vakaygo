@@ -15,6 +15,9 @@ import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import { getActiveIslandsWithCounts } from "@/server/seo-queries";
 
+// ISR: static HTML at the CDN, refreshed hourly in the background.
+export const revalidate = 3600;
+
 const islandImages: Record<string, string> = {
   grenada: "/images/islands/grenada.jpg",
   barbados: "/images/islands/barbados.jpg",

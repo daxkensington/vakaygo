@@ -26,6 +26,14 @@ import {
 import { getImageUrl } from "@/lib/image-utils";
 import { FeaturedListingsClient } from "./featured-listings-client";
 
+// ISR: static HTML at the CDN, refreshed hourly in the background.
+export const revalidate = 3600;
+// No build-time enumeration (7k listings / DB fan-out): every path renders
+// on first request and is then served from the cache until revalidated.
+export async function generateStaticParams() {
+  return [];
+}
+
 const typeConfig = [
   { type: "stay", label: "Stays", icon: Home, color: "bg-gold-500" },
   { type: "excursion", label: "Excursions", icon: Compass, color: "bg-teal-500" },

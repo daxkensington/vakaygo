@@ -8,6 +8,7 @@ import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
 
 import { logger } from "@/lib/logger";
+import { revalidateListing } from "@/lib/revalidate-listing";
 import { requireAdmin } from "@/server/admin-auth";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
@@ -79,6 +80,7 @@ export async function PATCH(
         isFeatured: listings.isFeatured,
         updatedAt: listings.updatedAt,
       });
+    await revalidateListing(id);
 
     // Fire-and-forget audit log
     const adminId = verifiedAdminId;

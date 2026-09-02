@@ -10,8 +10,7 @@ import { EmailVerificationBanner } from "@/components/layout/email-verification-
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
-import { getLocale } from "next-intl/server";
-import { rtlLocales, type Locale } from "@/i18n/config";
+import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -104,16 +103,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale() as Locale;
-  const dir = rtlLocales.includes(locale) ? "rtl" : "ltr";
-
+  // lang/dir are fixed up client-side by <LocaleHtmlAttrs/>; reading the
+  // locale cookie here made every page dynamic (see that component).
   return (
-    <html lang={locale} dir={dir} data-dir={dir} className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" dir="ltr" data-dir="ltr" className={`${dmSans.variable} ${dmSerif.variable}`}>
       <head>
         {/* manifest + theme-color moved to the metadata/viewport exports below.
             A hardcoded <link>/<meta> always wins (the browser takes the first),
@@ -166,6 +164,7 @@ export default async function RootLayout({
             }),
           }}
         />
+        <LocaleHtmlAttrs />
         <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner /><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />

@@ -9,6 +9,15 @@ import { eq, and, ne, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+// ISR: rebuilt in the background at most hourly, so new posts/listings
+// show up without a deploy.
+export const revalidate = 3600;
+// No build-time enumeration (7k listings / DB fan-out): every path renders
+// on first request and is then served from the cache until revalidated.
+export async function generateStaticParams() {
+  return [];
+}
+
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }

@@ -12,6 +12,9 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { PersonalizedHome } from "@/components/landing/personalized-home";
 
+// ISR: static HTML at the CDN, refreshed hourly in the background.
+export const revalidate = 3600;
+
 export default function LandingPage() {
   const homepageJsonLd = {
     "@context": "https://schema.org",

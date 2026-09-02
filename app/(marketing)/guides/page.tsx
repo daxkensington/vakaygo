@@ -3,6 +3,10 @@ import { Footer } from "@/components/layout/footer";
 import { GuidesContent } from "@/components/blog/guides-content";
 import type { Metadata } from "next";
 
+// ISR: rebuilt in the background at most hourly, so new posts/listings
+// show up without a deploy.
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Caribbean Travel Guides & Tips",
   description:

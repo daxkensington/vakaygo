@@ -80,7 +80,16 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 - Enrichment scripts in `scripts/` for batch photo/price/menu/description discovery
 
 ### i18n
-7 locales: `en`, `es`, `fr`, `pt`, `nl`, `de`, `ar` (with RTL). Message files in `messages/`. Config in `i18n/`. Run `npm run check:i18n` to verify key coverage.
+7 locales: `en`, `es`, `fr`, `pt`, `nl`, `de`, `ar` (with RTL). Message files in `messages/`. Config in `i18n/config.ts`. Run `npm run check:i18n` to verify key coverage.
+
+**As of 2026-09-02 no component consumes the messages** (zero `useTranslations` callers). The next-intl request config was removed from `next.config.ts` because its `cookies()`/`headers()` read made every page dynamic; `<html lang/dir>` is now set client-side by `components/layout/locale-html-attrs.tsx` from the `locale` cookie. If you wire real translations back in, do NOT reintroduce a server-side cookie read in the root layout — put the locale in the URL instead, or the whole site loses CDN caching again.
+
+### Rendering & caching
+- Public pages (home, `/[island]`, `/[island]/[slug]`, `/islands`, guides, blog, best-*/things-to-do-*) are **ISR with `revalidate = 3600`**. First hit renders and caches at the CDN; the rest are HITs. Verify with `curl -sI https://vakaygo.com/grenada | grep -i x-vercel-cache`.
+- Nothing per-user may be rendered on the server in those routes — auth/saved/currency all hydrate client-side via `/api/*`. A `cookies()`/`headers()`/`searchParams` read in a server component silently flips the route back to dynamic (`no-store`).
+- Operator/admin edits that must show immediately should call `revalidatePath("/<island>/<slug>")`.
+- Listing images render through `next/image` via `components/shared/image-fallback.tsx` (Blob/Unsplash/Google hosts only; other hosts fall back to `<img>`). Add any new image host to BOTH `next.config.ts` remotePatterns and `OPTIMIZABLE_HOSTS` there.
+- Search (`GET /api/listings?q=`) goes through `lib/search-terms.ts`: stemmed AND-terms across title/headline/description/cuisine/typeData.
 
 ## Build Gotchas
 

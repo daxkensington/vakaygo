@@ -10,6 +10,7 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
+import { revalidateListing } from "@/lib/revalidate-listing";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(request: Request) {
@@ -213,6 +214,7 @@ export async function POST(request: Request) {
         })
         .where(eq(listings.id, listingId));
     }
+    await revalidateListing(listingId);
 
     // Award loyalty points for leaving a review (non-blocking)
     awardReviewPoints(travelerId, bookingId).catch((err) => {

@@ -7,6 +7,7 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
+import { revalidateListing } from "@/lib/revalidate-listing";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function PATCH(
@@ -89,6 +90,7 @@ export async function PATCH(
     if (body.maxGuests !== undefined) updateData.maxGuests = body.maxGuests;
 
     await db.update(listings).set(updateData).where(eq(listings.id, listing.id));
+    await revalidateListing(listing.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

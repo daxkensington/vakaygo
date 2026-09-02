@@ -24,10 +24,16 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+// ISR: rebuilt in the background at most hourly, so new posts/listings
+// show up without a deploy.
+export const revalidate = 3600;
+
 // ─── Static Params ──────────────────────────────────────────────
+// Render on first request and cache (ISR, see `revalidate` above) instead
+// of prerendering all 21 islands at build: that fanned ~600 Neon queries
+// out of the build workers and one dropped connection failed the deploy.
 export async function generateStaticParams() {
-  const islands = await getIslandsWithDining();
-  return islands.map((island) => ({ island: island.slug }));
+  return [];
 }
 
 // ─── Metadata ───────────────────────────────────────────────────
