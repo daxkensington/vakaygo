@@ -31,6 +31,7 @@ type BookingsResponse = {
 
 const STATUS_TABS = [
   { label: "All", value: "" },
+  { label: "Requested", value: "requested" },
   { label: "Pending", value: "pending" },
   { label: "Confirmed", value: "confirmed" },
   { label: "Completed", value: "completed" },
@@ -70,6 +71,31 @@ export default function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Outcome of a phoned-in request (unclaimed/unpriced listing). The API
+  // emails the traveler either way.
+  async function resolveRequest(id: string, status: "confirmed" | "cancelled") {
+    const prompt =
+      status === "confirmed"
+        ? "Business confirmed by phone? Optional note to include in the traveler's email:"
+        : "Reason to tell the traveler (optional):";
+    const text = window.prompt(prompt, "");
+    if (text === null) return;
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(status === "confirmed" ? { status, note: text } : { status, reason: text }),
+      });
+      const body = await res.json();
+      if (!res.ok) window.alert(body.error || "Failed");
+      fetchBookings();
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const fetchBookings = useCallback(() => {
     setLoading(true);
@@ -204,6 +230,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 text-right font-semibold text-navy-500">Amount</th>
                     <th className="px-4 py-3 text-center font-semibold text-navy-500">Status</th>
                     <th className="px-4 py-3 text-left font-semibold text-navy-500">Created</th>
+                    <th className="px-4 py-3 text-left font-semibold text-navy-500">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -245,6 +272,27 @@ export default function AdminBookingsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-navy-400">
                         {formatDate(b.createdAt)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {b.status === "requested" && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => resolveRequest(b.id, "confirmed")}
+                              disabled={busyId === b.id}
+                              className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+                              title="The business confirmed by phone — emails the traveler"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => resolveRequest(b.id, "cancelled")}
+                              disabled={busyId === b.id}
+                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

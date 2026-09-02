@@ -29,6 +29,8 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [needsSwitch, setNeedsSwitch] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -40,6 +42,15 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
     (async () => {
       try {
         const res = await fetch(`/api/listings/claim?listingId=${encodeURIComponent(listingId)}`);
+        if (res.status === 403) {
+          // Signed in as a traveler (the old sign-up defaulted to it).
+          if (!cancelled) setNeedsSwitch(true);
+          return;
+        }
+        if (res.status === 401) {
+          window.location.href = `/auth/signin?next=/operator/claim/${listingId}`;
+          return;
+        }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load listing");
         if (!cancelled) {
@@ -81,6 +92,43 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
     return (
       <div className="flex items-center justify-center py-32">
         <Loader2 size={32} className="animate-spin text-gold-700" />
+      </div>
+    );
+  }
+
+  if (needsSwitch) {
+    return (
+      <div className="p-8 max-w-xl">
+        <h1 className="text-2xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
+          Claim this business
+        </h1>
+        <p className="text-navy-500 mt-3 leading-relaxed">
+          Your account is a traveler account. Claiming a listing needs a business account — switching is
+          free and keeps your email and password.
+        </p>
+        {error && (
+          <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mt-4">{error}</div>
+        )}
+        <button
+          onClick={async () => {
+            setSwitching(true);
+            setError("");
+            try {
+              const res = await fetch("/api/auth/become-operator", { method: "POST" });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || "Could not switch");
+              window.location.reload();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Could not switch");
+              setSwitching(false);
+            }
+          }}
+          disabled={switching}
+          className="mt-6 bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2"
+        >
+          {switching ? <Loader2 size={18} className="animate-spin" /> : <BadgeCheck size={18} />}
+          Switch to a business account
+        </button>
       </div>
     );
   }

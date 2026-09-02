@@ -10,6 +10,8 @@ import { createNotification } from "@/server/notifications";
 import { awardBookingPoints } from "@/server/loyalty";
 
 import { logger } from "@/lib/logger";
+import { sendRequestConfirmed, sendRequestDeclined } from "@/server/email-requests";
+import { formatBookingDateTime } from "@/lib/booking-time";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(
@@ -104,7 +106,7 @@ export async function PATCH(
     const userId = payload.id as string;
     const role = payload.role as string;
     const { bookingId } = await params;
-    const { status, operatorNotes } = await request.json();
+    const { status, operatorNotes, reason, note } = await request.json();
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -116,6 +118,8 @@ export async function PATCH(
         operatorId: bookings.operatorId,
         paymentId: bookings.paymentId,
         paidAt: bookings.paidAt,
+        totalAmount: bookings.totalAmount,
+        listingId: bookings.listingId,
       })
       .from(bookings)
       .where(eq(bookings.id, bookingId))
@@ -148,7 +152,18 @@ export async function PATCH(
     // "completed", which the escrow-release + payouts crons then turn into a
     // real payout-ledger credit. Only allow these transitions once payment
     // is on record (the webhook stamps paymentId + paidAt).
+    // Exception: a REQUESTED booking (unclaimed/unpriced listing) has no
+    // price to pay. Once the team or the listing's operator has confirmed
+    // it with the business, it may become "confirmed" with $0 on record.
+    // Never "completed" — that path feeds the payout ledger.
+    const isRequestOutcome =
+      existing.status === "requested" &&
+      (isAdmin || isOperator) &&
+      (status === "confirmed" || status === "cancelled") &&
+      Math.round(parseFloat(existing.totalAmount || "0") * 100) === 0;
+
     if (
+      !isRequestOutcome &&
       (status === "confirmed" || status === "completed") &&
       !(existing.paymentId && existing.paidAt)
     ) {
@@ -161,6 +176,9 @@ export async function PATCH(
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
+    if (status === "cancelled" && typeof reason === "string" && reason.trim()) {
+      updateData.cancellationReason = reason.trim().slice(0, 500);
+    }
 
     // Make the transition INTO "completed" atomic: guard the UPDATE on the row
     // not already being completed, so concurrent PATCHes produce exactly one
@@ -211,7 +229,39 @@ export async function PATCH(
           .from(listings)
           .where(eq(listings.id, updated.listingId));
 
-        if (traveler?.email) {
+        if (traveler?.email && isRequestOutcome) {
+          // Outcome of a phoned-in request: honest copy, no "$0.00 total".
+          const [full] = await db
+            .select({ typeData: listings.typeData })
+            .from(listings)
+            .where(eq(listings.id, updated.listingId));
+          const td = (full?.typeData || {}) as Record<string, unknown>;
+          const businessPhone = typeof td.phone === "string" && td.phone.trim() ? td.phone.trim() : null;
+          const whenText = updated.endDate
+            ? `${formatBookingDateTime(updated.startDate)} → ${formatBookingDateTime(updated.endDate)}`
+            : formatBookingDateTime(updated.startDate);
+          if (status === "confirmed") {
+            await sendRequestConfirmed({
+              to: traveler.email,
+              travelerName: traveler.name || "Traveler",
+              bookingNumber: updated.bookingNumber,
+              listingTitle: listing?.title || "Your booking",
+              whenText,
+              guestCount: updated.guestCount || 1,
+              businessPhone,
+              note: typeof note === "string" && note.trim() ? note.trim().slice(0, 1000) : null,
+            });
+          } else {
+            await sendRequestDeclined({
+              to: traveler.email,
+              travelerName: traveler.name || "Traveler",
+              bookingNumber: updated.bookingNumber,
+              listingTitle: listing?.title || "Your booking",
+              reason: updated.cancellationReason || null,
+              exploreUrl: "https://vakaygo.com/explore",
+            });
+          }
+        } else if (traveler?.email) {
           if (status === "confirmed") {
             await sendBookingConfirmation({
               to: traveler.email,

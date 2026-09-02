@@ -8,6 +8,7 @@ import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
+import { sendDisputeToTeam } from "@/server/email-requests";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
@@ -183,6 +184,20 @@ export async function POST(request: Request) {
         reason: disputes.reason,
         createdAt: disputes.createdAt,
       });
+
+    // Team inbox (the in-app admin fan-out below reached nobody for months).
+    const [filer] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    sendDisputeToTeam({
+      bookingNumber: booking.bookingNumber,
+      reason,
+      description: description.trim(),
+      travelerName: filer?.name || "Traveler",
+      travelerEmail: filer?.email || "",
+    }).catch((err) => logger.error("Dispute team email failed", err));
 
     // Notify admins
     const admins = await db

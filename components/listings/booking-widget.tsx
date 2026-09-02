@@ -47,6 +47,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [payLater, setPayLater] = useState(false);
   const [bookingNumber, setBookingNumber] = useState("");
   const [paymentStep, setPaymentStep] = useState(false);
   const [bookingId, setBookingId] = useState("");
@@ -384,6 +385,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           <button
             onClick={() => {
               setPaymentStep(false);
+              setPayLater(true);
               setBooked(true);
             }}
             disabled={paymentLoading}
@@ -408,7 +410,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             <Check size={32} className="text-white" />
           </div>
           <h3 role="status" className="text-xl font-bold text-navy-700">
-            {requested ? "Request received" : "Booking Confirmed!"}
+            {requested ? "Request received" : payLater ? "Booking received" : "Booking Confirmed!"}
           </h3>
           <p className="text-navy-400 mt-2">
             {requested ? "Request" : "Booking"} #{bookingNumber}
@@ -423,6 +425,11 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
               Nothing is confirmed or charged yet. We&apos;ll contact the business to
               confirm your date{pricePerUnit > 0 ? "" : " and price"} and email you,
               usually within 24 hours.
+            </p>
+          ) : payLater ? (
+            <p className="text-sm text-navy-500 mt-4 leading-relaxed">
+              Your spot is held but <strong>not confirmed until paid</strong>. Pay any time from{" "}
+              <a href="/bookings" className="text-gold-700 font-semibold">My Bookings</a>.
             </p>
           ) : directPayment ? (
             <p className="text-xs text-navy-300 mt-4">

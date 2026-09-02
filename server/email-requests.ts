@@ -242,3 +242,95 @@ export async function sendClaimDecision(params: {
     }),
   });
 }
+
+// ─── Request outcomes (after the team phoned the business) ────────
+
+export async function sendRequestConfirmed(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  whenText: string;
+  guestCount: number;
+  businessPhone: string | null;
+  note: string | null;
+}) {
+  const p = params;
+  await resend.emails.send({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `Confirmed by the business — ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.travelerName)},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Good news: <strong>${esc(p.listingTitle)}</strong> has confirmed your request directly with us. You are booked. Nothing was charged through VakayGo${p.businessPhone ? " — any payment is settled with the business on the day" : ""}.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Reference", esc(p.bookingNumber))}
+        ${row("When", esc(p.whenText))}
+        ${row("Guests", String(p.guestCount))}
+        ${p.businessPhone ? row("Business phone", esc(p.businessPhone)) : ""}
+      </table>
+    </div>
+    ${p.note ? `<p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${esc(p.note)}</p>` : ""}
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Plans changed? Reply to this email and we will let the business know.</p>`,
+      { eyebrow: "Confirmed", title: p.listingTitle, tone: "teal" }
+    ),
+  });
+}
+
+export async function sendRequestDeclined(params: {
+  to: string;
+  travelerName: string;
+  bookingNumber: string;
+  listingTitle: string;
+  reason: string | null;
+  exploreUrl: string;
+}) {
+  const p = params;
+  await resend.emails.send({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `We couldn't confirm ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.travelerName)},</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">We contacted <strong>${esc(p.listingTitle)}</strong> about request ${esc(p.bookingNumber)} and could not get it confirmed${p.reason ? `: ${esc(p.reason)}` : "."} Nothing was charged.</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Reply to this email if you would like us to try another date, or browse similar options: ${link(p.exploreUrl, "vakaygo.com/explore")}.</p>`,
+      { eyebrow: "Request update", title: p.listingTitle, tone: "gold" }
+    ),
+  });
+}
+
+/** Team inbox: a dispute was filed. Previously this only created in-app
+ *  notifications for admins — and there were none. */
+export async function sendDisputeToTeam(params: {
+  bookingNumber: string;
+  reason: string;
+  description: string;
+  travelerName: string;
+  travelerEmail: string;
+}) {
+  const p = params;
+  await resend.emails.send({
+    from: FROM,
+    to: TEAM_INBOX,
+    replyTo: p.travelerEmail,
+    subject: `ACTION: dispute on ${p.bookingNumber} — ${p.reason.replace(/_/g, " ")}`,
+    html: shell(
+      `
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Booking", esc(p.bookingNumber))}
+        ${row("Reason", esc(p.reason.replace(/_/g, " ")))}
+        ${row("Traveler", `${esc(p.travelerName)} · ${link(`mailto:${p.travelerEmail}`, p.travelerEmail)}`)}
+      </table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6;white-space:pre-wrap">${esc(p.description)}</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Reply-to is the traveler. Resolve in ${link("https://vakaygo.com/admin/disputes", "admin → disputes")}.</p>`,
+      { eyebrow: "Dispute filed", title: p.bookingNumber, tone: "gold" }
+    ),
+  });
+}
