@@ -122,6 +122,20 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   // Continue with security headers on all responses
   const response = NextResponse.next();
+
+  // /explore reads searchParams, which makes it a dynamic route and Next
+  // stamps it `private, no-store`. Nothing in its HTML depends on the
+  // viewer (auth, saved, currency are all client-side), so tell Vercel's
+  // CDN to keep each URL for an hour anyway. Vercel-CDN-Cache-Control
+  // wins over Cache-Control at the edge and is stripped before the
+  // browser sees it, so browsers still revalidate.
+  if (method === "GET" && pathname === "/explore") {
+    response.headers.set(
+      "Vercel-CDN-Cache-Control",
+      "public, s-maxage=3600, stale-while-revalidate=86400",
+    );
+  }
+
   return applySecurityHeaders(response);
 }
 

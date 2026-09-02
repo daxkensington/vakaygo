@@ -90,6 +90,7 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 - Operator/admin edits that must show immediately should call `revalidatePath("/<island>/<slug>")`.
 - Listing images render through `next/image` via `components/shared/image-fallback.tsx` (Blob/Unsplash/Google hosts only; other hosts fall back to `<img>`). Add any new image host to BOTH `next.config.ts` remotePatterns and `OPTIMIZABLE_HOSTS` there.
 - Search (`GET /api/listings?q=`) goes through `lib/search-terms.ts`: stemmed AND-terms across title/headline/description/cuisine/typeData.
+- **`/explore` is server-rendered but dynamic** (it reads `searchParams`). The first 24 cards come from `server/listings-search.ts#getExploreData` (`unstable_cache`, 1h, tag `listings`) and proxy.ts sets `Vercel-CDN-Cache-Control: s-maxage=3600` on `/explore` so the CDN caches each URL anyway. Filters are parsed ONCE in `lib/listing-filters.ts` — the page, `/api/listings` and `/api/listings/count` all use it, so never add a filter to one without the others. Only island/type combos are indexable; anything narrower is `noindex` with a canonical back to its island/type page.
 
 ## Build Gotchas
 
