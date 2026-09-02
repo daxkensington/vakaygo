@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import { useRouter } from "next/navigation";
 import {
   Save,
@@ -61,16 +61,7 @@ function slugify(text: string) {
 }
 
 function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr",
-      "ul", "ol", "li", "a", "strong", "em", "b", "i", "u",
-      "blockquote", "pre", "code", "img", "figure", "figcaption",
-      "table", "thead", "tbody", "tr", "th", "td",
-      "div", "span", "section", "article",
-    ],
-    ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "id", "target", "rel", "width", "height"],
-  });
+  return sanitizeBlogHtml(html);
 }
 
 // Simple markdown to HTML for preview
