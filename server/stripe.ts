@@ -215,6 +215,14 @@ export async function refundBooking(params: {
 }) {
   const stripe = getStripe();
 
+  // Recover an earlier refund even after Stripe expires its 24-hour request
+  // key. This also covers a successful refund followed by a database outage.
+  if (params.idempotencyKey) {
+    for await (const prior of stripe.refunds.list({ payment_intent: params.paymentIntentId, limit: 100 })) {
+      if (prior.metadata?.vakaygoRefundKey === params.idempotencyKey) return prior;
+    }
+  }
+
   // A lookup failure must retry; refunding without reversing a destination
   // transfer would incorrectly leave the operator holding refunded funds.
   const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId, { expand: ["latest_charge"] });
@@ -226,6 +234,7 @@ export async function refundBooking(params: {
     payment_intent: params.paymentIntentId,
     amount: params.amount,
     reason: "requested_by_customer",
+    metadata: params.idempotencyKey ? { vakaygoRefundKey: params.idempotencyKey } : undefined,
   };
   if (reverseTransfer) {
     refundParams.reverse_transfer = true;

@@ -100,7 +100,7 @@ BEGIN
  END IF;
  IF NEW.status='pending' AND NEW.total_amount<=0 THEN RAISE EXCEPTION 'VG_BOOKING:This promotion leaves no payable amount. Please contact support'; END IF;
  RETURN NEW;
-END $;
+END $$;
 --> statement-breakpoint
 CREATE TRIGGER booking_insert_guard BEFORE INSERT ON bookings FOR EACH ROW EXECUTE FUNCTION vakaygo_booking_guard();
 --> statement-breakpoint

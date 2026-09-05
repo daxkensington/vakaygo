@@ -6,7 +6,8 @@ import { calculateRefundPercent } from "@/lib/cancellation";
 import { localBookingNow } from "@/lib/booking-validation";
 import { refundBooking, expireCheckoutSession } from "@/server/stripe";
 
-export async function cancelBooking(bookingId: string, actor: { id: string; role: string }, reason?: unknown) {
+type CancellationResult = { error: string; httpStatus: number } | { success: true; status: string; refundAmount: number; refundPercent?: number; policy?: string; message?: string };
+export async function cancelBooking(bookingId: string, actor: { id: string; role: string }, reason?: unknown): Promise<CancellationResult> {
   const db = drizzle(neon(process.env.DATABASE_URL!));
   let [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return { error: "Booking not found", httpStatus: 404 };
@@ -22,9 +23,9 @@ export async function cancelBooking(bookingId: string, actor: { id: string; role
       status: "cancelled", cancellationRequestedAt: new Date(), cancellationRefundCents: cents,
       cancellationReason: typeof reason === "string" ? reason.trim().slice(0,500) : "Booking cancelled",
       updatedAt: new Date(),
-    }).where(and(eq(bookings.id,bookingId),isNull(bookings.cancellationRequestedAt))).returning();
+    }).where(and(eq(bookings.id,bookingId),eq(bookings.status,booking.status),isNull(bookings.cancellationRequestedAt),booking.paidAt ? eq(bookings.paymentId,booking.paymentId!) : isNull(bookings.paidAt))).returning();
     if (claimed) booking = claimed;
-    else [booking] = await db.select().from(bookings).where(eq(bookings.id,bookingId)).limit(1);
+    else return cancelBooking(bookingId,actor,reason);
   }
   // State is closed before Stripe is called. Failed calls can be retried using
   // the stored amount; crossing a policy deadline never changes that amount.

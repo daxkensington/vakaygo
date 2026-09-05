@@ -44,13 +44,13 @@ function matches(cond,row){
   if(cond.op==='ne')return row[cond.a.key]!==cond.b;
   return true;
 }
-function dbFor(rows){
+function dbFor(rows,beforeUpdate=()=>{}){
   const writes=[];
   const selects=[];
   function project(row,cols){if(!cols)return {...row};return Object.fromEntries(Object.entries(cols).map(([key,col])=>[key,row[col.key]??row[key]]));}
   return {writes,selects,
     select(cols){let table,cond;const q={from(t){table=t.__table;selects.push(table);return q;},innerJoin(){return q;},where(c){cond=c;return q;},limit(){return Promise.resolve((rows[table]||[]).filter(r=>matches(cond,r)).map(r=>project(r,cols)));},then(resolve,reject){return q.limit().then(resolve,reject);}};return q;},
-    update(t){let values;const q={set(v){values=v;return q;},where(cond){const changed=(rows[t.__table]||[]).filter(r=>matches(cond,r));changed.forEach(r=>Object.assign(r,values));writes.push({table:t.__table,values,cond,count:changed.length});return Object.assign(Promise.resolve(),{returning:async(cols)=>changed.map(r=>project(r,cols))});}};return q;},
+    update(t){let values;const q={set(v){values=v;return q;},where(cond){beforeUpdate(t.__table,values,cond);const changed=(rows[t.__table]||[]).filter(r=>matches(cond,r));changed.forEach(r=>Object.assign(r,values));writes.push({table:t.__table,values,cond,count:changed.length});return Object.assign(Promise.resolve(),{returning:async(cols)=>changed.map(r=>project(r,cols))});}};return q;},
     insert(t){return {values(values){const record={id:'booking-new',...values};(rows[t.__table]??=[]).push(record);writes.push({table:t.__table,values});return {returning:async(cols)=>[project(record,cols)]};}}},
   };
 }
@@ -149,6 +149,14 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({status:"open",url:"https://checkout.stripe.com/test"}),createCheckoutSession:async()=>{created++;}}}));
    for(let i=0;i<2;i++)assert.equal((await h.POST(request({bookingId}))).status,200);
    assert.equal(created,0);
+ });
+
+ await check("Cancellation racing a successful payment recomputes its refund",async()=>{
+   const rows={bookings:[pending()],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};let racing=true,refunded=0;
+   const db=dbFor(rows,(_table,values)=>{if(racing&&values.cancellationRequestedAt){racing=false;Object.assign(rows.bookings[0],{status:"confirmed",paidAt:new Date(),paymentId:"pi_race"});}});
+   const service=load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{refundBooking:async p=>{refunded=p.amount;return {id:"re_race",status:"succeeded"};}}}));
+   await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(refunded,7150);assert.equal(rows.bookings[0].status,"refunded");
  });
  console.log(JSON.stringify({checks:results.length,passed:results.length,results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});
