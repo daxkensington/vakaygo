@@ -62,7 +62,7 @@ BEGIN
        AND CASE WHEN l.type='stay' THEN b.end_date::date > d ELSE coalesce(b.end_date,b.start_date)::date >= d END;
      SELECT min(a.spots) INTO capacity FROM availability a WHERE a.listing_id=l.id AND a.date::date=d;
      capacity := CASE WHEN l.type='stay' THEN 1 ELSE coalesce(capacity,l.max_guests,1) END;
-     IF used + CASE WHEN l.type='stay' THEN 1 ELSE NEW.guest_count END > capacity THEN
+     IF used + (CASE WHEN l.type='stay' THEN 1 ELSE NEW.guest_count END) > capacity THEN
        RAISE EXCEPTION 'VG_BOOKING:These dates no longer have enough availability';
      END IF;
    END IF;

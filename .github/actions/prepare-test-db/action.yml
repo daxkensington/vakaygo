@@ -1,0 +1,20 @@
+name: Prepare isolated test database
+description: Run the migrated PostgreSQL fixture through a local Neon HTTP bridge
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        for migration in drizzle/migrations/*.sql; do
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+        done
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/booking-integrity.sql
+        npm install --prefix /tmp/vakaygo-ci-pg --no-audit --no-fund pg@8.16.3
+        VAKAYGO_CI_PG_MODULE=/tmp/vakaygo-ci-pg/node_modules/pg node tests/ci/neon-http.cjs > /tmp/vakaygo-ci-db.log 2>&1 &
+        for attempt in {1..30}; do
+          if curl -fsS http://127.0.0.1:4444/; then break; fi
+          sleep 1
+        done
+        curl -fsS http://127.0.0.1:4444/
+        echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/tests/ci/fetch-preload.mjs" >> "$GITHUB_ENV"
+        echo "VAKAYGO_CI_DATABASE_PROXY=1" >> "$GITHUB_ENV"

@@ -24,6 +24,24 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: audit
+          POSTGRES_PASSWORD: audit
+          POSTGRES_DB: vakaygo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U audit -d vakaygo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
+      AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
+      RESEND_API_KEY: re_ci_only_no_live_email
     needs: check
     steps:
       - uses: actions/checkout@v4
@@ -33,14 +51,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/prepare-test-db
       - run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       - run: npx playwright test
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -50,6 +63,24 @@ jobs:
 
   lighthouse:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: audit
+          POSTGRES_PASSWORD: audit
+          POSTGRES_DB: vakaygo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U audit -d vakaygo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
+      AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
+      RESEND_API_KEY: re_ci_only_no_live_email
     needs: check
     steps:
       - uses: actions/checkout@v4
@@ -58,17 +89,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: ./.github/actions/prepare-test-db
       - run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
       - name: Run Lighthouse CI
         run: |
           npm install -g @lhci/cli
           lhci autorun
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
   database:
