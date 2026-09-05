@@ -30,6 +30,7 @@ CREATE FUNCTION vakaygo_booking_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE l listings%ROWTYPE; p promo_codes%ROWTYPE; d date; used integer; capacity integer; expected numeric; quantity integer;
 BEGIN
  SELECT * INTO l FROM listings WHERE id = NEW.listing_id FOR UPDATE;
+ IF NEW.operator_id <> l.operator_id THEN RAISE EXCEPTION 'VG_BOOKING:The listing operator has changed'; END IF;
  IF l.status <> 'active' OR l.operator_id = '197d8586-7fd3-4999-91de-a50ad7d70e23' OR coalesce((l.type_data->>'demo')::boolean, false) THEN
    RAISE EXCEPTION 'VG_BOOKING:This listing is unavailable';
  END IF;
@@ -46,8 +47,10 @@ BEGIN
     OR coalesce(NEW.end_date, NEW.start_date) - NEW.start_date > interval '366 days' THEN
    RAISE EXCEPTION 'VG_BOOKING:Invalid booking dates';
  END IF;
+ IF TG_OP='INSERT' THEN
  NEW.cancellation_policy_snapshot := CASE WHEN l.cancellation_policy IN ('flexible','moderate','strict','non_refundable') THEN l.cancellation_policy ELSE 'moderate' END;
  NEW.cancellation_policy_version := 1;
+ END IF;
  -- Every occupied day is checked while holding the listing row lock. Pending
  -- card bookings hold capacity until payment or explicit expiry/cancellation.
  FOR d IN SELECT generate_series(NEW.start_date::date,
@@ -57,7 +60,7 @@ BEGIN
    END IF;
    IF NEW.status <> 'requested' THEN
      SELECT CASE WHEN l.type='stay' THEN count(*) ELSE coalesce(sum(b.guest_count),0) END INTO used FROM bookings b
-     WHERE b.listing_id=l.id AND b.status IN ('pending','confirmed','completed')
+     WHERE b.listing_id=l.id AND b.id<>NEW.id AND b.status IN ('pending','confirmed','completed')
        AND b.start_date::date <= d
        AND CASE WHEN l.type='stay' THEN b.end_date::date > d ELSE coalesce(b.end_date,b.start_date)::date >= d END;
      SELECT min(a.spots) INTO capacity FROM availability a WHERE a.listing_id=l.id AND a.date::date=d;
@@ -67,6 +70,7 @@ BEGIN
      END IF;
    END IF;
  END LOOP;
+ IF TG_OP='UPDATE' THEN RETURN NEW; END IF;
  IF NEW.status = 'requested' THEN
    NEW.subtotal:=0; NEW.service_fee:=0; NEW.total_amount:=0; NEW.discount_amount:=0; NEW.promo_code_id:=NULL; NEW.payment_method:='none';
  ELSE
@@ -103,6 +107,8 @@ BEGIN
 END $$;
 --> statement-breakpoint
 CREATE TRIGGER booking_insert_guard BEFORE INSERT ON bookings FOR EACH ROW EXECUTE FUNCTION vakaygo_booking_guard();
+--> statement-breakpoint
+CREATE TRIGGER booking_request_confirmation_guard BEFORE UPDATE ON bookings FOR EACH ROW WHEN (OLD.status='requested' AND NEW.status='confirmed') EXECUTE FUNCTION vakaygo_booking_guard();
 --> statement-breakpoint
 CREATE FUNCTION vakaygo_booking_events() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE event_kind text;

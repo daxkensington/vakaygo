@@ -10,7 +10,7 @@ const schema = new Proxy({}, {get:(_,table)=>new Proxy({__table:table},{get:(o,k
 function load(rel, mocks={}) {
   const src=fs.readFileSync(path.join(root,rel),'utf8');
   const js=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const module={exports:{}};
+  const loadedModule={exports:{}};
   const base={
     'next/server':{NextResponse:{json:(body,opts={})=>new Response(JSON.stringify(body),{status:opts.status||200,headers:{'content-type':'application/json'}})}},
     '@/lib/logger':{logger:noops}, '@/drizzle/schema':schema,
@@ -33,8 +33,8 @@ function load(rel, mocks={}) {
   };
   vm.runInNewContext('(function(require,module,exports){'+js+'\n})',
     {Request,Response,Headers,URL,URLSearchParams,TextEncoder,Date,console,fetch:mocks.__fetch,process:{env:{GOOGLE_CLIENT_ID:'synthetic',GOOGLE_CLIENT_SECRET:'synthetic',CRON_SECRET:'synthetic',STRIPE_WEBHOOK_SECRET:'synthetic',AUTH_SECRET:'synthetic',DATABASE_URL:'synthetic'}}},
-    {filename:rel})(requireMock,module,module.exports);
-  return module.exports;
+    {filename:rel})(requireMock,loadedModule,loadedModule.exports);
+  return loadedModule.exports;
 }
 function matches(cond,row){
   if(!cond)return true;

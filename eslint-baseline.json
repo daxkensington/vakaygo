@@ -40,7 +40,5 @@
   "scripts/generate-ai-photos.ts|@typescript-eslint/no-explicit-any": 2,
   "scripts/migrate-google-photos-to-blob.ts|@typescript-eslint/no-explicit-any": 2,
   "server/loyalty.ts|prefer-const": 1,
-  "server/seo-queries.ts|@typescript-eslint/no-explicit-any": 1,
-  "tests/regression/booking-integrity.cjs|@typescript-eslint/no-require-imports": 5,
-  "tests/regression/booking-integrity.cjs|@next/next/no-assign-module-variable": 1
+  "server/seo-queries.ts|@typescript-eslint/no-explicit-any": 1
 }

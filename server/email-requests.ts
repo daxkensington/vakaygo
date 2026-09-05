@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/server/mail-client";
 import { TEAM_INBOX } from "@/lib/booking-request";
 
 /**
@@ -12,10 +12,6 @@ import { TEAM_INBOX } from "@/lib/booking-request";
  * `hello@` sender has no mailbox, so replies to it were bouncing.
  */
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is not set");
-}
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 
@@ -70,7 +66,7 @@ export async function sendBookingRequestReceived(params: {
   guestCount: number;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: p.to,
     replyTo: TEAM_INBOX,
@@ -112,7 +108,7 @@ export async function sendBookingRequestToTeam(params: {
   const why = p.unclaimed
     ? "an <strong>unclaimed</strong> listing. The business has NOT been notified. Call them, confirm, then tell the traveler."
     : "a listing with no price. Confirm details and pricing with the business, then tell the traveler.";
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: TEAM_INBOX,
     replyTo: p.travelerEmail,
@@ -153,7 +149,7 @@ export async function sendClaimReceived(params: {
   listingTitle: string;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: p.to,
     replyTo: TEAM_INBOX,
@@ -182,7 +178,7 @@ export async function sendClaimToTeam(params: {
   notes: string | null;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: TEAM_INBOX,
     replyTo: p.contactEmail,
@@ -230,7 +226,7 @@ export async function sendClaimDecision(params: {
     <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.contactName)},</p>
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">We could not verify your claim for <strong>${esc(p.listingTitle)}</strong>${p.adminNotes ? `: ${esc(p.adminNotes)}` : "."}</p>
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">If you own or manage this business, reply to this email and we will sort it out.</p>`;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: p.to,
     replyTo: TEAM_INBOX,
@@ -256,7 +252,7 @@ export async function sendRequestConfirmed(params: {
   note: string | null;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: p.to,
     replyTo: TEAM_INBOX,
@@ -289,7 +285,7 @@ export async function sendRequestDeclined(params: {
   exploreUrl: string;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: p.to,
     replyTo: TEAM_INBOX,
@@ -314,7 +310,7 @@ export async function sendDisputeToTeam(params: {
   travelerEmail: string;
 }) {
   const p = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to: TEAM_INBOX,
     replyTo: p.travelerEmail,

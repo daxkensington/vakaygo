@@ -1,16 +1,5 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/server/mail-client";
 import { formatBookingDateTime } from "@/lib/booking-time";
-
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is not set");
-}
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-async function sendEmail(params: Parameters<Resend["emails"]["send"]>[0]) {
-  const result = await resend.emails.send(params);
-  if (result.error) throw new Error(result.error.message);
-  return result;
-}
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 // hello@ is send-only — replies must land in a real mailbox.
