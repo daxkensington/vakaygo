@@ -315,6 +315,15 @@ export const bookings = pgTable(
     paymentMethod: varchar("payment_method", { length: 32 }),
     paymentId: varchar("payment_id", { length: 256 }),
     paidAt: timestamp("paid_at"),
+    checkoutSessionId: varchar("checkout_session_id", { length: 256 }),
+    checkoutExpiresAt: timestamp("checkout_expires_at"),
+    paymentMode: varchar("payment_mode", { length: 32 }),
+    operatorEarningsCents: integer("operator_earnings_cents"),
+    cancellationPolicySnapshot: varchar("cancellation_policy_snapshot", { length: 32 }),
+    cancellationPolicyVersion: integer("cancellation_policy_version"),
+    cancellationRequestedAt: timestamp("cancellation_requested_at"),
+    cancellationRefundCents: integer("cancellation_refund_cents"),
+    refundId: varchar("refund_id", { length: 256 }),
     // Set by the abandoned-bookings cron when the one "complete your
     // booking" email goes out; the claim that stops it repeating.
     recoveryEmailSentAt: timestamp("recovery_email_sent_at"),
@@ -945,3 +954,15 @@ export const listingClaims = pgTable("listing_claims", {
   index("listing_claims_operator_idx").on(t.operatorId),
   index("listing_claims_status_idx").on(t.status),
 ]);
+
+export const bookingMailOutbox = pgTable("booking_mail_outbox", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => bookings.id),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  recipient: varchar("recipient", { length: 16 }).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  availableAt: timestamp("available_at").defaultNow().notNull(),
+  lockedUntil: timestamp("locked_until"),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, t => [uniqueIndex("booking_mail_outbox_booking_id_kind_recipient_key").on(t.bookingId,t.kind,t.recipient), index("booking_mail_outbox_pending_idx").on(t.availableAt)]);

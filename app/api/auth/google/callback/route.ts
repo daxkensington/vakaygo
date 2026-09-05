@@ -121,10 +121,10 @@ export async function GET(request: Request) {
 
     const profile = await profileRes.json();
 
-    if (!profile.email) {
+    if (typeof profile.email !== "string" || profile.verified_email !== true || !profile.id) {
       logger.error("Google profile missing email", profile);
       return NextResponse.redirect(
-        new URL("/auth/signin?error=no_email", url.origin)
+        new URL("/auth/signin?error=unverified_google_email", url.origin)
       );
     }
 
@@ -145,6 +145,10 @@ export async function GET(request: Request) {
       .limit(1);
 
     let user: { id: string; email: string; name: string | null; role: string };
+
+    if (existingUser?.totpEnabled) {
+      return NextResponse.redirect(new URL("/auth/signin?error=two_factor_required", url.origin));
+    }
 
     if (existingUser) {
       user = {

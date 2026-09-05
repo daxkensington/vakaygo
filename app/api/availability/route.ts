@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { availability, bookings } from "@/drizzle/schema";
-import { eq, and, gte, lt, ne, sql } from "drizzle-orm";
+import { eq, and, gte, lt, inArray, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireOperator, assertListingOwnership } from "@/server/admin-auth";
@@ -32,8 +32,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const startDate = new Date(year, mon - 1, 1);
-    const endDate = new Date(year, mon, 1);
+    const startDate = new Date(Date.UTC(year, mon - 1, 1));
+    const endDate = new Date(Date.UTC(year, mon, 1));
 
     const db = getDb();
 
@@ -60,13 +60,14 @@ export async function GET(request: Request) {
       .select({
         startDate: bookings.startDate,
         guestCount: bookings.guestCount,
+        endDate: bookings.endDate,
       })
       .from(bookings)
       .where(
         and(
           eq(bookings.listingId, listingId),
-          ne(bookings.status, "cancelled"),
-          gte(bookings.startDate, startDate),
+          inArray(bookings.status, ["pending", "confirmed", "completed"]),
+          sql`coalesce(${bookings.endDate}, ${bookings.startDate}) >= ${startDate}`,
           lt(bookings.startDate, endDate)
         )
       );
@@ -74,15 +75,18 @@ export async function GET(request: Request) {
     // Aggregate bookings by date
     const bookingsByDate: Record<string, number> = {};
     for (const b of bookingRows) {
-      const dateKey = b.startDate.toISOString().split("T")[0];
-      bookingsByDate[dateKey] = (bookingsByDate[dateKey] || 0) + (b.guestCount || 1);
+      const until = b.endDate || new Date(b.startDate.getTime() + 86400000);
+      for (let day = new Date(Math.max(b.startDate.getTime(), startDate.getTime())); day < until && day < endDate; day = new Date(day.getTime()+86400000)) {
+        const dateKey=day.toISOString().slice(0,10);
+        bookingsByDate[dateKey]=(bookingsByDate[dateKey] || 0)+(b.guestCount || 1);
+      }
     }
 
     // Format availability
     const availabilityMap = availabilityRows.map((row) => ({
       date: row.date.toISOString().split("T")[0],
       spots: row.spots,
-      spotsRemaining: row.spotsRemaining,
+      spotsRemaining: row.spots === null ? null : Math.max(0, row.spots - (bookingsByDate[row.date.toISOString().slice(0,10)] || 0)),
       priceOverride: row.priceOverride,
       isBlocked: row.isBlocked,
     }));

@@ -58,7 +58,7 @@ export async function getListingDetail(slug: string) {
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .innerJoin(users, eq(listings.operatorId, users.id))
-    .where(and(eq(listings.slug, slug), eq(listings.status, "active")))
+    .where(and(eq(listings.slug, slug), eq(listings.status, "active"), ne(listings.operatorId, "197d8586-7fd3-4999-91de-a50ad7d70e23")))
     .limit(1);
 
   if (!listing) return null;

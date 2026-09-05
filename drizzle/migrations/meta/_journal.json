@@ -29,6 +29,13 @@
       "when": 1788386602980,
       "tag": "0003_booking_recovery_email",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788609600000,
+      "tag": "0004_booking_integrity",
+      "breakpoints": true
     }
   ]
 }

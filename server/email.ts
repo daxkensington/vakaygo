@@ -1,10 +1,5 @@
-import { Resend } from "resend";
+import { sendEmail } from "@/server/mail-client";
 import { formatBookingDateTime } from "@/lib/booking-time";
-
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY is not set");
-}
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 // hello@ is send-only — replies must land in a real mailbox.
@@ -21,7 +16,7 @@ export async function sendBookingConfirmation(params: {
 }) {
   const { to, travelerName, bookingNumber, listingTitle, startDate, guestCount, totalAmount } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     replyTo: REPLY_TO,
@@ -49,7 +44,7 @@ export async function sendBookingConfirmation(params: {
         <tr><td style="padding:4px 0;font-weight:600;color:#1C2333">Total</td><td style="text-align:right;color:#1A6B6A;font-weight:700">$${totalAmount}</td></tr>
       </table>
     </div>
-    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Free cancellation up to 24 hours before your experience. Manage your booking at <a href="https://vakaygo.com/bookings" style="color:#C8912E">vakaygo.com/bookings</a></p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Refund eligibility follows the cancellation policy saved with your booking. Manage your booking at <a href="https://vakaygo.com/bookings" style="color:#C8912E">vakaygo.com/bookings</a></p>
   </div>
   <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
@@ -76,7 +71,7 @@ export async function sendBookingReceived(params: {
 }) {
   const { to, travelerName, bookingNumber, listingTitle, startDate, guestCount, totalAmount, expiresAfterHours } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     replyTo: REPLY_TO,
@@ -123,7 +118,7 @@ export async function sendBookingExpired(params: {
 }) {
   const { to, travelerName, bookingNumber, listingTitle, listingUrl, expiresAfterHours } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     replyTo: REPLY_TO,
@@ -162,7 +157,7 @@ export async function sendBookingNotificationToOperator(params: {
 }) {
   const { to, operatorName, bookingNumber, listingTitle, travelerName, startDate, guestCount, subtotal } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `New Booking — ${listingTitle} (#${bookingNumber})`,
@@ -209,7 +204,7 @@ export async function sendBookingCancellation(params: {
 }) {
   const { to, travelerName, bookingNumber, listingTitle, reason } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Booking Update — ${listingTitle}`,
@@ -249,7 +244,7 @@ export async function sendReviewRequest(params: {
 }) {
   const { to, travelerName, listingTitle, listingSlug, islandSlug } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `How was ${listingTitle}?`,
@@ -285,7 +280,7 @@ export async function sendNewReviewNotification(params: {
 
   const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `New ${rating}★ Review on ${listingTitle}`,
@@ -324,7 +319,7 @@ export async function sendWelcomeEmail(params: {
 }) {
   const { to, name } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: "Welcome to VakayGo!",
@@ -362,7 +357,7 @@ export async function sendVerificationEmail(params: {
   const { to, name, token } = params;
   const verifyUrl = `https://vakaygo.com/api/auth/verify-email/confirm?token=${token}`;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: "Verify your email — VakayGo",
@@ -398,7 +393,7 @@ export async function sendMagicLinkEmail(params: {
 }) {
   const { to, name, url } = params;
 
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: "Your VakayGo sign-in link",
@@ -439,7 +434,7 @@ export async function sendPayoutNotification(params: {
   bookingCount: number;
 }) {
   const { to, operatorName, amount, currency, periodStart, periodEnd, bookingCount } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Payout Processed — $${amount} ${currency}`,
@@ -484,7 +479,7 @@ export async function sendRefundConfirmation(params: {
   refundPercent: number;
 }) {
   const { to, travelerName, bookingNumber, listingTitle, refundAmount, refundPercent } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Refund Processed — ${listingTitle}`,
@@ -522,7 +517,7 @@ export async function sendPriceDropAlert(params: {
   listingUrl: string;
 }) {
   const { to, travelerName, listingTitle, oldPrice, newPrice, listingUrl } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Price Drop! ${listingTitle} is now $${newPrice}`,
@@ -558,7 +553,7 @@ export async function sendAbandonedBookingRecovery(params: {
   paymentUrl: string;
 }) {
   const { to, travelerName, listingTitle, bookingNumber, totalAmount, paymentUrl } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Complete your booking — ${listingTitle}`,
@@ -592,7 +587,7 @@ export async function sendGiftCardEmail(params: {
   personalMessage?: string;
 }) {
   const { to, recipientName, senderName, amount, code, personalMessage } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `${senderName} sent you a $${amount} VakayGo gift card!`,
@@ -634,7 +629,7 @@ export async function sendTaxDocumentReady(params: {
   totalEarnings: string;
 }) {
   const { to, operatorName, year, totalEarnings } = params;
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Your ${year} Tax Summary is Ready — VakayGo`,
@@ -669,7 +664,7 @@ export async function sendWeeklyAdminReport(params: {
 }) {
   const { to, newBookings, totalRevenue, newUsers, topListings } = params;
   const topListingsHtml = topListings.map((l, i) => `<tr><td style="padding:4px 0;color:#4A4F73">${i + 1}. ${l.title}</td><td style="text-align:right;color:#1C2333;font-weight:600">${l.bookings} bookings</td></tr>`).join("");
-  await resend.emails.send({
+  await sendEmail({
     from: FROM,
     to,
     subject: `Weekly Report — ${newBookings} bookings, $${totalRevenue} revenue`,

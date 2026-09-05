@@ -532,7 +532,7 @@ export function ListingDetailClient({
                       )}
                     </div>
                     <p className="text-sm text-navy-400">
-                      Verified VakayGo operator
+                      Local business on VakayGo
                     </p>
                   </div>
                   <div className="ml-auto">

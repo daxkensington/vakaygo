@@ -162,6 +162,7 @@ export async function createCheckoutSession(params: {
   successUrl: string;
   cancelUrl: string;
   paymentMethodTypes?: string[];
+  idempotencyKey?: string;
 }) {
   const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
     metadata: { bookingId: params.bookingId },
@@ -191,7 +192,7 @@ export async function createCheckoutSession(params: {
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: { bookingId: params.bookingId },
-  });
+  }, { idempotencyKey: params.idempotencyKey || "booking_checkout_" + params.bookingId });
 }
 
 /**
@@ -214,26 +215,26 @@ export async function refundBooking(params: {
 }) {
   const stripe = getStripe();
 
-  let reverseTransfer = false;
-  let hadApplicationFee = false;
-  try {
-    const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId, {
-      expand: ["latest_charge"],
-    });
-    const charge = pi.latest_charge as Stripe.Charge | null;
-    reverseTransfer = !!(charge && charge.transfer) || !!pi.transfer_data;
-    hadApplicationFee = !!(charge && charge.application_fee_amount);
-  } catch {
-    // If the lookup fails, fall back to a plain refund (no reversal) — the
-    // platform-charge case, which is the default for most operators.
-    reverseTransfer = false;
-    hadApplicationFee = false;
+  // Recover an earlier refund even after Stripe expires its 24-hour request
+  // key. This also covers a successful refund followed by a database outage.
+  if (params.idempotencyKey) {
+    for await (const prior of stripe.refunds.list({ payment_intent: params.paymentIntentId, limit: 100 })) {
+      if (prior.metadata?.vakaygoRefundKey === params.idempotencyKey) return prior;
+    }
   }
+
+  // A lookup failure must retry; refunding without reversing a destination
+  // transfer would incorrectly leave the operator holding refunded funds.
+  const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId, { expand: ["latest_charge"] });
+  const charge = pi.latest_charge as Stripe.Charge | null;
+  const reverseTransfer = !!(charge && charge.transfer) || !!pi.transfer_data;
+  const hadApplicationFee = !!(charge && charge.application_fee_amount);
 
   const refundParams: Stripe.RefundCreateParams = {
     payment_intent: params.paymentIntentId,
     amount: params.amount,
     reason: "requested_by_customer",
+    metadata: params.idempotencyKey ? { vakaygoRefundKey: params.idempotencyKey } : undefined,
   };
   if (reverseTransfer) {
     refundParams.reverse_transfer = true;
@@ -278,3 +279,10 @@ export async function getAccountBalance(accountId: string) {
 export function constructWebhookEvent(body: string, signature: string, secret: string) {
   return getStripe().webhooks.constructEvent(body, signature, secret);
 }
+
+export async function retrieveCheckoutSession(id: string) { return getStripe().checkout.sessions.retrieve(id); }
+export async function expireCheckoutSession(id: string) {
+  const session = await retrieveCheckoutSession(id);
+  if (session.status === "open") await getStripe().checkout.sessions.expire(id);
+}
+export async function retrieveBookingPayment(id: string) { return getStripe().paymentIntents.retrieve(id); }
