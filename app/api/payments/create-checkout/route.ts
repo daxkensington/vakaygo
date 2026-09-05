@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { createCheckoutSession } from "@/server/stripe";
+import { eq, and, isNull } from "drizzle-orm";
+import { createCheckoutSession, retrieveCheckoutSession } from "@/server/stripe";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    if (booking.status === "cancelled") {
+    if (booking.status !== "pending" || booking.cancellationRequestedAt) {
       return NextResponse.json(
         { error: "This booking has expired or been cancelled — please book again." },
         { status: 409 }
@@ -64,6 +64,13 @@ export async function POST(request: Request) {
     if (Math.round(parseFloat(booking.totalAmount || "0") * 100) <= 0) {
       return NextResponse.json({ error: "Nothing to pay for this booking" }, { status: 409 });
     }
+
+    if (booking.checkoutSessionId) {
+      const existingSession = await retrieveCheckoutSession(booking.checkoutSessionId);
+      if (existingSession.status !== "open") return NextResponse.json({ error: "This checkout is closed. Check My Bookings before trying again." }, { status: 409 });
+      return NextResponse.json({ url: existingSession.url });
+    }
+    if (Date.now() - booking.createdAt.getTime() > 23 * 3600000) return NextResponse.json({ error: "This payment link has expired. Cancel this unpaid booking and book again." }, { status: 409 });
 
     // Get listing and operator
     const [listing] = await db
@@ -89,10 +96,13 @@ export async function POST(request: Request) {
     // operator commission — must match lib/pricing.ts or the operator's
     // displayed earnings diverge from what actually lands in their account.
     const rates = CATEGORY_RATES[listing?.type || "tour"] || CATEGORY_RATES.tour;
-    const platformFeeCents = Math.round(
+    const originalPlatformFeeCents = Math.round(
       (parseFloat(booking.serviceFee || "0") +
         parseFloat(booking.subtotal || "0") * rates.operatorFee) * 100
     );
+
+    const operatorEarningsCents = Math.min(totalCents, Math.max(0, Math.round((Number(booking.subtotal) + Number(booking.serviceFee)) * 100) - originalPlatformFeeCents));
+    const platformFeeCents = Math.max(0, totalCents - operatorEarningsCents);
 
     const [traveler] = await db
       .select({ email: users.email })
@@ -112,6 +122,11 @@ export async function POST(request: Request) {
       cancelUrl: `https://vakaygo.com/bookings?cancelled=${booking.bookingNumber}`,
     });
 
+    const [saved] = await db.update(bookings).set({
+      checkoutSessionId: session.id, checkoutExpiresAt: new Date(session.expires_at * 1000),
+      operatorEarningsCents, paymentMode: operatorStripeId ? "destination" : "platform", updatedAt: new Date(),
+    }).where(and(eq(bookings.id,booking.id), eq(bookings.status,"pending"), isNull(bookings.cancellationRequestedAt))).returning({id:bookings.id});
+    if (!saved) return NextResponse.json({ error: "This booking is no longer payable" }, { status: 409 });
     return NextResponse.json({ url: session.url });
   } catch (error) {
     logger.error("Checkout error", error);

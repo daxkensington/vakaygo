@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
 
@@ -284,6 +284,8 @@ export function Header() {
           <Link href="/for-businesses" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             For Businesses
           </Link>
+          {["Islands", "Map", "Services"].map(label => <Link key={label} href={"/"+label.toLowerCase()} className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>{label}</Link>)}
+          <div className="py-3 text-navy-600"><CurrencySwitcher /></div>
           {user ? (
             <>
               <Link href="/trips" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>

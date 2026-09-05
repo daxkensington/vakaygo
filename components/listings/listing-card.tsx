@@ -136,9 +136,9 @@ export function ListingCard(props: ListingCardProps) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors flex-1">
+          <h2 className="font-semibold text-navy-700 leading-snug line-clamp-2 group-hover:text-gold-600 transition-colors flex-1">
             {props.title}
-          </h3>
+          </h2>
           {props.operatorSuperhost && <SuperhostBadge variant="card" />}
         </div>
         {props.priceAmount && parseFloat(props.priceAmount) > 0 && (

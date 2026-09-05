@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
+import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { useCurrency } from "@/lib/currency";
 import {
   Star,
@@ -13,12 +14,9 @@ import {
   Shield,
   Check,
   Loader2,
-  ShieldCheck,
   Tag,
   X,
   ChevronDown,
-  Gift,
-  CreditCard,
 } from "lucide-react";
 
 type BookingWidgetProps = {
@@ -31,19 +29,20 @@ type BookingWidgetProps = {
     avgRating: string | null;
     reviewCount: number | null;
     isInstantBook: boolean | null;
+    cancellationPolicy?: string | null;
   };
   /** Listing built from public data — nobody at the business sees bookings. */
   unclaimed?: boolean;
 };
 
 export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
-  const router = useRouter();
   const { user, refresh } = useAuth();
   const { currency, format: formatConverted } = useCurrency();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [guests, setGuests] = useState(1);
-  const [includeInsurance, setIncludeInsurance] = useState(false);
+  const includeInsurance = false;
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -63,15 +62,6 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
-  const [payDeposit, setPayDeposit] = useState(false);
-  const [showGiftCard, setShowGiftCard] = useState(false);
-  const [giftCardCode, setGiftCardCode] = useState("");
-  const [giftCardLoading, setGiftCardLoading] = useState(false);
-  const [giftCardError, setGiftCardError] = useState("");
-  const [appliedGiftCard, setAppliedGiftCard] = useState<{
-    code: string;
-    balance: number;
-  } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
     discountType: string;
@@ -81,6 +71,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
   } | null>(null);
 
   const pricePerUnit = parseFloat(listing.priceAmount || "0");
+  const requestOnly = unclaimed || !(pricePerUnit > 0);
 
   // Calculate quantity
   let quantity = guests;
@@ -114,11 +105,8 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
     }
     promoDiscount = Math.min(promoDiscount, pricing.total);
   }
-  const giftCardDiscount = appliedGiftCard
-    ? Math.min(appliedGiftCard.balance, pricing.total - promoDiscount)
-    : 0;
-  const finalTotal = pricing.total - promoDiscount - giftCardDiscount;
-  const depositAmount = Math.round(finalTotal * 0.25 * 100) / 100;
+  const giftCardDiscount = 0;
+  const finalTotal = serverTotal ?? (pricing.total - promoDiscount);
 
   async function handleApplyPromo() {
     if (!promoCode.trim()) return;
@@ -159,33 +147,6 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
     setAppliedPromo(null);
     setPromoCode("");
     setPromoError("");
-  }
-
-  async function handleApplyGiftCard() {
-    if (!giftCardCode.trim()) return;
-    setGiftCardLoading(true);
-    setGiftCardError("");
-    try {
-      const res = await fetch(`/api/payments/gift-cards?code=${encodeURIComponent(giftCardCode.trim())}`);
-      const data = await res.json();
-      if (res.ok && data.balance > 0) {
-        setAppliedGiftCard({ code: giftCardCode.trim(), balance: data.balance });
-        setGiftCardError("");
-      } else {
-        setGiftCardError(data.error || "Invalid or empty gift card");
-        setAppliedGiftCard(null);
-      }
-    } catch {
-      setGiftCardError("Failed to check gift card");
-    } finally {
-      setGiftCardLoading(false);
-    }
-  }
-
-  function handleRemoveGiftCard() {
-    setAppliedGiftCard(null);
-    setGiftCardCode("");
-    setGiftCardError("");
   }
 
   async function handleGuestCheckout(e: React.FormEvent) {
@@ -255,8 +216,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           guestCount: guests,
           includeInsurance,
           promoCode: appliedPromo?.code || undefined,
-          paymentType: payDeposit ? "deposit" : "full",
-          giftCardCode: appliedGiftCard?.code || undefined,
+          paymentType: "full",
         }),
       });
 
@@ -267,6 +227,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
         return;
       }
 
+      setServerTotal(Number(data.booking.totalAmount));
       setBookingId(data.booking.id);
       setBookingNumber(data.booking.bookingNumber);
       if (data.mode === "request" || data.booking?.status === "requested") {
@@ -410,7 +371,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             <Check size={32} className="text-white" />
           </div>
           <h3 role="status" className="text-xl font-bold text-navy-700">
-            {requested ? "Request received" : payLater ? "Booking received" : "Booking Confirmed!"}
+            {requested ? "Request received" : "Booking received"}
           </h3>
           <p className="text-navy-400 mt-2">
             {requested ? "Request" : "Booking"} #{bookingNumber}
@@ -429,7 +390,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           ) : payLater ? (
             <p className="text-sm text-navy-500 mt-4 leading-relaxed">
               <strong>Not confirmed until paid.</strong> Pay within 48 hours from{" "}
-              <a href="/bookings" className="text-gold-700 font-semibold">My Bookings</a> — after that the booking expires and nothing is charged.
+              <Link href="/bookings" className="text-gold-700 font-semibold">My Bookings</Link> — after that the booking expires and nothing is charged.
             </p>
           ) : directPayment ? (
             <p className="text-xs text-navy-300 mt-4">
@@ -453,10 +414,10 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
         <div className="mb-6">
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-navy-700">
-              {formatConverted(pricePerUnit)}
+              {requestOnly ? "Price on request" : formatConverted(pricePerUnit)}
             </span>
             <span className="text-navy-400">
-              / {listing.priceUnit || "unit"}
+              {!requestOnly && <>/ {listing.priceUnit || "unit"}</>}
             </span>
           </div>
           {currency !== "USD" && (
@@ -533,25 +494,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           </div>
         </div>
 
-        {/* Trip Insurance */}
-        <label className="flex items-center gap-3 p-3 rounded-xl bg-teal-50 cursor-pointer mb-6">
-          <input
-            type="checkbox"
-            checked={includeInsurance}
-            onChange={(e) => setIncludeInsurance(e.target.checked)}
-            className="w-4 h-4 accent-teal-500"
-          />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-navy-700">
-              Add trip protection
-            </p>
-            <p className="text-xs text-navy-400">
-              Cancel for any reason — {formatCurrency(pricing.insuranceFee || pricing.subtotal * 0.08)}
-            </p>
-          </div>
-          <ShieldCheck size={18} className="text-teal-500" />
-        </label>
-
+        {!requestOnly && <>
         {/* Promo Code */}
         <div className="mb-6">
           {!appliedPromo ? (
@@ -656,91 +599,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           </div>
         </div>
 
-        {/* Deposit Option */}
-        {finalTotal > 20 && (
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-gold-50 cursor-pointer mb-4">
-            <input
-              type="checkbox"
-              checked={payDeposit}
-              onChange={(e) => setPayDeposit(e.target.checked)}
-              className="w-4 h-4 accent-gold-500"
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-navy-700">
-                Pay deposit only ({formatCurrency(depositAmount)})
-              </p>
-              <p className="text-xs text-navy-400">
-                25% now, remainder due before your experience
-              </p>
-            </div>
-            <CreditCard size={18} className="text-gold-700" />
-          </label>
-        )}
-
-        {/* Gift Card */}
-        <div className="mb-4">
-          {!appliedGiftCard ? (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowGiftCard(!showGiftCard)}
-                className="flex items-center gap-1.5 text-sm text-navy-400 hover:text-navy-600 font-medium transition-colors"
-              >
-                <Gift size={14} />
-                Have a gift card?
-                <ChevronDown size={14} className={`transition-transform ${showGiftCard ? "rotate-180" : ""}`} />
-              </button>
-              {showGiftCard && (
-                <div className="mt-3 flex gap-2">
-                  <input
-                    type="text"
-                    value={giftCardCode}
-                    onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
-                    placeholder="Gift card code"
-                    className="flex-1 px-3 py-2 rounded-lg bg-cream-50 border border-cream-300 text-navy-700 placeholder:text-navy-300 outline-none focus:border-gold-500 text-sm font-mono tracking-wider"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyGiftCard}
-                    disabled={giftCardLoading || !giftCardCode.trim()}
-                    className="px-4 py-2 bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    {giftCardLoading ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
-                  </button>
-                </div>
-              )}
-              {giftCardError && (
-                <p className="mt-2 text-xs text-red-500">{giftCardError}</p>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between bg-green-50 px-3 py-2.5 rounded-xl">
-              <div className="flex items-center gap-2">
-                <Gift size={14} className="text-green-600" />
-                <div>
-                  <p className="text-sm font-semibold text-green-700">{appliedGiftCard.code}</p>
-                  <p className="text-xs text-green-600">Balance: {formatCurrency(appliedGiftCard.balance)}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleRemoveGiftCard}
-                className="p-1 hover:bg-green-100 rounded-full transition-colors"
-              >
-                <X size={14} className="text-green-600" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* BNPL Note */}
-        <div className="flex items-center gap-2 mb-6 p-2.5 rounded-xl bg-cream-50">
-          <CreditCard size={14} className="text-navy-400 shrink-0" />
-          <p className="text-xs text-navy-400">
-            <span className="font-medium">Pay in installments</span> available via Klarna / Afterpay at checkout
-          </p>
-        </div>
-
+        </>}
         {/* Guest Checkout Form */}
         {showGuestForm && !user && (
           <div className="mb-6 p-4 rounded-xl bg-cream-50 border border-cream-200">
@@ -791,12 +650,12 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
               <span className="text-xs text-navy-300">or</span>
               <div className="flex-1 h-px bg-cream-200" />
             </div>
-            <a
+            <Link
               href="/auth/signin"
               className="block text-center text-sm text-gold-700 font-semibold hover:text-gold-600 mt-3"
             >
               Sign in to your account
-            </a>
+            </Link>
           </div>
         )}
 
@@ -817,7 +676,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             >
               {loading ? (
                 <Loader2 size={18} className="animate-spin" />
-              ) : listing.isInstantBook ? (
+              ) : !requestOnly && listing.isInstantBook ? (
                 <>
                   <Zap size={18} />
                   Book Now
@@ -853,11 +712,11 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             <>
               <div className="flex items-center gap-2 text-sm text-navy-400">
                 <Shield size={16} className="text-teal-500" />
-                Verified local operator
+                Local business on VakayGo
               </div>
               <div className="flex items-center gap-2 text-sm text-navy-400">
                 <Check size={16} className="text-teal-500" />
-                Free cancellation up to 24h
+                <CancellationPolicy policy={listing.cancellationPolicy} compact />
               </div>
               <div className="flex items-center gap-2 text-sm text-navy-400">
                 <Check size={16} className="text-teal-500" />
@@ -867,14 +726,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
           )}
         </div>
 
-        {/* Operator Earnings Transparency */}
-        <div className="mt-4 pt-4 border-t border-cream-200">
-          <p className="text-xs text-navy-300 text-center">
-            The operator earns {formatCurrency(pricing.operatorEarnings)} from this booking.
-            <br />
-            {pricing.rateInfo}
-          </p>
-        </div>
+
       </div>
     </div>
   );

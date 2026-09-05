@@ -27,9 +27,8 @@ function getDb() {
  *
  * The verdict comes from lib/abandoned-bookings.ts (pure, unit-tested);
  * this route only applies it. `requested` bookings are out of scope — a
- * human confirms or declines those. A Stripe payment that lands after
- * expiry still flips the booking to confirmed via the webhook, which is
- * the right outcome: the money arrived.
+ * human confirms or declines those. Payments that land after expiry are
+ * refunded by the webhook without reopening inventory.
  *
  * Until 2026-09-03 this route only LISTED the candidates and sent nothing.
  *
@@ -105,6 +104,7 @@ export async function GET(request: Request) {
           });
           result.recovered.push(b.bookingNumber);
         } catch (err) {
+          await db.update(bookings).set({ recoveryEmailSentAt: null }).where(and(eq(bookings.id,b.id),eq(bookings.recoveryEmailSentAt,now)));
           logger.error("Abandoned booking recovery email failed", { bookingNumber: b.bookingNumber, err });
           result.failed.push(b.bookingNumber);
         }

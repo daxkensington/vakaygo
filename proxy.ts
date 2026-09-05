@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { rateLimit, getEndpointType, getClientIp } from "./lib/rate-limit";
 import "./lib/env";
+import { isRouteWithin } from "./lib/route-access";
 
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
@@ -98,8 +99,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Edge-level RBAC gate for /api/admin and /api/operator.
   // Per-route handlers still re-verify against the DB; this is a fast-fail
   // to drop unauthenticated/under-privileged traffic before it hits the route.
-  const needsAdmin = pathname.startsWith("/api/admin");
-  const needsOperator = pathname.startsWith("/api/operator");
+  const needsAdmin = isRouteWithin(pathname, "/api/admin");
+  const needsOperator = isRouteWithin(pathname, "/api/operator");
   if (needsAdmin || needsOperator) {
     const token = request.cookies.get("session")?.value;
     const role = await getSessionRole(token);

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Layers, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 
 const props = [
@@ -18,7 +19,7 @@ const props = [
     icon: ShieldCheck,
     title: "Trusted Local Operators",
     description:
-      "Every business is verified. Real reviews from real travelers. Secure payments with instant confirmation.",
+      "Discover local businesses, read reviews and see clear booking terms. Requests are confirmed with the business before payment.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image:
@@ -99,13 +100,13 @@ export function ValueProps() {
                     {prop.description}
                   </p>
                   <div className="mt-8">
-                    <a
+                    <Link
                       href="/explore"
                       className="inline-flex items-center gap-2 text-gold-700 font-semibold group-hover:gap-3 transition-all"
                     >
                       Explore now
                       <ArrowRight size={16} />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>

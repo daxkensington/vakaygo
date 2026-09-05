@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { alternates: { canonical: "https://vakaygo.com/" } };
 import { Hero } from "@/components/landing/hero";
 import { StatsBar } from "@/components/landing/stats-bar";
 import { ValueProps } from "@/components/landing/value-props";

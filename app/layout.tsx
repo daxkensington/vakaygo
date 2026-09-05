@@ -64,18 +64,6 @@ export const metadata: Metadata = {
     "Caribbean excursions",
     "VIP Caribbean",
   ],
-  alternates: {
-    canonical: "https://vakaygo.com",
-    languages: {
-      "en": "https://vakaygo.com",
-      "es": "https://vakaygo.com",
-      "fr": "https://vakaygo.com",
-      "pt": "https://vakaygo.com",
-      "nl": "https://vakaygo.com",
-      "de": "https://vakaygo.com",
-      "x-default": "https://vakaygo.com",
-    },
-  },
   openGraph: {
     type: "website",
     locale: "en_US",

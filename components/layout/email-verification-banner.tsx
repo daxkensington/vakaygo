@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, X, Loader2 } from "lucide-react";
-import Link from "next/link";
 
 export function EmailVerificationBanner() {
   const { user, loading } = useAuth();
@@ -27,7 +26,7 @@ export function EmailVerificationBanner() {
   }
 
   return (
-    <div className="relative z-[59] bg-gradient-to-r from-teal-600 to-teal-700">
+    <div role="region" aria-label="Email verification" className="relative z-[59] bg-gradient-to-r from-teal-600 to-teal-700">
       <div className="mx-auto max-w-7xl px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap">
         <Mail size={14} className="text-white/80 shrink-0" />
         <p className="text-sm text-white text-center font-medium">

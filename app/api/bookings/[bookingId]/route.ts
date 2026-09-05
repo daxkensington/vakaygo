@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email";
-import { createNotification } from "@/server/notifications";
 import { awardBookingPoints } from "@/server/loyalty";
 
+import { cancelBooking } from "@/server/cancel-booking";
 import { logger } from "@/lib/logger";
-import { sendRequestConfirmed, sendRequestDeclined } from "@/server/email-requests";
-import { formatBookingDateTime } from "@/lib/booking-time";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(
@@ -106,7 +103,7 @@ export async function PATCH(
     const userId = payload.id as string;
     const role = payload.role as string;
     const { bookingId } = await params;
-    const { status, operatorNotes, reason, note } = await request.json();
+    const { status, operatorNotes, reason } = await request.json();
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -147,6 +144,14 @@ export async function PATCH(
       }
     }
 
+    if (status === "cancelled") {
+      const result = await cancelBooking(bookingId, { id: userId, role }, reason);
+      return NextResponse.json({ ...result, booking: { id: bookingId, status: "status" in result ? result.status : existing.status } }, { status: "httpStatus" in result ? result.httpStatus : 200 });
+    }
+    if (status && !["confirmed", "completed", "no_show"].includes(status)) return NextResponse.json({ error: "Invalid status transition" }, { status: 400 });
+    if (status && ["cancelled", "refunded", "completed", "no_show"].includes(existing.status)) return NextResponse.json({ error: "This booking is closed" }, { status: 409 });
+    if (status === "completed" && existing.status !== "confirmed") return NextResponse.json({ error: "Only confirmed bookings can be completed" }, { status: 409 });
+
     // "confirmed" AND "completed" both imply the booking was PAID. Without
     // this gate an operator could move a never-paid booking straight to
     // "completed", which the escrow-release + payouts crons then turn into a
@@ -160,7 +165,7 @@ export async function PATCH(
       existing.status === "requested" &&
       (isAdmin || isOperator) &&
       (status === "confirmed" || status === "cancelled") &&
-      Math.round(parseFloat(existing.totalAmount || "0") * 100) === 0;
+      !existing.paymentId && !existing.paidAt;
 
     if (
       !isRequestOutcome &&
@@ -175,6 +180,7 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
+    if (isRequestOutcome) Object.assign(updateData, { totalAmount: "0.00", subtotal: "0.00", serviceFee: "0.00", paymentMethod: "none" });
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
     if (status === "cancelled" && typeof reason === "string" && reason.trim()) {
       updateData.cancellationReason = reason.trim().slice(0, 500);
@@ -185,8 +191,8 @@ export async function PATCH(
     // winner and loyalty points are awarded once (no check-then-act race).
     const isCompleting = status === "completed";
     const whereClause = isCompleting
-      ? and(eq(bookings.id, bookingId), ne(bookings.status, "completed"))
-      : eq(bookings.id, bookingId);
+      ? and(eq(bookings.id, bookingId), eq(bookings.status, "confirmed"), isNull(bookings.cancellationRequestedAt))
+      : and(eq(bookings.id, bookingId), eq(bookings.status, existing.status), isNull(bookings.cancellationRequestedAt));
 
     const [updated] = await db
       .update(bookings)
@@ -208,7 +214,7 @@ export async function PATCH(
     if (isCompleting) {
       try {
         const totalAmount = parseFloat(updated.totalAmount);
-        awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
+        await awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
           logger.error("Failed to award booking points", err);
         });
       } catch (loyaltyErr) {
@@ -216,86 +222,7 @@ export async function PATCH(
       }
     }
 
-    // Send email notifications on status change
-    if (status === "confirmed" || status === "cancelled") {
-      try {
-        const [traveler] = await db
-          .select({ email: users.email, name: users.name })
-          .from(users)
-          .where(eq(users.id, updated.travelerId));
-
-        const [listing] = await db
-          .select({ title: listings.title })
-          .from(listings)
-          .where(eq(listings.id, updated.listingId));
-
-        if (traveler?.email && isRequestOutcome) {
-          // Outcome of a phoned-in request: honest copy, no "$0.00 total".
-          const [full] = await db
-            .select({ typeData: listings.typeData })
-            .from(listings)
-            .where(eq(listings.id, updated.listingId));
-          const td = (full?.typeData || {}) as Record<string, unknown>;
-          const businessPhone = typeof td.phone === "string" && td.phone.trim() ? td.phone.trim() : null;
-          const whenText = updated.endDate
-            ? `${formatBookingDateTime(updated.startDate)} → ${formatBookingDateTime(updated.endDate)}`
-            : formatBookingDateTime(updated.startDate);
-          if (status === "confirmed") {
-            await sendRequestConfirmed({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              whenText,
-              guestCount: updated.guestCount || 1,
-              businessPhone,
-              note: typeof note === "string" && note.trim() ? note.trim().slice(0, 1000) : null,
-            });
-          } else {
-            await sendRequestDeclined({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              reason: updated.cancellationReason || null,
-              exploreUrl: "https://vakaygo.com/explore",
-            });
-          }
-        } else if (traveler?.email) {
-          if (status === "confirmed") {
-            await sendBookingConfirmation({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              startDate: updated.startDate.toISOString(),
-              guestCount: updated.guestCount || 1,
-              totalAmount: updated.totalAmount,
-            });
-          } else if (status === "cancelled") {
-            await sendBookingCancellation({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              reason: updated.cancellationReason || undefined,
-            });
-          }
-        }
-        // In-app notification to traveler about booking status change
-        const statusLabel = status === "confirmed" ? "confirmed" : "cancelled";
-        createNotification({
-          userId: updated.travelerId,
-          type: "booking",
-          title: `Booking ${statusLabel}: ${listing?.title || "your booking"}`,
-          body: `Your booking ${updated.bookingNumber} has been ${statusLabel}.`,
-          link: "/bookings",
-        }).catch(() => {});
-      } catch (emailErr) {
-        logger.error("Failed to send booking status email", emailErr);
-        // Don't fail the request if email fails
-      }
-    }
+    // Status notifications are durably queued by the database trigger.
 
     return NextResponse.json({ booking: { id: updated.id, status: updated.status } });
   } catch (error) {
