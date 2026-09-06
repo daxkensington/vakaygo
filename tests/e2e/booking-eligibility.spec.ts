@@ -26,12 +26,12 @@ for (const reason of ["unclaimed", "onboarding_incomplete", "suspended"]) {
   });
 }
 
-test("a restored direct booking page remains informational while platform bookings are disabled", async ({ page, request }) => {
+test("a restored direct booking page remains informational while platform setup is incomplete", async ({ page, request }) => {
   // CI intentionally leaves bookings disabled; do not synthesize a positive
   // provider response here. Positive-to-revoked widget behavior has unit coverage.
   const eligibility = await request.get("/api/listings/eligibility?listingId=20000000-0000-4000-8000-000000000001");
   expect(eligibility.status()).toBe(200);
-  expect(await eligibility.json()).toEqual({ eligible: false, reason: "bookings_disabled" });
+  expect(await eligibility.json()).toEqual({ eligible: false, reason: "payments_unavailable" });
   await page.goto("/audit-island/audit-tour/book");
   await expect(page.getByRole("complementary", { name: "Booking availability" })).toContainText("Information only");
   await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
