@@ -123,23 +123,22 @@ export default function ServicesPage() {
                   className="text-3xl md:text-4xl font-bold text-navy-700 leading-tight"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Your driver is
+                  Explore local
                   <br />
-                  <span className="text-gold-700">already waiting.</span>
+                  <span className="text-gold-700">transfer services.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  Skip the taxi hustle. Book your airport transfer before you land.
-                  Your driver meets you at arrivals with a name sign, tracks your
-                  flight, and takes you straight to your hotel. Fixed pricing, no
-                  surprises.
+                  Browse airport transfer businesses and their service information.
+                  Bookings and payments on VakayGo remain unavailable until
+                  each business has verified its listing and completed onboarding.
                 </p>
                 <ul className="mt-8 space-y-3">
                   {[
-                    "Fixed price — no meters, no surge, no haggling",
-                    "Flight tracking — driver adjusts for delays automatically",
-                    "Meet & greet at arrivals with name sign",
-                    "AC vehicles — sedan, SUV, minivan, or luxury",
-                    "Door-to-door service to your hotel or villa",
+                    "Service areas and airport coverage",
+                    "Vehicle types and passenger capacity",
+                    "Published business contact information",
+                    "Pickup details supplied by each business",
+                    "Business verification before online bookings",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3">
                       <div className="w-5 h-5 bg-teal-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -153,7 +152,7 @@ export default function ServicesPage() {
                   href="/explore?type=transfer"
                   className="inline-flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-8"
                 >
-                  Book a Transfer <ArrowRight size={16} />
+                  Browse Transfer Businesses <ArrowRight size={16} />
                 </Link>
               </div>
             </div>

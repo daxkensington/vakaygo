@@ -480,13 +480,13 @@ export default function RewardsPage() {
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
                   <h3 className="font-bold mb-2">Ready to Redeem?</h3>
                   <p className="text-teal-100 text-sm mb-4">
-                    You have {points.toLocaleString()} points (${(points / 100).toFixed(2)} credit). Use them on your next booking!
+                    You have {points.toLocaleString()} points (${(points / 100).toFixed(2)} credit). Booking rewards will become available after business onboarding is complete.
                   </p>
                   <Link
                     href="/explore"
                     className="inline-flex items-center gap-2 bg-white text-teal-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-teal-50 transition-colors"
                   >
-                    Book Now <ChevronRight size={14} />
+                    Explore Businesses <ChevronRight size={14} />
                   </Link>
                 </div>
               )}

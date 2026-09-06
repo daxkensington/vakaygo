@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, giftCards, users, listings } from "@/drizzle/schema";
+import { bookings, giftCards } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { constructWebhookEvent } from "@/server/stripe";
-import { sendBookingConfirmation } from "@/server/email";
+import { constructWebhookEvent, refundBooking, retrieveCheckoutSession, retrieveBookingPayment, retrieveBookingRefund } from "@/server/stripe";
 
 import { logger } from "@/lib/logger";
 /**
@@ -35,60 +34,60 @@ export async function POST(request: Request) {
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
     switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const bookingId = session.metadata?.bookingId;
-
-        // A $0 session completes as "paid" with payment_intent null —
-        // that is not a payment. Refuse to confirm anything on it.
-        const paymentIntent = typeof session.payment_intent === "string" ? session.payment_intent : null;
-        if (bookingId && (!paymentIntent || !(session.amount_total && session.amount_total > 0))) {
-          logger.warn("Checkout completed without a payment; booking left as is", { bookingId, amountTotal: session.amount_total });
-          break;
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const announced = event.data.object;
+        const bookingId = announced.metadata?.bookingId;
+        const paymentId = typeof announced.payment_intent === "string" ? announced.payment_intent : announced.payment_intent?.id;
+        if (!bookingId || !paymentId || announced.payment_status !== "paid" || !announced.amount_total) break;
+        const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+        // Shared Stripe accounts can emit unrelated events. Never refund them.
+        if (!booking) { logger.warn("Unknown booking checkout needs review", { eventId: event.id, bookingId }); break; }
+        // Already-recorded historical payments remain valid and are not reprocessed.
+        if (booking.paymentId === paymentId && booking.paidAt) break;
+        const session = await retrieveCheckoutSession(announced.id);
+        const sessionPaymentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+        const payment = await retrieveBookingPayment(paymentId);
+        if (session.id !== announced.id || session.metadata?.bookingId !== bookingId || sessionPaymentId !== paymentId
+          || session.payment_status !== "paid" || session.amount_total !== announced.amount_total || session.currency !== announced.currency
+          || session.livemode !== event.livemode || payment.livemode !== event.livemode
+          || payment.id !== paymentId || payment.metadata?.bookingId !== bookingId || payment.status !== "succeeded"
+          || payment.amount_received !== session.amount_total || payment.currency !== session.currency) {
+          throw new Error("Directory checkout provider identity mismatch; retry and support review required");
         }
+        // No booking confirmation or email is possible while directory mode is on.
+        // Stripe metadata preserves the refund key across retries and the later migration.
+        const refund = await refundBooking({ paymentIntentId: paymentId, amount: session.amount_total,
+          fullRefund: true, idempotencyKey: "rejected_checkout_" + session.id });
+        const refundPaymentId = typeof refund.payment_intent === "string" ? refund.payment_intent : refund.payment_intent?.id;
+        if (refundPaymentId !== paymentId || refund.amount !== session.amount_total || refund.currency !== session.currency
+          || refund.metadata?.vakaygoRefundKey !== "rejected_checkout_" + session.id) {
+          throw new Error("Directory checkout refund identity mismatch; support review required");
+        }
+        if (refund.status !== "pending" && refund.status !== "succeeded") {
+          logger.error("Directory checkout refund requires support review", { bookingId, sessionId: session.id, refundId: refund.id, refundStatus: refund.status });
+          throw new Error("Directory checkout refund did not complete; retry and support review required");
+        }
+        logger.warn("Directory checkout rejected without confirmation", { bookingId, sessionId: session.id, refundId: refund.id, refundStatus: refund.status });
+        break;
+      }
 
-        if (bookingId) {
-          const [paid] = await db
-            .update(bookings)
-            .set({
-              status: "confirmed",
-              paymentId: paymentIntent,
-              paymentMethod: "card",
-              paidAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(bookings.id, bookingId))
-            .returning({
-              bookingNumber: bookings.bookingNumber,
-              travelerId: bookings.travelerId,
-              listingId: bookings.listingId,
-              startDate: bookings.startDate,
-              guestCount: bookings.guestCount,
-              totalAmount: bookings.totalAmount,
-            });
-
-          logger.info("Booking paid", { bookingId });
-
-          // Now — and only now — the traveler gets "Booking Confirmed".
-          if (paid) {
-            try {
-              const [traveler] = await db.select({ email: users.email, name: users.name }).from(users).where(eq(users.id, paid.travelerId)).limit(1);
-              const [listing] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, paid.listingId)).limit(1);
-              if (traveler?.email) {
-                await sendBookingConfirmation({
-                  to: traveler.email,
-                  travelerName: traveler.name || "Traveler",
-                  bookingNumber: paid.bookingNumber,
-                  listingTitle: listing?.title || "your booking",
-                  startDate: paid.startDate.toISOString(),
-                  guestCount: paid.guestCount || 1,
-                  totalAmount: parseFloat(paid.totalAmount).toFixed(2),
-                });
-              }
-            } catch (err) {
-              logger.error("Booking confirmation email failed", { bookingId, err });
-            }
-          }
+      case "refund.created":
+      case "refund.updated":
+      case "refund.failed": {
+        const announced = event.data.object;
+        if (!announced.metadata?.vakaygoRefundKey?.startsWith("rejected_checkout_")) break;
+        const refund = await retrieveBookingRefund(announced.id);
+        const paymentId = typeof refund.payment_intent === "string" ? refund.payment_intent : refund.payment_intent?.id;
+        if (!paymentId || refund.metadata?.vakaygoRefundKey !== announced.metadata.vakaygoRefundKey) throw new Error("Directory refund identity mismatch");
+        const payment = await retrieveBookingPayment(paymentId);
+        const bookingId = payment.metadata?.bookingId;
+        if (!bookingId) break;
+        const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+        if (!booking) break;
+        if (refund.status !== "pending" && refund.status !== "succeeded") {
+          logger.error("Directory checkout refund requires support review", { bookingId, refundId: refund.id, refundStatus: refund.status });
+          throw new Error("Directory checkout refund failed; support review required");
         }
         break;
       }
@@ -117,21 +116,7 @@ export async function POST(request: Request) {
       }
 
       case "payment_intent.payment_failed": {
-        const intent = event.data.object;
-        const bookingId = intent.metadata?.bookingId;
-
-        if (bookingId) {
-          await db
-            .update(bookings)
-            .set({
-              status: "cancelled",
-              cancellationReason: "Payment failed",
-              updatedAt: new Date(),
-            })
-            .where(eq(bookings.id, bookingId));
-
-          logger.warn("Booking payment failed", { bookingId });
-        }
+        // Failed attempts cannot cancel or overwrite historical paid bookings.
         break;
       }
 

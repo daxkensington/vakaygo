@@ -31,7 +31,6 @@ const MeetingPointMap = dynamic(
     ),
   }
 );
-import { LikelySellOutBadge } from "@/components/listings/likely-sell-out-badge";
 import { DiningMenu } from "@/components/listings/dining-menu";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
@@ -408,16 +407,6 @@ export function ListingDetailClient({
                       </div>
                     )}
                   </div>
-
-                  {/* Likely to sell out badge for bookable types */}
-                  {false && ["tour", "excursion", "event", "vip"].includes(listing.type) && td.bookingCount7Days !== undefined && (
-                    <div className="mt-3">
-                      <LikelySellOutBadge
-                        bookingCount7Days={td.bookingCount7Days as number}
-                        spotsRemaining={td.spotsRemaining as number | undefined}
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex gap-2">
                   <ShareButton

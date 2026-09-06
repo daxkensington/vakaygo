@@ -557,7 +557,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
               Hungry for {island.name}?
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
-              Book a table at the best restaurants, explore local cuisine, and
+              Discover restaurants, explore local cuisine, and
               experience authentic Caribbean dining.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
