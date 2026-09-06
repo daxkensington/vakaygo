@@ -158,8 +158,9 @@ function SignUpContent() {
               )}
 
               {/* Google OAuth */}
-              <a
-                href="/api/auth/google"
+              <button
+                type="button"
+                onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
                 className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -169,7 +170,7 @@ function SignUpContent() {
                   <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                 </svg>
                 Continue with Google
-              </a>
+              </button>
 
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex-1 h-px bg-cream-200" />

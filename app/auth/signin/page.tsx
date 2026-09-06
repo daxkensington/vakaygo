@@ -150,7 +150,7 @@ function SignInContent() {
           )}
 
           {/* Google OAuth */}
-          <button type="button" onClick={() => window.location.assign("/api/auth/google")}
+          <button type="button" onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
             className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
