@@ -18,34 +18,34 @@ function getStripe(): Stripe {
 export async function createConnectAccount(params: {
   email: string;
   businessName: string;
+  country: string;
+  operatorId: string;
+  listingId: string;
+  idempotencyKey: string;
 }) {
+  const platform = await getStripe().accounts.retrieve();
+  if (!process.env.STRIPE_PLATFORM_ACCOUNT_ID || platform.id !== process.env.STRIPE_PLATFORM_ACCOUNT_ID) {
+    throw new Error("Payment platform configuration mismatch");
+  }
+  const countries = (process.env.STRIPE_CONNECT_COUNTRIES || "").split(",").map(c => c.trim().toUpperCase()).filter(Boolean);
+  if (!countries.includes(params.country)) throw new Error("Business country is not enabled for payment onboarding");
   return getStripe().accounts.create({
     type: "express",
+    country: params.country,
     email: params.email,
-    business_profile: {
-      name: params.businessName,
-      mcc: "4722",
-    },
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    settings: {
-      payouts: {
-        schedule: { interval: "weekly" as const, weekly_anchor: "monday" as const },
-      },
-    },
-  });
+    business_profile: { name: params.businessName, mcc: "4722" },
+    metadata: { vakaygoOperatorId: params.operatorId, vakaygoListingId: params.listingId },
+    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    settings: { payouts: { schedule: { interval: "weekly", weekly_anchor: "monday" } } },
+  }, { idempotencyKey: params.idempotencyKey });
 }
 
-/**
- * Create onboarding link for operator Stripe setup
- */
-export async function createAccountLink(accountId: string) {
+/** Return URLs are built from the configured application origin, never request headers. */
+export async function createAccountLink(accountId: string, urls: { refreshUrl: string; returnUrl: string }) {
   const link = await getStripe().accountLinks.create({
     account: accountId,
-    refresh_url: "https://vakaygo.com/operator/settings?stripe=refresh",
-    return_url: "https://vakaygo.com/operator/settings?stripe=success",
+    refresh_url: urls.refreshUrl,
+    return_url: urls.returnUrl,
     type: "account_onboarding",
   });
   return link.url;
@@ -142,35 +142,29 @@ export async function releaseEscrowTransfer(params: {
 /**
  * Create checkout session for a booking (redirect-based).
  *
- * Two modes:
- * - operatorStripeAccountId set → Connect destination charge: operator's
- *   share lands in their connected account, platform keeps platformFee.
- * - operatorStripeAccountId absent → platform charge: the full amount is
- *   collected on the platform account and operators are paid out-of-band
- *   from the payouts ledger. This is the default — most Caribbean islands
- *   are not supported Stripe Connect countries, so operators there can
- *   never onboard via Express.
+ * Only an eligible business's connected account may receive booking funds.
+ * Historical platform payments remain refundable through refundBooking.
  */
 export async function createCheckoutSession(params: {
   amount: number;
   currency: string;
   platformFee: number;
-  operatorStripeAccountId?: string | null;
+  operatorStripeAccountId: string;
   bookingId: string;
   listingTitle: string;
   travelerEmail: string;
   successUrl: string;
   cancelUrl: string;
   paymentMethodTypes?: string[];
+  idempotencyKey?: string;
 }) {
+  if (!params.operatorStripeAccountId) throw new Error("An onboarded payment account is required");
   const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
     metadata: { bookingId: params.bookingId },
     statement_descriptor_suffix: "VAKAYGO",
+    application_fee_amount: params.platformFee,
+    transfer_data: { destination: params.operatorStripeAccountId },
   };
-  if (params.operatorStripeAccountId) {
-    paymentIntentData.application_fee_amount = params.platformFee;
-    paymentIntentData.transfer_data = { destination: params.operatorStripeAccountId };
-  }
 
   return getStripe().checkout.sessions.create({
     payment_method_types: (params.paymentMethodTypes || ["card"]) as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
@@ -191,7 +185,7 @@ export async function createCheckoutSession(params: {
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: { bookingId: params.bookingId },
-  });
+  }, { idempotencyKey: params.idempotencyKey || "booking_checkout_" + params.bookingId });
 }
 
 /**
@@ -252,14 +246,25 @@ export async function refundBooking(params: {
  * Get operator Stripe account status
  */
 export async function getAccountStatus(accountId: string) {
-  const account = await getStripe().accounts.retrieve(accountId);
+  const [account, platform] = await Promise.all([
+    getStripe().accounts.retrieve(accountId),
+    getStripe().accounts.retrieve(),
+  ]);
   return {
-    id: account.id,
-    chargesEnabled: account.charges_enabled,
-    payoutsEnabled: account.payouts_enabled,
-    detailsSubmitted: account.details_submitted,
+    accountId: account.id,
+    platformAccountId: platform.id,
+    country: account.country || null,
+    operatorId: account.metadata?.vakaygoOperatorId || null,
+    listingId: account.metadata?.vakaygoListingId || null,
+    chargesEnabled: account.charges_enabled === true,
+    payoutsEnabled: account.payouts_enabled === true,
+    detailsSubmitted: account.details_submitted === true,
+    cardPaymentsActive: account.capabilities?.card_payments === "active",
+    transfersActive: account.capabilities?.transfers === "active",
+    disabledReason: account.requirements?.disabled_reason || null,
   };
 }
+
 
 /**
  * Get operator balance
@@ -280,5 +285,19 @@ export function constructWebhookEvent(body: string, signature: string, secret: s
 }
 
 export async function retrieveCheckoutSession(id: string) { return getStripe().checkout.sessions.retrieve(id); }
+export async function verifyStripePlatformIdentity(): Promise<{ accountId: string; environment: "test" | "live" }> {
+  const key = process.env.STRIPE_SECRET_KEY || "";
+  const environment = /^(sk|rk)_test_/.test(key) ? "test" : /^(sk|rk)_live_/.test(key) ? "live" : null;
+  const expected = process.env.STRIPE_PLATFORM_ACCOUNT_ID;
+  if (!environment || !expected || !/^acct_[A-Za-z0-9]+$/.test(expected)) throw new Error("Payment platform identity is not configured");
+  const platform = await getStripe().accounts.retrieve();
+  if (platform.id !== expected) throw new Error("Payment platform configuration mismatch");
+  return { accountId: platform.id, environment };
+}
+export async function expireCheckoutSession(id: string) {
+  const session = await retrieveCheckoutSession(id);
+  if (session.status === "open") await getStripe().checkout.sessions.expire(id);
+}
 export async function retrieveBookingPayment(id: string) { return getStripe().paymentIntents.retrieve(id); }
+
 export async function retrieveBookingRefund(id: string) { return getStripe().refunds.retrieve(id); }

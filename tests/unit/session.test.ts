@@ -20,6 +20,7 @@ describe("session token round-trip", () => {
       email: "alice@example.com",
       name: "Alice",
       role: "admin",
+      sessionVersion: 0,
     });
 
     expect(typeof token).toBe("string");
@@ -38,6 +39,7 @@ describe("session token round-trip", () => {
       id: "u",
       email: "e@x.com",
       role: "traveler",
+      sessionVersion: 0,
     });
     const tampered = token.slice(0, -4) + "AAAA";
     expect(await verifySessionToken(tampered)).toBeNull();

@@ -3,73 +3,7 @@
 import { useState } from "react";
 import { Check, X, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle } from "lucide-react";
 
-type PolicyType = "flexible" | "moderate" | "strict" | "non_refundable";
-
-const POLICIES: Record<
-  PolicyType,
-  {
-    label: string;
-    summary: string;
-    details: string[];
-    icon: typeof ShieldCheck;
-    color: string;
-    bgColor: string;
-    freeCancel: boolean;
-  }
-> = {
-  flexible: {
-    label: "Flexible",
-    summary: "Free cancellation up to 24 hours before",
-    details: [
-      "Full refund if cancelled at least 24 hours before start date",
-      "50% refund if cancelled less than 24 hours before",
-      "No refund for no-shows",
-    ],
-    icon: ShieldCheck,
-    color: "text-teal-600",
-    bgColor: "bg-teal-50",
-    freeCancel: true,
-  },
-  moderate: {
-    label: "Moderate",
-    summary: "Free cancellation up to 7 days before",
-    details: [
-      "Full refund if cancelled at least 7 days before start date",
-      "50% refund if cancelled 1-7 days before",
-      "No refund if cancelled less than 24 hours before",
-    ],
-    icon: ShieldCheck,
-    color: "text-teal-600",
-    bgColor: "bg-teal-50",
-    freeCancel: true,
-  },
-  strict: {
-    label: "Strict",
-    summary: "50% refund up to 14 days before, no refund after",
-    details: [
-      "50% refund if cancelled at least 14 days before start date",
-      "No refund if cancelled less than 14 days before",
-      "No refund for no-shows",
-    ],
-    icon: AlertTriangle,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    freeCancel: false,
-  },
-  non_refundable: {
-    label: "Non-Refundable",
-    summary: "No refunds available for this listing",
-    details: [
-      "This booking is non-refundable once confirmed",
-      "No refund for cancellations at any time",
-      "Consider purchasing trip protection for coverage",
-    ],
-    icon: X,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    freeCancel: false,
-  },
-};
+import { CANCELLATION_POLICIES, cancellationPolicyKey } from "@/lib/cancellation";
 
 export function CancellationPolicy({
   policy = "moderate",
@@ -79,8 +13,8 @@ export function CancellationPolicy({
   compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const policyKey = (policy || "moderate") as PolicyType;
-  const config = POLICIES[policyKey] || POLICIES.moderate;
+  const rule = CANCELLATION_POLICIES[cancellationPolicyKey(policy)];
+  const config = { ...rule, freeCancel: rule.fullHours !== null, icon: rule.fullHours !== null ? ShieldCheck : AlertTriangle, color: "text-navy-600", bgColor: "bg-cream-50" };
   const Icon = config.icon;
 
   if (compact) {
@@ -108,6 +42,7 @@ export function CancellationPolicy({
   return (
     <div className="p-6 bg-white rounded-2xl shadow-[var(--shadow-card)]">
       <button
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-start justify-between text-left"
       >

@@ -7,6 +7,7 @@ import { users, accounts } from "@/drizzle/schema";
 
 import { logger } from "@/lib/logger";
 import { setSessionCookie } from "@/server/admin-auth";
+import { establishEmailIdentity } from "@/server/email-identity";
 
 function getRedirectUri(requestUrl: string): string {
   const baseUrl =
@@ -121,10 +122,10 @@ export async function GET(request: Request) {
 
     const profile = await profileRes.json();
 
-    if (!profile.email) {
+    if (typeof profile.email !== "string" || profile.verified_email !== true || !profile.id) {
       logger.error("Google profile missing email", profile);
       return NextResponse.redirect(
-        new URL("/auth/signin?error=no_email", url.origin)
+        new URL("/auth/signin?error=unverified_google_email", url.origin)
       );
     }
 
@@ -144,15 +145,17 @@ export async function GET(request: Request) {
       .where(eq(users.email, googleEmail))
       .limit(1);
 
-    let user: { id: string; email: string; name: string | null; role: string };
+    let user: { id: string; email: string; name: string | null; role: string; sessionVersion: number };
+
+    if (existingUser?.emailVerified && existingUser.totpEnabled) {
+      return NextResponse.redirect(new URL("/auth/signin?error=two_factor_required", url.origin));
+    }
 
     if (existingUser) {
-      user = {
-        id: existingUser.id,
-        email: existingUser.email,
-        name: existingUser.name,
-        role: existingUser.role,
-      };
+      const identity = await establishEmailIdentity(existingUser.id);
+      if (!identity) throw new Error("Account no longer exists");
+      if (identity.requiresTwoFactor) return NextResponse.redirect(new URL("/auth/signin?error=two_factor_required", url.origin));
+      user = identity;
 
       // Update avatar if not set
       if (!existingUser.avatarUrl && googleAvatar) {
@@ -219,6 +222,7 @@ export async function GET(request: Request) {
           email: users.email,
           name: users.name,
           role: users.role,
+          sessionVersion: users.sessionVersion,
         });
 
       user = newUser;
@@ -245,6 +249,7 @@ export async function GET(request: Request) {
       email: user.email,
       name: user.name ?? undefined,
       role: user.role,
+      sessionVersion: user.sessionVersion,
     });
 
     // Redirect based on role

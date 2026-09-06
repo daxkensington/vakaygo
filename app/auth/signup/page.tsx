@@ -71,18 +71,9 @@ function SignUpContent() {
 
       analytics.signUp("email");
 
-      // Auto sign in after signup
-      await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (role === "operator" && claimListingId) {
-        router.push(`/operator/claim/${claimListingId}`);
-        return;
-      }
-      router.push(role === "operator" ? "/operator" : "/explore");
+      // Inbox proof is required before password sign-in or business access.
+      setPassword("");
+      router.push("/auth/verify-email");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -135,7 +126,7 @@ function SignUpContent() {
                 <div>
                   <p className="font-bold text-navy-700">I&apos;m a Traveler</p>
                   <p className="text-sm text-navy-400 mt-0.5">
-                    Discover and book stays, tours, dining, and more
+                    Discover stays, tours, dining, and more
                   </p>
                 </div>
               </button>
@@ -167,8 +158,9 @@ function SignUpContent() {
               )}
 
               {/* Google OAuth */}
-              <a
-                href="/api/auth/google"
+              <button
+                type="button"
+                onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
                 className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -178,7 +170,7 @@ function SignUpContent() {
                   <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                 </svg>
                 Continue with Google
-              </a>
+              </button>
 
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex-1 h-px bg-cream-200" />
@@ -187,6 +179,7 @@ function SignUpContent() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-sm text-navy-500">After creating your account, confirm the link sent to your email before signing in or claiming a business.</p>
                 <div>
                   <label className="block text-sm font-medium text-navy-600 mb-1.5">
                     Full Name

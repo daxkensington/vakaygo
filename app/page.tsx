@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { alternates: { canonical: "https://vakaygo.com/" } };
 import { Hero } from "@/components/landing/hero";
 import { StatsBar } from "@/components/landing/stats-bar";
 import { ValueProps } from "@/components/landing/value-props";
@@ -20,17 +22,17 @@ export default function LandingPage() {
     "@type": "WebPage",
     name: "VakayGo — Caribbean Travel Platform",
     description:
-      "Book stays, tours, dining, events, and transport across 21 Caribbean islands. The lowest commissions in the travel industry.",
+      "Discover stays, tours, restaurants and local businesses across the Caribbean. Explore listing information and plan your trip with VakayGo.",
     url: "https://vakaygo.com",
     isPartOf: { "@id": "https://vakaygo.com/#website" },
     about: {
-      "@type": "TravelAgency",
+      "@type": "Organization",
+      "@id": "https://vakaygo.com/#organization",
       name: "VakayGo",
       areaServed: {
         "@type": "Place",
         name: "Caribbean",
       },
-      priceRange: "$-$$$$",
     },
     breadcrumb: {
       "@type": "BreadcrumbList",

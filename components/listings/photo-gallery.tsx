@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useFocusTrap } from "@/components/ui/focus-trap";
 import { getImageUrl } from "@/lib/image-utils";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
 
@@ -17,6 +18,17 @@ type Photo = MediaItem;
 export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]; title: string; type?: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, modalOpen);
+  useEffect(() => {
+    if (!modalOpen) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modalRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    return () => { document.body.style.overflow = overflow; opener?.focus(); };
+  }, [modalOpen]);
 
   // Swipe gesture state
   const touchStartX = useRef<number>(0);
@@ -51,12 +63,10 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
   function openModal(index: number) {
     setActiveIndex(index);
     setModalOpen(true);
-    document.body.style.overflow = "hidden";
   }
 
   function closeModal() {
     setModalOpen(false);
-    document.body.style.overflow = "";
   }
 
   function next() {
@@ -73,7 +83,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
       <div className="mx-auto max-w-7xl px-6 mb-8">
         {displayPhotos.length >= 5 ? (
           <div className="grid grid-cols-4 grid-rows-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div className="col-span-2 row-span-2 relative cursor-pointer" onClick={() => openModal(0)}>
+            <div className="col-span-2 row-span-2 relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
               {isVideo(displayPhotos[0]) ? (
                 <>
                   <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
@@ -95,7 +105,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
               )}
             </div>
             {displayPhotos.slice(1, 5).map((photo, i) => (
-              <div key={photo.id} className="relative cursor-pointer" onClick={() => openModal(i + 1)}>
+              <div key={photo.id} className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photo " + (i + 2) + " of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(i + 1); } }} onClick={() => openModal(i + 1)}>
                 {isVideo(photo) ? (
                   <>
                     <video src={photo.url} muted className="w-full h-full object-cover" />
@@ -115,7 +125,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                   />
                 )}
                 {i === 3 && proxiedPhotos.length > 5 && (
-                  <div className="absolute inset-0 bg-navy-900/50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
                     <span className="text-white font-semibold text-lg">
                       +{proxiedPhotos.length - 5} more
                     </span>
@@ -126,7 +136,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
           </div>
         ) : displayPhotos.length >= 2 ? (
           <div className="grid grid-cols-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div className="relative cursor-pointer" onClick={() => openModal(0)}>
+            <div className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
               {isVideo(displayPhotos[0]) ? (
                 <>
                   <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
@@ -149,7 +159,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
             </div>
             <div className="grid grid-rows-2 gap-2">
               {displayPhotos.slice(1, 3).map((photo, i) => (
-                <div key={photo.id} className="relative cursor-pointer" onClick={() => openModal(i + 1)}>
+                <div key={photo.id} className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photo " + (i + 2) + " of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(i + 1); } }} onClick={() => openModal(i + 1)}>
                   {isVideo(photo) ? (
                     <>
                       <video src={photo.url} muted className="w-full h-full object-cover" />
@@ -173,7 +183,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
             </div>
           </div>
         ) : (
-          <div className="relative cursor-pointer rounded-3xl overflow-hidden h-[400px] md:h-[480px]" onClick={() => openModal(0)}>
+          <div className="relative cursor-pointer rounded-3xl overflow-hidden h-[400px] md:h-[480px]" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
             {isVideo(displayPhotos[0]) ? (
               <>
                 <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
@@ -201,6 +211,8 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
       {modalOpen && (
         <div
           className="fixed inset-0 z-[100] bg-navy-900/95 flex items-center justify-center"
+          ref={modalRef} role="dialog" aria-modal="true" aria-label={"Photos of " + title}
+          onKeyDown={e => { if(e.key === "Escape") closeModal(); if(e.key === "ArrowRight") next(); if(e.key === "ArrowLeft") prev(); }}
           style={{ touchAction: "pan-y" }}
           onTouchStart={(e) => {
             touchStartX.current = e.touches[0].clientX;
@@ -223,6 +235,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
         >
           {/* Close */}
           <button
+            aria-label="Close photo gallery"
             onClick={closeModal}
             className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
           >
@@ -242,6 +255,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
           {/* Previous */}
           {proxiedPhotos.length > 1 && (
             <button
+              aria-label="Previous photo"
               onClick={prev}
               className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
             >
@@ -272,6 +286,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
           {/* Next */}
           {proxiedPhotos.length > 1 && (
             <button
+              aria-label="Next photo"
               onClick={next}
               className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center z-10"
             >

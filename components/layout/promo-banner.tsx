@@ -31,11 +31,11 @@ export function PromoBanner() {
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
   }
 
-  if (!visible) return null;
+  if (!visible || isLanding) return null;
 
   return (
-    <div className="relative z-[60] bg-gradient-to-r from-gold-500 to-gold-600 animate-in slide-in-from-top duration-500">
-      <div className="mx-auto max-w-7xl px-4 py-2.5 flex items-center justify-center gap-3">
+    <div role="region" aria-label="Travel planning announcement" className="relative z-[60] bg-gradient-to-r from-gold-700 to-gold-800 animate-in slide-in-from-top duration-500">
+      <div className="mx-auto max-w-7xl px-10 py-2.5 flex items-center justify-center gap-3">
         <p className="text-sm text-white text-center font-medium">
           Plan your dream Caribbean getaway with our new AI Trip Planner!{" "}
           <Link

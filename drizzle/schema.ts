@@ -13,7 +13,31 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+// Directory interest is independent of bookings and customer contact sharing.
+export const listingInterest = pgTable("listing_interest", {
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  noticeVersion: varchar("notice_version", { length: 32 }).notNull().default("2026-09-06"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [primaryKey({ columns: [t.listingId, t.userId] }),
+  index("listing_interest_user_updated_idx").on(t.userId, t.updatedAt),
+  index("listing_interest_active_listing_idx").on(t.listingId).where(sql`${t.active}=true`)]);
+export const businessOutreach = pgTable("business_outreach", {
+  listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 24 }).notNull().default("new"),
+  notes: text("notes").notNull().default(""),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  contactedAt: timestamp("contacted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [check("business_outreach_status_check", sql`${t.status} IN ('new','reviewing','contacted','do_not_contact')`),
+  check("business_outreach_notes_check", sql`length(${t.notes})<=4000`)]);
 
 // ─── ENUMS ──────────────────────────────────────────────────────
 export const userRoleEnum = pgEnum("user_role", [
@@ -90,6 +114,7 @@ export const users = pgTable(
     role: userRoleEnum("role").default("traveler").notNull(),
     passwordHash: text("password_hash"),
     emailVerified: boolean("email_verified").default(false),
+    sessionVersion: integer("session_version").notNull().default(0),
     emailVerificationToken: varchar("email_verification_token", { length: 128 }),
     emailVerificationExpires: timestamp("email_verification_expires"),
     // Passwordless sign-in (magic link) — single-use, short-lived
@@ -315,6 +340,17 @@ export const bookings = pgTable(
     paymentMethod: varchar("payment_method", { length: 32 }),
     paymentId: varchar("payment_id", { length: 256 }),
     paidAt: timestamp("paid_at"),
+    checkoutSessionId: varchar("checkout_session_id", { length: 256 }),
+    checkoutStripeAccountId: varchar("checkout_stripe_account_id", { length: 256 }),
+    checkoutExpiresAt: timestamp("checkout_expires_at"),
+    paymentMode: varchar("payment_mode", { length: 32 }),
+    operatorEarningsCents: integer("operator_earnings_cents"),
+    cancellationPolicySnapshot: varchar("cancellation_policy_snapshot", { length: 32 }),
+    cancellationPolicyVersion: integer("cancellation_policy_version"),
+    cancellationRequestedAt: timestamp("cancellation_requested_at"),
+    cancellationRefundCents: integer("cancellation_refund_cents"),
+    refundId: varchar("refund_id", { length: 256 }),
+    refundStatus: varchar("refund_status", { length: 32 }),
     // Set by the abandoned-bookings cron when the one "complete your
     // booking" email goes out; the claim that stops it repeating.
     recoveryEmailSentAt: timestamp("recovery_email_sent_at"),
@@ -344,6 +380,27 @@ export const bookings = pgTable(
     index("bookings_status_idx").on(t.status),
   ]
 );
+
+// Rejected checkout payments have their own refund identity; never replace a booking's paid charge.
+export const rejectedPaymentRefunds = pgTable("rejected_payment_refunds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => bookings.id),
+  checkoutSessionId: varchar("checkout_session_id", { length: 256 }).notNull().unique(),
+  paymentId: varchar("payment_id", { length: 256 }).notNull().unique(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull(),
+  refundId: varchar("refund_id", { length: 256 }).unique(),
+  refundStatus: varchar("refund_status", { length: 32 }),
+  attempts: integer("attempts").default(0).notNull(),
+  lastError: text("last_error"),
+  nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("rejected_refunds_pending_idx").on(t.refundStatus, t.nextAttemptAt),
+  index("rejected_refunds_booking_idx").on(t.bookingId),
+  check("rejected_refunds_positive_amount", sql`${t.amountCents} > 0`),
+]);
 
 // ─── REVIEWS ────────────────────────────────────────────────────
 export const reviews = pgTable(
@@ -945,3 +1002,92 @@ export const listingClaims = pgTable("listing_claims", {
   index("listing_claims_operator_idx").on(t.operatorId),
   index("listing_claims_status_idx").on(t.status),
 ]);
+
+export const bookingMailOutbox = pgTable("booking_mail_outbox", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => bookings.id),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  recipient: varchar("recipient", { length: 16 }).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  availableAt: timestamp("available_at").defaultNow().notNull(),
+  lockedUntil: timestamp("locked_until"),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, t => [uniqueIndex("booking_mail_outbox_booking_id_kind_recipient_key").on(t.bookingId,t.kind,t.recipient), index("booking_mail_outbox_pending_idx").on(t.availableAt)]);
+
+// Server-controlled business verification. Never derive these fields from typeData.
+export const listingTrustedContacts = pgTable("listing_trusted_contacts", {
+  listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
+  originalOperatorId: uuid("original_operator_id").notNull().references(() => users.id),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  source: varchar("source", { length: 64 }).notNull(),
+  sourceReference: text("source_reference").notNull(),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
+}, () => [check("listing_trusted_contacts_phone_check", sql.raw("phone ~ '^\\+[1-9][0-9]{7,14}$'"))]);
+
+export const listingClaimVerifications = pgTable("listing_claim_verifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  claimId: uuid("claim_id").notNull().unique().references(() => listingClaims.id),
+  targetPhone: varchar("target_phone", { length: 20 }).notNull(),
+  serviceSid: varchar("service_sid", { length: 64 }).notNull(),
+  providerAccountId: varchar("provider_account_id", { length: 64 }).notNull(),
+  providerVerificationId: varchar("provider_verification_id", { length: 64 }).unique(),
+  status: varchar("status", { length: 24 }).default("sending").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  checkToken: uuid("check_token"),
+  checkLockedUntil: timestamp("check_locked_until", { withTimezone: true }),
+  providerApprovedAt: timestamp("provider_approved_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).default(sql.raw("now()+interval '10 minutes'")).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("listing_claim_verifications_active_listing").on(t.listingId).where(sql.raw("status in ('sending','pending','verified')")),
+  uniqueIndex("listing_claim_verifications_active_phone").on(t.targetPhone).where(sql.raw("status in ('sending','pending')")),
+  check("listing_claim_verifications_status_check", sql.raw("status in ('sending','pending','verified','failed','expired','revoked')")),
+  check("listing_claim_verifications_attempts_check", sql.raw("attempts between 0 and 5")),
+]);
+
+export const bookingProviderConfig = pgTable("booking_provider_config", {
+  id: boolean("id").primaryKey().default(true),
+  environment: varchar("environment", { length: 8 }),
+  platformAccountId: varchar("platform_account_id", { length: 128 }),
+  allowedCountries: json("allowed_countries").$type<string[]>().default([]).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, () => [
+  check("booking_provider_config_id_check", sql.raw("id")),
+  check("booking_provider_config_environment_check", sql.raw("environment in ('test','live')")),
+]);
+
+export const listingOnboarding = pgTable("listing_onboarding", {
+  listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  verifiedClaimId: uuid("verified_claim_id").notNull().references(() => listingClaimVerifications.id),
+  businessLegalName: varchar("business_legal_name", { length: 256 }),
+  businessCountry: varchar("business_country", { length: 2 }),
+  businessAddress: text("business_address"),
+  representativeName: varchar("representative_name", { length: 256 }),
+  authorityAcceptedAt: timestamp("authority_accepted_at", { withTimezone: true }),
+  termsVersion: varchar("terms_version", { length: 32 }),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  stripeAccountId: varchar("stripe_account_id", { length: 128 }),
+  providerEnvironment: varchar("provider_environment", { length: 8 }),
+  platformAccountId: varchar("platform_account_id", { length: 128 }),
+  providerCountry: varchar("provider_country", { length: 2 }),
+  chargesEnabled: boolean("charges_enabled").default(false).notNull(),
+  payoutsEnabled: boolean("payouts_enabled").default(false).notNull(),
+  detailsSubmitted: boolean("details_submitted").default(false).notNull(),
+  cardPaymentsActive: boolean("card_payments_active").default(false).notNull(),
+  transfersActive: boolean("transfers_active").default(false).notNull(),
+  providerCheckedAt: timestamp("provider_checked_at", { withTimezone: true }),
+  providerVersion: integer("provider_version").default(0).notNull(),
+  providerRevokedAt: timestamp("provider_revoked_at", { withTimezone: true }),
+  connectAttemptId: uuid("connect_attempt_id").defaultRandom().notNull(),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [index("listing_onboarding_stripe_account_idx").on(t.stripeAccountId)]);

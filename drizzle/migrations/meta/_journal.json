@@ -29,6 +29,48 @@
       "when": 1788386602980,
       "tag": "0003_booking_recovery_email",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788609600000,
+      "tag": "0004_booking_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788694741108,
+      "tag": "0005_rejected_payment_refunds",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788700000000,
+      "tag": "0006_business_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788700000001,
+      "tag": "0007_booking_onboarding_enforcement",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788700000002,
+      "tag": "0008_secure_account_bootstrap",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788700000003,
+      "tag": "0009_listing_interest_outreach",
+      "breakpoints": true
     }
   ]
 }

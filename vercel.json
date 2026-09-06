@@ -35,6 +35,22 @@
     {
       "path": "/api/cron/enrich-listings",
       "schedule": "0 4 * * 3"
+    },
+    {
+      "path": "/api/cron/booking-mail",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/booking-refunds",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/onboarding-readiness",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/checkout-safety",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

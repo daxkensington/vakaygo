@@ -6,13 +6,13 @@ import { eq } from "drizzle-orm";
 import { createNotification } from "@/server/notifications";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { Resend } from "resend";
+import { sendEmail } from "@/server/mail-client";
 
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Key comes only from the environment — never hardcode secrets in source.
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 
@@ -270,8 +270,7 @@ export async function PATCH(
 </body></html>`;
 
       if (traveler?.email) {
-        resend.emails
-          .send({
+        sendEmail({
             from: FROM,
             to: traveler.email,
             subject: `Dispute ${statusLabel} — Booking #${booking?.bookingNumber}`,
@@ -281,8 +280,7 @@ export async function PATCH(
       }
 
       if (operator?.email && !operator.email.includes("unclaimed")) {
-        resend.emails
-          .send({
+        sendEmail({
             from: FROM,
             to: operator.email,
             subject: `Dispute ${statusLabel} — Booking #${booking?.bookingNumber}`,

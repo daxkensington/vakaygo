@@ -2,44 +2,25 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
-import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { users, listings } from "@/drizzle/schema";
-import { env, SESSION_SECRET } from "@/lib/env";
-
-export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
-
-export type SessionPayload = {
-  userId: string;
-  role: string;
-  email: string;
-};
+import { env } from "@/lib/env";
+import { createSessionToken, verifyCurrentSessionToken, SESSION_TTL_SECONDS, type SessionClaims, type SessionPayload } from "./session-validation";
+export { createSessionToken, verifySessionToken, verifyCurrentSessionToken, SESSION_TTL_SECONDS } from "./session-validation";
+export type { SessionClaims, SessionPayload } from "./session-validation";
 
 type AuthResult =
-  | { ok: true; userId: string; role: string }
+  | { ok: true; userId: string; role: string; sessionVersion: number; emailVerified: boolean }
   | { ok: false; error: NextResponse };
 
 function getDb() {
   return drizzle(neon(env.DATABASE_URL));
 }
 
-export type SessionClaims = {
-  id: string;
-  email: string;
-  name?: string;
-  role: string;
-};
-
-export async function createSessionToken(claims: SessionClaims): Promise<string> {
-  return new SignJWT({ ...claims })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-    .sign(SESSION_SECRET());
-}
-
 export async function setSessionCookie(claims: SessionClaims): Promise<void> {
   const token = await createSessionToken(claims);
+  // Never promote a stale credential read to the latest epoch.
+  if (!await verifyCurrentSessionToken(token)) throw new Error("Session identity changed; sign in again");
   const cookieStore = await cookies();
   cookieStore.set("session", token, {
     httpOnly: true,
@@ -55,26 +36,11 @@ export async function clearSessionCookie(): Promise<void> {
   cookieStore.delete("session");
 }
 
-export async function verifySessionToken(
-  token: string
-): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, SESSION_SECRET());
-    return {
-      userId: payload.id as string,
-      role: payload.role as string,
-      email: payload.email as string,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function verifySession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+  return verifyCurrentSessionToken(token);
 }
 
 export async function requireUser(): Promise<AuthResult> {
@@ -85,7 +51,7 @@ export async function requireUser(): Promise<AuthResult> {
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
-  return { ok: true, userId: session.userId, role: session.role };
+  return { ok: true, userId: session.userId, role: session.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 export async function requireAdmin(): Promise<AuthResult> {
@@ -111,7 +77,7 @@ export async function requireAdmin(): Promise<AuthResult> {
     };
   }
 
-  return { ok: true, userId: session.userId, role: user.role };
+  return { ok: true, userId: session.userId, role: user.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 export async function requireOperator(): Promise<AuthResult> {
@@ -130,7 +96,7 @@ export async function requireOperator(): Promise<AuthResult> {
     };
   }
 
-  return { ok: true, userId: session.userId, role: session.role };
+  return { ok: true, userId: session.userId, role: session.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 /**

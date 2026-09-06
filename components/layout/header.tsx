@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
 
@@ -18,10 +18,37 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const isLanding = pathname === "/";
 
   useFocusTrap(mobileMenuRef, mobileOpen);
+
+  useLayoutEffect(() => {
+    const announcements = document.getElementById("site-announcements");
+    const header = headerRef.current;
+    if (!announcements || !header) return;
+    let previous = -1;
+    const updateTop = () => {
+      // Banners remain in document flow. Only their visible portion offsets
+      // the fixed header, including stacked or wrapped banners on mobile.
+      const top = Math.max(0, announcements.getBoundingClientRect().bottom);
+      if (top === previous) return;
+      previous = top;
+      header.style.top = `${top}px`;
+      header.style.setProperty("--site-announcement-offset", `${top}px`);
+    };
+    updateTop();
+    const observer = new ResizeObserver(updateTop);
+    observer.observe(announcements);
+    window.addEventListener("scroll", updateTop, { passive: true });
+    window.addEventListener("resize", updateTop);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateTop);
+      window.removeEventListener("resize", updateTop);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -40,7 +67,8 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      ref={headerRef}
+      className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,box-shadow,backdrop-filter] duration-500 ${
         scrolled || !isLanding
           ? "bg-white/90 backdrop-blur-xl shadow-[0_1px_20px_rgba(0,0,0,0.06)]"
           : "bg-transparent"
@@ -274,7 +302,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
+        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden max-h-[calc(100dvh_-_var(--site-announcement-offset,0px)_-_4rem)] overflow-y-auto overscroll-contain bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
           <Link href="/explore" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             Explore
           </Link>
@@ -284,6 +312,8 @@ export function Header() {
           <Link href="/for-businesses" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             For Businesses
           </Link>
+          {["Islands", "Map", "Services"].map(label => <Link key={label} href={"/"+label.toLowerCase()} className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>{label}</Link>)}
+          <div className="py-3 text-navy-600"><CurrencySwitcher /></div>
           {user ? (
             <>
               <Link href="/trips" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>

@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { availability, bookings } from "@/drizzle/schema";
-import { eq, and, gte, lt, ne, sql } from "drizzle-orm";
+import { eq, and, gte, lt, inArray, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireOperator, assertListingOwnership } from "@/server/admin-auth";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -32,8 +33,23 @@ export async function GET(request: Request) {
       );
     }
 
-    const startDate = new Date(year, mon - 1, 1);
-    const endDate = new Date(year, mon, 1);
+    const managing = searchParams.get("mode") === "manage";
+    if (managing) {
+      const auth = await requireOperator();
+      if (!auth.ok) return auth.error;
+      const owns = await assertListingOwnership(listingId, auth.userId, auth.role);
+      if (!owns.ok) return owns.error;
+    }
+    const eligibility = managing ? null : await getListingBookingEligibility(listingId);
+    if (!managing && !eligibility?.eligible) {
+      return NextResponse.json({
+        availability: [], bookings: {}, month, bookingEligible: false,
+        error: "This business is not accepting bookings on VakayGo yet.",
+      }, { status: 409 });
+    }
+
+    const startDate = new Date(Date.UTC(year, mon - 1, 1));
+    const endDate = new Date(Date.UTC(year, mon, 1));
 
     const db = getDb();
 
@@ -60,13 +76,14 @@ export async function GET(request: Request) {
       .select({
         startDate: bookings.startDate,
         guestCount: bookings.guestCount,
+        endDate: bookings.endDate,
       })
       .from(bookings)
       .where(
         and(
           eq(bookings.listingId, listingId),
-          ne(bookings.status, "cancelled"),
-          gte(bookings.startDate, startDate),
+          inArray(bookings.status, ["pending", "confirmed", "completed"]),
+          sql`coalesce(${bookings.endDate}, ${bookings.startDate}) >= ${startDate}`,
           lt(bookings.startDate, endDate)
         )
       );
@@ -74,23 +91,29 @@ export async function GET(request: Request) {
     // Aggregate bookings by date
     const bookingsByDate: Record<string, number> = {};
     for (const b of bookingRows) {
-      const dateKey = b.startDate.toISOString().split("T")[0];
-      bookingsByDate[dateKey] = (bookingsByDate[dateKey] || 0) + (b.guestCount || 1);
+      const until = b.endDate || new Date(b.startDate.getTime() + 86400000);
+      for (let day = new Date(Math.max(b.startDate.getTime(), startDate.getTime())); day < until && day < endDate; day = new Date(day.getTime()+86400000)) {
+        const dateKey=day.toISOString().slice(0,10);
+        bookingsByDate[dateKey]=(bookingsByDate[dateKey] || 0)+(b.guestCount || 1);
+      }
     }
 
     // Format availability
-    const availabilityMap = availabilityRows.map((row) => ({
-      date: row.date.toISOString().split("T")[0],
-      spots: row.spots,
-      spotsRemaining: row.spotsRemaining,
-      priceOverride: row.priceOverride,
-      isBlocked: row.isBlocked,
-    }));
+    const availabilityMap = [];
+    for (let day = startDate; day < endDate; day = new Date(day.getTime() + 86400000)) {
+      const date = day.toISOString().slice(0, 10);
+      const rows = availabilityRows.filter(row => row.date.toISOString().slice(0, 10) === date);
+      const isBlocked = rows.length === 0 || rows.some(row => row.isBlocked || !row.spots || row.spots <= 0);
+      const spots = isBlocked ? 0 : Math.min(...rows.map(row => row.spots!));
+      availabilityMap.push({ date, spots, spotsRemaining: Math.max(0, spots - (bookingsByDate[date] || 0)),
+        priceOverride: rows[0]?.priceOverride ?? null, isBlocked });
+    }
 
     return NextResponse.json({
-      availability: availabilityMap,
+      availability: managing ? availabilityRows.map(row => ({ ...row, date: row.date.toISOString().slice(0, 10) })) : availabilityMap,
       bookings: bookingsByDate,
       month,
+      bookingEligible: eligibility?.eligible === true,
     });
   } catch (error) {
     logger.error("Availability GET error", error);
@@ -131,6 +154,20 @@ export async function POST(request: Request) {
         { error: "Too many dates in one request (max 366)" },
         { status: 400 }
       );
+    }
+
+    for (const entry of dates) {
+      const parsed = typeof entry?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
+        ? new Date(entry.date + "T00:00:00.000Z") : null;
+      if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== entry.date) {
+        return NextResponse.json({ error: "Every calendar entry needs a valid date" }, { status: 400 });
+      }
+      if (!entry.isBlocked && (!Number.isInteger(entry.spots) || Number(entry.spots) < 1 || Number(entry.spots) > 2147483647)) {
+        return NextResponse.json({ error: "Published dates need a positive whole-number capacity" }, { status: 400 });
+      }
+      if (entry.priceOverride != null && (!/^\d+(\.\d{1,2})?$/.test(entry.priceOverride) || Number(entry.priceOverride) <= 0)) {
+        return NextResponse.json({ error: "Price overrides must be positive amounts with at most two decimal places" }, { status: 400 });
+      }
     }
 
     const owns = await assertListingOwnership(listingId, auth.userId, auth.role);

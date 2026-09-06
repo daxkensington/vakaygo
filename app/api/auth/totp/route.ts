@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { and, eq, sql } from "drizzle-orm";
+import { requireUser, setSessionCookie } from "@/server/admin-auth";
 import { TOTP } from "otpauth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -19,14 +17,10 @@ function getDb() {
  */
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    if (!auth.emailVerified) return NextResponse.json({ error: "Verify your email before enabling two-factor authentication." }, { status: 403 });
+    const userId = auth.userId;
 
     const db = getDb();
 
@@ -78,14 +72,10 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    if (!auth.emailVerified) return NextResponse.json({ error: "Verify your email before enabling two-factor authentication." }, { status: 403 });
+    const userId = auth.userId;
 
     const { token: otpToken, secret } = await request.json();
     if (!otpToken) {
@@ -140,11 +130,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Enable 2FA
-    await db
-      .update(users)
-      .set({ totpSecret: secret, totpEnabled: true })
-      .where(eq(users.id, userId));
+    // CAS prevents an in-flight older session from installing a credential
+    // after ownership/revocation. Revoke older sessions on successful enrollment.
+    const [updated] = await db.update(users)
+      .set({ totpSecret: secret, totpEnabled: true, sessionVersion: sql`${users.sessionVersion} + 1` })
+      .where(and(eq(users.id, userId), eq(users.sessionVersion, auth.sessionVersion), eq(users.emailVerified, true), eq(users.totpEnabled, false)))
+      .returning({ id: users.id, email: users.email, name: users.name, role: users.role, sessionVersion: users.sessionVersion });
+    if (!updated) return NextResponse.json({ error: "Account changed. Sign in again." }, { status: 409 });
+    await setSessionCookie({ ...updated, name: updated.name ?? undefined });
 
     return NextResponse.json({ enabled: true });
   } catch (error) {

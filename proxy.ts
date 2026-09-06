@@ -1,21 +1,9 @@
-import { blocksNewSale } from "./lib/directory-mode";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "./server/session-validation";
 import { rateLimit, getEndpointType, getClientIp } from "./lib/rate-limit";
 import "./lib/env";
-
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function getSessionRole(token: string | undefined): Promise<string | null> {
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return (payload.role as string) ?? null;
-  } catch {
-    return null;
-  }
-}
+import { isRouteWithin } from "./lib/route-access";
 
 /**
  * Security headers applied to every response.
@@ -80,21 +68,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
-  // Fail closed before authentication, body processing, database or provider calls.
-  const salePath = pathname.replace(/\/+$/, "");
-  if (blocksNewSale(pathname, method)) {
-    return applySecurityHeaders(NextResponse.json({ error: "Bookings and payments are unavailable while businesses complete verification and onboarding.", code: "BOOKINGS_UNAVAILABLE" }, { status: 503, headers: { "Cache-Control": "no-store" } }));
-  }
-  if (method === "PATCH" && /^\/api\/bookings\/[^/]+$/.test(salePath)) {
-    const body = await request.clone().json().catch(() => null);
-    if (!body || body.status !== "cancelled") {
-      return applySecurityHeaders(NextResponse.json({ error: "New booking confirmations are unavailable.", code: "BOOKINGS_UNAVAILABLE" }, { status: 503 }));
-    }
-  }
-  if (method === "GET" && salePath === "/api/availability") {
-    return applySecurityHeaders(NextResponse.json({ bookingEligible: false, available: false, availability: [], bookings: {}, reason: "Business verification and onboarding required" }, { headers: { "Cache-Control": "no-store" } }));
-  }
-
   // Rate limit API routes
   if (pathname.startsWith("/api")) {
     const ip = getClientIp(request.headers);
@@ -111,46 +84,39 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Edge-level RBAC gate for /api/admin and /api/operator.
-  // Per-route handlers still re-verify against the DB; this is a fast-fail
-  // to drop unauthenticated/under-privileged traffic before it hits the route.
-  const needsAdmin = pathname.startsWith("/api/admin");
-  const needsOperator = pathname.startsWith("/api/operator");
+  const token = request.cookies.get("session")?.value;
+  const session = token ? await verifyCurrentSessionToken(token) : null;
+  let requestHeaders: Headers | undefined;
+  if (token && !session) {
+    // Email/Google recovery must work even when the browser holds a revoked
+    // cookie. Remove it before the route can read it; don't overwrite a fresh
+    // callback Set-Cookie in the response.
+    if (isRouteWithin(pathname, "/api") && !isRouteWithin(pathname, "/api/auth")) {
+      const denied = NextResponse.json({ error: "Session expired. Please sign in again." }, { status: 401 });
+      denied.cookies.delete("session");
+      return applySecurityHeaders(denied);
+    }
+    requestHeaders = new Headers(request.headers);
+    const remainingCookies = (requestHeaders.get("cookie") || "").split(";")
+      .filter((part) => part.trim().split("=")[0] !== "session").join(";");
+    requestHeaders.set("cookie", remainingCookies);
+  }
+
+  const needsAdmin = isRouteWithin(pathname, "/api/admin");
+  const needsOperator = isRouteWithin(pathname, "/api/operator");
   if (needsAdmin || needsOperator) {
-    const token = request.cookies.get("session")?.value;
-    const role = await getSessionRole(token);
-    if (!role) {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-    if (needsAdmin && role !== "admin") {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      );
-    }
-    if (needsOperator && role !== "operator" && role !== "admin") {
-      return applySecurityHeaders(
-        NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      );
+    if (!session) return applySecurityHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
+    if ((needsAdmin && session.role !== "admin") ||
+      (needsOperator && session.role !== "operator" && session.role !== "admin")) {
+      return applySecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
     }
   }
 
-  // Continue with security headers on all responses
-  const response = NextResponse.next();
+  const response = requestHeaders ? NextResponse.next({ request: { headers: requestHeaders } }) : NextResponse.next();
+  if (token && !session && !isRouteWithin(pathname, "/api/auth")) response.cookies.delete("session");
 
-  // /explore reads searchParams, which makes it a dynamic route and Next
-  // stamps it `private, no-store`. Nothing in its HTML depends on the
-  // viewer (auth, saved, currency are all client-side), so tell Vercel's
-  // CDN to keep each URL for an hour anyway. Vercel-CDN-Cache-Control
-  // wins over Cache-Control at the edge and is stripped before the
-  // browser sees it, so browsers still revalidate.
-  if (method === "GET" && pathname === "/explore") {
-    response.headers.set(
-      "Vercel-CDN-Cache-Control",
-      "public, s-maxage=3600, stale-while-revalidate=86400",
-    );
-  }
+
+  // Dynamic public pages retain Next.js no-store headers so booking readiness is not cached at the CDN.
 
   return applySecurityHeaders(response);
 }

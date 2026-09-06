@@ -1,0 +1,58 @@
+import { test, expect } from "@playwright/test";
+import { SignJWT } from "jose";
+test("sign-in fields have labels and gift cards do not promise uncompleted purchases",async({page})=>{
+  await page.goto("/auth/signin");
+  await expect(page.getByLabel("Email",{exact:true})).toBeVisible();
+  await expect(page.getByLabel("Password",{exact:true})).toBeVisible();
+  await page.goto("/gift-cards");
+  await expect(page.getByText("New gift card purchases and online redemption are currently unavailable.")).toBeVisible();
+});
+test("mobile navigation includes the public routes",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/");
+  await page.getByRole("button",{name:/menu/i}).click();
+  for(const name of ["Islands","Map","Services"])await expect(page.getByRole("link",{name,exact:true}).last()).toBeVisible();
+});
+test("booking pause rejects new reservations while historical cancellation remains available",async({request})=>{
+  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000002",role:"traveler",email:"audit-traveler@example.invalid",sessionVersion:0}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+  const headers={Cookie:"session="+token};
+  const data={listingId:"20000000-0000-4000-8000-000000000001",startDate:"2099-12-05",guestCount:1};
+  const invalid=await request.post("/api/bookings",{headers,data:{...data,guestCount:0}});
+  expect(invalid.status()).toBe(400);
+  const created=await request.post("/api/bookings",{headers,data});
+  expect(created.status()).toBe(409);
+  expect((await created.json()).code).toBe("BOOKING_UNAVAILABLE");
+  const existing=await request.get("/api/bookings",{headers});
+  expect(existing.status()).toBe(200);
+  const booking=(await existing.json()).bookings.find((item:{bookingNumber:string})=>item.bookingNumber==="released");
+  expect(booking).toBeTruthy();
+  const cancelled=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"cancelled"}});
+  expect(cancelled.status()).toBe(200);
+  expect((await cancelled.json()).booking.status).toBe("cancelled");
+});
+
+test("listing gallery supports keyboard entry, navigation, Escape and focus restoration",async({page})=>{
+  await page.goto("/audit-island/audit-tour");
+  const opener=page.getByRole("button",{name:"Open photos of Audit tour",exact:true});
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const dialog=page.getByRole("dialog",{name:"Photos of Audit tour"});
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.getByRole("img",{name:"Audit photo two",exact:true})).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(opener).toBeFocused();
+});
+
+test("operator cannot accept an old booking request while new bookings are paused",async({request})=>{
+  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000001",role:"operator",email:"audit-operator@example.invalid",sessionVersion:0}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+  const headers={Cookie:"session="+token};
+  const bookings=await request.get("/api/bookings?view=operator",{headers});
+  expect(bookings.status()).toBe(200);
+  const booking=(await bookings.json()).bookings.find((item:{bookingNumber:string})=>item.bookingNumber==="request-two");
+  expect(booking).toBeTruthy();
+  const response=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"confirmed"}});
+  expect(response.status()).toBe(409);
+  expect((await response.json()).code).toBe("BOOKING_UNAVAILABLE");
+});

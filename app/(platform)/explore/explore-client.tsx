@@ -419,6 +419,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     <>
       <Header />
       <main className="pt-20 bg-cream-50 min-h-screen">
+        <h1 className="sr-only">Explore Caribbean stays and experiences</h1>
         {/* Search Header */}
         <div className="bg-white shadow-sm sticky top-16 z-40">
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">

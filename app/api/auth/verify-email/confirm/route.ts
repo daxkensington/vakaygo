@@ -1,63 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import { users } from "@/drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
-
+import { setSessionCookie } from "@/server/admin-auth";
+import { consumeEmailIdentityToken, validNewPassword } from "@/server/email-identity";
 import { logger } from "@/lib/logger";
-function getDb() {
-  return drizzle(neon(process.env.DATABASE_URL!));
-}
 
 export async function GET(request: NextRequest) {
+  // Scanners may follow email links; only the explicit confirmation POST mutates.
+  const token = new URL(request.url).searchParams.get("token");
+  const destination = new URL("/auth/verify-email", request.url);
+  if (token && /^[a-f0-9]{64}$/.test(token)) destination.searchParams.set("token", token);
+  else destination.searchParams.set("error", "invalid_token");
+  return NextResponse.redirect(destination);
+}
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const token = searchParams.get("token");
-
-    if (!token) {
-      return NextResponse.redirect(
-        new URL("/auth/verify-email?error=missing_token", request.url)
-      );
+    const { token, password } = await request.json();
+    if (password !== undefined && !validNewPassword(password)) {
+      return NextResponse.json({ error: "Choose a password of at least 12 characters and no more than 72 UTF-8 bytes." }, { status: 400 });
     }
-
-    const db = getDb();
-
-    // Find user with this token that hasn't expired
-    const [user] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(
-        and(
-          eq(users.emailVerificationToken, token),
-          sql`${users.emailVerificationExpires} > now()`
-        )
-      )
-      .limit(1);
-
-    if (!user) {
-      return NextResponse.redirect(
-        new URL("/auth/verify-email?error=invalid_token", request.url)
-      );
-    }
-
-    // Mark as verified and clear token
-    await db
-      .update(users)
-      .set({
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, user.id));
-
-    return NextResponse.redirect(
-      new URL("/profile?verified=true", request.url)
-    );
+    const user = typeof token === "string" ? await consumeEmailIdentityToken(token, "verification", password) : null;
+    if (!user) return NextResponse.json({ error: "This verification link is invalid or has expired." }, { status: 400 });
+    if (user.requiresTwoFactor) return NextResponse.json({
+      requiresPassword: true, error: "Please sign in with your password and two-factor code.",
+    }, { status: 403 });
+    await setSessionCookie({ id: user.id, email: user.email, name: user.name ?? undefined, role: user.role, sessionVersion: user.sessionVersion });
+    return NextResponse.json({ ok: true, redirect: user.role === "operator" ? "/operator" : "/explore" });
   } catch (error) {
     logger.error("Verify email error", error);
-    return NextResponse.redirect(
-      new URL("/auth/verify-email?error=server_error", request.url)
-    );
+    return NextResponse.json({ error: "Could not verify your email. Please request a new link." }, { status: 500 });
   }
 }

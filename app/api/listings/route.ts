@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { listings: data },
       // Public catalogue data, no cookies read: let the CDN serve repeats.
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600" } },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch (error) {
     logger.error("Listings error", error);

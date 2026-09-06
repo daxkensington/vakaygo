@@ -6,7 +6,6 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import {
-  getIslandsWithDining,
   getIslandBySlug,
   getTopListingsByType,
   getIslandStats,
@@ -45,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!island) return { title: "Not Found" };
 
   const title = `Best Restaurants in ${island.name} (2026) — Top Dining & Food Guide`;
-  const description = `Find the best restaurants in ${island.name}. Explore top-rated dining, local cuisine, seafood, and Caribbean food. Book tables with VakayGo.`;
+  const description = `Find the best restaurants in ${island.name}. Explore top-rated dining, local cuisine, seafood, and Caribbean food. Browse restaurant information on VakayGo.`;
 
   return {
     title,
@@ -110,7 +109,7 @@ function getFaqs(name: string) {
   return [
     {
       q: `What are the best restaurants in ${name}?`,
-      a: `${name} has a vibrant dining scene featuring Caribbean cuisine, fresh seafood, local favorites, and international options. VakayGo lists the top-rated restaurants verified by real travelers.`,
+      a: `${name} has a vibrant dining scene featuring Caribbean cuisine, fresh seafood, local favorites, and international options. VakayGo lists restaurants with published information and review ratings.`,
     },
     {
       q: `What local food should I try in ${name}?`,
@@ -118,7 +117,7 @@ function getFaqs(name: string) {
     },
     {
       q: `Do I need reservations at restaurants in ${name}?`,
-      a: `Popular restaurants during peak season (December-April) can fill up. We recommend booking ahead through VakayGo for the best dining experiences, especially for groups or special occasions.`,
+      a: `Popular restaurants during peak season (December-April) can fill up. Contact the restaurant to check its current reservation arrangements. VakayGo is not currently accepting table reservations.`,
     },
     {
       q: `What is the average cost of dining in ${name}?`,
@@ -243,7 +242,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             </h1>
             <p className="text-white/70 mt-3 max-w-2xl text-lg">
               Discover {diningCount} top-rated restaurants, from beachfront
-              seafood shacks to fine dining. All verified by real travelers.
+              seafood shacks to fine dining. Browse published restaurant information.
             </p>
           </div>
         </section>
@@ -271,7 +270,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <Star size={20} className="text-gold-700 mx-auto mb-1" />
-              <p className="text-xs text-navy-400 mt-1">Traveler Verified</p>
+              <p className="text-xs text-navy-400 mt-1">Review Ratings</p>
             </div>
           </div>
         </div>
@@ -557,7 +556,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
               Hungry for {island.name}?
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
-              Discover restaurants, explore local cuisine, and
+              Browse restaurant information, explore local cuisine, and
               experience authentic Caribbean dining.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">

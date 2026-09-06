@@ -1,27 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { safeWebUrl } from "@/lib/listing-structured-data";
 import {
   Phone,
   Globe,
   Clock,
   MapPin,
   ExternalLink,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 type ContactInfoProps = {
+  listingId?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   typeData: Record<string, any> | null;
 };
 
-export function ContactInfo({ typeData }: ContactInfoProps) {
-  const [hoursOpen, setHoursOpen] = useState(false);
-
+export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
   if (!typeData) return null;
 
-  const { phone, website, hours, googleMapsUrl, unclaimed } = typeData;
+  const { phone, hours, unclaimed } = typeData;
+  const website = safeWebUrl(typeData.website);
+  const googleMapsUrl = safeWebUrl(typeData.googleMapsUrl);
 
   // Don't render if there's nothing to show
   const hasContact = phone || website || hours || googleMapsUrl;
@@ -78,22 +77,14 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
 
         {/* Business Hours */}
         {hoursList && hoursList.length > 1 ? (
-          <div>
-            <button
-              onClick={() => setHoursOpen(!hoursOpen)}
-              className="flex items-center gap-3 w-full text-left"
-            >
+          <details>
+            <summary className="flex items-center gap-3 w-full text-left cursor-pointer">
               <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
                 <Clock size={16} className="text-gold-700" />
               </div>
               <span className="text-navy-600 font-medium">Business Hours</span>
-              {hoursOpen ? (
-                <ChevronUp size={16} className="ml-auto text-navy-400" />
-              ) : (
-                <ChevronDown size={16} className="ml-auto text-navy-400" />
-              )}
-            </button>
-            {hoursOpen && (
+              <span className="ml-auto text-xs text-navy-400">View hours</span>
+            </summary>
               <ul className="mt-3 ml-12 space-y-1.5">
                 {hoursList.map((line, i) => (
                   <li key={i} className="text-sm text-navy-500">
@@ -101,8 +92,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
+          </details>
         ) : hoursList ? (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
@@ -136,7 +126,7 @@ export function ContactInfo({ typeData }: ContactInfoProps) {
         <p className="mt-5 pt-4 border-t border-cream-200 text-xs text-navy-400">
           This listing was created from public data. If this is your business,{" "}
           <a
-            href="/auth/signup"
+            href={listingId ? "/auth/signup?role=operator&claim=" + listingId : "/for-businesses#find-listing"}
             className="text-gold-700 font-semibold hover:underline"
           >
             claim it for free

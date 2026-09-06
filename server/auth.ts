@@ -27,7 +27,7 @@ export async function createUser(
   const [user] = await db
     .insert(users)
     .values({
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
       name,
       role: safeRole,
       passwordHash,
@@ -38,6 +38,7 @@ export async function createUser(
       email: users.email,
       name: users.name,
       role: users.role,
+      sessionVersion: users.sessionVersion,
     });
 
   return user;
@@ -49,15 +50,16 @@ export async function verifyCredentials(email: string, password: string) {
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.email, email.toLowerCase()))
+    .where(eq(users.email, email.trim().toLowerCase()))
     .limit(1);
 
-  if (!user || !user.passwordHash) return null;
+  if (!user || user.emailVerified !== true || !user.passwordHash) return null;
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
 
   return {
+    sessionVersion: user.sessionVersion,
     id: user.id,
     email: user.email,
     name: user.name,
@@ -80,6 +82,7 @@ export async function getUserById(id: string) {
       email: users.email,
       name: users.name,
       role: users.role,
+      sessionVersion: users.sessionVersion,
       avatarUrl: users.avatarUrl,
       businessName: users.businessName,
       islandId: users.islandId,

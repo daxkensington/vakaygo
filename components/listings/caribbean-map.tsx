@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
@@ -837,6 +837,20 @@ export default function CaribbeanMap({
     map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
   }, [mapReady]);
 
+  const filtered = useMemo(() => {
+    const mappable = listings.filter(
+      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
+    );
+
+    return searchQuery
+      ? mappable.filter((l) =>
+          l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          l.islandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.parish && l.parish.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+      : mappable;
+  }, [listings, activeCategories, searchQuery]);
+
   // ── Update GeoJSON data when filters/listings change ──
   useEffect(() => {
     const map = mapRef.current;
@@ -844,18 +858,6 @@ export default function CaribbeanMap({
 
     const source = map.getSource("listings") as mapboxgl.GeoJSONSource;
     if (!source) return;
-
-    const mappable = listings.filter(
-      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
-    );
-
-    const filtered = searchQuery
-      ? mappable.filter((l) =>
-          l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          l.islandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (l.parish && l.parish.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-      : mappable;
 
     // Update lookup
     const lMap = new Map<string, MapListing>();
@@ -880,7 +882,7 @@ export default function CaribbeanMap({
         },
       })),
     });
-  }, [listings, activeCategories, searchQuery, mapReady]);
+  }, [filtered, mapReady]);
 
   // ── Heatmap toggle: show/hide layers ──
   useEffect(() => {
@@ -1249,7 +1251,7 @@ export default function CaribbeanMap({
         <div className="absolute top-14 left-3 z-10">
           <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-lg px-3 py-2 text-xs max-w-[260px]">
             <div className="font-semibold text-navy-700">
-              Showing {listingsMapRef.current.size.toLocaleString()} of {listings.filter(l => l.latitude).length.toLocaleString()} listings
+              Showing {filtered.length.toLocaleString()} of {listings.filter(l => l.latitude && l.longitude && Number.isFinite(Number(l.latitude)) && Number.isFinite(Number(l.longitude))).length.toLocaleString()} listings
             </div>
             {activeCategories.size < Object.keys(categoryConfig).length && (
               <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -1270,7 +1272,7 @@ export default function CaribbeanMap({
             {searchQuery && (
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-navy-400">Search:</span>
-                <span className="font-medium text-navy-600">"{searchQuery}"</span>
+                <span className="font-medium text-navy-600">&quot;{searchQuery}&quot;</span>
                 <button onClick={() => setSearchQuery("")} className="text-red-500 hover:text-red-700">
                   <X size={10} />
                 </button>

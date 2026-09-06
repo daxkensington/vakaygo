@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  two_factor_required: "This account uses two-factor authentication. Sign in with your password and authenticator code.",
+  unverified_google_email: "Google could not verify your email address. Please use another sign-in method.",
   google_denied: "Google sign-in was cancelled or denied.",
   invalid_callback: "Invalid OAuth callback. Please try again.",
   invalid_state: "Session expired. Please try signing in again.",
@@ -32,6 +34,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
+  const emailRecovery = searchParams.get("method") === "email";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -135,20 +138,19 @@ function SignInContent() {
             Welcome back
           </h1>
           <p className="text-navy-400 mt-2">
-            Sign in to your account to continue
+            {emailRecovery ? "Verify your inbox with an email sign-in link" : "Sign in to your account to continue"}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)]">
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
+            <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
               {error}
             </div>
           )}
 
           {/* Google OAuth */}
-          <a
-            href="/api/auth/google"
+          <button type="button" onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
             className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -158,7 +160,7 @@ function SignInContent() {
               <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
             </svg>
             Continue with Google
-          </a>
+          </button>
 
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px bg-cream-200" />
@@ -168,11 +170,11 @@ function SignInContent() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">
+              <label htmlFor="signin-email" className="block text-sm font-medium text-navy-600 mb-1.5">
                 Email
               </label>
               <input
-                type="email"
+                type="email" id="signin-email" autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -182,12 +184,12 @@ function SignInContent() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">
+              <label htmlFor="signin-password" className="block text-sm font-medium text-navy-600 mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  id="signin-password" autoComplete="current-password" type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -208,13 +210,13 @@ function SignInContent() {
 
             {requires2fa && (
               <div>
-                <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                <label htmlFor="signin-totp" className="block text-sm font-medium text-navy-600 mb-1.5">
                   Two-factor code
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  autoComplete="one-time-code"
+                  id="signin-totp" autoComplete="one-time-code"
                   required
                   value={totpCode}
                   onChange={(e) =>
@@ -247,6 +249,7 @@ function SignInContent() {
 
           {!requires2fa && (
             <div className="mt-4 text-center">
+              <p className="mb-3 text-sm text-navy-500">Email not verified, or cannot use your password? Enter your email above and request a sign-in link to verify your inbox.</p>
               {magicSent ? (
                 <p className="text-sm text-teal-700 bg-teal-50 rounded-xl px-4 py-3">
                   Check your email — if an account exists, a one-time sign-in link is on its way.
@@ -259,7 +262,7 @@ function SignInContent() {
                   className="text-sm text-gold-700 font-semibold hover:text-gold-600 disabled:opacity-60 inline-flex items-center gap-2"
                 >
                   {magicLoading && <Loader2 size={14} className="animate-spin" />}
-                  Forgot your password? Email me a sign-in link
+                  Email me a sign-in link
                 </button>
               )}
             </div>

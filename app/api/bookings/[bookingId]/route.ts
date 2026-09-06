@@ -2,16 +2,14 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { sendBookingConfirmation, sendBookingCancellation } from "@/server/email";
-import { createNotification } from "@/server/notifications";
 import { awardBookingPoints } from "@/server/loyalty";
 
+import { cancelBooking } from "@/server/cancel-booking";
 import { logger } from "@/lib/logger";
-import { sendRequestConfirmed, sendRequestDeclined } from "@/server/email-requests";
-import { formatBookingDateTime } from "@/lib/booking-time";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(
@@ -46,6 +44,12 @@ export async function GET(
         currency: bookings.currency,
         paymentMethod: bookings.paymentMethod,
         paidAt: bookings.paidAt,
+        datesAvailable: sql<boolean>`vakaygo_booking_dates_available(${bookings.listingId},${bookings.startDate},${bookings.endDate},${bookings.guestCount},${bookings.id})`,
+        checkoutSessionId: bookings.checkoutSessionId,
+        checkoutExpiresAt: bookings.checkoutExpiresAt,
+        checkoutStripeAccountId: bookings.checkoutStripeAccountId,
+        paymentMode: bookings.paymentMode,
+        cancellationRequestedAt: bookings.cancellationRequestedAt,
         guestNotes: bookings.guestNotes,
         operatorNotes: bookings.operatorNotes,
         cancellationReason: bookings.cancellationReason,
@@ -84,7 +88,13 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json({ booking: row });
+    const eligibility = await getListingBookingEligibility(row.listingId);
+    return NextResponse.json({ booking: {
+      ...row,
+      bookingEligible: eligibility.eligible && eligibility.operatorId === row.operatorId,
+      paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && eligibility.eligible && eligibility.operatorId === row.operatorId && row.datesAvailable === true &&
+        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility.stripeAccountId)),
+    } });
   } catch (error) {
     logger.error("Get booking error", error);
     return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
@@ -106,7 +116,7 @@ export async function PATCH(
     const userId = payload.id as string;
     const role = payload.role as string;
     const { bookingId } = await params;
-    const { status, operatorNotes, reason, note } = await request.json();
+    const { status, operatorNotes, reason } = await request.json();
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -147,20 +157,34 @@ export async function PATCH(
       }
     }
 
+    if (status === "cancelled") {
+      const result = await cancelBooking(bookingId, { id: userId, role }, reason);
+      return NextResponse.json({ ...result, booking: { id: bookingId, status: "status" in result ? result.status : existing.status } }, { status: "httpStatus" in result ? result.httpStatus : 200 });
+    }
+    if (status && !["confirmed", "completed", "no_show"].includes(status)) return NextResponse.json({ error: "Invalid status transition" }, { status: 400 });
+    if (status && ["cancelled", "refunded", "completed", "no_show"].includes(existing.status)) return NextResponse.json({ error: "This booking is closed" }, { status: 409 });
+    if (status === "completed" && existing.status !== "confirmed") return NextResponse.json({ error: "Only confirmed bookings can be completed" }, { status: 409 });
+
+    if (status === "confirmed" && existing.status !== "confirmed") {
+      const eligibility = await getListingBookingEligibility(existing.listingId, { refreshProvider: true });
+      if (!eligibility.eligible || eligibility.operatorId !== existing.operatorId) {
+        return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+      }
+    }
+
     // "confirmed" AND "completed" both imply the booking was PAID. Without
     // this gate an operator could move a never-paid booking straight to
     // "completed", which the escrow-release + payouts crons then turn into a
     // real payout-ledger credit. Only allow these transitions once payment
     // is on record (the webhook stamps paymentId + paidAt).
-    // Exception: a REQUESTED booking (unclaimed/unpriced listing) has no
-    // price to pay. Once the team or the listing's operator has confirmed
-    // it with the business, it may become "confirmed" with $0 on record.
+    // Exception: an onboarded business can accept a zero-price request.
+    // Its ownership, onboarding and payment readiness are checked above.
     // Never "completed" — that path feeds the payout ledger.
     const isRequestOutcome =
       existing.status === "requested" &&
       (isAdmin || isOperator) &&
       (status === "confirmed" || status === "cancelled") &&
-      Math.round(parseFloat(existing.totalAmount || "0") * 100) === 0;
+      !existing.paymentId && !existing.paidAt;
 
     if (
       !isRequestOutcome &&
@@ -175,6 +199,7 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
+    if (isRequestOutcome) Object.assign(updateData, { totalAmount: "0.00", subtotal: "0.00", serviceFee: "0.00", paymentMethod: "none" });
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
     if (status === "cancelled" && typeof reason === "string" && reason.trim()) {
       updateData.cancellationReason = reason.trim().slice(0, 500);
@@ -185,8 +210,8 @@ export async function PATCH(
     // winner and loyalty points are awarded once (no check-then-act race).
     const isCompleting = status === "completed";
     const whereClause = isCompleting
-      ? and(eq(bookings.id, bookingId), ne(bookings.status, "completed"))
-      : eq(bookings.id, bookingId);
+      ? and(eq(bookings.id, bookingId), eq(bookings.status, "confirmed"), isNull(bookings.cancellationRequestedAt))
+      : and(eq(bookings.id, bookingId), eq(bookings.status, existing.status), isNull(bookings.cancellationRequestedAt));
 
     const [updated] = await db
       .update(bookings)
@@ -208,7 +233,7 @@ export async function PATCH(
     if (isCompleting) {
       try {
         const totalAmount = parseFloat(updated.totalAmount);
-        awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
+        await awardBookingPoints(updated.travelerId, updated.id, totalAmount).catch((err) => {
           logger.error("Failed to award booking points", err);
         });
       } catch (loyaltyErr) {
@@ -216,89 +241,13 @@ export async function PATCH(
       }
     }
 
-    // Send email notifications on status change
-    if (status === "confirmed" || status === "cancelled") {
-      try {
-        const [traveler] = await db
-          .select({ email: users.email, name: users.name })
-          .from(users)
-          .where(eq(users.id, updated.travelerId));
-
-        const [listing] = await db
-          .select({ title: listings.title })
-          .from(listings)
-          .where(eq(listings.id, updated.listingId));
-
-        if (traveler?.email && isRequestOutcome) {
-          // Outcome of a phoned-in request: honest copy, no "$0.00 total".
-          const [full] = await db
-            .select({ typeData: listings.typeData })
-            .from(listings)
-            .where(eq(listings.id, updated.listingId));
-          const td = (full?.typeData || {}) as Record<string, unknown>;
-          const businessPhone = typeof td.phone === "string" && td.phone.trim() ? td.phone.trim() : null;
-          const whenText = updated.endDate
-            ? `${formatBookingDateTime(updated.startDate)} → ${formatBookingDateTime(updated.endDate)}`
-            : formatBookingDateTime(updated.startDate);
-          if (status === "confirmed") {
-            await sendRequestConfirmed({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              whenText,
-              guestCount: updated.guestCount || 1,
-              businessPhone,
-              note: typeof note === "string" && note.trim() ? note.trim().slice(0, 1000) : null,
-            });
-          } else {
-            await sendRequestDeclined({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              reason: updated.cancellationReason || null,
-              exploreUrl: "https://vakaygo.com/explore",
-            });
-          }
-        } else if (traveler?.email) {
-          if (status === "confirmed") {
-            await sendBookingConfirmation({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              startDate: updated.startDate.toISOString(),
-              guestCount: updated.guestCount || 1,
-              totalAmount: updated.totalAmount,
-            });
-          } else if (status === "cancelled") {
-            await sendBookingCancellation({
-              to: traveler.email,
-              travelerName: traveler.name || "Traveler",
-              bookingNumber: updated.bookingNumber,
-              listingTitle: listing?.title || "Your booking",
-              reason: updated.cancellationReason || undefined,
-            });
-          }
-        }
-        // In-app notification to traveler about booking status change
-        const statusLabel = status === "confirmed" ? "confirmed" : "cancelled";
-        createNotification({
-          userId: updated.travelerId,
-          type: "booking",
-          title: `Booking ${statusLabel}: ${listing?.title || "your booking"}`,
-          body: `Your booking ${updated.bookingNumber} has been ${statusLabel}.`,
-          link: "/bookings",
-        }).catch(() => {});
-      } catch (emailErr) {
-        logger.error("Failed to send booking status email", emailErr);
-        // Don't fail the request if email fails
-      }
-    }
+    // Status notifications are durably queued by the database trigger.
 
     return NextResponse.json({ booking: { id: updated.id, status: updated.status } });
   } catch (error) {
+    const dbError = error as { cause?: { message?: string }; message?: string };
+    const detail = dbError.cause?.message || dbError.message || "";
+    if (/VG_BOOKING:/.test(detail)) return NextResponse.json({ error: detail.split("VG_BOOKING:")[1].trim() }, { status: 409 });
     logger.error("Update booking error", error);
     return NextResponse.json({ error: "Failed to update booking" }, { status: 500 });
   }

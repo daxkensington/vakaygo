@@ -1,10 +1,10 @@
 "use client";
-import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 
 import { Shield, Clock, Star, Zap, Award, TrendingUp } from "lucide-react";
 
 type TrustBadgesProps = {
   isInstantBook?: boolean | null;
+  bookingEligible?: boolean;
   avgRating?: string | null;
   reviewCount?: number | null;
   isFeatured?: boolean | null;
@@ -14,7 +14,7 @@ type TrustBadgesProps = {
   unclaimed?: boolean;
 };
 
-export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured, type, unclaimed = false }: TrustBadgesProps) {
+export function TrustBadges({ isInstantBook, bookingEligible = false, avgRating, reviewCount, isFeatured, unclaimed = false }: TrustBadgesProps) {
   const rating = avgRating ? parseFloat(avgRating) : 0;
   const badges: { icon: typeof Shield; label: string; color: string }[] = [];
 
@@ -35,15 +35,15 @@ export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured,
     );
   }
 
-  // Free cancellation — always show
-  badges.push({
+  // Booking promises require current eligibility.
+  if (bookingEligible) badges.push({
     icon: Clock,
     label: "Free cancellation",
     color: "bg-teal-50 text-teal-700",
   });
 
   // Instant book
-  if (!DIRECTORY_ONLY && isInstantBook) {
+  if (bookingEligible === true && isInstantBook) {
     badges.push({
       icon: Zap,
       label: "Instant book",
@@ -75,8 +75,8 @@ export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured,
     });
   }
 
-  // Verified
-  badges.push({
+  // Claim/onboarding evidence is required before presenting verification.
+  if (bookingEligible) badges.push({
     icon: Shield,
     label: "Verified operator",
     color: "bg-cream-200 text-navy-600",

@@ -2,320 +2,36 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-
+import { ClaimFinder } from "@/components/business/claim-finder";
+import { Search, BadgeCheck, PencilLine, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
-  title: "List your Caribbean business on VakayGo",
-  description:
-    "Free listings, lowest commissions in travel, booking management, and payouts in XCD, USD, or CAD. Designed for Caribbean tourism operators.",
+  title: { absolute: "Claim Your Caribbean Business Listing | VakayGo" },
+  description: "Find and claim your VakayGo business listing for free. Verify ownership, update your business information, and help travelers discover you across the Caribbean.",
   alternates: { canonical: "https://vakaygo.com/for-businesses" },
+  openGraph: { title: "Your business. Your story. Claim it on VakayGo.", description: "Find your listing, verify ownership, and keep your Caribbean business information up to date.", url: "https://vakaygo.com/for-businesses" },
 };
-import {
-  Check,
-  ArrowRight,
-  DollarSign,
-  BarChart3,
-  Globe,
-  Shield,
-  Calendar,
-  Star,
-  Zap,
-  Users,
-} from "lucide-react";
-
-const benefits = [
-  {
-    icon: DollarSign,
-    title: "List for Free. Forever.",
-    description:
-      "No listing fees. No monthly subscription. No setup costs. Create your listing in minutes and start reaching travelers today.",
-  },
-  {
-    icon: BarChart3,
-    title: "Lowest Commissions in Travel",
-    description:
-      "Viator takes 25-30%. Airbnb takes 15%. We charge 3-5% operator commission depending on category. You keep more of every booking.",
-  },
-  {
-    icon: Globe,
-    title: "Reach Travelers Worldwide",
-    description:
-      "Stop relying on walk-ins and word of mouth. VakayGo puts your business in front of travelers planning their Caribbean trip.",
-  },
-  {
-    icon: Calendar,
-    title: "All-in-One Dashboard",
-    description:
-      "Manage bookings, calendar, availability, pricing, and reviews from one simple dashboard. No tech skills needed.",
-  },
-  {
-    icon: Shield,
-    title: "Secure Payments, Reliable Payouts",
-    description:
-      "We handle all payments securely. You get paid weekly — directly to your bank account. No chasing invoices.",
-  },
-  {
-    icon: Star,
-    title: "Build Your Reputation",
-    description:
-      "Collect verified reviews from real customers. Build a trusted profile that attracts more bookings over time.",
-  },
-];
-
-const comparisons = [
-  { feature: "Listing Fee", vakaygo: "Free", viator: "Free", airbnb: "Free" },
-  { feature: "Commission", vakaygo: "3-5%", viator: "20-30%", airbnb: "15%" },
-  { feature: "Payout Speed", vakaygo: "Weekly", viator: "Monthly", airbnb: "24h after check-in" },
-  { feature: "Dashboard", vakaygo: "Full suite", viator: "Basic", airbnb: "Full suite" },
-  { feature: "Multiple Verticals", vakaygo: "6 types", viator: "Tours only", airbnb: "Stays only" },
-  { feature: "Local Focus", vakaygo: "Caribbean-first", viator: "Global", airbnb: "Global" },
-  { feature: "Transparent Pricing", vakaygo: "Yes", viator: "No", airbnb: "No" },
-];
-
 const steps = [
-  {
-    number: "1",
-    title: "Sign up as an operator",
-    description: "Create your free account in 30 seconds. No credit card required.",
-  },
-  {
-    number: "2",
-    title: "Create your listing",
-    description: "Add photos, description, pricing, and availability. Our wizard makes it easy.",
-  },
-  {
-    number: "3",
-    title: "Start receiving bookings",
-    description: "Travelers discover your listing, book directly, and you get paid weekly.",
-  },
+  { icon: Search, title: "Find your listing", text: "Search your business name and confirm the destination and address. Start with your existing listing so travelers find one clear source of information." },
+  { icon: BadgeCheck, title: "Verify ownership", text: "Create a business account and verify your email. Where supported, verify access to the business phone number already on file. If that number is unavailable, contact us for help." },
+  { icon: PencilLine, title: "Make it yours", text: "After your claim is verified, review your description, contact details, photos and hours. Keep the details accurate so travelers can make informed decisions." },
 ];
-
-const testimonials = [
-  {
-    name: "Captain Marcus",
-    role: "Sailing Tour Operator",
-    location: "St. George's, Grenada",
-    quote: "Finally a platform that doesn't take half my earnings. VakayGo gets it — support local businesses, not corporate middlemen.",
-  },
-  {
-    name: "Keisha Williams",
-    role: "Nature Guide",
-    location: "Grand Etang, Grenada",
-    quote: "I used to rely on hotel referrals. Now travelers find me directly on VakayGo. My bookings have tripled.",
-  },
-  {
-    name: "The Beach House",
-    role: "Restaurant",
-    location: "Grand Anse, Grenada",
-    quote: "The reservation system is simple and our guests love the verified review system. No more fake ratings.",
-  },
+const faqs = [
+  ["Is claiming my listing free?", "Yes. Claiming an existing VakayGo listing is free. You can verify ownership and manage your business information without enabling payments."],
+  ["Why is my business already on VakayGo?", "Some directory listings are created from publicly available business information. An unclaimed listing does not mean the business has partnered with VakayGo. Claiming lets the verified owner manage its information."],
+  ["Does claiming automatically enable bookings?", "No. VakayGo is currently operating as a directory. Booking and payment features stay unavailable until business onboarding is complete and VakayGo enables bookings for that listing."],
+  ["What happens when a traveler shows interest?", "A signed-in traveler can record interest in a listing. VakayGo uses these signals to prioritize business outreach. Interest does not reserve anything, request availability, or create a payment obligation."],
+  ["What if the phone number is wrong or the listing is already claimed?", "Contact VakayGo with the listing link and explain what needs correcting. Do not create a duplicate listing or use someone else’s verification code."],
 ];
-
 export default function ForBusinessesPage() {
-  return (
-    <>
-      <Header />
-      <main>
-        {/* Hero */}
-        <section className="relative pt-32 pb-20 md:pb-28 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-navy-700 via-navy-800 to-navy-900" />
-          <div className="absolute inset-0 opacity-5">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-                backgroundSize: "40px 40px",
-              }}
-            />
-          </div>
-          <div className="relative mx-auto max-w-5xl px-6 text-center">
-            <div className="inline-flex items-center gap-2 bg-gold-500/20 text-gold-300 border border-gold-500/30 rounded-full px-5 py-2 text-sm font-medium mb-8">
-              <Zap size={14} />
-              Free to list — always
-            </div>
-            <h1
-              className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Grow your business.
-              <br />
-              <span className="text-gold-400">Keep your money.</span>
-            </h1>
-            <p className="mt-6 text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
-              List your stays, tours, restaurants, events, or services on VakayGo for free. We charge just 3-5% operator commission — the lowest in the travel industry.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-              <Link
-                href="/auth/signup"
-                className="bg-gold-700 hover:bg-gold-800 text-white px-8 py-4 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2"
-              >
-                List Your Business Free
-                <ArrowRight size={18} />
-              </Link>
-              <a
-                href="#how-it-works"
-                className="bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-xl font-semibold transition-colors border border-white/20"
-              >
-                See How It Works
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* Commission Comparison */}
-        <section className="py-20 md:py-28 bg-cream-50">
-          <div className="mx-auto max-w-4xl px-6">
-            <div className="text-center mb-12">
-              <h2
-                className="text-3xl md:text-4xl font-bold text-navy-700"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Compare and see the <span className="text-gold-700">difference</span>
-              </h2>
-            </div>
-            <div className="bg-white rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
-              <div className="grid grid-cols-4 bg-navy-700 text-white text-sm font-semibold">
-                <div className="p-4">Feature</div>
-                <div className="p-4 text-center bg-gold-700">VakayGo</div>
-                <div className="p-4 text-center">Viator</div>
-                <div className="p-4 text-center">Airbnb</div>
-              </div>
-              {comparisons.map((row, i) => (
-                <div
-                  key={row.feature}
-                  className={`grid grid-cols-4 text-sm ${i % 2 === 0 ? "bg-white" : "bg-cream-50"}`}
-                >
-                  <div className="p-4 font-medium text-navy-700">{row.feature}</div>
-                  <div className="p-4 text-center font-semibold text-gold-700 bg-gold-50/50">
-                    {row.vakaygo}
-                  </div>
-                  <div className="p-4 text-center text-navy-400">{row.viator}</div>
-                  <div className="p-4 text-center text-navy-400">{row.airbnb}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Benefits */}
-        <section className="py-20 md:py-28 bg-white">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center mb-16">
-              <h2
-                className="text-3xl md:text-4xl font-bold text-navy-700"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Why operators choose <span className="text-teal-500">VakayGo</span>
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {benefits.map((b) => (
-                <div
-                  key={b.title}
-                  className="bg-cream-50 rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300"
-                >
-                  <div className="w-12 h-12 bg-gold-500 rounded-2xl flex items-center justify-center mb-6">
-                    <b.icon size={24} className="text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-navy-700 mb-3">{b.title}</h3>
-                  <p className="text-navy-400 leading-relaxed">{b.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section id="how-it-works" className="py-20 md:py-28 bg-navy-700">
-          <div className="mx-auto max-w-4xl px-6">
-            <div className="text-center mb-16">
-              <h2
-                className="text-3xl md:text-4xl font-bold text-white"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Start in <span className="text-gold-400">3 minutes</span>
-              </h2>
-            </div>
-            <div className="space-y-6">
-              {steps.map((step) => (
-                <div
-                  key={step.number}
-                  className="flex items-start gap-6 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
-                >
-                  <div className="w-12 h-12 bg-gold-700 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0">
-                    {step.number}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{step.title}</h3>
-                    <p className="text-white/60 mt-1">{step.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-20 md:py-28 bg-cream-50">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center mb-16">
-              <h2
-                className="text-3xl md:text-4xl font-bold text-navy-700"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Trusted by <span className="text-gold-700">local operators</span>
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {testimonials.map((t) => (
-                <div
-                  key={t.name}
-                  className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)]"
-                >
-                  <div className="flex gap-1 mb-4">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} size={16} className="text-gold-700 fill-gold-500" />
-                    ))}
-                  </div>
-                  <p className="text-navy-600 leading-relaxed italic">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-                  <div className="mt-6 pt-4 border-t border-cream-200">
-                    <p className="font-semibold text-navy-700">{t.name}</p>
-                    <p className="text-sm text-navy-400">
-                      {t.role} · {t.location}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-20 md:py-28 bg-gradient-to-br from-gold-500 to-gold-600">
-          <div className="mx-auto max-w-3xl px-6 text-center">
-            <Users size={40} className="text-white/80 mx-auto mb-6" />
-            <h2
-              className="text-3xl md:text-4xl font-bold text-white"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Ready to grow your business?
-            </h2>
-            <p className="mt-4 text-white/80 text-lg max-w-xl mx-auto">
-              Join VakayGo today. Free forever. Start receiving bookings from
-              travelers around the world.
-            </p>
-            <Link
-              href="/auth/signup"
-              className="inline-flex items-center gap-2 bg-white text-gold-700 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
-            >
-              Create Your Free Listing
-              <ArrowRight size={18} />
-            </Link>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </>
-  );
+  return <><Header /><main className="bg-cream-50 pt-24 pb-20">
+    <section className="mx-auto max-w-6xl px-6 py-12 md:py-20 grid gap-10 lg:grid-cols-2 lg:items-center">
+      <div><p className="text-sm font-bold uppercase tracking-widest text-gold-700">For Caribbean businesses</p><h1 className="mt-4 text-4xl md:text-6xl font-bold leading-tight text-navy-800" style={{ fontFamily: "var(--font-display)" }}>Your business.<br />Your story.<br /><span className="text-gold-700">Claim it.</span></h1>
+      <p className="mt-6 max-w-lg text-lg leading-relaxed text-navy-500">Help travelers find accurate information about your business. Claim your VakayGo listing, verify ownership, and bring your local knowledge to the page.</p>
+      <p className="mt-5 text-sm font-semibold text-navy-700">Free to claim · Ownership verification · You control your details</p></div>
+      <ClaimFinder />
+    </section>
+    <section className="mx-auto max-w-6xl px-6 py-10"><h2 className="text-3xl font-bold text-navy-800">From listed to represented</h2><div className="mt-8 grid gap-6 md:grid-cols-3">{steps.map((step, i) => <article key={step.title} className="rounded-2xl bg-white p-7 border border-cream-200"><step.icon className="text-gold-700" size={28} /><p className="mt-6 text-xs uppercase tracking-wider text-navy-400">Step {i + 1}</p><h3 className="mt-2 text-xl font-bold text-navy-800">{step.title}</h3><p className="mt-3 leading-relaxed text-navy-500">{step.text}</p></article>)}</div></section>
+    <section className="mx-auto max-w-6xl px-6 py-10"><div className="rounded-3xl bg-navy-800 p-8 md:p-12 text-white"><h2 className="text-3xl font-bold">Turn discovery into a connection</h2><p className="mt-4 max-w-3xl leading-relaxed text-white/80">Travelers are exploring places to stay, eat and experience. A clear description, useful photos, current hours and reliable contact details help them understand what you offer. When visitors record interest, our team can invite the business to claim its listing.</p><p className="mt-4 text-sm text-white/70">We are building VakayGo in stages. Listings and traveler interest are available during the directory launch; bookings and payments require separate onboarding and activation.</p></div></section>
+    <section className="mx-auto max-w-3xl px-6 py-10"><h2 className="text-3xl font-bold text-navy-800">Questions about claiming</h2><div className="mt-8 space-y-7">{faqs.map(([q, a]) => <article key={q}><h3 className="text-lg font-semibold text-navy-800">{q}</h3><p className="mt-2 leading-relaxed text-navy-500">{a}</p></article>)}</div><Link href="#find-listing" className="mt-10 inline-flex items-center gap-2 rounded-xl bg-gold-700 px-6 py-3 font-semibold text-white">Find my listing<ArrowRight size={18} /></Link><p className="mt-4 text-sm text-navy-500">Need help? <Link href="/contact" className="underline">Contact VakayGo</Link>.</p></section>
+  </main><Footer /></>;
 }

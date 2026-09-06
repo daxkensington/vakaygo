@@ -17,29 +17,31 @@ import { logger } from "@/lib/logger";
 export async function POST() {
   const auth = await requireUser();
   if (!auth.ok) return auth.error;
+  if (!auth.emailVerified) return NextResponse.json({ error: "Verify your email before creating a business account." }, { status: 403 });
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const [user] = await db
       .update(users)
       .set({ role: "operator", updatedAt: new Date() })
-      .where(and(eq(users.id, auth.userId), eq(users.role, "traveler")))
-      .returning({ id: users.id, email: users.email, name: users.name, role: users.role });
+      .where(and(eq(users.id, auth.userId), eq(users.role, "traveler"), eq(users.sessionVersion, auth.sessionVersion), eq(users.emailVerified, true)))
+      .returning({ id: users.id, email: users.email, name: users.name, role: users.role, sessionVersion: users.sessionVersion });
 
     if (!user) {
       // Already an operator/admin — report the current role, no change.
       const [current] = await db
-        .select({ id: users.id, email: users.email, name: users.name, role: users.role })
+        .select({ id: users.id, email: users.email, name: users.name, role: users.role, sessionVersion: users.sessionVersion })
         .from(users)
         .where(eq(users.id, auth.userId))
         .limit(1);
-      if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (!current || current.sessionVersion !== auth.sessionVersion) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      await setSessionCookie({ ...current, name: current.name ?? undefined });
       return NextResponse.json({ role: current.role, changed: false });
     }
 
     // The role lives in the JWT — reissue it or the middleware keeps
     // treating this session as a traveler.
-    await setSessionCookie({ id: user.id, email: user.email, name: user.name || undefined, role: user.role });
+    await setSessionCookie({ id: user.id, email: user.email, name: user.name || undefined, role: user.role, sessionVersion: user.sessionVersion });
     return NextResponse.json({ role: user.role, changed: true });
   } catch (error) {
     logger.error("become-operator error", error);

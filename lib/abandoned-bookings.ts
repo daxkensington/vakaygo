@@ -2,7 +2,7 @@
  * What to do with a PENDING, UNPAID, card booking as time passes.
  *
  * A card booking is created `pending` and only becomes `confirmed` when
- * the Stripe webhook reports payment. Until then nothing is held and
+ * the Stripe webhook reports payment. Until then capacity is temporarily held and
  * nobody has been paid, so:
  *
  *   - after RECOVERY_AFTER_MS with no payment: one "complete your booking"

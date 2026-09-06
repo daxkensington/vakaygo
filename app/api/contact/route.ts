@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { sendEmail } from "@/server/mail-client";
 
 import { logger } from "@/lib/logger";
 // Key comes only from the environment — never hardcode secrets in source.
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 
@@ -75,9 +75,9 @@ export async function POST(request: Request) {
     // send a "confirmation" email back to the submitter: this endpoint is
     // unauthenticated, so doing so would turn it into an open email relay
     // (spam amplification) to any attacker-chosen address.
-    await resend.emails.send({
+    await sendEmail({
       from: FROM,
-      to: "hello@vakaygo.com",
+      to: "bookings@vakaygo.com",
       replyTo: email,
       subject: `[${eCategory}] ${eSubject}`,
       html: `

@@ -1,10 +1,10 @@
 "use client";
-import { DIRECTORY_ONLY } from "@/lib/directory-mode";
-import { DirectoryNotice } from "./directory-notice";
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 import { Calendar, Clock, Users, Check, Loader2 } from "lucide-react";
+import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
 
 type DiningReservationProps = {
   listingId: string;
@@ -12,6 +12,7 @@ type DiningReservationProps = {
   operatorId: string;
   /** Listing built from public data — the restaurant cannot see reservations. */
   unclaimed?: boolean;
+  bookingEligible?: boolean;
 };
 
 const timeSlots = [
@@ -20,8 +21,15 @@ const timeSlots = [
   "20:00", "20:30", "21:00",
 ];
 
-function EnabledDiningReservation({ listingId, listingTitle, operatorId, unclaimed = false }: DiningReservationProps) {
+export function DiningReservation(props: DiningReservationProps) {
+  return <BookingEligibilityGate bookingEligible={props.bookingEligible} listingId={props.listingId} operatorId={props.operatorId} unclaimed={props.unclaimed}>
+    <EligibleDiningReservation {...props} />
+  </BookingEligibilityGate>;
+}
+
+function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false }: DiningReservationProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [guests, setGuests] = useState(2);
@@ -39,7 +47,7 @@ function EnabledDiningReservation({ listingId, listingTitle, operatorId, unclaim
       return;
     }
     if (!user) {
-      window.location.href = "/auth/signin";
+      router.push("/auth/signin");
       return;
     }
 
@@ -61,6 +69,7 @@ function EnabledDiningReservation({ listingId, listingTitle, operatorId, unclaim
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listingId);
         setError(data.error || "Failed to reserve");
         return;
       }
@@ -197,9 +206,4 @@ function EnabledDiningReservation({ listingId, listingTitle, operatorId, unclaim
       </form>
     </div>
   );
-}
-
-export function DiningReservation(props: DiningReservationProps) {
-  if (DIRECTORY_ONLY) return <DirectoryNotice listingId={props.listingId} />;
-  return <EnabledDiningReservation {...props} />;
 }

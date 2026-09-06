@@ -1,7 +1,7 @@
-import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 import { createDb } from "@/server/db";
-import { listings, islands, media, reviews, availability, users } from "@/drizzle/schema";
+import { listings, islands, media, reviews, users } from "@/drizzle/schema";
 import { eq, and, sql, gte, lte, ilike, desc, asc } from "drizzle-orm";
+import { bookingLaunchEnabled, getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -76,6 +76,7 @@ export async function searchListings(params: SearchParams) {
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -142,7 +143,7 @@ export async function searchListings(params: SearchParams) {
     island: r.islandSlug,
     islandName: r.islandName,
     type: r.type,
-    price: r.priceAmount ? parseFloat(r.priceAmount) : null,
+    price: r.bookingEligible === true && r.priceAmount ? parseFloat(r.priceAmount) : null,
     currency: r.priceCurrency || "XCD",
     priceUnit: r.priceUnit,
     rating: r.avgRating ? parseFloat(r.avgRating) : null,
@@ -152,7 +153,8 @@ export async function searchListings(params: SearchParams) {
     image: getImageUrl(imageMap[r.id]) || null,
     url: `/${r.islandSlug}/${r.slug}`,
     isFeatured: r.isFeatured,
-    isInstantBook: false,
+    bookingEligible: r.bookingEligible === true,
+    isInstantBook: r.bookingEligible === true && r.isInstantBook === true,
   }));
 }
 
@@ -170,6 +172,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
       description: listings.description,
       address: listings.address,
       parish: listings.parish,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -231,7 +234,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     description: listing.description,
     address: listing.address,
     parish: listing.parish,
-    price: listing.priceAmount ? parseFloat(listing.priceAmount) : null,
+    price: listing.bookingEligible === true && listing.priceAmount ? parseFloat(listing.priceAmount) : null,
     currency: listing.priceCurrency || "XCD",
     priceUnit: listing.priceUnit,
     rating: listing.avgRating ? parseFloat(listing.avgRating) : null,
@@ -240,7 +243,8 @@ export async function getListingDetails(params: ListingDetailsParams) {
     islandName: listing.islandName,
     operatorName: listing.operatorName,
     isFeatured: listing.isFeatured,
-    isInstantBook: false,
+    bookingEligible: listing.bookingEligible === true,
+    isInstantBook: listing.bookingEligible === true && listing.isInstantBook === true,
     cancellationPolicy: listing.cancellationPolicy,
     maxGuests: listing.maxGuests,
     typeData: listing.typeData,
@@ -257,58 +261,17 @@ export async function getListingDetails(params: ListingDetailsParams) {
 
 // ─── Check Availability ─────────────────────────────────────────
 export async function checkAvailability(params: AvailabilityParams) {
-  if (DIRECTORY_ONLY) return { available: false, reason: "This is a directory listing. Business verification and onboarding must be completed before any booking or reservation can be offered." };
-  const db = createDb();
+  const eligibility = await getListingBookingEligibility(params.listingId);
+  if (!eligibility.eligible) return { available: false, bookingEligible: false, message: "Information only. Bookings and reservation requests are unavailable for this listing." };
   const targetDate = new Date(params.date);
-
-  const results = await db
-    .select({
-      spots: availability.spots,
-      spotsRemaining: availability.spotsRemaining,
-      priceOverride: availability.priceOverride,
-      isBlocked: availability.isBlocked,
-    })
-    .from(availability)
-    .where(
-      and(
-        eq(availability.listingId, params.listingId),
-        eq(availability.date, targetDate)
-      )
-    )
-    .limit(1);
-
-  if (results.length === 0) {
-    // No availability record means default availability (open)
-    return {
-      available: true,
-      message: "No specific restrictions set for this date — default availability applies.",
-    };
-  }
-
-  const row = results[0];
-
-  if (row.isBlocked) {
-    return {
-      available: false,
-      message: "This listing is not available on the requested date.",
-    };
-  }
-
-  if (row.spotsRemaining !== null && row.spotsRemaining <= 0) {
-    return {
-      available: false,
-      message: "Fully booked on this date.",
-    };
-  }
-
-  return {
-    available: true,
-    spotsRemaining: row.spotsRemaining,
-    priceOverride: row.priceOverride ? parseFloat(row.priceOverride) : null,
-    message: row.spotsRemaining
-      ? `Available! ${row.spotsRemaining} spot${row.spotsRemaining > 1 ? "s" : ""} remaining.`
-      : "Available on this date!",
-  };
+  if (!Number.isFinite(targetDate.getTime())) return { available: false, bookingEligible: false, message: "A valid date is required." };
+  const date = targetDate.toISOString();
+  const db = createDb();
+  const [result] = await db.select({
+    available: sql<boolean>`vakaygo_listing_bookable(${listings.id}) AND vakaygo_booking_dates_available(${listings.id}, ${date}::timestamp, CASE WHEN ${listings.type}='stay' THEN ${date}::timestamp + interval '1 day' ELSE NULL END, 1, NULL)`,
+  }).from(listings).where(eq(listings.id, params.listingId)).limit(1);
+  const available = result?.available === true;
+  return { available, bookingEligible: available, message: available ? "The operator has published availability for this date. Final availability is checked when booking." : "This date is unavailable or has not been published by the operator." };
 }
 
 // ─── Get Island Info ────────────────────────────────────────────
@@ -356,6 +319,7 @@ export async function getIslandInfo(params: IslandInfoParams) {
       type: listings.type,
       avgRating: listings.avgRating,
       reviewCount: listings.reviewCount,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceUnit: listings.priceUnit,
     })
@@ -390,7 +354,8 @@ export async function getIslandInfo(params: IslandInfoParams) {
       type: l.type,
       rating: l.avgRating ? parseFloat(l.avgRating) : null,
       reviewCount: l.reviewCount || 0,
-      price: l.priceAmount ? parseFloat(l.priceAmount) : null,
+      bookingEligible: l.bookingEligible === true,
+      price: l.bookingEligible === true && l.priceAmount ? parseFloat(l.priceAmount) : null,
       priceUnit: l.priceUnit,
       url: `/${island.slug}/${l.slug}`,
     })),
@@ -409,6 +374,7 @@ export async function compareListings(params: CompareParams) {
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -438,7 +404,7 @@ export async function compareListings(params: CompareParams) {
     slug: r.slug,
     type: r.type,
     headline: r.headline,
-    price: r.priceAmount ? parseFloat(r.priceAmount) : null,
+    price: r.bookingEligible === true && r.priceAmount ? parseFloat(r.priceAmount) : null,
     currency: r.priceCurrency || "XCD",
     priceUnit: r.priceUnit,
     rating: r.avgRating ? parseFloat(r.avgRating) : null,
@@ -447,7 +413,8 @@ export async function compareListings(params: CompareParams) {
     island: r.islandSlug,
     islandName: r.islandName,
     isFeatured: r.isFeatured,
-    isInstantBook: false,
+    bookingEligible: r.bookingEligible === true,
+    isInstantBook: r.bookingEligible === true && r.isInstantBook === true,
     cancellationPolicy: r.cancellationPolicy,
     maxGuests: r.maxGuests,
     typeData: r.typeData,

@@ -193,7 +193,7 @@ export function Hero() {
         </h1>
 
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-          Stays. Tours. Dining. Events. Transport. Guides.
+          Stays. Tours. Dining. Events. Transport. Guides.{" "}
           <br className="hidden md:block" />
           Everything you need for the perfect Caribbean vacation.
         </p>
@@ -334,7 +334,7 @@ export function Hero() {
 
                     {/* View all results */}
                     <button
-                      onClick={handleSubmit as any}
+                      onClick={(event) => handleSubmit(event)}
                       className="w-full px-4 py-3 text-center text-sm font-medium text-gold-700 hover:bg-gold-50 border-t border-cream-100 transition-colors"
                     >
                       View all results for &ldquo;{query}&rdquo;
@@ -350,7 +350,7 @@ export function Hero() {
                 className="bg-gold-700 hover:bg-gold-800 text-white px-10 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02]"
               >
                 <Search size={18} />
-                <span className="hidden md:inline">Explore</span>
+                <span className="inline">Explore</span>
               </button>
             </div>
           </div>
@@ -361,7 +361,7 @@ export function Hero() {
           {[
             { value: "7,100+", label: "Listings" },
             { value: "21", label: "Islands" },
-            { value: "9", label: "Categories" },
+            { value: "10", label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gold-400">{stat.value}</p>

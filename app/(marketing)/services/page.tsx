@@ -30,7 +30,7 @@ export default function ServicesPage() {
               className="text-4xl md:text-6xl font-bold text-white leading-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Beyond booking.
+              Discover the Caribbean.
               <br />
               <span className="text-gold-400">Full-service Caribbean.</span>
             </h1>
@@ -56,13 +56,13 @@ export default function ServicesPage() {
                 >
                   Adventure awaits.
                   <br />
-                  <span className="text-teal-500">Book it all here.</span>
+                  <span className="text-teal-500">Explore local experiences.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
                   From catamaran cruises to waterfall hikes, island hopping to
                   underwater sculpture parks — the Caribbean&apos;s best excursions
-                  are on VakayGo. Book directly with local operators who know
-                  every hidden gem.
+                  are on VakayGo. Browse directory information and learn about
+                  local experiences. Online booking is currently unavailable.
                 </p>
                 <div className="grid grid-cols-2 gap-4 mt-8">
                   {[
@@ -123,22 +123,22 @@ export default function ServicesPage() {
                   className="text-3xl md:text-4xl font-bold text-navy-700 leading-tight"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Explore local
+                  Explore transfers
                   <br />
-                  <span className="text-gold-700">transfer services.</span>
+                  <span className="text-gold-700">before you travel.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  Browse airport transfer businesses and their service information.
-                  Bookings and payments on VakayGo remain unavailable until
-                  each business has verified its listing and completed onboarding.
+                  Browse local airport transfer companies and compare their published
+                  information. Confirm current service details directly with the business.
+                  VakayGo is not accepting transfer bookings or payments.
                 </p>
                 <ul className="mt-8 space-y-3">
                   {[
-                    "Service areas and airport coverage",
-                    "Vehicle types and passenger capacity",
-                    "Published business contact information",
-                    "Pickup details supplied by each business",
-                    "Business verification before online bookings",
+                    "Review published transfer information",
+                    "Check flight-delay arrangements with the business",
+                    "Confirm airport pickup and meeting points",
+                    "Compare vehicle and luggage capacity",
+                    "Check service areas and hotel destinations",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3">
                       <div className="w-5 h-5 bg-teal-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -152,7 +152,7 @@ export default function ServicesPage() {
                   href="/explore?type=transfer"
                   className="inline-flex items-center gap-2 bg-navy-600 hover:bg-navy-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-8"
                 >
-                  Browse Transfer Businesses <ArrowRight size={16} />
+                  Explore Transfers <ArrowRight size={16} />
                 </Link>
               </div>
             </div>

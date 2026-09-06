@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, Loader2, Phone, Globe, XCircle, CheckCircle2 } from "lucide-react";
+import { BadgeCheck, Loader2, Phone, Globe, XCircle } from "lucide-react";
 
 type Claim = {
   id: string;
@@ -59,8 +59,7 @@ export default function AdminClaimsPage() {
     load();
   }, [load]);
 
-  async function review(id: string, action: "approve" | "reject") {
-    if (action === "approve" && !window.confirm("Approve this claim? Ownership of the listing transfers immediately.")) return;
+  async function review(id: string, action: "reject") {
     if (action === "reject" && !window.confirm("Reject this claim?")) return;
     setBusy(id);
     setError("");
@@ -89,8 +88,7 @@ export default function AdminClaimsPage() {
         </h1>
       </div>
       <p className="text-navy-400 text-sm mb-6">
-        Verify by calling the phone number <strong>on the listing</strong>, never the number the claimant typed.
-        Approving hands the listing, its bookings and its payouts to the claimant.
+        Claims require automated proof through the trusted business contact. Administrators cannot bypass verification or activate bookings by approving a claim.
       </p>
 
       <div className="flex gap-2 mb-6">
@@ -141,7 +139,7 @@ export default function AdminClaimsPage() {
                   <div className="grid sm:grid-cols-2 gap-4 mt-4 text-sm">
                     <div className="bg-cream-50 rounded-xl p-4">
                       <p className="text-[11px] uppercase tracking-wider font-semibold text-navy-400 mb-2">
-                        On the listing (call this)
+                        Published business contact
                       </p>
                       <p className="flex items-center gap-2 text-navy-700">
                         <Phone size={14} /> {c.listingPhone || <em className="text-navy-300">no phone on file</em>}
@@ -188,14 +186,7 @@ export default function AdminClaimsPage() {
                       rows={3}
                       className="w-full border border-cream-300 rounded-xl p-3 text-sm outline-none focus:border-gold-500"
                     />
-                    <button
-                      onClick={() => review(c.id, "approve")}
-                      disabled={busy === c.id}
-                      className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-                    >
-                      {busy === c.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                      Approve &amp; transfer
-                    </button>
+                    <p className="rounded-xl bg-cream-50 p-3 text-sm text-navy-500">Awaiting automated business verification. The listing remains information only.</p>
                     <button
                       onClick={() => review(c.id, "reject")}
                       disabled={busy === c.id}

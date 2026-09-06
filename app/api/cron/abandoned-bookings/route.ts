@@ -3,11 +3,12 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
 import { eq, and, isNull, ne, sql } from "drizzle-orm";
-import { sendAbandonedBookingRecovery, sendBookingExpired } from "@/server/email";
+import { sendAbandonedBookingRecovery } from "@/server/email";
 import { createNotification } from "@/server/notifications";
-import { classifyPendingBooking, expiryReason, EXPIRE_AFTER_HOURS } from "@/lib/abandoned-bookings";
+import { classifyPendingBooking, expiryReason } from "@/lib/abandoned-bookings";
 import { isUnclaimedOperatorEmail } from "@/lib/booking-request";
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -27,9 +28,8 @@ function getDb() {
  *
  * The verdict comes from lib/abandoned-bookings.ts (pure, unit-tested);
  * this route only applies it. `requested` bookings are out of scope — a
- * human confirms or declines those. A Stripe payment that lands after
- * expiry still flips the booking to confirmed via the webhook, which is
- * the right outcome: the money arrived.
+ * human confirms or declines those. Payments that land after expiry are
+ * refunded by the webhook without reopening inventory.
  *
  * Until 2026-09-03 this route only LISTED the candidates and sent nothing.
  *
@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     const candidates = await db
       .select({
         id: bookings.id,
+        listingId: bookings.listingId,
         bookingNumber: bookings.bookingNumber,
         status: bookings.status,
         paidAt: bookings.paidAt,
@@ -86,12 +87,17 @@ export async function GET(request: Request) {
       const listingUrl = `https://vakaygo.com/${b.islandSlug}/${b.listingSlug}`;
 
       if (verdict === "recover") {
+        const eligibility = await getListingBookingEligibility(b.listingId, { refreshProvider: true });
+        if (!eligibility.eligible || eligibility.operatorId !== b.operatorId) {
+          result.ignored++;
+          continue;
+        }
         // Claim first (compare-and-set on the NULL) so two overlapping
         // runs cannot both email; only the winner sends.
         const claimed = await db
           .update(bookings)
           .set({ recoveryEmailSentAt: now })
-          .where(and(eq(bookings.id, b.id), isNull(bookings.recoveryEmailSentAt), eq(bookings.status, "pending")))
+          .where(and(eq(bookings.id, b.id), isNull(bookings.recoveryEmailSentAt), eq(bookings.status, "pending"), sql`vakaygo_listing_bookable(${bookings.listingId})`))
           .returning({ id: bookings.id });
         if (claimed.length === 0) continue;
         try {
@@ -105,6 +111,7 @@ export async function GET(request: Request) {
           });
           result.recovered.push(b.bookingNumber);
         } catch (err) {
+          await db.update(bookings).set({ recoveryEmailSentAt: null }).where(and(eq(bookings.id,b.id),eq(bookings.recoveryEmailSentAt,now)));
           logger.error("Abandoned booking recovery email failed", { bookingNumber: b.bookingNumber, err });
           result.failed.push(b.bookingNumber);
         }
@@ -120,24 +127,12 @@ export async function GET(request: Request) {
       if (closed.length === 0) continue; // paid or moved on since we read it
       result.expired.push(b.bookingNumber);
 
-      try {
-        await sendBookingExpired({
-          to: b.travelerEmail,
-          travelerName: b.travelerName || "Traveler",
-          bookingNumber: b.bookingNumber,
-          listingTitle: b.listingTitle,
-          listingUrl,
-          expiresAfterHours: EXPIRE_AFTER_HOURS,
-        });
-      } catch (err) {
-        logger.error("Booking expired email failed", { bookingNumber: b.bookingNumber, err });
-        result.failed.push(b.bookingNumber);
-      }
+      // The status change atomically queued cancellation mail in the outbox.
       createNotification({
         userId: b.travelerId,
         type: "booking",
         title: `Booking #${b.bookingNumber} expired unpaid`,
-        body: `${b.listingTitle} — you were not charged. Book again any time.`,
+        body: `${b.listingTitle} — you were not charged.`,
         link: listingUrl.replace("https://vakaygo.com", ""),
       }).catch(() => {});
       // The operator was told "New booking" at creation; close the loop

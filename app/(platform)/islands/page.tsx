@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Header } from "@/components/layout/header";
 
 export const metadata: Metadata = {
-  title: "Explore 21 Caribbean Islands | VakayGo",
+  title: "Explore 21 Caribbean Islands",
   description:
     "Discover stays, tours, dining, and experiences across 21 Caribbean islands. Compare destinations and plan your trip with VakayGo.",
   alternates: { canonical: "https://vakaygo.com/islands" },

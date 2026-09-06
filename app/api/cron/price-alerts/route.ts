@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { savedListings, listings, users, islands } from "@/drizzle/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { sendPriceDropAlert } from "@/server/email";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 
 import { logger } from "@/lib/logger";
 
@@ -36,6 +37,10 @@ export async function GET(request: Request) {
 
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (process.env.BOOKINGS_ENABLED !== "true") {
+      return NextResponse.json({ ok: true, checked: 0, alerted: 0, reason: "Bookings remain closed" });
     }
 
     const db = getDb();
@@ -75,6 +80,7 @@ export async function GET(request: Request) {
         seeded++;
       } else if (current <= last * DROP_THRESHOLD && row.email) {
         try {
+          if (!(await getListingBookingEligibility(row.listingId, { refreshProvider: true })).eligible) continue;
           await sendPriceDropAlert({
             to: row.email,
             travelerName: row.name || "traveler",

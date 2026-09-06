@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, listings, users, islands, promoCodes, promoCodeUses } from "@/drizzle/schema";
+import { bookings, listings, users, islands, promoCodes, promoCodeUses, availability, pricingRules } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
-import { sendBookingReceived, sendBookingNotificationToOperator } from "@/server/email";
-import { EXPIRE_AFTER_HOURS } from "@/lib/abandoned-bookings";
-import { sendBookingRequestReceived, sendBookingRequestToTeam } from "@/server/email-requests";
-import { createNotification } from "@/server/notifications";
-import { shouldRequestBooking, isUnclaimedTypeData, isUnclaimedOperatorEmail } from "@/lib/booking-request";
-import { toWallClockDate, formatBookingDateTime } from "@/lib/booking-time";
+import { shouldRequestBooking } from "@/lib/booking-request";
+import { toWallClockDate } from "@/lib/booking-time";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
+import { bookingInputError, isDemoListing, localBookingNow } from "@/lib/booking-validation";
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
@@ -40,6 +38,9 @@ export async function POST(request: Request) {
     const travelerId = payload.id as string;
 
     const body = await request.json();
+    if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid booking" }, { status: 400 });
+    const inputError = bookingInputError(body);
+    if (inputError) return NextResponse.json({ error: inputError }, { status: 400 });
     const {
       listingId,
       startDate,
@@ -69,6 +70,8 @@ export async function POST(request: Request) {
     const [listing] = await db
       .select({
         id: listings.id,
+        status: listings.status,
+        timezone: islands.timezone,
         slug: listings.slug,
         operatorId: listings.operatorId,
         priceAmount: listings.priceAmount,
@@ -97,6 +100,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
+    if (listing.status !== "active" || isDemoListing(listing.operatorId, listing.typeData)) {
+      return NextResponse.json({ error: "This listing is not available for booking" }, { status: 409 });
+    }
+    const eligibility = await getListingBookingEligibility(listing.id, { refreshProvider: true });
+    if (!eligibility.eligible || eligibility.operatorId !== listing.operatorId) {
+      return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+    }
+    const localNow = localBookingNow(listing.timezone);
+    const dateOnly = startDate.length === 10;
+    if ((dateOnly ? start.toISOString().slice(0, 10) < localNow.toISOString().slice(0, 10) : start <= localNow) || (end && end <= start) || (listing.type === "stay" && !end)) {
+      return NextResponse.json({ error: "Choose future dates and a checkout after check-in" }, { status: 400 });
+    }
+
     // Enforce booking rules
     if (listing.maxGuests && guestCount > listing.maxGuests) {
       return NextResponse.json(
@@ -106,7 +122,7 @@ export async function POST(request: Request) {
     }
 
     if (listing.advanceNotice && listing.advanceNotice > 0) {
-      const now = new Date();
+      const now = localNow;
       const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
       if (hoursUntilStart < listing.advanceNotice) {
         return NextResponse.json(
@@ -134,16 +150,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Unclaimed (public-data) listings and unpriced listings cannot be
-    // confirmed by anyone on the platform — they become REQUESTS that the
-    // VakayGo team confirms with the business by phone. Nothing is charged.
-    const isRequest = shouldRequestBooking({
+    // Only verified, fully onboarded businesses can receive requests. Until
+    // date-based quotes are displayed, custom pricing requires their approval.
+    const [overrides, rules] = await Promise.all([
+      db.select({ id: availability.id }).from(availability).where(and(eq(availability.listingId, listing.id), sql`${availability.priceOverride} is not null`)).limit(1),
+      db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.listingId, listing.id), eq(pricingRules.isActive, true))).limit(1),
+    ]);
+    const isRequest = overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
       typeData: listing.typeData,
       operatorEmail: listing.operatorEmail,
       priceAmount: listing.priceAmount,
     });
-    const unclaimed =
-      isUnclaimedTypeData(listing.typeData) || isUnclaimedOperatorEmail(listing.operatorEmail);
 
     const pricePerUnit = parseFloat(listing.priceAmount || "0");
 
@@ -157,7 +174,7 @@ export async function POST(request: Request) {
     }
 
     const pricing = calculateBookingPrice({
-      pricePerUnit,
+      pricePerUnit: isRequest ? 0 : pricePerUnit,
       quantity,
       listingType: listing.type,
       currency: listing.priceCurrency || "USD",
@@ -259,131 +276,19 @@ export async function POST(request: Request) {
         totalAmount: bookings.totalAmount,
       });
 
-    // Record promo code use and increment counter
-    if (promoCodeId) {
-      await db.insert(promoCodeUses).values({
-        promoCodeId,
-        userId: travelerId,
-        bookingId: booking.id,
-        discountApplied: discountAmount.toFixed(2),
-      });
-      await db
-        .update(promoCodes)
-        .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
-        .where(eq(promoCodes.id, promoCodeId));
-    }
-
-    // Emails (non-blocking)
-    const [traveler] = await db
-      .select({ email: users.email, name: users.name, phone: users.phone })
-      .from(users)
-      .where(eq(users.id, travelerId))
-      .limit(1);
-
-    const whenText = end
-      ? `${formatBookingDateTime(start)} → ${formatBookingDateTime(end)}`
-      : formatBookingDateTime(start);
-
-    if (isRequest) {
-      const td = (listing.typeData || {}) as Record<string, unknown>;
-      const phone = typeof td.phone === "string" && td.phone.trim() ? td.phone.trim() : null;
-      const website = typeof td.website === "string" && td.website.trim() ? td.website.trim() : null;
-
-      if (traveler?.email) {
-        sendBookingRequestReceived({
-          to: traveler.email,
-          travelerName: traveler.name || "Traveler",
-          bookingNumber: booking.bookingNumber,
-          listingTitle: listing.title,
-          whenText,
-          guestCount,
-        }).catch((err) => logger.error("Booking request email (traveler) failed", err));
-      }
-
-      sendBookingRequestToTeam({
-        bookingNumber: booking.bookingNumber,
-        listingTitle: listing.title,
-        listingUrl: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-        islandName: listing.islandName,
-        businessPhone: phone,
-        businessWebsite: website,
-        whenText,
-        guestCount,
-        guestNotes: typeof guestNotes === "string" ? guestNotes : null,
-        travelerName: traveler?.name || "Traveler",
-        travelerEmail: traveler?.email || "",
-        travelerPhone: traveler?.phone || null,
-        unclaimed,
-      }).catch((err) => logger.error("Booking request email (team) failed", err));
-
-      // A claimed-but-unpriced listing still has a real operator to tell.
-      if (!unclaimed && listing.operatorEmail) {
-        sendBookingNotificationToOperator({
-          to: listing.operatorEmail,
-          operatorName: listing.operatorBusinessName || listing.operatorName || "Operator",
-          bookingNumber: booking.bookingNumber,
-          listingTitle: listing.title,
-          travelerName: traveler?.name || "A traveler",
-          startDate,
-          guestCount,
-          subtotal: pricing.operatorEarnings.toFixed(2),
-        }).catch(() => {});
-        createNotification({
-          userId: listing.operatorId,
-          type: "booking",
-          title: `New booking request from ${traveler?.name || "a traveler"}`,
-          body: `${listing.title} — ${booking.bookingNumber}`,
-          link: "/operator/bookings",
-        }).catch(() => {});
-      }
-    } else {
-      // Nothing is paid yet: the real "Booking Confirmed" email goes out
-      // from the Stripe webhook. This one says pay within 48 h or it expires.
-      if (traveler?.email) {
-        sendBookingReceived({
-          to: traveler.email,
-          travelerName: traveler.name || "Traveler",
-          bookingNumber: booking.bookingNumber,
-          listingTitle: listing.title,
-          startDate,
-          guestCount,
-          totalAmount: finalTotal.toFixed(2),
-          expiresAfterHours: EXPIRE_AFTER_HOURS,
-        }).catch((err) => logger.error("Booking received email failed", err));
-      }
-
-      if (listing.operatorEmail && !unclaimed) {
-        sendBookingNotificationToOperator({
-          to: listing.operatorEmail,
-          operatorName: listing.operatorBusinessName || listing.operatorName || "Operator",
-          bookingNumber: booking.bookingNumber,
-          listingTitle: listing.title,
-          travelerName: traveler?.name || "A traveler",
-          startDate,
-          guestCount,
-          subtotal: pricing.operatorEarnings.toFixed(2),
-        }).catch(() => {});
-      }
-
-      // In-app notification to operator about new booking
-      createNotification({
-        userId: listing.operatorId,
-        type: "booking",
-        title: `New booking from ${traveler?.name || "a traveler"}`,
-        body: `${listing.title} — ${booking.bookingNumber}`,
-        link: "/operator/bookings",
-      }).catch(() => {});
-    }
+    // Promo use and notifications are queued atomically by the insert trigger.
 
     return NextResponse.json({
       booking,
-      // Widgets branch on this: "request" means nothing is confirmed or
-      // charged and VakayGo will follow up with the business.
+      // A request is sent only to a verified, fully onboarded business.
       mode: isRequest ? "request" : "booking",
       pricing: { ...pricing, discountAmount, finalTotal },
       listing: { title: listing.title, type: listing.type },
     });
   } catch (error) {
+    const dbError = error as { cause?: { message?: string }; message?: string };
+    const detail = dbError.cause?.message || dbError.message || "";
+    if (/VG_BOOKING:/.test(detail)) return NextResponse.json({ error: detail.split("VG_BOOKING:")[1].trim() }, { status: 409 });
     logger.error("Booking error", error);
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
@@ -409,6 +314,8 @@ export async function GET(request: Request) {
     const results = await db
       .select({
         id: bookings.id,
+        listingId: bookings.listingId,
+        operatorId: bookings.operatorId,
         bookingNumber: bookings.bookingNumber,
         status: bookings.status,
         startDate: bookings.startDate,
@@ -426,6 +333,12 @@ export async function GET(request: Request) {
         listingSlug: listings.slug,
         islandSlug: islands.slug,
         paidAt: bookings.paidAt,
+        datesAvailable: sql<boolean>`vakaygo_booking_dates_available(${bookings.listingId},${bookings.startDate},${bookings.endDate},${bookings.guestCount},${bookings.id})`,
+        checkoutSessionId: bookings.checkoutSessionId,
+        checkoutExpiresAt: bookings.checkoutExpiresAt,
+        checkoutStripeAccountId: bookings.checkoutStripeAccountId,
+        paymentMode: bookings.paymentMode,
+        cancellationRequestedAt: bookings.cancellationRequestedAt,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))
@@ -437,7 +350,16 @@ export async function GET(request: Request) {
       )
       .orderBy(bookings.createdAt);
 
-    return NextResponse.json({ bookings: results });
+    const eligibleListings = new Map(await Promise.all(
+      [...new Set(results.map(row => row.listingId))].map(async listingId =>
+        [listingId, await getListingBookingEligibility(listingId)] as const)
+    ));
+    return NextResponse.json({ bookings: results.map(row => {
+      const eligibility = eligibleListings.get(row.listingId);
+      const bookingEligible = !!eligibility?.eligible && eligibility.operatorId === row.operatorId;
+      return { ...row, bookingEligible, paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && bookingEligible && row.datesAvailable === true &&
+        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility?.stripeAccountId)) };
+    }) });
   } catch (error) {
     logger.error("Get bookings error", error);
     return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
