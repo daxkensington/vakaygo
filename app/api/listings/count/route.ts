@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const count = await countListings(parseListingFilters(searchParams));
     return NextResponse.json(
       { count },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600" } },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch (error) {
     logger.error("Listings count error", error);

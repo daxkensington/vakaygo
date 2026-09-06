@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   DollarSign,
@@ -186,15 +187,15 @@ export default function OperatorPayoutsPage() {
           <CreditCard size={24} className="text-navy-300" />
           <div className="flex-1">
             <p className="text-navy-700 font-medium">
-              No payout method configured
+              Business payment verification
             </p>
             <p className="text-sm text-navy-400">
-              Add a bank account or payment method to receive payouts
+              Review company verification and secure payout setup for each listing
             </p>
           </div>
-          <button className="bg-gold-700 hover:bg-gold-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-            Add Method
-          </button>
+          <Link href="/operator/listings" className="bg-gold-700 hover:bg-gold-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+            Review onboarding
+          </Link>
         </div>
       </div>
 
@@ -202,17 +203,14 @@ export default function OperatorPayoutsPage() {
       <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-8">
         <h2 className="font-bold text-navy-700 mb-2">Payout Schedule</h2>
         <p className="text-sm text-navy-400">
-          Payouts are processed{" "}
-          <span className="font-semibold text-navy-600">weekly</span> every
-          Monday for all completed bookings. Funds typically arrive within 2-3
-          business days.
+          Payout availability depends on verified account status and the payment provider&apos;s settlement schedule. Pending ledger entries do not confirm arrival in your bank account.
         </p>
         <div className="mt-4 p-4 bg-teal-50 rounded-xl">
           <p className="text-sm text-teal-700">
             <span className="font-semibold">
-              VakayGo takes just 3-5% commission
+              Fees depend on the listing category
             </span>{" "}
-            — the lowest in the travel industry. You keep 95-97% of every booking.
+            Review the <Link href="/operator/onboarding/terms" className="underline">operator terms draft</Link> for the current commission schedule.
           </p>
         </div>
       </div>

@@ -34,6 +34,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
+  const emailRecovery = searchParams.get("method") === "email";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -137,13 +138,13 @@ function SignInContent() {
             Welcome back
           </h1>
           <p className="text-navy-400 mt-2">
-            Sign in to your account to continue
+            {emailRecovery ? "Verify your inbox with an email sign-in link" : "Sign in to your account to continue"}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)]">
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
+            <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
               {error}
             </div>
           )}
@@ -248,6 +249,7 @@ function SignInContent() {
 
           {!requires2fa && (
             <div className="mt-4 text-center">
+              <p className="mb-3 text-sm text-navy-500">Email not verified, or cannot use your password? Enter your email above and request a sign-in link to verify your inbox.</p>
               {magicSent ? (
                 <p className="text-sm text-teal-700 bg-teal-50 rounded-xl px-4 py-3">
                   Check your email — if an account exists, a one-time sign-in link is on its way.
@@ -260,7 +262,7 @@ function SignInContent() {
                   className="text-sm text-gold-700 font-semibold hover:text-gold-600 disabled:opacity-60 inline-flex items-center gap-2"
                 >
                   {magicLoading && <Loader2 size={14} className="animate-spin" />}
-                  Forgot your password? Email me a sign-in link
+                  Email me a sign-in link
                 </button>
               )}
             </div>

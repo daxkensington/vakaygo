@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { useCurrency } from "@/lib/currency";
+import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
 import {
   Star,
   Calendar,
@@ -22,6 +23,7 @@ import {
 type BookingWidgetProps = {
   listing: {
     id: string;
+    operatorId?: string;
     type: string;
     priceAmount: string | null;
     priceCurrency: string | null;
@@ -33,9 +35,16 @@ type BookingWidgetProps = {
   };
   /** Listing built from public data — nobody at the business sees bookings. */
   unclaimed?: boolean;
+  bookingEligible?: boolean;
 };
 
-export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
+export function BookingWidget(props: BookingWidgetProps) {
+  return <BookingEligibilityGate bookingEligible={props.bookingEligible} listingId={props.listing.id} operatorId={props.listing.operatorId} unclaimed={props.unclaimed}>
+    <EligibleBookingWidget {...props} />
+  </BookingEligibilityGate>;
+}
+
+function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
   const { user, refresh } = useAuth();
   const { currency, format: formatConverted } = useCurrency();
   const [startDate, setStartDate] = useState("");
@@ -51,7 +60,6 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
   const [paymentStep, setPaymentStep] = useState(false);
   const [bookingId, setBookingId] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [directPayment, setDirectPayment] = useState(false);
   const [error, setError] = useState("");
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -223,6 +231,7 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listing.id);
         setError(data.error || "Booking failed");
         return;
       }
@@ -258,15 +267,8 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
 
       const data = await res.json();
 
-      if (data.fallback) {
-        setError("");
-        setDirectPayment(true);
-        setPaymentStep(false);
-        setBooked(true);
-        return;
-      }
-
-      if (!res.ok) {
+      if (!res.ok || typeof data.url !== "string") {
+        invalidateBookingControls(listing.id);
         setError(data.error || "Payment setup failed");
         return;
       }
@@ -391,11 +393,6 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
             <p className="text-sm text-navy-500 mt-4 leading-relaxed">
               <strong>Not confirmed until paid.</strong> Complete payment from{" "}
               <Link href="/bookings" className="text-gold-700 font-semibold">My Bookings</Link> while checkout is open. Unpaid bookings expire after 48 hours; checkout links can close sooner.
-            </p>
-          ) : directPayment ? (
-            <p className="text-xs text-navy-300 mt-4">
-              This operator accepts direct payment. Your booking has been
-              submitted — the operator will confirm it shortly.
             </p>
           ) : (
             <p className="text-xs text-navy-300 mt-4">

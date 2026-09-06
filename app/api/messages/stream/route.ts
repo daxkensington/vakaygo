@@ -1,22 +1,20 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messages, users } from "@/drizzle/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { eq, and, gt } from "drizzle-orm";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 export const maxDuration = 300; // 5 minutes
-
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload as { id: string; email: string; name: string; role: string };
+    const session = await verifyCurrentSessionToken(token);
+    return session ? { id: session.userId, token } : null;
   } catch {
     return null;
   }
@@ -86,10 +84,6 @@ export async function GET() {
             .orderBy(messages.createdAt)
             .limit(50);
 
-          for (const msg of newMessages) {
-            send("message", { type: "new_message", message: msg });
-          }
-
           // Check for messages that were recently marked as read (sent by current user)
           const readMessages = await db
             .select({ id: messages.id })
@@ -102,6 +96,17 @@ export async function GET() {
               )
             )
             .limit(50);
+
+          // An open stream must not outlive revocation or first email proof.
+          if (!await verifyCurrentSessionToken(user.token)) {
+            closed = true;
+            controller.close();
+            break;
+          }
+
+          for (const msg of newMessages) {
+            send("message", { type: "new_message", message: msg });
+          }
 
           for (const msg of readMessages) {
             send("message", { type: "message_read", messageId: msg.id });

@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 
 import { bookingInputError, isDemoListing, localBookingNow } from "@/lib/booking-validation";
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
@@ -102,6 +103,10 @@ export async function POST(request: Request) {
     if (listing.status !== "active" || isDemoListing(listing.operatorId, listing.typeData)) {
       return NextResponse.json({ error: "This listing is not available for booking" }, { status: 409 });
     }
+    const eligibility = await getListingBookingEligibility(listing.id, { refreshProvider: true });
+    if (!eligibility.eligible || eligibility.operatorId !== listing.operatorId) {
+      return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+    }
     const localNow = localBookingNow(listing.timezone);
     const dateOnly = startDate.length === 10;
     if ((dateOnly ? start.toISOString().slice(0, 10) < localNow.toISOString().slice(0, 10) : start <= localNow) || (end && end <= start) || (listing.type === "stay" && !end)) {
@@ -145,10 +150,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Unclaimed (public-data) listings and unpriced listings cannot be
-    // confirmed by anyone on the platform — they become REQUESTS that the
-    // VakayGo team confirms with the business by phone. Nothing is charged.
-    // Until date-based quotes are displayed, custom pricing requires a request.
+    // Only verified, fully onboarded businesses can receive requests. Until
+    // date-based quotes are displayed, custom pricing requires their approval.
     const [overrides, rules] = await Promise.all([
       db.select({ id: availability.id }).from(availability).where(and(eq(availability.listingId, listing.id), sql`${availability.priceOverride} is not null`)).limit(1),
       db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.listingId, listing.id), eq(pricingRules.isActive, true))).limit(1),
@@ -277,8 +280,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       booking,
-      // Widgets branch on this: "request" means nothing is confirmed or
-      // charged and VakayGo will follow up with the business.
+      // A request is sent only to a verified, fully onboarded business.
       mode: isRequest ? "request" : "booking",
       pricing: { ...pricing, discountAmount, finalTotal },
       listing: { title: listing.title, type: listing.type },
@@ -312,6 +314,8 @@ export async function GET(request: Request) {
     const results = await db
       .select({
         id: bookings.id,
+        listingId: bookings.listingId,
+        operatorId: bookings.operatorId,
         bookingNumber: bookings.bookingNumber,
         status: bookings.status,
         startDate: bookings.startDate,
@@ -329,6 +333,12 @@ export async function GET(request: Request) {
         listingSlug: listings.slug,
         islandSlug: islands.slug,
         paidAt: bookings.paidAt,
+        datesAvailable: sql<boolean>`vakaygo_booking_dates_available(${bookings.listingId},${bookings.startDate},${bookings.endDate},${bookings.guestCount},${bookings.id})`,
+        checkoutSessionId: bookings.checkoutSessionId,
+        checkoutExpiresAt: bookings.checkoutExpiresAt,
+        checkoutStripeAccountId: bookings.checkoutStripeAccountId,
+        paymentMode: bookings.paymentMode,
+        cancellationRequestedAt: bookings.cancellationRequestedAt,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))
@@ -340,7 +350,16 @@ export async function GET(request: Request) {
       )
       .orderBy(bookings.createdAt);
 
-    return NextResponse.json({ bookings: results });
+    const eligibleListings = new Map(await Promise.all(
+      [...new Set(results.map(row => row.listingId))].map(async listingId =>
+        [listingId, await getListingBookingEligibility(listingId)] as const)
+    ));
+    return NextResponse.json({ bookings: results.map(row => {
+      const eligibility = eligibleListings.get(row.listingId);
+      const bookingEligible = !!eligibility?.eligible && eligibility.operatorId === row.operatorId;
+      return { ...row, bookingEligible, paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && bookingEligible && row.datesAvailable === true &&
+        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility?.stripeAccountId)) };
+    }) });
   } catch (error) {
     logger.error("Get bookings error", error);
     return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });

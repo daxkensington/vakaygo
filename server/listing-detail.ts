@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, media, islands, users } from "@/drizzle/schema";
 import { eq, and, ne } from "drizzle-orm";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 
 function getDb() {
@@ -62,6 +63,7 @@ export async function getListingDetail(slug: string) {
     .limit(1);
 
   if (!listing) return null;
+  const eligibility = await getListingBookingEligibility(listing.id);
 
   const rawImages = await db
     .select({
@@ -120,7 +122,7 @@ export async function getListingDetail(slug: string) {
   );
 
   return {
-    listing: { ...listing, images },
+    listing: { ...listing, images, bookingEligible: eligibility.eligible === true, bookingEligibilityReason: eligibility.reason, isInstantBook: eligibility.eligible === true && listing.isInstantBook === true },
     similar: similarWithImages,
   };
 }

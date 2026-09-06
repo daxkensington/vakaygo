@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { and, eq } from "drizzle-orm";
+import { requireUser } from "@/server/admin-auth";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail } from "@/server/email";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -17,14 +15,9 @@ function getDb() {
 
 export async function POST() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const userId = auth.userId;
 
     const db = getDb();
 
@@ -53,13 +46,15 @@ export async function POST() {
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Store token
-    await db
+    const [stored] = await db
       .update(users)
       .set({
         emailVerificationToken: verificationToken,
         emailVerificationExpires: expires,
       })
-      .where(eq(users.id, userId));
+      .where(and(eq(users.id, userId), eq(users.sessionVersion, auth.sessionVersion), eq(users.emailVerified, false)))
+      .returning({ id: users.id });
+    if (!stored) return NextResponse.json({ error: "Account changed. Sign in again." }, { status: 409 });
 
     // Send email
     await sendVerificationEmail({

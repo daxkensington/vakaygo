@@ -22,6 +22,7 @@ jobs:
       - run: npm test -- --run
         env:
           NODE_ENV: test
+      - run: node tests/regression/business-onboarding.cjs
 
   e2e:
     runs-on: ubuntu-latest
@@ -132,7 +133,13 @@ jobs:
           for migration in drizzle/migrations/*.sql; do
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
           done
+      - name: Verify email identity and session revocation
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/account-bootstrap.sql
+      - name: Verify automated business claim proof
+        run: node tests/sql/render-business-onboarding.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
       - name: Verify inventory and transactional notifications
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/booking-integrity.sql
       - name: Verify concurrent reservation exclusion
         run: bash tests/sql/concurrent-booking.sh
+      - name: Verify default-closed onboarding and revocation
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/onboarding-eligibility.sql

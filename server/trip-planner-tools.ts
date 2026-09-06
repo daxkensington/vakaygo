@@ -1,7 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, islands, media, availability } from "@/drizzle/schema";
+import { listings, islands, media } from "@/drizzle/schema";
 import { eq, and, ilike, lte, gte, inArray, sql } from "drizzle-orm";
+import { bookingLaunchEnabled, getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 
 function getDb() {
@@ -32,6 +33,7 @@ export type ListingResult = {
   islandSlug: string;
   islandName: string;
   image: string | null;
+  bookingEligible?: boolean;
 };
 
 export async function searchListings(params: SearchListingsParams): Promise<ListingResult[]> {
@@ -76,6 +78,7 @@ export async function searchListings(params: SearchListingsParams): Promise<List
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -104,6 +107,8 @@ export async function searchListings(params: SearchListingsParams): Promise<List
 
   return results.map((r) => ({
     ...r,
+    bookingEligible: r.bookingEligible === true,
+    priceAmount: r.bookingEligible === true ? r.priceAmount : null,
     image: imageMap.get(r.id) || null,
   }));
 }
@@ -118,6 +123,7 @@ export async function getListingDetails(listingId: string): Promise<ListingResul
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -142,36 +148,21 @@ export async function getListingDetails(listingId: string): Promise<ListingResul
 
   return {
     ...result,
+    bookingEligible: result.bookingEligible === true,
+    priceAmount: result.bookingEligible === true ? result.priceAmount : null,
     image: images[0] ? getImageUrl(images[0].url) || images[0].url : null,
   };
 }
 
 export async function checkAvailability(listingId: string, date: string): Promise<{ available: boolean; spotsRemaining: number | null; priceOverride: string | null }> {
+  const eligibility = await getListingBookingEligibility(listingId);
+  if (!eligibility.eligible) return { available: false, spotsRemaining: null, priceOverride: null };
+  const targetDate = new Date(date);
+  if (!Number.isFinite(targetDate.getTime())) return { available: false, spotsRemaining: null, priceOverride: null };
+  const timestamp = targetDate.toISOString();
   const db = getDb();
-
-  const [record] = await db
-    .select({
-      isBlocked: availability.isBlocked,
-      spotsRemaining: availability.spotsRemaining,
-      priceOverride: availability.priceOverride,
-    })
-    .from(availability)
-    .where(
-      and(
-        eq(availability.listingId, listingId),
-        eq(availability.date, new Date(date))
-      )
-    )
-    .limit(1);
-
-  if (!record) {
-    // No availability record means it's available by default
-    return { available: true, spotsRemaining: null, priceOverride: null };
-  }
-
-  return {
-    available: !record.isBlocked && (record.spotsRemaining === null || record.spotsRemaining > 0),
-    spotsRemaining: record.spotsRemaining,
-    priceOverride: record.priceOverride,
-  };
+  const [result] = await db.select({
+    available: sql<boolean>`vakaygo_listing_bookable(${listings.id}) AND vakaygo_booking_dates_available(${listings.id}, ${timestamp}::timestamp, CASE WHEN ${listings.type}='stay' THEN ${timestamp}::timestamp + interval '1 day' ELSE NULL END, 1, NULL)`,
+  }).from(listings).where(eq(listings.id, listingId)).limit(1);
+  return { available: result?.available === true, spotsRemaining: null, priceOverride: null };
 }

@@ -71,18 +71,9 @@ function SignUpContent() {
 
       analytics.signUp("email");
 
-      // Auto sign in after signup
-      await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (role === "operator" && claimListingId) {
-        router.push(`/operator/claim/${claimListingId}`);
-        return;
-      }
-      router.push(role === "operator" ? "/operator" : "/explore");
+      // Inbox proof is required before password sign-in or business access.
+      setPassword("");
+      router.push("/auth/verify-email");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -135,7 +126,7 @@ function SignUpContent() {
                 <div>
                   <p className="font-bold text-navy-700">I&apos;m a Traveler</p>
                   <p className="text-sm text-navy-400 mt-0.5">
-                    Discover and book stays, tours, dining, and more
+                    Discover stays, tours, dining, and more
                   </p>
                 </div>
               </button>
@@ -187,6 +178,7 @@ function SignUpContent() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-sm text-navy-500">After creating your account, confirm the link sent to your email before signing in or claiming a business.</p>
                 <div>
                   <label className="block text-sm font-medium text-navy-600 mb-1.5">
                     Full Name

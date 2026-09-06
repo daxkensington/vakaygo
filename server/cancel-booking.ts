@@ -4,7 +4,9 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { bookings, listings, islands } from "@/drizzle/schema";
 import { calculateRefundPercent } from "@/lib/cancellation";
 import { localBookingNow } from "@/lib/booking-validation";
-import { refundBooking, expireCheckoutSession, retrieveBookingRefund } from "@/server/stripe";
+import { refundBooking, retrieveBookingRefund } from "@/server/stripe";
+import { expireBookingCheckout } from "@/server/booking-checkout-safety";
+import { logger } from "@/lib/logger";
 
 type CancellationResult = { error: string; httpStatus: number } | { success: true; status: string; refundAmount: number; refundPercent?: number; policy?: string; message?: string };
 export async function cancelBooking(bookingId: string, actor: { id: string; role: string }, reason?: unknown): Promise<CancellationResult> {
@@ -30,7 +32,14 @@ export async function cancelBooking(bookingId: string, actor: { id: string; role
   }
   // State is closed before Stripe is called. Failed calls can be retried using
   // the stored amount; crossing a policy deadline never changes that amount.
-  if (booking.checkoutSessionId && !booking.paidAt) await expireCheckoutSession(booking.checkoutSessionId);
+  if (booking.checkoutSessionId && !booking.paidAt) {
+    try { await expireBookingCheckout(booking.id, booking.checkoutSessionId); }
+    catch (error) {
+      // The persisted session stays in the independent safety sweep. Cancellation
+      // and historical refunds must not fail because provider expiry is unavailable.
+      logger.error("Cancelled checkout expiry needs retry", { bookingId: booking.id, sessionId: booking.checkoutSessionId, error });
+    }
+  }
   const cents = booking.cancellationRefundCents || 0;
   let status = booking.status;
   if (booking.paymentId && cents > 0 && booking.refundStatus !== "succeeded") {

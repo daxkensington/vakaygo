@@ -8,6 +8,7 @@ import { createNotification } from "@/server/notifications";
 import { classifyPendingBooking, expiryReason } from "@/lib/abandoned-bookings";
 import { isUnclaimedOperatorEmail } from "@/lib/booking-request";
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
     const candidates = await db
       .select({
         id: bookings.id,
+        listingId: bookings.listingId,
         bookingNumber: bookings.bookingNumber,
         status: bookings.status,
         paidAt: bookings.paidAt,
@@ -85,12 +87,17 @@ export async function GET(request: Request) {
       const listingUrl = `https://vakaygo.com/${b.islandSlug}/${b.listingSlug}`;
 
       if (verdict === "recover") {
+        const eligibility = await getListingBookingEligibility(b.listingId, { refreshProvider: true });
+        if (!eligibility.eligible || eligibility.operatorId !== b.operatorId) {
+          result.ignored++;
+          continue;
+        }
         // Claim first (compare-and-set on the NULL) so two overlapping
         // runs cannot both email; only the winner sends.
         const claimed = await db
           .update(bookings)
           .set({ recoveryEmailSentAt: now })
-          .where(and(eq(bookings.id, b.id), isNull(bookings.recoveryEmailSentAt), eq(bookings.status, "pending")))
+          .where(and(eq(bookings.id, b.id), isNull(bookings.recoveryEmailSentAt), eq(bookings.status, "pending"), sql`vakaygo_listing_bookable(${bookings.listingId})`))
           .returning({ id: bookings.id });
         if (claimed.length === 0) continue;
         try {
@@ -125,7 +132,7 @@ export async function GET(request: Request) {
         userId: b.travelerId,
         type: "booking",
         title: `Booking #${b.bookingNumber} expired unpaid`,
-        body: `${b.listingTitle} — you were not charged. Book again any time.`,
+        body: `${b.listingTitle} — you were not charged.`,
         link: listingUrl.replace("https://vakaygo.com", ""),
       }).catch(() => {});
       // The operator was told "New booking" at creation; close the loop

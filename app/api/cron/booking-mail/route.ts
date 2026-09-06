@@ -13,14 +13,18 @@ export async function GET(request: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const jobs = await q`UPDATE booking_mail_outbox SET locked_until=now()+interval '5 minutes', attempts=attempts+1 WHERE id IN
     (SELECT id FROM booking_mail_outbox WHERE delivered_at IS NULL AND available_at<=now() AND (locked_until IS NULL OR locked_until<now()) ORDER BY created_at LIMIT 20 FOR UPDATE SKIP LOCKED) RETURNING *`;
-  let delivered=0, failed=0;
+  let delivered=0, failed=0, suppressed=0;
   for (const job of jobs) {
     try {
-      const [b] = await q`SELECT b.*, l.title, l.type_data, u.email, u.name, u.phone, o.email AS operator_email
+      const [b] = await q`SELECT b.*, l.title, l.type_data, u.email, u.name, u.phone, o.email AS operator_email,
+        vakaygo_listing_bookable(l.id) AS booking_eligible
         FROM bookings b JOIN listings l ON l.id=b.listing_id JOIN users u ON u.id=b.traveler_id JOIN users o ON o.id=b.operator_id WHERE b.id=${job.booking_id}`;
       if (!b) throw new Error("Booking missing from outbox");
       const refundFailed = ["failed","canceled"].includes(b.refund_status);
-      const stale = (job.kind === "refunded" && (b.status !== "refunded" || refundFailed))
+      const salesMessage = ["requested", "received", "request_confirmed"].includes(job.kind)
+        || (job.kind === "confirmed" && !b.paid_at);
+      const salesClosed = salesMessage && (process.env.BOOKINGS_ENABLED !== "true" || b.booking_eligible !== true);
+      const stale = salesClosed || (job.kind === "refunded" && (b.status !== "refunded" || refundFailed))
         || (job.kind === "refund_failed" && !refundFailed)
         || (job.kind === "cancelled" && (b.status !== "cancelled" || refundFailed))
         || (job.kind === "requested" && b.status !== "requested")
@@ -49,14 +53,16 @@ export async function GET(request: Request) {
           "Reply to this email for help."].filter(Boolean).join("\n\n");
         const result = await resend.emails.send({from:"VakayGo <hello@vakaygo.com>",to:recipient,replyTo:"bookings@vakaygo.com",subject:heading+" — "+b.title,text},{idempotencyKey:"booking-mail-"+job.id});
         if (result.error) throw new Error(result.error.message);
+        delivered++;
+      } else {
+        suppressed++;
       }
       await q`UPDATE booking_mail_outbox SET delivered_at=now(),locked_until=NULL WHERE id=${job.id}`;
-      delivered++;
     } catch(error) {
       failed++;
       logger.error("Booking email remains queued",{jobId:job.id,error});
       await q`UPDATE booking_mail_outbox SET locked_until=NULL, available_at=now()+interval '10 minutes' WHERE id=${job.id}`;
     }
   }
-  return NextResponse.json({delivered,failed});
+  return NextResponse.json({delivered,failed,suppressed});
 }

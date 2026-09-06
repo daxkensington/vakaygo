@@ -1,7 +1,7 @@
-import { unstable_cache } from "next/cache";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { createDb } from "@/server/db";
-import { listings, islands, media, availability } from "@/drizzle/schema";
-import { eq, and, desc, asc, gte, lte, inArray, notInArray, sql, type SQL } from "drizzle-orm";
+import { listings, islands, media } from "@/drizzle/schema";
+import { eq, and, desc, asc, gte, lte, inArray, sql, type SQL } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { parseSearchQuery, likeEscape } from "@/lib/search-terms";
 import {
@@ -18,7 +18,7 @@ import {
 
 type Db = ReturnType<typeof createDb>;
 
-function buildWhere(db: Db, f: ListingFilters): { where: SQL; relevance: SQL | null } {
+function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean): { where: SQL; relevance: SQL | null } {
   const conditions: SQL[] = [eq(listings.status, "active")];
 
   if (f.type) conditions.push(eq(listings.type, f.type));
@@ -32,16 +32,7 @@ function buildWhere(db: Db, f: ListingFilters): { where: SQL; relevance: SQL | n
   }
 
   if (f.date) {
-    const unavailable = db
-      .select({ id: availability.listingId })
-      .from(availability)
-      .where(
-        and(
-          eq(availability.date, new Date(f.date)),
-          sql`(${availability.isBlocked} = true OR ${availability.spotsRemaining} = 0)`,
-        ),
-      );
-    conditions.push(notInArray(listings.id, unavailable));
+    conditions.push(bookingsEnabled ? sql`vakaygo_listing_bookable(${listings.id}) AND vakaygo_booking_dates_available(${listings.id}, ${f.date}::timestamp, CASE WHEN ${listings.type}='stay' THEN ${f.date}::timestamp + interval '1 day' ELSE NULL END, ${f.guests || 1}, NULL)` : sql`false`);
   }
 
   // Free text + cuisine share one haystack: title, headline, description,
@@ -145,7 +136,7 @@ const reviewSourceExpr = sql<"google" | "vakaygo">`
        THEN 'google' ELSE 'vakaygo' END`;
 
 export async function searchListings(f: ListingFilters, db: Db = createDb()): Promise<ListingResult[]> {
-  const { where, relevance } = buildWhere(db, f);
+  const { where, relevance } = buildWhere(db, f, await bookingLaunchEnabled());
 
   const rows = await db
     .select({
@@ -154,6 +145,7 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
+      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -188,13 +180,15 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
 
   return rows.map((r) => ({
     ...r,
+    bookingEligible: r.bookingEligible === true,
+    priceAmount: r.bookingEligible === true ? r.priceAmount : null,
     reviewSource: r.reviewSource === "google" ? "google" : "vakaygo",
     image: getImageUrl(imageMap.get(r.id)) || null,
   }));
 }
 
 export async function countListings(f: ListingFilters, db: Db = createDb()): Promise<number> {
-  const { where } = buildWhere(db, f);
+  const { where } = buildWhere(db, f, await bookingLaunchEnabled());
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(listings)
@@ -220,19 +214,10 @@ async function loadExploreData(f: ListingFilters): Promise<ExploreData> {
   return { listings: results, totalCount, island: islandRow[0] ?? null };
 }
 
-/**
- * Explore page data, cached for an hour per distinct filter set. The page
- * itself is dynamic (it reads searchParams), so this is what keeps the
- * common landings — /explore, /explore?island=grenada&type=stay — off the
- * database. Revalidate with `revalidateTag("listings")` when the catalogue
- * changes.
- */
-export const getExploreData = unstable_cache(
-  // The canonical query string is the cache key; the filters travel with it.
-  async (_key: string, f: ListingFilters) => loadExploreData(f),
-  ["explore-data-v1"],
-  { revalidate: 3600, tags: ["listings"] },
-);
+// Eligibility includes revocation and expiry. Never reuse a positive cached result.
+export async function getExploreData(_key: string, f: ListingFilters): Promise<ExploreData> {
+  return loadExploreData(f);
+}
 
 export function exploreCacheKey(f: ListingFilters): string {
   return filtersToSearchParams(f, { includePaging: true }).toString();

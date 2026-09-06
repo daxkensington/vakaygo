@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { awardBookingPoints } from "@/server/loyalty";
 
 import { cancelBooking } from "@/server/cancel-booking";
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(
@@ -43,6 +44,12 @@ export async function GET(
         currency: bookings.currency,
         paymentMethod: bookings.paymentMethod,
         paidAt: bookings.paidAt,
+        datesAvailable: sql<boolean>`vakaygo_booking_dates_available(${bookings.listingId},${bookings.startDate},${bookings.endDate},${bookings.guestCount},${bookings.id})`,
+        checkoutSessionId: bookings.checkoutSessionId,
+        checkoutExpiresAt: bookings.checkoutExpiresAt,
+        checkoutStripeAccountId: bookings.checkoutStripeAccountId,
+        paymentMode: bookings.paymentMode,
+        cancellationRequestedAt: bookings.cancellationRequestedAt,
         guestNotes: bookings.guestNotes,
         operatorNotes: bookings.operatorNotes,
         cancellationReason: bookings.cancellationReason,
@@ -81,7 +88,13 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json({ booking: row });
+    const eligibility = await getListingBookingEligibility(row.listingId);
+    return NextResponse.json({ booking: {
+      ...row,
+      bookingEligible: eligibility.eligible && eligibility.operatorId === row.operatorId,
+      paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && eligibility.eligible && eligibility.operatorId === row.operatorId && row.datesAvailable === true &&
+        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility.stripeAccountId)),
+    } });
   } catch (error) {
     logger.error("Get booking error", error);
     return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
@@ -152,14 +165,20 @@ export async function PATCH(
     if (status && ["cancelled", "refunded", "completed", "no_show"].includes(existing.status)) return NextResponse.json({ error: "This booking is closed" }, { status: 409 });
     if (status === "completed" && existing.status !== "confirmed") return NextResponse.json({ error: "Only confirmed bookings can be completed" }, { status: 409 });
 
+    if (status === "confirmed" && existing.status !== "confirmed") {
+      const eligibility = await getListingBookingEligibility(existing.listingId, { refreshProvider: true });
+      if (!eligibility.eligible || eligibility.operatorId !== existing.operatorId) {
+        return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+      }
+    }
+
     // "confirmed" AND "completed" both imply the booking was PAID. Without
     // this gate an operator could move a never-paid booking straight to
     // "completed", which the escrow-release + payouts crons then turn into a
     // real payout-ledger credit. Only allow these transitions once payment
     // is on record (the webhook stamps paymentId + paidAt).
-    // Exception: a REQUESTED booking (unclaimed/unpriced listing) has no
-    // price to pay. Once the team or the listing's operator has confirmed
-    // it with the business, it may become "confirmed" with $0 on record.
+    // Exception: an onboarded business can accept a zero-price request.
+    // Its ownership, onboarding and payment readiness are checked above.
     // Never "completed" — that path feeds the payout ledger.
     const isRequestOutcome =
       existing.status === "requested" &&

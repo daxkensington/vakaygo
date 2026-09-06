@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -13,9 +13,7 @@ import {
   Check,
   X,
   Loader2,
-  MapPin,
   Star,
-  AlertCircle,
   Info,
   CreditCard,
   AlertTriangle,
@@ -41,6 +39,8 @@ type Booking = {
   listingSlug: string;
   islandSlug?: string | null;
   paidAt: string | null;
+  listingId: string;
+  paymentEligible?: boolean;
 };
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -63,6 +63,8 @@ export default function TravelerBookingsPage() {
 function BookingsContent() {
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const refreshSequence = useRef(0);
+  const invalidatePendingRefresh = useCallback(() => { ++refreshSequence.current; }, []);
   const [loading, setLoading] = useState(true);
   const [reviewModal, setReviewModal] = useState<{
     bookingId: string;
@@ -114,6 +116,7 @@ function BookingsContent() {
   }, [cancelledBookingNumber, router]);
 
   const handlePayNow = useCallback(async (bookingId: string) => {
+    if (!bookings.some(booking => booking.id === bookingId && booking.paymentEligible === true && booking.status === "pending" && !booking.paidAt)) return;
     setPayingBookingId(bookingId);
     try {
       const res = await fetch("/api/payments/create-checkout", {
@@ -122,38 +125,51 @@ function BookingsContent() {
         body: JSON.stringify({ bookingId }),
       });
       const data = await res.json();
-      if (data.url) {
+      if (res.ok && data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.error || "Failed to start checkout");
+        setBookings(previous => previous.map(booking => booking.id === bookingId ? { ...booking, paymentEligible: false } : booking));
+        alert(data.error || "Payment is currently unavailable for this booking.");
         setPayingBookingId(null);
       }
     } catch {
       alert("Something went wrong. Please try again.");
       setPayingBookingId(null);
     }
-  }, []);
+  }, [bookings]);
 
   // Find the cancelled booking to enable "Try Again"
   const cancelledBooking = cancelledBookingNumber
     ? bookings.find((b) => b.bookingNumber === cancelledBookingNumber)
     : null;
+  const returnedPaidBooking = bookings.find(booking => booking.bookingNumber === paidBookingNumber && booking.paidAt && ["confirmed", "completed"].includes(booking.status));
 
   useEffect(() => {
     if (!user) return;
     async function fetchBookings() {
+      const request = ++refreshSequence.current;
       try {
-        const res = await fetch("/api/bookings?view=traveler");
+        const res = await fetch("/api/bookings?view=traveler", { cache: "no-store", signal: AbortSignal.timeout(10_000) });
         const data = await res.json();
-        setBookings(data.bookings || []);
+        if (!res.ok) throw new Error("Booking status unavailable");
+        if (refreshSequence.current === request) setBookings(data.bookings || []);
       } catch {
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
+        if (refreshSequence.current === request) setBookings(previous => previous.map(booking => ({ ...booking, paymentEligible: false })));
+      } finally { setLoading(false); }
     }
-    fetchBookings();
-  }, [user]);
+    const refresh = () => {
+      ++refreshSequence.current;
+      setBookings(previous => previous.map(booking => ({ ...booking, paymentEligible: false })));
+      setPayingBookingId(null);
+      if (document.visibilityState !== "hidden") void fetchBookings();
+    };
+    void fetchBookings();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const interval = window.setInterval(() => { void fetchBookings(); }, 60_000);
+    return () => { invalidatePendingRefresh(); window.clearInterval(interval); window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [user, invalidatePendingRefresh]);
 
   if (authLoading) {
     return (
@@ -195,7 +211,7 @@ function BookingsContent() {
           <p className="text-navy-400 mt-1">Your upcoming and past trips</p>
 
           {/* Payment success banner */}
-          {showSuccessBanner && paidBookingNumber && (
+          {showSuccessBanner && paidBookingNumber && returnedPaidBooking && (
             <div className="mt-6 flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
               <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                 <Check size={18} className="text-white" />
@@ -219,10 +235,10 @@ function BookingsContent() {
                 <Info size={18} className="text-white" />
               </div>
               <p className="flex-1 text-amber-800 font-medium">
-                Payment was cancelled. Your booking <span className="font-bold">#{cancelledBookingNumber}</span> is still pending — you can pay later.
+                Payment was cancelled. Your booking <span className="font-bold">#{cancelledBookingNumber}</span> has returned from checkout. Its current status is shown below.
               </p>
               <div className="flex items-center gap-2">
-                {cancelledBooking && (
+                {cancelledBooking?.paymentEligible === true && cancelledBooking.status === "pending" && !cancelledBooking.paidAt && (
                   <button
                     onClick={() => {
                       setShowCancelBanner(false);
@@ -385,7 +401,7 @@ function BookingsContent() {
                         </div>
                       </div>
                     )}
-                    {(booking.status === "pending" || booking.status === "confirmed") && !booking.paidAt && (
+                    {booking.paymentEligible === true && booking.status === "pending" && !booking.paidAt && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock size={14} className="text-yellow-500" />
@@ -409,6 +425,7 @@ function BookingsContent() {
                         </button>
                       </div>
                     )}
+                    {booking.status === "pending" && !booking.paidAt && booking.paymentEligible !== true && <p className="mt-4 border-t border-cream-200 pt-4 text-sm text-navy-500">Online payment is currently unavailable for this listing. Your booking history and cancellation options remain available.</p>}
                     {booking.status === "pending" && booking.paidAt && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center gap-2">
                         <Clock size={14} className="text-yellow-500" />

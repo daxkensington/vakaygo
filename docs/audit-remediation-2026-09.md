@@ -2,7 +2,7 @@
 
 Branch: `codex/audit-remediation-2026-09-05` · [PR #1](https://github.com/daxkensington/vakaygo/pull/1)
 
-These changes address the 21 findings in the September 5 audit. They are not deployed merely because this document is present. Production requires migrations 0004 and 0005, working mail and refund workers, and the release checks below.
+These changes address the 21 findings in the September 5 audit. They are not deployed merely because this document is present. The later requirement for verified business claims and complete onboarding supersedes the original request-booking design. Follow [operator onboarding deployment and operations](operator-onboarding.md) for the current launch controls, migration order, provider configuration, and release evidence. Production remains directory-only until those checks are complete.
 
 ## Changes by finding
 
@@ -11,12 +11,12 @@ These changes address the 21 findings in the September 5 audit. They are not dep
 | VG-01: Google bypasses TOTP | Verified Google email required; accounts with TOTP use password sign-in and their second factor. | Google-to-TOTP challenge flow is deferred; Google cannot bypass TOTP. |
 | VG-02: cancellation skips refunds | All three cancellation endpoints call one service; refund amount is saved before Stripe; a scheduled worker retries interrupted refunds and refreshes pending provider status. | Historical cancellations need reconciliation. Ended bookings require support review. |
 | VG-03: payment replay and late events | Persisted checkout session, stable Stripe request key, amount/currency/payment checks, conditional status transitions, late-payment refund. | Checkout links can expire before the 48-hour unpaid booking hold. Legacy sessions need review. |
-| VG-04: booking inventory | Validate dates/guests/status; PostgreSQL listing lock protects every occupied day and accepting requests. Promotions use a locked usage record. | Listings with price overrides or pricing rules use price requests until authoritative variable-price quotes exist. Capacity falls back conservatively to listing limits. |
+| VG-04: booking inventory | Validate dates/guests/status; PostgreSQL listing lock protects every occupied day and accepting requests. Promotions use a locked usage record. | Every occupied date now requires explicit published positive capacity. Variable-price requests also require verified ownership and complete onboarding. |
 | VG-05: misleading deposit/gift controls | Unsupported checkout options removed and API rejects them. | Full deposit plans and gift redemption remain unavailable. |
 | VG-06: gift purchase false success | New purchases/redemption disabled with an honest unavailable page. Balance lookup retained. | Reconcile pre-existing gift payments/cards manually before reopening. |
 | VG-07: conflicting cancellation terms | One versioned definition drives text and calculations; new bookings snapshot policy. | Existing bookings lack the terms shown at purchase; do not rewrite them automatically. |
 | VG-08: unfulfilled protection fee | Protection upsell removed and API rejects insurance selections; protection page describes actual support. | Historical fees require review; no new insurance entitlement is invented. |
-| VG-09: priced unclaimed requests | Requests store zero collected amount and can be confirmed without fabricating payment. | Price/payment arranged with the business outside VakayGo. |
+| VG-09: priced unclaimed requests | Unverified or incomplete businesses cannot receive booking requests, reservations, acceptance, or payments. The API and database enforce canonical onboarding eligibility. | Listings remain information-only until every launch and listing requirement passes. |
 | VG-10: false payout completion | Ledger entries remain pending; no paid date without settlement evidence; single-day trips release after their service day. | Platform settlement and legacy earnings remain manual; destination charges must not be transferred twice. |
 | VG-11: alternate booking flow | Dedicated booking page uses the shared booking widget. | Payment confirmation comes from the webhook. |
 | VG-12: demo/trust claims | Known demonstration inventory paused by migration and rejected by API; broad verification badges/copy removed from key surfaces. | Listing-specific verification and historical content still need an evidence-based operational process. |
@@ -28,7 +28,7 @@ These changes address the 21 findings in the September 5 audit. They are not dep
 | VG-18: ineffective CI | Lint cannot gain errors beyond the explicit legacy baseline; typecheck, unit, real SQL/concurrency, build, browser and Lighthouse jobs run on PRs and primary branches. | Existing lint debt is tracked, not represented as zero errors. Lighthouse requires performance/best-practices ≥90 and accessibility/SEO ≥95; granular optimization diagnostics warn, while console and accessibility failures still block. |
 | VG-19: unreliable email | Booking state changes atomically enqueue delivery; leased worker retries and checks Resend errors with idempotency keys. | At-least-once delivery: provider idempotency retention is finite. CRON_SECRET and Resend must be configured. |
 | VG-20: map counts | Counts derive from the filtered dataset. | — |
-| VG-21: zero-price directory | Unknown prices shown as price on request; request confirmations show no collected payment. | — |
+| VG-21: zero-price directory | Ineligible listings remain information-only without booking or payment offers. | A valid positive price, complete onboarding, and explicit availability are required before bookings. |
 
 ## Dependency security updates
 
@@ -42,8 +42,8 @@ Primary references: [Next.js proxy advisory](https://github.com/vercel/next.js/s
 2. Select the VakayGo Neon project. Create a branch/restore point immediately before the production migration. Do not use `db:push`.
 3. Apply `npm run db:migrate` to an isolated branch copied from production. Confirm the migration journal and run read-only count checks below. The migration adds columns/outbox/triggers and pauses the known demo account; it does not rewrite historical financial records.
 4. Configure Preview DATABASE_URL for that isolated branch, a distinct AUTH_SECRET, and preview application URL. Use test Stripe credentials only if payment tests are enabled. Production credentials must not be copied into preview.
-5. Verify public desktop/mobile pages, a synthetic reservation and cancellation, request acceptance, and Stripe test-mode lifecycle. Verify worker retry behavior without mailing real customers.
-6. Ensure Production has CRON_SECRET and RESEND_API_KEY, and Vercel scheduled jobs authenticate successfully. Without the worker, booking mail remains queued.
+5. Keep both booking launch controls off for initial public desktop/mobile verification. In the isolated sandbox, use synthetic fixtures with verified claims, complete onboarding, valid published availability, and explicit activation for positive reservation, cancellation, request acceptance, and Stripe lifecycle checks. Verify worker retry behavior without mailing real customers.
+6. Ensure Production has CRON_SECRET, RESEND_API_KEY, and the reviewed provider configuration. Verify all onboarding-readiness, checkout-safety, refund, and mail schedules authenticate successfully. Follow the onboarding operations guide before enabling either launch control.
 7. During a controlled release, apply the tested migration to production, then deploy this branch. The new runtime cannot precede its schema. Migration triggers may briefly overlap with the old runtime; monitor duplicate legacy inline emails during that window.
 8. Verify production health, canonical tags, public operator profile response, and cron delivery/queue age. Avoid real charges or refund actions as smoke tests.
 
@@ -80,7 +80,7 @@ Record reviewed outcomes and obtain the appropriate business decision before mov
 
 ## Dedicated Stripe account
 
-VakayGo must use its own fourth Stripe business account. The production key inspected on September 6 belonged to **SwarmPost**, not a dedicated VakayGo account. The new account setup is prepared with the name **VakayGo**; its country of operation and final account creation remain pending. No SwarmPost key is configured in the audit preview.
+VakayGo must use its own fourth Stripe business account. The production key inspected on September 6 belonged to **SwarmPost**, not a dedicated VakayGo account. The dedicated **VakayGo** Canada business and its separate sandbox have since been created. Creation does not establish live provider approval or completion of the onboarding release checks. No SwarmPost key is configured in the audit preview.
 
 Before release, verify the new account identity, use only its test credentials for the isolated preview lifecycle checks, and finish the business's live onboarding and webhook configuration. Do not switch the production key until legacy payment references and open sessions have been reviewed: Stripe object IDs belong to their original account, and the application currently uses one global Stripe account.
 
@@ -96,7 +96,7 @@ Migration **0005_rejected_payment_refunds** adds an independent ledger for extra
 
 The Stripe endpoint must receive `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `charge.refunded`, `refund.created`, `refund.updated` and `refund.failed`. Refund events retrieve Stripe's current state so an older event cannot undo a later failure. An asynchronous failure changes a cancellation from refunded back to cancelled with its refund status retained; a queued refund-completion email then becomes stale. Migration 0005 queues a distinct `refund_failed` notification for the traveler, operator and support, including partial refunds whose booking status remains cancelled. This corrects an earlier refund confirmation instead of reusing an already-delivered cancellation message. Terminal failures are logged to Sentry, exposed in the admin booking API for ordinary cancellations, and counted as `needsReview` in the authenticated refund-worker response.
 
-Use synthetic bookings and test credentials on the isolated preview:
+Use synthetic bookings and test credentials on the isolated preview. Every positive new-booking fixture must first satisfy the verified claim, complete onboarding, explicit date availability, provider configuration, and activation requirements in the [onboarding operations guide](operator-onboarding.md). These cases do not authorize enabling production bookings:
 
 | Case | Action | Required result |
 |---|---|---|

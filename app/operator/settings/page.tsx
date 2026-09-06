@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Save, Loader2, AlertCircle } from "lucide-react";
@@ -84,6 +85,8 @@ export default function OperatorSettingsPage() {
           Manage your business profile and account settings
         </p>
       </div>
+
+      <div className="mb-6 rounded-xl border border-cream-200 bg-white p-5"><h2 className="font-semibold text-navy-700">Business verification and payment setup</h2><p className="mt-2 text-sm text-navy-500">Complete onboarding for each listing before it can become eligible for bookings. Updating this profile does not complete verification.</p><Link href="/operator/listings" className="mt-3 inline-block font-semibold text-gold-700">Review listing onboarding</Link></div>
 
       {error && (
         <div className="mb-6 flex items-center gap-2 bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
@@ -179,7 +182,7 @@ export default function OperatorSettingsPage() {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-navy-700">Free Plan</p>
-              <p className="text-sm text-navy-400">Unlimited listings, bookings, and reviews. Forever free.</p>
+              <p className="text-sm text-navy-400">Manage your directory listings. Booking services require verified business onboarding.</p>
             </div>
             <span className="bg-teal-50 text-teal-600 px-3 py-1 rounded-full text-xs font-semibold">
               Active

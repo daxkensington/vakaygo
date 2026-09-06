@@ -13,16 +13,19 @@ test("mobile navigation includes the public routes",async({page})=>{
   await page.getByRole("button",{name:/menu/i}).click();
   for(const name of ["Islands","Map","Services"])await expect(page.getByRole("link",{name,exact:true}).last()).toBeVisible();
 });
-test("booking API reserves real inventory and routes cancellation through one service",async({request})=>{
-  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000002",role:"traveler"}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+test("booking pause rejects new reservations while historical cancellation remains available",async({request})=>{
+  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000002",role:"traveler",email:"audit-traveler@example.invalid",sessionVersion:0}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
   const headers={Cookie:"session="+token};
   const data={listingId:"20000000-0000-4000-8000-000000000001",startDate:"2099-12-05",guestCount:1};
   const invalid=await request.post("/api/bookings",{headers,data:{...data,guestCount:0}});
   expect(invalid.status()).toBe(400);
   const created=await request.post("/api/bookings",{headers,data});
-  expect(created.status()).toBe(200);
-  const booking=(await created.json()).booking;
-  expect(booking.status).toBe("pending");
+  expect(created.status()).toBe(409);
+  expect((await created.json()).code).toBe("BOOKING_UNAVAILABLE");
+  const existing=await request.get("/api/bookings",{headers});
+  expect(existing.status()).toBe(200);
+  const booking=(await existing.json()).bookings.find((item:{bookingNumber:string})=>item.bookingNumber==="released");
+  expect(booking).toBeTruthy();
   const cancelled=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"cancelled"}});
   expect(cancelled.status()).toBe(200);
   expect((await cancelled.json()).booking.status).toBe("cancelled");
@@ -42,8 +45,8 @@ test("listing gallery supports keyboard entry, navigation, Escape and focus rest
   await expect(opener).toBeFocused();
 });
 
-test("operator sees an availability conflict when accepting a full booking request",async({request})=>{
-  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000001",role:"operator"}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+test("operator cannot accept an old booking request while new bookings are paused",async({request})=>{
+  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000001",role:"operator",email:"audit-operator@example.invalid",sessionVersion:0}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
   const headers={Cookie:"session="+token};
   const bookings=await request.get("/api/bookings?view=operator",{headers});
   expect(bookings.status()).toBe(200);
@@ -51,5 +54,5 @@ test("operator sees an availability conflict when accepting a full booking reque
   expect(booking).toBeTruthy();
   const response=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"confirmed"}});
   expect(response.status()).toBe(409);
-  expect((await response.json()).error).toMatch(/availability/);
+  expect((await response.json()).code).toBe("BOOKING_UNAVAILABLE");
 });

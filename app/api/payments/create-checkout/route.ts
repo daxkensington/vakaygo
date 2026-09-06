@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { createCheckoutSession, retrieveCheckoutSession } from "@/server/stripe";
 import { CATEGORY_RATES } from "@/lib/pricing";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
+import { getListingBookingEligibility } from "@/server/business-onboarding";
+import { expireBookingCheckout, isBookingCalendarAvailable } from "@/server/booking-checkout-safety";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string): string {
@@ -25,6 +27,7 @@ function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string)
 }
 
 export async function POST(request: Request) {
+  let createdCheckout: { bookingId: string; sessionId: string } | undefined;
   try {
     // Verify auth
     const cookieStore = await cookies();
@@ -57,14 +60,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Already paid" }, { status: 400 });
     }
 
-    // A REQUESTED booking (unclaimed or unpriced listing) has nothing to
-    // pay and nobody to confirm it. Stripe happily completes a $0 session,
-    // and the webhook then marked these "confirmed" — four travelers got a
-    // paid-looking confirmation for restaurants that had never heard of
-    // them. Fail closed here regardless of what the UI offered.
+    // A price request is not a payable booking.
     if (booking.status === "requested") {
       return NextResponse.json(
-        { error: "This request is being confirmed with the business — there is nothing to pay yet." },
+        { error: "There is no payment available for this request." },
         { status: 409 }
       );
     }
@@ -78,8 +77,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nothing to pay for this booking" }, { status: 409 });
     }
 
+    // Check before reusing an already-issued link as well as before creating one.
+    const eligibility = await getListingBookingEligibility(booking.listingId, { refreshProvider: true });
+    if (!eligibility.eligible || !eligibility.stripeAccountId || eligibility.operatorId !== booking.operatorId) {
+      if (booking.checkoutSessionId) await expireBookingCheckout(booking.id, booking.checkoutSessionId);
+      return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+    }
+    if (!await isBookingCalendarAvailable(booking.id)) {
+      if (booking.checkoutSessionId) await expireBookingCheckout(booking.id, booking.checkoutSessionId);
+      return NextResponse.json({ error: "The business has not made these dates available.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+    }
+
     if (booking.checkoutSessionId) {
       const existingSession = await retrieveCheckoutSession(booking.checkoutSessionId);
+      if (booking.paymentMode !== "destination" || booking.checkoutStripeAccountId !== eligibility.stripeAccountId || existingSession.metadata?.bookingId !== booking.id) {
+        await expireBookingCheckout(booking.id, booking.checkoutSessionId);
+        return NextResponse.json({ error: "This checkout is no longer available." }, { status: 409 });
+      }
       if (existingSession.status !== "open") return NextResponse.json({ error: "This checkout is closed. Check My Bookings before trying again." }, { status: 409 });
       return NextResponse.json({ url: existingSession.url });
     }
@@ -92,17 +106,10 @@ export async function POST(request: Request) {
       .where(eq(listings.id, booking.listingId))
       .limit(1);
 
-    const [operator] = await db
-      .select({ stripeAccountId: users.digipayMerchantId, email: users.email })
-      .from(users)
-      .where(eq(users.id, booking.operatorId))
-      .limit(1);
-
-    // Operators with a connected Stripe account get a destination charge;
-    // everyone else (most Caribbean islands aren't Connect-supported
-    // countries) gets a platform charge — earnings are tracked on the
-    // payouts ledger and settled out-of-band.
-    const operatorStripeId = operator?.stripeAccountId || null;
+    if (!listing || listing.operatorId !== eligibility.operatorId) {
+      return NextResponse.json({ error: "This booking is no longer payable" }, { status: 409 });
+    }
+    const operatorStripeId = eligibility.stripeAccountId;
 
     const totalCents = Math.round(parseFloat(booking.totalAmount || "0") * 100);
     // Platform keeps the traveler service fee plus the type-specific
@@ -134,14 +141,33 @@ export async function POST(request: Request) {
       successUrl: checkoutReturnUrl("paid", booking.bookingNumber),
       cancelUrl: checkoutReturnUrl("cancelled", booking.bookingNumber),
     });
+    if (session.status !== "open") {
+      return NextResponse.json({ error: "This checkout is closed. Cancel this unpaid booking before trying again." }, { status: 409 });
+    }
+    createdCheckout = { bookingId: booking.id, sessionId: session.id };
+    if (!session.url) throw new Error("Provider did not return a hosted checkout URL");
 
     const [saved] = await db.update(bookings).set({
       checkoutSessionId: session.id, checkoutExpiresAt: new Date(session.expires_at * 1000),
-      operatorEarningsCents, paymentMode: operatorStripeId ? "destination" : "platform", updatedAt: new Date(),
-    }).where(and(eq(bookings.id,booking.id), eq(bookings.status,"pending"), isNull(bookings.cancellationRequestedAt))).returning({id:bookings.id});
-    if (!saved) return NextResponse.json({ error: "This booking is no longer payable" }, { status: 409 });
+      checkoutStripeAccountId: operatorStripeId,
+      operatorEarningsCents, paymentMode: "destination", updatedAt: new Date(),
+    }).where(and(eq(bookings.id,booking.id), eq(bookings.status,"pending"), isNull(bookings.cancellationRequestedAt), sql`vakaygo_listing_bookable(${bookings.listingId})`)).returning({id:bookings.id});
+    if (!saved) {
+      await expireBookingCheckout(booking.id, session.id);
+      createdCheckout = undefined;
+      return NextResponse.json({ error: "This booking is no longer payable" }, { status: 409 });
+    }
+    createdCheckout = undefined;
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    if (createdCheckout) {
+      try { await expireBookingCheckout(createdCheckout.bookingId, createdCheckout.sessionId); }
+      catch (expiryError) { logger.error("Unavailable checkout expiry needs retry", { ...createdCheckout, error: expiryError }); }
+    }
+    const dbError = error as { cause?: { message?: string }; message?: string };
+    if (/VG_BOOKING:/.test(dbError.cause?.message || dbError.message || "")) {
+      return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
+    }
     logger.error("Checkout error", error);
     return NextResponse.json({ error: "Failed to create checkout" }, { status: 500 });
   }

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 import { Plane, MapPin, Calendar, Users, Car, Check, Loader2, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/pricing";
+import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
 
 type TransferBookingProps = {
   listingId: string;
@@ -14,6 +16,8 @@ type TransferBookingProps = {
   typeData: Record<string, any> | null;
   /** Listing built from public data — the operator cannot see bookings. */
   unclaimed?: boolean;
+  bookingEligible?: boolean;
+  operatorId?: string;
 };
 
 const vehicleTypes = [
@@ -23,8 +27,15 @@ const vehicleTypes = [
   { id: "luxury", label: "Luxury", capacity: "1-3 passengers", multiplier: 2.2 },
 ];
 
-export function TransferBooking({ listingId, listingTitle, priceAmount, priceUnit, typeData, unclaimed = false }: TransferBookingProps) {
+export function TransferBooking(props: TransferBookingProps) {
+  return <BookingEligibilityGate bookingEligible={props.bookingEligible} listingId={props.listingId} operatorId={props.operatorId} unclaimed={props.unclaimed}>
+    <EligibleTransferBooking {...props} />
+  </BookingEligibilityGate>;
+}
+
+function EligibleTransferBooking({ listingId, priceAmount, unclaimed = false }: TransferBookingProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [pickup, setPickup] = useState("airport");
   const [dropoff, setDropoff] = useState("");
   const [date, setDate] = useState("");
@@ -48,7 +59,7 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
 
   async function handleBook(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) { window.location.href = "/auth/signin"; return; }
+    if (!user) { router.push("/auth/signin"); return; }
     if (!date || !dropoff) { setError("Please fill all fields"); return; }
 
     setError("");
@@ -67,7 +78,8 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
       });
 
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Failed"); return; }
+      if (!res.ok) {
+        if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listingId); setError(data.error || "Failed"); return; }
       setBooked(true);
       setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);

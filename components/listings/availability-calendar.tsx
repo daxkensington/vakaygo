@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { BookingEligibilityGate } from "./booking-eligibility";
 import {
   ChevronLeft,
   ChevronRight,
@@ -22,6 +23,7 @@ type AvailabilityDay = {
 
 type Props = {
   listingId: string;
+  bookingEligible?: boolean;
   onDateSelect?: (date: string) => void;
   mode?: "view" | "manage";
 };
@@ -56,7 +58,12 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }: Props) {
+export function AvailabilityCalendar(props: Props) {
+  if (props.mode === "manage") return <AvailableDatesCalendar {...props} />;
+  return <BookingEligibilityGate listingId={props.listingId} bookingEligible={props.bookingEligible}><AvailableDatesCalendar {...props} /></BookingEligibilityGate>;
+}
+
+function AvailableDatesCalendar({ listingId, onDateSelect, mode = "view" }: Props) {
   const today = new Date();
   const todayStr = toDateString(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -78,13 +85,17 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
 
   const fetchAvailability = useCallback(async () => {
     setLoading(true);
+    setAvailabilityMap({});
+    setSelectedDate(null);
     try {
       const monthStr = formatMonth(year, month);
       const res = await fetch(
-        `/api/availability?listingId=${listingId}&month=${monthStr}`
+        `/api/availability?listingId=${listingId}&month=${monthStr}${mode === "manage" ? "&mode=manage" : ""}`,
+        { cache: "no-store", signal: AbortSignal.timeout(10_000) }
       );
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
+      if (mode !== "manage" && data.bookingEligible !== true) throw new Error("Booking unavailable");
 
       const map: Record<string, AvailabilityDay> = {};
       for (const a of data.availability) {
@@ -93,11 +104,14 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
       setAvailabilityMap(map);
       setBookingsMap(data.bookings || {});
     } catch (err) {
+      setAvailabilityMap({});
+      setBookingsMap({});
+      setSelectedDate(null);
       console.error("Failed to load availability:", err);
     } finally {
       setLoading(false);
     }
-  }, [listingId, year, month]);
+  }, [listingId, year, month, mode]);
 
   useEffect(() => {
     fetchAvailability();
@@ -135,7 +149,8 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
   }
 
   function handleDateClick(dateStr: string, isPast: boolean) {
-    if (isPast) return;
+    const day = availabilityMap[dateStr];
+    if (isPast || loading || (mode !== "manage" && (!day || day.isBlocked || day.spots === null || day.spots <= 0 || day.spotsRemaining === null || day.spotsRemaining <= 0))) return;
 
     if (bulkMode) {
       setBulkDates((prev) => {
@@ -165,7 +180,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
   }
 
   async function savePopover() {
-    if (!popover) return;
+    if (!popover || (!popover.isBlocked && (!Number.isInteger(Number(popover.spots)) || Number(popover.spots) <= 0))) return;
     setSaving(true);
     try {
       const res = await fetch("/api/availability", {
@@ -319,7 +334,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
           const isPast = dateStr < todayStr;
           const isToday = dateStr === todayStr;
           const isSelected = dateStr === selectedDate;
-          const isBlocked = avail?.isBlocked;
+          const isBlocked = !avail || avail.isBlocked === true || avail.spots === null || avail.spots <= 0 || avail.spotsRemaining === null || avail.spotsRemaining <= 0;
           const hasAvailability = avail && !isBlocked;
           const isBulkSelected = bulkDates.has(dateStr);
 
@@ -351,7 +366,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
             <button
               key={dateStr}
               onClick={() => handleDateClick(dateStr, isPast)}
-              disabled={isPast && !bulkMode}
+              disabled={loading || (isPast && !bulkMode) || (mode !== "manage" && isBlocked)}
               className={`aspect-square rounded-xl flex flex-col items-center justify-center text-sm transition-all relative ${bgClass} ${textClass} ${
                 isPast ? "cursor-default" : "cursor-pointer"
               }`}
@@ -409,18 +424,22 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
               {/* Spots */}
               <div>
                 <label className="block text-xs font-medium text-navy-500 mb-1">
-                  Available Spots
+                  Capacity (required for open dates)
                 </label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
+                  step="1"
                   value={popover.spots}
                   onChange={(e) =>
                     setPopover({ ...popover, spots: e.target.value })
                   }
-                  placeholder="Unlimited"
+                  placeholder="Enter a positive capacity"
                   className="w-full px-3 py-1.5 rounded-lg border border-cream-300 text-sm text-navy-700 focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none"
                 />
+                {!popover.isBlocked && (!Number.isInteger(Number(popover.spots)) || Number(popover.spots) <= 0) && (
+                  <p className="mt-1 text-xs text-navy-500">Enter a positive whole-number capacity to open this date.</p>
+                )}
               </div>
 
               {/* Price override */}
@@ -471,7 +490,7 @@ export function AvailabilityCalendar({ listingId, onDateSelect, mode = "view" }:
               {/* Save */}
               <button
                 onClick={savePopover}
-                disabled={saving}
+                disabled={saving || (!popover.isBlocked && (!Number.isInteger(Number(popover.spots)) || Number(popover.spots) <= 0))}
                 className="w-full flex items-center justify-center gap-2 bg-gold-700 hover:bg-gold-800 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 {saving ? (

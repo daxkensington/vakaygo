@@ -32,6 +32,7 @@ export async function POST(request: Request) {
         email: users.email,
         name: users.name,
         role: users.role,
+        sessionVersion: users.sessionVersion,
         avatarUrl: users.avatarUrl,
         businessName: users.businessName,
       })
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
         email: users.email,
         name: users.name,
         role: users.role,
+        sessionVersion: users.sessionVersion,
         avatarUrl: users.avatarUrl,
         businessName: users.businessName,
       });
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name ?? undefined,
       role: user.role,
+      sessionVersion: user.sessionVersion,
     });
 
     return NextResponse.json({ user });

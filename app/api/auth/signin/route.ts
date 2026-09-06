@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const user = await verifyCredentials(email, password);
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password" },
+        { error: "Invalid credentials, or email not yet verified. Use the email link to verify your account." },
         { status: 401 }
       );
     }
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name ?? undefined,
       role: user.role,
+      sessionVersion: user.sessionVersion,
     });
 
     // SECURITY: never echo the TOTP secret (or the 2FA flag) back to the

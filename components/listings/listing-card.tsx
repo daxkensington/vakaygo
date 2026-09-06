@@ -24,6 +24,7 @@ type ListingCardProps = {
   image: string | null;
   isFeatured: boolean | null;
   operatorSuperhost?: boolean;
+  bookingEligible?: boolean;
   /** "google" when the rating/count is imported from Google Places (every unclaimed listing). */
   reviewSource?: "google" | "vakaygo";
 };
@@ -141,7 +142,8 @@ export function ListingCard(props: ListingCardProps) {
           </h2>
           {props.operatorSuperhost && <SuperhostBadge variant="card" />}
         </div>
-        {props.priceAmount && parseFloat(props.priceAmount) > 0 && (
+        {props.bookingEligible !== true && <p className="mt-2 text-xs text-navy-400">Information only · Online booking unavailable</p>}
+        {props.bookingEligible === true && props.priceAmount && parseFloat(props.priceAmount) > 0 && (
           <p className="mt-2">
             <span className="font-bold text-navy-700">
               {format(parseFloat(props.priceAmount))}

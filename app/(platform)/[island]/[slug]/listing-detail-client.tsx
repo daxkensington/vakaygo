@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { useCurrentBookingEligibility } from "@/components/listings/booking-eligibility";
 import { BookingWidget } from "@/components/listings/booking-widget";
 import { DiningReservation } from "@/components/listings/dining-reservation";
 import { TransferBooking } from "@/components/listings/transfer-booking";
@@ -147,6 +148,8 @@ export function ListingDetailClient({
 }) {
   const params = useParams();
   const [listing, setListing] = useState<ListingDetail | null>(initialListing);
+  const bookingState = useCurrentBookingEligibility(listing?.id);
+  const bookingEligible = bookingState.eligible === true;
   const [similar, setSimilar] = useState<SimilarListing[]>(initialSimilar);
   const [relatedGuides, setRelatedGuides] = useState<RelatedGuide[]>([]);
   const [loading, setLoading] = useState(!initialListing);
@@ -259,7 +262,7 @@ export function ListingDetailClient({
       };
     }
 
-    if (listing.priceAmount) {
+    if (bookingEligible && listing.priceAmount) {
       const price = parseFloat(listing.priceAmount);
       // Generate human-readable priceRange
       if (price < 20) jsonLd.priceRange = "$";
@@ -276,12 +279,12 @@ export function ListingDetailClient({
     }
 
     // Opening hours specification from operatingHours
-    if (td.operatingHours && typeof td.operatingHours === "object") {
+    if (tdForLd.operatingHours && typeof tdForLd.operatingHours === "object") {
       const dayMap: Record<string, string> = {
         monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
         thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
       };
-      const hours = td.operatingHours as Record<string, { open: string; close: string }>;
+      const hours = tdForLd.operatingHours as Record<string, { open: string; close: string }>;
       jsonLd.openingHoursSpecification = Object.entries(hours)
         .filter(([, v]) => v && v.open && v.close)
         .map(([day, v]) => ({
@@ -293,8 +296,8 @@ export function ListingDetailClient({
     }
 
     // Cuisine type for dining listings
-    if (listing.type === "dining" && td.cuisineType) {
-      jsonLd.servesCuisine = td.cuisineType as string;
+    if (listing.type === "dining" && tdForLd.cuisineType) {
+      jsonLd.servesCuisine = tdForLd.cuisineType as string;
     }
 
     // Add geo coordinates if available in typeData
@@ -321,7 +324,7 @@ export function ListingDetailClient({
       const el = document.getElementById("listing-jsonld");
       if (el) el.remove();
     };
-  }, [listing]);
+  }, [listing, bookingEligible]);
 
   if (loading) {
     return (
@@ -388,7 +391,7 @@ export function ListingDetailClient({
                     <span className="bg-gold-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       {typeLabels[listing.type] || listing.type}
                     </span>
-                    {listing.isInstantBook && (
+                    {bookingEligible && listing.isInstantBook && (
                       <span className="flex items-center gap-1 bg-teal-50 text-teal-600 text-xs font-semibold px-3 py-1 rounded-full">
                         <Zap size={12} /> Instant Book
                       </span>
@@ -417,7 +420,7 @@ export function ListingDetailClient({
                   </div>
 
                   {/* Likely to sell out badge for bookable types */}
-                  {["tour", "excursion", "event", "vip"].includes(listing.type) && td.bookingCount7Days !== undefined && (
+                  {bookingEligible && ["tour", "excursion", "event", "vip"].includes(listing.type) && td.bookingCount7Days !== undefined && (
                     <div className="mt-3">
                       <LikelySellOutBadge
                         bookingCount7Days={td.bookingCount7Days as number}
@@ -464,7 +467,8 @@ export function ListingDetailClient({
                     slug: listing.slug,
                     island: listing.islandSlug,
                     type: listing.type,
-                    price: listing.priceAmount || undefined,
+                    price: bookingEligible ? listing.priceAmount || undefined : undefined,
+                    bookingEligible,
                   };
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const open = (window as any).__vakaygo_concierge_open;
@@ -482,6 +486,7 @@ export function ListingDetailClient({
               <div className="mt-4">
                 <TrustBadges
                   isInstantBook={listing.isInstantBook}
+                bookingEligible={bookingEligible}
                   avgRating={listing.avgRating}
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
@@ -503,8 +508,8 @@ export function ListingDetailClient({
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
                     This listing was created from public data. Claim it for free
-                    to add photos, pricing, availability, and start receiving
-                    bookings.
+                    to manage its information and complete business onboarding.
+                    Online bookings and payments are currently unavailable.
                   </p>
                   <a
                     href={`/auth/signup?role=operator&claim=${listing.id}`}
@@ -806,6 +811,7 @@ export function ListingDetailClient({
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
                   <DiningReservation
+                    bookingEligible={bookingEligible}
                     listingId={listing.id}
                     listingTitle={listing.title}
                     operatorId={listing.operatorId}
@@ -817,6 +823,8 @@ export function ListingDetailClient({
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
                   <TransferBooking
+                    bookingEligible={bookingEligible}
+                    operatorId={listing.operatorId}
                     listingId={listing.id}
                     listingTitle={listing.title}
                     priceAmount={listing.priceAmount}
@@ -827,7 +835,7 @@ export function ListingDetailClient({
                 </div>
               </div>
             ) : (
-              <BookingWidget listing={listing} unclaimed={!!td.unclaimed} />
+              <BookingWidget listing={listing} bookingEligible={bookingEligible} unclaimed={!!td.unclaimed} />
             )}
           </div>
 
@@ -861,10 +869,7 @@ export function ListingDetailClient({
                       </h3>
                       <div className="flex items-center justify-between mt-2">
                         <span className="font-bold text-navy-700">
-                          ${item.priceAmount ? parseFloat(item.priceAmount).toFixed(0) : "—"}
-                          <span className="text-navy-400 text-sm font-normal">
-                            {" "}/ {item.priceUnit}
-                          </span>
+                          <span className="text-navy-400 text-xs font-normal">View listing information</span>
                         </span>
                         {item.avgRating && (
                           <div className="flex items-center gap-1">

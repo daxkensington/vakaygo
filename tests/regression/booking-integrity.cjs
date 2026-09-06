@@ -15,6 +15,7 @@ function load(rel, mocks={}) {
     'next/server':{NextResponse:{json:(body,opts={})=>new Response(JSON.stringify(body),{status:opts.status||200,headers:{'content-type':'application/json'}})}},
     '@/lib/logger':{logger:noops}, '@/drizzle/schema':schema,
     '@/server/stripe':{},
+    '@/server/business-onboarding':{getListingBookingEligibility:async()=>({eligible:true,reason:null,operatorId:'operator',stripeAccountId:'acct_eligible'})},
     '@/server/email':noops, '@/server/email-requests':noops,
     '@/server/notifications':{createNotification:async()=>{}},
     '@/server/loyalty':{awardBookingPoints:async()=>{}},
@@ -60,13 +61,14 @@ function dbFor(rows,beforeUpdate=()=>{}){
 function mocksFor(db,extra={}){
   const stripe=extra['@/server/stripe'];
   if(stripe?.refundBooking){const refund=stripe.refundBooking;extra={...extra,'@/server/stripe':{...stripe,refundBooking:async p=>({payment_intent:p.paymentIntentId,amount:p.amount||7150,currency:(db._rows.rejectedPaymentRefunds||[]).find(r=>r.paymentId===p.paymentIntentId)?.currency.toLowerCase()||'usd',metadata:{vakaygoRefundKey:p.idempotencyKey},...await refund(p)})}};}
+  if(extra['@/server/stripe'])extra={...extra,'@/server/stripe':{verifyStripePlatformIdentity:async()=>({accountId:'acct_platform',environment:'test'}),...extra['@/server/stripe']}};
   return {'drizzle-orm/neon-http':{drizzle:()=>db},...extra};
 }
 function request(body,method='POST',sig=false){return new Request('https://audit.invalid/endpoint',{method,headers:{'content-type':'application/json',...(sig?{'stripe-signature':'synthetic'}:{})},body:JSON.stringify(body)});}
 async function check(name,fn){const details=await fn();results.push({name,passed:true,...details});}
 
 const bookingId="11111111-1111-4111-8111-111111111111",listingId="22222222-2222-4222-8222-222222222222";
-const pending=()=>({id:bookingId,status:"pending",bookingNumber:"VG-TEST",travelerId:"traveler",operatorId:"operator",listingId,startDate:new Date("2099-12-01"),guestCount:1,totalAmount:"71.50",currency:"USD",checkoutSessionId:"cs_test",paidAt:null,paymentId:null,cancellationRequestedAt:null,createdAt:new Date()});
+const pending=()=>({id:bookingId,status:"pending",bookingNumber:"VG-TEST",travelerId:"traveler",operatorId:"operator",listingId,startDate:new Date("2099-12-01"),guestCount:1,totalAmount:"71.50",currency:"USD",checkoutSessionId:"cs_test",checkoutStripeAccountId:"acct_eligible",paymentMode:"destination",datesAvailable:true,paidAt:null,paymentId:null,cancellationRequestedAt:null,createdAt:new Date()});
 const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",data:{object:{id:"cs_test",payment_intent:"pi_test",amount_total:7150,currency:"usd",payment_status:"paid",metadata:{bookingId},...extra}}});
 (async()=>{
  await check("Duplicate payment changes the booking once",async()=>{
@@ -137,23 +139,24 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    const {isRouteWithin}=load("lib/route-access.ts");assert.equal(isRouteWithin("/api/operators/123","/api/operator"),false);assert.equal(isRouteWithin("/api/operator/bookings","/api/operator"),true);
  });
  for(const profile of [{verified_email:true,totpEnabled:true},{verified_email:false,totpEnabled:false}])await check("Google login rejects missing trust step: "+JSON.stringify(profile),async()=>{
-   const db=dbFor({users:[{id:"u2",email:"totp@example.invalid",role:"traveler",totpEnabled:profile.totpEnabled}],accounts:[]});let sessions=0;
+   const db=dbFor({users:[{id:"u2",email:"totp@example.invalid",role:"traveler",emailVerified:true,sessionVersion:0,totpEnabled:profile.totpEnabled}],accounts:[]});let sessions=0;
    const h=load("app/api/auth/google/callback/route.ts",mocksFor(db,{
      "@/server/admin-auth":{setSessionCookie:async()=>{sessions++;}},
+     "@/server/email-identity":{establishEmailIdentity:async()=>{throw Error("Unexpected bootstrap after trust rejection");}},
      "next/server":{NextResponse:{redirect:url=>new Response(null,{status:302,headers:{location:String(url)}})}},
      __fetch:async url=>new Response(JSON.stringify(String(url).includes("/token")?{access_token:"synthetic"}:{email:"totp@example.invalid",id:"g2",verified_email:profile.verified_email})),
    }));
    const r=await h.GET(new Request("https://audit.invalid/api/auth/google/callback?code=synthetic&state=synthetic-session"));assert.equal(r.status,302);assert.equal(sessions,0);assert.equal(db.writes.length,0);
  });
 
- await check("Request creation records no charge for a priced unclaimed listing",async()=>{
+ await check("Unclaimed listings cannot create even an unpaid request",async()=>{
    const rows={listings:[{...listing,typeData:{unclaimed:true}}],bookings:[],users:[]};const db=dbFor(rows);
-   const h=load("app/api/bookings/route.ts",mocksFor(db));const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1}));
-   assert.equal(r.status,200);const data=await r.json();assert.equal(data.mode,"request");assert.equal(data.booking.totalAmount,"0.00");
+   const h=load("app/api/bookings/route.ts",mocksFor(db,{"@/server/business-onboarding":{getListingBookingEligibility:async()=>({eligible:false,reason:"claim_required"})}}));const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1}));
+   assert.equal(r.status,409);assert.equal(rows.bookings.length,0);assert.equal(db.writes.length,0);
  });
  await check("Repeated checkout calls reuse the saved Stripe session",async()=>{
    const db=dbFor({bookings:[pending()]});let created=0;
-   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({status:"open",url:"https://checkout.stripe.com/test"}),createCheckoutSession:async()=>{created++;}}}));
+   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({status:"open",url:"https://checkout.stripe.com/test",metadata:{bookingId}}),createCheckoutSession:async()=>{created++;}}}));
    for(let i=0;i<2;i++)assert.equal((await h.POST(request({bookingId}))).status,200);
    assert.equal(created,0);
  });
@@ -169,7 +172,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    const db=dbFor(rows);let checkout;
    const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{
      __env:{NEXT_PUBLIC_APP_URL:configured},
-     "@/server/stripe":{createCheckoutSession:async params=>{checkout=params;return {id:"cs_created",url:"https://checkout.stripe.com/test",expires_at:Math.floor(Date.now()/1000)+86400};}}
+     "@/server/stripe":{createCheckoutSession:async params=>{checkout=params;return {id:"cs_created",status:"open",url:"https://checkout.stripe.com/test",expires_at:Math.floor(Date.now()/1000)+86400};}}
    }));
    const r=await h.POST(request({bookingId}));assert.equal(r.status,200);
    assert.equal(checkout.successUrl,expectedOrigin+"/bookings?paid=VG-TEST");
@@ -382,5 +385,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    assert.match(sent.message.text,/being processed and has not been confirmed as completed/);
    assert.doesNotMatch(sent.message.text,/Refund submitted/);
  });
+ await require('./booking-eligibility.cjs')({load,dbFor,mocksFor,request,check,pending,complete,listing,bookingId,listingId});
+ await require('./checkout-safety.cjs')({load,dbFor,mocksFor,check,pending,bookingId,listingId});
  console.log(JSON.stringify({checks:results.length,passed:results.length,results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});
