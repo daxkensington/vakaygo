@@ -31,3 +31,10 @@ DO $$ BEGIN
  UPDATE bookings SET status='confirmed' WHERE booking_number='request-one';
  BEGIN UPDATE bookings SET status='confirmed' WHERE booking_number='request-two'; RAISE EXCEPTION 'Expected request confirmation capacity rejection'; EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%availability%' THEN RAISE; END IF; END;
 END $$;
+
+-- Public fixture for rendered listing and keyboard-gallery checks.
+UPDATE islands SET is_active=true WHERE id=900001;
+INSERT INTO media(listing_id,url,alt,sort_order,is_primary) VALUES
+ ('20000000-0000-4000-8000-000000000001','/images/sections/value-local.jpg','Audit photo one',0,true),
+ ('20000000-0000-4000-8000-000000000001','/images/sections/value-travel.jpg','Audit photo two',1,false),
+ ('20000000-0000-4000-8000-000000000001','/images/sections/value-explore.jpg','Audit photo three',2,false);

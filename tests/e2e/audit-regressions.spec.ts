@@ -27,3 +27,17 @@ test("booking API reserves real inventory and routes cancellation through one se
   expect(cancelled.status()).toBe(200);
   expect((await cancelled.json()).booking.status).toBe("cancelled");
 });
+
+test("listing gallery supports keyboard entry, navigation, Escape and focus restoration",async({page})=>{
+  await page.goto("/audit-island/audit-tour");
+  const opener=page.getByRole("button",{name:"Open photos of Audit tour",exact:true});
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const dialog=page.getByRole("dialog",{name:"Photos of Audit tour"});
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.getByRole("img",{name:"Audit photo two",exact:true})).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(opener).toBeFocused();
+});

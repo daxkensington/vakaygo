@@ -193,7 +193,7 @@ export function Hero() {
         </h1>
 
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-          Stays. Tours. Dining. Events. Transport. Guides.
+          Stays. Tours. Dining. Events. Transport. Guides.{" "}
           <br className="hidden md:block" />
           Everything you need for the perfect Caribbean vacation.
         </p>
@@ -361,7 +361,7 @@ export function Hero() {
           {[
             { value: "7,100+", label: "Listings" },
             { value: "21", label: "Islands" },
-            { value: "9", label: "Categories" },
+            { value: "10", label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gold-400">{stat.value}</p>
