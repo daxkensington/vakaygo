@@ -20,12 +20,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: process.env.CI
+  webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "npm run dev",
+        command: process.env.CI ? "npm run start" : "npm run dev",
         url: BASE_URL,
-        reuseExistingServer: true,
+        reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },
 });

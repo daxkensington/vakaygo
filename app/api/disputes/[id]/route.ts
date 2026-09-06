@@ -270,8 +270,7 @@ export async function PATCH(
 </body></html>`;
 
       if (traveler?.email) {
-        resend.emails
-          .send({
+        sendEmail({
             from: FROM,
             to: traveler.email,
             subject: `Dispute ${statusLabel} — Booking #${booking?.bookingNumber}`,
@@ -281,8 +280,7 @@ export async function PATCH(
       }
 
       if (operator?.email && !operator.email.includes("unclaimed")) {
-        resend.emails
-          .send({
+        sendEmail({
             from: FROM,
             to: operator.email,
             subject: `Dispute ${statusLabel} — Booking #${booking?.bookingNumber}`,
