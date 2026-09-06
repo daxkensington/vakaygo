@@ -1,5 +1,5 @@
-import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 
 import { Shield, Clock, Star, Zap, Award, TrendingUp } from "lucide-react";
 

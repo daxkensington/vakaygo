@@ -6,5 +6,5 @@ export function blocksNewSale(pathname: string, method: string): boolean {
   const path = pathname.replace(/\/+$/, "");
   return (method === "POST" && path === "/api/bookings")
     || (method === "POST" && path.startsWith("/api/payments/") && path !== "/api/payments/webhook")
-    || (method === "GET" && path === "/api/cron/abandoned-bookings");
+    || (method === "GET" && ["/api/cron/abandoned-bookings", "/api/cron/price-alerts"].includes(path));
 }
