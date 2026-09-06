@@ -36,6 +36,7 @@ export function Header() {
       if (top === previous) return;
       previous = top;
       header.style.top = `${top}px`;
+      header.style.setProperty("--site-announcement-offset", `${top}px`);
     };
     updateTop();
     const observer = new ResizeObserver(updateTop);
@@ -301,7 +302,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
+        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden max-h-[calc(100dvh_-_var(--site-announcement-offset,0px)_-_4rem)] overflow-y-auto overscroll-contain bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
           <Link href="/explore" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             Explore
           </Link>
