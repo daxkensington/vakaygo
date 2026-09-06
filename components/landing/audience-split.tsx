@@ -1,19 +1,19 @@
 import { Check, ArrowRight } from "lucide-react";
 
 const travelerBenefits = [
-  "Discover authentic experiences you won't find on Expedia",
-  "Book stays, tours, dining, and transport in one place",
-  "AI trip planner builds your perfect itinerary",
-  "Real reviews from real travelers",
-  "Secure payments with instant confirmation",
+  "Discover local stays, food and experiences",
+  "Compare listing information across the Caribbean",
+  "Save places and plan your trip",
+  "Show interest in businesses you want to learn more about",
+  "View business contact details where available",
 ];
 
 const businessBenefits = [
-  "Reach travelers worldwide — not just walk-ins",
-  "Lower commissions than Viator and GetYourGuide",
-  "Manage listings, bookings, and calendar in one dashboard",
-  "Reliable weekly or monthly payouts",
-  "Free analytics and growth tools",
+  "Find and claim your existing listing for free",
+  "Verify that you own or represent the business",
+  "Update descriptions, photos and contact details",
+  "Help travelers find accurate local information",
+  "Complete onboarding before bookings can be enabled",
 ];
 
 export function AudienceSplit() {
@@ -100,7 +100,7 @@ export function AudienceSplit() {
               >
                 Your business,
                 <br />
-                amplified.
+                represented.
               </h3>
               <ul className="space-y-4">
                 {businessBenefits.map((benefit) => (
@@ -118,7 +118,7 @@ export function AudienceSplit() {
                 href="/for-businesses"
                 className="inline-flex items-center gap-2 mt-10 bg-gold-700 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-800 transition-colors group"
               >
-                List your business
+                Claim your listing
                 <ArrowRight
                   size={16}
                   className="group-hover:translate-x-1 transition-transform"

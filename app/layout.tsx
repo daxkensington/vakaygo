@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     template: "%s | VakayGo",
   },
   description:
-    "Book stays, tours, dining, events, and transport across 21 Caribbean islands. The lowest commissions in the travel industry.",
+    "Discover stays, tours, restaurants and local businesses across the Caribbean. Explore listing information and plan your trip with VakayGo.",
   keywords: [
     "Caribbean travel",
     "island vacation",
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     "Caribbean dining",
     "Caribbean events",
     "Caribbean transport",
-    "book Caribbean",
+    "Caribbean business directory",
     "local experiences",
     "Caribbean excursions",
     "VIP Caribbean",
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     siteName: "VakayGo",
     title: "VakayGo — Caribbean Travel Platform",
     description:
-      "Book stays, tours, dining, events, and transport across 21 Caribbean islands. The lowest commissions in the travel industry.",
+      "Discover stays, tours, restaurants and local businesses across the Caribbean. Explore listing information and plan your trip with VakayGo.",
     images: [
       {
         url: "https://vakaygo.com/images/hero/caribbean-hero.jpg",
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     site: "@vakaygo",
     title: "VakayGo — Caribbean Travel Platform",
     description:
-      "Book stays, tours, dining, events, and transport across 21 Caribbean islands.",
+      "Discover stays, tours, restaurants and local businesses across the Caribbean. Explore listing information and plan your trip with VakayGo.",
     images: ["https://vakaygo.com/images/hero/caribbean-hero.jpg"],
   },
 };
