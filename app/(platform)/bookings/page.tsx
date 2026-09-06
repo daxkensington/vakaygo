@@ -1,4 +1,5 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -213,7 +214,7 @@ function BookingsContent() {
           )}
 
           {/* Payment cancelled banner */}
-          {showCancelBanner && cancelledBookingNumber && (
+          {!DIRECTORY_ONLY && showCancelBanner && cancelledBookingNumber && (
             <div className="mt-6 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
               <div className="flex-shrink-0 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
                 <Info size={18} className="text-white" />
@@ -385,7 +386,7 @@ function BookingsContent() {
                         </div>
                       </div>
                     )}
-                    {(booking.status === "pending" || booking.status === "confirmed") && !booking.paidAt && (
+                    {!DIRECTORY_ONLY && (booking.status === "pending" || booking.status === "confirmed") && !booking.paidAt && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock size={14} className="text-yellow-500" />

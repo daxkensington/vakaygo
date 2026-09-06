@@ -1,4 +1,6 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
+import { DirectoryNotice } from "@/components/listings/directory-notice";
 
 import { useState } from "react";
 import { Header } from "@/components/layout/header";
@@ -17,7 +19,7 @@ import {
 
 const PRESET_AMOUNTS = [25, 50, 100, 200];
 
-export default function GiftCardsPage() {
+function EnabledGiftCardsPage() {
   const [activeTab, setActiveTab] = useState<"send" | "redeem">("send");
 
   // Send tab state
@@ -388,4 +390,9 @@ export default function GiftCardsPage() {
       <Footer />
     </>
   );
+}
+
+export default function GiftCardsPage() {
+  if (DIRECTORY_ONLY) return <><Header /><main className="min-h-screen bg-cream-50 px-6 pt-28"><div className="mx-auto max-w-xl"><h1 className="mb-6 text-2xl font-bold text-navy-700">VakayGo business directory</h1><DirectoryNotice /></div></main></>;
+  return <EnabledGiftCardsPage />;
 }

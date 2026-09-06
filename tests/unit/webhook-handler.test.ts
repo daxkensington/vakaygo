@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+
 beforeEach(() => {
   vi.resetModules();
   process.env.STRIPE_SECRET_KEY = "sk_test_dummy";

@@ -1,4 +1,6 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
+import { DirectoryNotice } from "@/components/listings/directory-notice";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -33,7 +35,7 @@ type ListingInfo = {
   cancellationPolicy: string | null;
 };
 
-export default function BookingPage() {
+function EnabledBookingPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -429,4 +431,9 @@ export default function BookingPage() {
       </div>
     </>
   );
+}
+
+export default function BookingPage() {
+  if (DIRECTORY_ONLY) return <><Header /><main className="min-h-screen bg-cream-50 px-6 pt-28"><div className="mx-auto max-w-xl"><h1 className="mb-6 text-2xl font-bold text-navy-700">VakayGo business directory</h1><DirectoryNotice /></div></main></>;
+  return <EnabledBookingPage />;
 }
