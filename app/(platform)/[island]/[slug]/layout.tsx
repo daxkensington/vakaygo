@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
     listing.metaDescription ||
     listing.headline ||
     listing.description?.slice(0, 160) ||
-    `${listing.title} — book this ${typeLabel.toLowerCase()} in ${listing.islandName} directly with verified local operators on VakayGo.`;
+    `${listing.title} — explore this ${typeLabel.toLowerCase()} in ${listing.islandName} in the VakayGo business directory.`;
   const url = `https://vakaygo.com/${island}/${slug}`;
 
   return {

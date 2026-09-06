@@ -1,4 +1,6 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
+import { DirectoryNotice } from "./directory-notice";
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -18,7 +20,7 @@ const timeSlots = [
   "20:00", "20:30", "21:00",
 ];
 
-export function DiningReservation({ listingId, listingTitle, operatorId, unclaimed = false }: DiningReservationProps) {
+function EnabledDiningReservation({ listingId, listingTitle, operatorId, unclaimed = false }: DiningReservationProps) {
   const { user } = useAuth();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -195,4 +197,9 @@ export function DiningReservation({ listingId, listingTitle, operatorId, unclaim
       </form>
     </div>
   );
+}
+
+export function DiningReservation(props: DiningReservationProps) {
+  if (DIRECTORY_ONLY) return <DirectoryNotice listingId={props.listingId} />;
+  return <EnabledDiningReservation {...props} />;
 }

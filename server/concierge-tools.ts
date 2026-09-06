@@ -1,3 +1,4 @@
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 import { createDb } from "@/server/db";
 import { listings, islands, media, reviews, availability, users } from "@/drizzle/schema";
 import { eq, and, sql, gte, lte, ilike, desc, asc } from "drizzle-orm";
@@ -151,7 +152,7 @@ export async function searchListings(params: SearchParams) {
     image: getImageUrl(imageMap[r.id]) || null,
     url: `/${r.islandSlug}/${r.slug}`,
     isFeatured: r.isFeatured,
-    isInstantBook: r.isInstantBook,
+    isInstantBook: false,
   }));
 }
 
@@ -239,7 +240,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     islandName: listing.islandName,
     operatorName: listing.operatorName,
     isFeatured: listing.isFeatured,
-    isInstantBook: listing.isInstantBook,
+    isInstantBook: false,
     cancellationPolicy: listing.cancellationPolicy,
     maxGuests: listing.maxGuests,
     typeData: listing.typeData,
@@ -256,6 +257,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
 
 // ─── Check Availability ─────────────────────────────────────────
 export async function checkAvailability(params: AvailabilityParams) {
+  if (DIRECTORY_ONLY) return { available: false, reason: "This is a directory listing. Business verification and onboarding must be completed before any booking or reservation can be offered." };
   const db = createDb();
   const targetDate = new Date(params.date);
 
@@ -445,7 +447,7 @@ export async function compareListings(params: CompareParams) {
     island: r.islandSlug,
     islandName: r.islandName,
     isFeatured: r.isFeatured,
-    isInstantBook: r.isInstantBook,
+    isInstantBook: false,
     cancellationPolicy: r.cancellationPolicy,
     maxGuests: r.maxGuests,
     typeData: r.typeData,

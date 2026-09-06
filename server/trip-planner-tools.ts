@@ -1,3 +1,4 @@
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands, media, availability } from "@/drizzle/schema";
@@ -147,6 +148,7 @@ export async function getListingDetails(listingId: string): Promise<ListingResul
 }
 
 export async function checkAvailability(listingId: string, date: string): Promise<{ available: boolean; spotsRemaining: number | null; priceOverride: string | null }> {
+  if (DIRECTORY_ONLY) return { available: false, spotsRemaining: null, priceOverride: null };
   const db = getDb();
 
   const [record] = await db

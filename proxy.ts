@@ -1,3 +1,4 @@
+import { blocksNewSale } from "./lib/directory-mode";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
@@ -78,6 +79,21 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const method = request.method;
+
+  // Fail closed before authentication, body processing, database or provider calls.
+  const salePath = pathname.replace(/\/+$/, "");
+  if (blocksNewSale(pathname, method)) {
+    return applySecurityHeaders(NextResponse.json({ error: "Bookings and payments are unavailable while businesses complete verification and onboarding.", code: "BOOKINGS_UNAVAILABLE" }, { status: 503, headers: { "Cache-Control": "no-store" } }));
+  }
+  if (method === "PATCH" && /^\/api\/bookings\/[^/]+$/.test(salePath)) {
+    const body = await request.clone().json().catch(() => null);
+    if (!body || body.status !== "cancelled") {
+      return applySecurityHeaders(NextResponse.json({ error: "New booking confirmations are unavailable.", code: "BOOKINGS_UNAVAILABLE" }, { status: 503 }));
+    }
+  }
+  if (method === "GET" && salePath === "/api/availability") {
+    return applySecurityHeaders(NextResponse.json({ bookingEligible: false, available: false, availability: [], bookings: {}, reason: "Business verification and onboarding required" }, { headers: { "Cache-Control": "no-store" } }));
+  }
 
   // Rate limit API routes
   if (pathname.startsWith("/api")) {

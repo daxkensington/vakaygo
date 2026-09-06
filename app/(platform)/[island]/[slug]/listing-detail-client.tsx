@@ -31,7 +31,6 @@ const MeetingPointMap = dynamic(
     ),
   }
 );
-import { LikelySellOutBadge } from "@/components/listings/likely-sell-out-badge";
 import { DiningMenu } from "@/components/listings/dining-menu";
 import { SuperhostBadge } from "@/components/shared/superhost-badge";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
@@ -266,13 +265,6 @@ export function ListingDetailClient({
       else if (price < 50) jsonLd.priceRange = "$$";
       else if (price < 100) jsonLd.priceRange = "$$$";
       else jsonLd.priceRange = "$$$$";
-
-      jsonLd.offers = {
-        "@type": "Offer",
-        price: listing.priceAmount,
-        priceCurrency: listing.priceCurrency || "XCD",
-        availability: "https://schema.org/InStock",
-      };
     }
 
     // Opening hours specification from operatingHours
@@ -388,7 +380,7 @@ export function ListingDetailClient({
                     <span className="bg-gold-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
                       {typeLabels[listing.type] || listing.type}
                     </span>
-                    {listing.isInstantBook && (
+                    {false && (
                       <span className="flex items-center gap-1 bg-teal-50 text-teal-600 text-xs font-semibold px-3 py-1 rounded-full">
                         <Zap size={12} /> Instant Book
                       </span>
@@ -415,16 +407,6 @@ export function ListingDetailClient({
                       </div>
                     )}
                   </div>
-
-                  {/* Likely to sell out badge for bookable types */}
-                  {["tour", "excursion", "event", "vip"].includes(listing.type) && td.bookingCount7Days !== undefined && (
-                    <div className="mt-3">
-                      <LikelySellOutBadge
-                        bookingCount7Days={td.bookingCount7Days as number}
-                        spotsRemaining={td.spotsRemaining as number | undefined}
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex gap-2">
                   <ShareButton
@@ -481,7 +463,7 @@ export function ListingDetailClient({
               {/* Trust Badges */}
               <div className="mt-4">
                 <TrustBadges
-                  isInstantBook={listing.isInstantBook}
+                  isInstantBook={false}
                   avgRating={listing.avgRating}
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
@@ -503,8 +485,8 @@ export function ListingDetailClient({
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
                     This listing was created from public data. Claim it for free
-                    to add photos, pricing, availability, and start receiving
-                    bookings.
+                    to manage your business information and begin verification
+                    and onboarding. Bookings remain unavailable until setup is complete.
                   </p>
                   <a
                     href={`/auth/signup?role=operator&claim=${listing.id}`}

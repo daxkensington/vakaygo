@@ -1,4 +1,6 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
+import { DirectoryNotice } from "./directory-notice";
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -23,7 +25,7 @@ const vehicleTypes = [
   { id: "luxury", label: "Luxury", capacity: "1-3 passengers", multiplier: 2.2 },
 ];
 
-export function TransferBooking({ listingId, listingTitle, priceAmount, priceUnit, typeData, unclaimed = false }: TransferBookingProps) {
+function EnabledTransferBooking({ listingId, listingTitle, priceAmount, priceUnit, typeData, unclaimed = false }: TransferBookingProps) {
   const { user } = useAuth();
   const [pickup, setPickup] = useState("airport");
   const [dropoff, setDropoff] = useState("");
@@ -207,4 +209,9 @@ export function TransferBooking({ listingId, listingTitle, priceAmount, priceUni
       </form>
     </div>
   );
+}
+
+export function TransferBooking(props: TransferBookingProps) {
+  if (DIRECTORY_ONLY) return <DirectoryNotice listingId={props.listingId} />;
+  return <EnabledTransferBooking {...props} />;
 }

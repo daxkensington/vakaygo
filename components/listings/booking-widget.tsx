@@ -1,4 +1,6 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
+import { DirectoryNotice } from "./directory-notice";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +38,7 @@ type BookingWidgetProps = {
   unclaimed?: boolean;
 };
 
-export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
+function EnabledBookingWidget({ listing, unclaimed = false }: BookingWidgetProps) {
   const router = useRouter();
   const { user, refresh } = useAuth();
   const { currency, format: formatConverted } = useCurrency();
@@ -878,4 +880,9 @@ export function BookingWidget({ listing, unclaimed = false }: BookingWidgetProps
       </div>
     </div>
   );
+}
+
+export function BookingWidget(props: BookingWidgetProps) {
+  if (DIRECTORY_ONLY) return <DirectoryNotice listingId={props.listing.id} />;
+  return <EnabledBookingWidget {...props} />;
 }

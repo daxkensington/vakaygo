@@ -1,4 +1,5 @@
 "use client";
+import { DIRECTORY_ONLY } from "@/lib/directory-mode";
 
 import { Shield, Clock, Star, Zap, Award, TrendingUp } from "lucide-react";
 
@@ -42,7 +43,7 @@ export function TrustBadges({ isInstantBook, avgRating, reviewCount, isFeatured,
   });
 
   // Instant book
-  if (isInstantBook) {
+  if (!DIRECTORY_ONLY && isInstantBook) {
     badges.push({
       icon: Zap,
       label: "Instant book",
