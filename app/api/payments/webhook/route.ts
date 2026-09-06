@@ -3,8 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings } from "@/drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { constructWebhookEvent, refundBooking } from "@/server/stripe";
+import { constructWebhookEvent } from "@/server/stripe";
 import { checkoutMatchesBooking } from "@/lib/checkout-validation";
+import { queueRejectedPaymentRefund, reconcileProviderRefund } from "@/server/payment-refunds";
 import { logger } from "@/lib/logger";
 export async function POST(request: Request) {
   const body = await request.text();
@@ -34,14 +35,22 @@ export async function POST(request: Request) {
         if (booking.paymentId === paymentId && booking.paidAt) return NextResponse.json({received:true});
       }
       // Late, superseded or mismatched payments cannot reopen inventory.
-      const refund = await refundBooking({paymentIntentId:paymentId,fullRefund:true,idempotencyKey:"rejected_checkout_"+session.id});
-      if (refund.status === "failed" || refund.status === "canceled") throw new Error("Rejected payment refund failed");
-      logger.warn("Paid checkout refunded without confirming booking",{bookingId,sessionId:session.id});
+      await queueRejectedPaymentRefund({bookingId,checkoutSessionId:session.id,paymentId,amountCents:session.amount_total,currency:session.currency || ""});
+      logger.warn("Paid checkout rejected; refund is tracked separately",{bookingId,sessionId:session.id});
+    } else if (event.type === "refund.created" || event.type === "refund.updated" || event.type === "refund.failed") {
+      await reconcileProviderRefund(event.data.object.id);
     } else if (event.type === "charge.refunded") {
       const charge = event.data.object;
       const paymentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
       if (paymentId && (charge.refunded || charge.amount_refunded >= charge.amount)) {
-        await db.update(bookings).set({status:"refunded",updatedAt:new Date()}).where(eq(bookings.paymentId,paymentId));
+        const [booking] = await db.select().from(bookings).where(eq(bookings.paymentId,paymentId)).limit(1);
+        if (booking?.cancellationRequestedAt) {
+          const refundId = booking.refundId || charge.refunds?.data.find(refund => refund.metadata?.vakaygoRefundKey === "refund_" + booking.id)?.id;
+          if (!refundId) throw new Error("Cancellation refund persistence pending");
+          await reconcileProviderRefund(refundId);
+        } else {
+          await db.update(bookings).set({status:"refunded",updatedAt:new Date()}).where(eq(bookings.paymentId,paymentId));
+        }
       }
     }
     // Failed attempts do not cancel bookings: checkout can be retried.

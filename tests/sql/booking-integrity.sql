@@ -38,3 +38,105 @@ INSERT INTO media(listing_id,url,alt,sort_order,is_primary) VALUES
  ('20000000-0000-4000-8000-000000000001','/images/sections/value-local.jpg','Audit photo one',0,true),
  ('20000000-0000-4000-8000-000000000001','/images/sections/value-travel.jpg','Audit photo two',1,false),
  ('20000000-0000-4000-8000-000000000001','/images/sections/value-explore.jpg','Audit photo three',2,false);
+
+-- Rejected payments retain independent identities and cannot corrupt a booking's paid charge.
+DO $$
+DECLARE target_booking uuid;
+BEGIN
+ SELECT id INTO target_booking FROM bookings WHERE booking_number='hold';
+ UPDATE bookings SET payment_id='pi_sql_original' WHERE id=target_booking;
+ INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency,refund_id,refund_status)
+ VALUES(target_booking,'cs_sql_extra','pi_sql_extra',7150,'USD','re_sql_extra','pending');
+ BEGIN
+  INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency)
+  VALUES(target_booking,'cs_sql_extra','pi_sql_other',7150,'USD');
+  RAISE EXCEPTION 'Expected unique checkout session';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency)
+  VALUES(target_booking,'cs_sql_other','pi_sql_extra',7150,'USD');
+  RAISE EXCEPTION 'Expected unique payment identity';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency,refund_id)
+  VALUES(target_booking,'cs_sql_other','pi_sql_other',7150,'USD','re_sql_extra');
+  RAISE EXCEPTION 'Expected unique refund identity';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency)
+  VALUES(target_booking,'cs_sql_zero','pi_sql_zero',0,'USD');
+  RAISE EXCEPTION 'Expected positive refund amount';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO rejected_payment_refunds(booking_id,checkout_session_id,payment_id,amount_cents,currency)
+  VALUES('ffffffff-ffff-4fff-8fff-ffffffffffff','cs_sql_missing','pi_sql_missing',7150,'USD');
+  RAISE EXCEPTION 'Expected booking foreign key';
+ EXCEPTION WHEN foreign_key_violation THEN NULL; END;
+ UPDATE rejected_payment_refunds SET refund_status='failed' WHERE payment_id='pi_sql_extra';
+ UPDATE rejected_payment_refunds SET refund_status='pending'
+ WHERE payment_id='pi_sql_extra' AND coalesce(refund_status,'') NOT IN ('failed','canceled') AND coalesce(refund_status,'')<>'succeeded';
+ IF (SELECT refund_status FROM rejected_payment_refunds WHERE payment_id='pi_sql_extra')<>'failed'
+ THEN RAISE EXCEPTION 'Delayed response overwrote terminal refund failure'; END IF;
+ IF (SELECT payment_id FROM bookings WHERE id=target_booking)<>'pi_sql_original'
+ THEN RAISE EXCEPTION 'Rejected payment replaced canonical payment'; END IF;
+END $$;
+
+-- Failures correct previously delivered success mail and include partial refunds.
+DO $$
+DECLARE target_booking uuid; prior_delivery timestamp := timestamp '2026-09-06 00:00:00';
+BEGIN
+ PERFORM audit_book('refund-full','2099-12-05');
+ SELECT id INTO target_booking FROM bookings WHERE booking_number='refund-full';
+ UPDATE bookings SET status='confirmed',payment_id='pi_mail_full',paid_at=now() WHERE id=target_booking;
+ UPDATE bookings SET status='cancelled',cancellation_requested_at=now(),cancellation_refund_cents=7150 WHERE id=target_booking;
+ UPDATE bookings SET status='refunded',refund_id='re_mail_full',refund_status='succeeded' WHERE id=target_booking;
+ UPDATE booking_mail_outbox SET delivered_at=prior_delivery WHERE booking_id=target_booking AND kind IN ('cancelled','refunded');
+ UPDATE bookings SET status='cancelled',refund_status='failed' WHERE id=target_booking;
+ IF (SELECT string_agg(recipient,',' ORDER BY recipient) FROM booking_mail_outbox
+     WHERE booking_id=target_booking AND kind='refund_failed' AND delivered_at IS NULL)
+     IS DISTINCT FROM 'operator,team,traveler'
+ THEN RAISE EXCEPTION 'A failed full refund must queue distinct traveler, operator and support notifications'; END IF;
+ IF (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking
+     AND kind IN ('cancelled','refunded') AND delivered_at=prior_delivery)<>4
+ THEN RAISE EXCEPTION 'Failure must preserve previously delivered cancellation and refund mail'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE id=target_booking AND status='cancelled'
+     AND payment_id='pi_mail_full' AND refund_id='re_mail_full' AND cancellation_refund_cents=7150)
+ THEN RAISE EXCEPTION 'Failure notification changed canonical payment or refund intent'; END IF;
+
+ UPDATE booking_mail_outbox SET delivered_at=prior_delivery WHERE booking_id=target_booking AND kind='refund_failed';
+ UPDATE bookings SET refund_status='failed' WHERE id=target_booking;
+ UPDATE bookings SET refund_status='canceled' WHERE id=target_booking;
+ UPDATE bookings SET updated_at=now() WHERE id=target_booking;
+ IF (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='refund_failed')<>3
+     OR (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='refund_failed' AND delivered_at=prior_delivery)<>3
+ THEN RAISE EXCEPTION 'Duplicate failure updates must not recreate delivered notifications'; END IF;
+
+ PERFORM audit_book('refund-partial','2099-12-06');
+ SELECT id INTO target_booking FROM bookings WHERE booking_number='refund-partial';
+ UPDATE bookings SET status='confirmed',payment_id='pi_mail_partial',paid_at=now() WHERE id=target_booking;
+ UPDATE bookings SET status='cancelled',cancellation_requested_at=now(),cancellation_refund_cents=3575,
+     refund_id='re_mail_partial',refund_status='pending' WHERE id=target_booking;
+ UPDATE booking_mail_outbox SET delivered_at=prior_delivery WHERE booking_id=target_booking AND kind='cancelled';
+ UPDATE bookings SET refund_status='failed' WHERE id=target_booking;
+ IF (SELECT string_agg(recipient,',' ORDER BY recipient) FROM booking_mail_outbox
+     WHERE booking_id=target_booking AND kind='refund_failed' AND delivered_at IS NULL)
+     IS DISTINCT FROM 'operator,team,traveler'
+ THEN RAISE EXCEPTION 'A partial refund failure must notify even without a booking status change'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE id=target_booking AND status='cancelled' AND cancellation_refund_cents=3575)
+     OR (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='cancelled' AND delivered_at=prior_delivery)<>2
+ THEN RAISE EXCEPTION 'Partial failure must preserve cancellation state and prior mail'; END IF;
+
+ PERFORM audit_book('refund-immediate-failure','2099-12-07');
+ SELECT id INTO target_booking FROM bookings WHERE booking_number='refund-immediate-failure';
+ UPDATE bookings SET status='confirmed',payment_id='pi_mail_immediate',paid_at=now() WHERE id=target_booking;
+ UPDATE bookings SET status='cancelled',cancellation_requested_at=now(),cancellation_refund_cents=7150 WHERE id=target_booking;
+ UPDATE bookings SET refund_id='re_mail_immediate',refund_status='canceled' WHERE id=target_booking;
+ IF (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='refund_failed')<>3
+ THEN RAISE EXCEPTION 'The first persisted refund failure must queue notifications from a NULL prior status'; END IF;
+
+ PERFORM audit_book('refund-no-intent','2099-12-08');
+ SELECT id INTO target_booking FROM bookings WHERE booking_number='refund-no-intent';
+ UPDATE bookings SET payment_id='pi_mail_untracked',refund_id='re_mail_untracked',refund_status='failed' WHERE id=target_booking;
+ IF EXISTS(SELECT 1 FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='refund_failed')
+ THEN RAISE EXCEPTION 'Untracked manual refunds must not create canonical cancellation notifications'; END IF;
+END $$;

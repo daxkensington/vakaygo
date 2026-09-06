@@ -13,7 +13,9 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ─── ENUMS ──────────────────────────────────────────────────────
 export const userRoleEnum = pgEnum("user_role", [
@@ -354,6 +356,27 @@ export const bookings = pgTable(
     index("bookings_status_idx").on(t.status),
   ]
 );
+
+// Rejected checkout payments have their own refund identity; never replace a booking's paid charge.
+export const rejectedPaymentRefunds = pgTable("rejected_payment_refunds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => bookings.id),
+  checkoutSessionId: varchar("checkout_session_id", { length: 256 }).notNull().unique(),
+  paymentId: varchar("payment_id", { length: 256 }).notNull().unique(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull(),
+  refundId: varchar("refund_id", { length: 256 }).unique(),
+  refundStatus: varchar("refund_status", { length: 32 }),
+  attempts: integer("attempts").default(0).notNull(),
+  lastError: text("last_error"),
+  nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  index("rejected_refunds_pending_idx").on(t.refundStatus, t.nextAttemptAt),
+  index("rejected_refunds_booking_idx").on(t.bookingId),
+  check("rejected_refunds_positive_amount", sql`${t.amountCents} > 0`),
+]);
 
 // ─── REVIEWS ────────────────────────────────────────────────────
 export const reviews = pgTable(

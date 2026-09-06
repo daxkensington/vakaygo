@@ -20,7 +20,7 @@ function load(rel, mocks={}) {
     '@/server/loyalty':{awardBookingPoints:async()=>{}},
     '@/lib/abandoned-bookings':{EXPIRE_AFTER_HOURS:48},
     '@neondatabase/serverless':{neon:()=>({})},
-    'drizzle-orm':{eq:(a,b)=>({op:'eq',a,b}),ne:(a,b)=>({op:'ne',a,b}),isNull:a=>({op:'null',a}),and:(...args)=>({op:'and',args}),sql:()=>({op:'sql'})},
+    'drizzle-orm':{eq:(a,b)=>({op:'eq',a,b}),ne:(a,b)=>({op:'ne',a,b}),isNull:a=>({op:'null',a}),and:(...args)=>({op:'and',args}),or:(...args)=>({op:'or',args}),sql:(parts,...args)=>({op:'sql',text:parts.join('?'),args})},
     'next/headers':{cookies:async()=>({get:()=>({value:'synthetic-session'}),delete:()=>{}})},
     jose:{jwtVerify:async()=>({payload:{id:'traveler',role:'traveler'}})},
   };
@@ -32,13 +32,16 @@ function load(rel, mocks={}) {
     throw new Error('Unmocked import: '+id);
   };
   vm.runInNewContext('(function(require,module,exports){'+js+'\n})',
-    {Request,Response,Headers,URL,URLSearchParams,TextEncoder,Date,console,fetch:mocks.__fetch,process:{env:{GOOGLE_CLIENT_ID:'synthetic',GOOGLE_CLIENT_SECRET:'synthetic',CRON_SECRET:'synthetic',STRIPE_WEBHOOK_SECRET:'synthetic',AUTH_SECRET:'synthetic',DATABASE_URL:'synthetic'}}},
+    {Request,Response,Headers,URL,URLSearchParams,TextEncoder,Date,console,fetch:mocks.__fetch,process:{env:{GOOGLE_CLIENT_ID:'synthetic',GOOGLE_CLIENT_SECRET:'synthetic',CRON_SECRET:'synthetic',STRIPE_WEBHOOK_SECRET:'synthetic',AUTH_SECRET:'synthetic',DATABASE_URL:'synthetic',...mocks.__env}}},
     {filename:rel})(requireMock,loadedModule,loadedModule.exports);
   return loadedModule.exports;
 }
 function matches(cond,row){
   if(!cond)return true;
   if(cond.op==='and')return cond.args.every(c=>matches(c,row));
+  if(cond.op==='or')return cond.args.some(c=>matches(c,row));
+  if(cond.op==='sql'&&cond.text.includes("not in ('failed', 'canceled')"))return !['failed','canceled'].includes(row[cond.args[0].key]);
+  if(cond.op==='sql'&&cond.text.includes("<> 'succeeded'"))return row[cond.args[0].key]!=='succeeded';
   if(cond.op==='eq')return row[cond.a.key]===cond.b;
   if(cond.op==='null')return row[cond.a.key]==null;
   if(cond.op==='ne')return row[cond.a.key]!==cond.b;
@@ -48,13 +51,17 @@ function dbFor(rows,beforeUpdate=()=>{}){
   const writes=[];
   const selects=[];
   function project(row,cols){if(!cols)return {...row};return Object.fromEntries(Object.entries(cols).map(([key,col])=>[key,row[col.key]??row[key]]));}
-  return {writes,selects,
+  return {writes,selects,_rows:rows,
     select(cols){let table,cond;const q={from(t){table=t.__table;selects.push(table);return q;},innerJoin(){return q;},where(c){cond=c;return q;},limit(){return Promise.resolve((rows[table]||[]).filter(r=>matches(cond,r)).map(r=>project(r,cols)));},then(resolve,reject){return q.limit().then(resolve,reject);}};return q;},
-    update(t){let values;const q={set(v){values=v;return q;},where(cond){beforeUpdate(t.__table,values,cond);const changed=(rows[t.__table]||[]).filter(r=>matches(cond,r));changed.forEach(r=>Object.assign(r,values));writes.push({table:t.__table,values,cond,count:changed.length});return Object.assign(Promise.resolve(),{returning:async(cols)=>changed.map(r=>project(r,cols))});}};return q;},
-    insert(t){return {values(values){const record={id:'booking-new',...values};(rows[t.__table]??=[]).push(record);writes.push({table:t.__table,values});return {returning:async(cols)=>[project(record,cols)]};}}},
+    update(t){let values;const q={set(v){values=v;return q;},where(cond){beforeUpdate(t.__table,values,cond);const changed=(rows[t.__table]||[]).filter(r=>matches(cond,r));changed.forEach(r=>{for(const [key,value] of Object.entries(values)){r[key]=value?.op==='sql'&&value.text.includes('+ 1')?(r[key]||0)+1:value;}});writes.push({table:t.__table,values,cond,count:changed.length});return Object.assign(Promise.resolve(),{returning:async(cols)=>changed.map(r=>project(r,cols))});}};return q;},
+    insert(t){return {values(values){let conflict,applied=false,result;const apply=()=>{if(applied)return result;applied=true;const existing=conflict&&(rows[t.__table]||[]).find(r=>r[conflict.key]===values[conflict.key]);if(existing)return result=[];const record={id:t.__table==='bookings'?'booking-new':t.__table+'-'+(rows[t.__table]||[]).length,refundStatus:null,refundId:null,attempts:0,...values};(rows[t.__table]??=[]).push(record);writes.push({table:t.__table,values});return result=[record];};const q={onConflictDoNothing({target}){conflict=target;return q;},returning:async(cols)=>apply().map(r=>project(r,cols)),then(resolve,reject){try{return Promise.resolve(apply()).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}};return q;}}},
   };
 }
-function mocksFor(db,extra={}){return {'drizzle-orm/neon-http':{drizzle:()=>db},...extra};}
+function mocksFor(db,extra={}){
+  const stripe=extra['@/server/stripe'];
+  if(stripe?.refundBooking){const refund=stripe.refundBooking;extra={...extra,'@/server/stripe':{...stripe,refundBooking:async p=>({payment_intent:p.paymentIntentId,amount:p.amount||7150,currency:(db._rows.rejectedPaymentRefunds||[]).find(r=>r.paymentId===p.paymentIntentId)?.currency.toLowerCase()||'usd',metadata:{vakaygoRefundKey:p.idempotencyKey},...await refund(p)})}};}
+  return {'drizzle-orm/neon-http':{drizzle:()=>db},...extra};
+}
 function request(body,method='POST',sig=false){return new Request('https://audit.invalid/endpoint',{method,headers:{'content-type':'application/json',...(sig?{'stripe-signature':'synthetic'}:{})},body:JSON.stringify(body)});}
 async function check(name,fn){const details=await fn();results.push({name,passed:true,...details});}
 
@@ -151,6 +158,25 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    assert.equal(created,0);
  });
 
+ for (const [configured,expectedOrigin] of [
+   ["https://preview.vakaygo.example/staging?ignored=yes#fragment","https://preview.vakaygo.example"],
+   [undefined,"https://vakaygo.com"],
+   ["not a URL","https://vakaygo.com"],
+   ["http://untrusted.example","https://vakaygo.com"],
+   ["https://user:password@untrusted.example","https://vakaygo.com"],
+ ]) await check("Checkout returns to trusted deployment origin: "+String(configured),async()=>{
+   const rows={bookings:[{...pending(),checkoutSessionId:null,subtotal:"65.00",serviceFee:"6.50"}],listings:[listing],users:[{id:"traveler",email:"traveler@example.invalid"},{id:"operator",email:"operator@example.invalid",digipayMerchantId:null}]};
+   const db=dbFor(rows);let checkout;
+   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{
+     __env:{NEXT_PUBLIC_APP_URL:configured},
+     "@/server/stripe":{createCheckoutSession:async params=>{checkout=params;return {id:"cs_created",url:"https://checkout.stripe.com/test",expires_at:Math.floor(Date.now()/1000)+86400};}}
+   }));
+   const r=await h.POST(request({bookingId}));assert.equal(r.status,200);
+   assert.equal(checkout.successUrl,expectedOrigin+"/bookings?paid=VG-TEST");
+   assert.equal(checkout.cancelUrl,expectedOrigin+"/bookings?cancelled=VG-TEST");
+   assert.equal(rows.bookings[0].checkoutSessionId,"cs_created");
+ });
+
  await check("Cancellation racing a successful payment recomputes its refund",async()=>{
    const rows={bookings:[pending()],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};let racing=true,refunded=0;
    const db=dbFor(rows,(_table,values)=>{if(racing&&values.cancellationRequestedAt){racing=false;Object.assign(rows.bookings[0],{status:"confirmed",paidAt:new Date(),paymentId:"pi_race"});}});
@@ -180,12 +206,181 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  await check("The refund worker retries persisted intents and reports failures",async()=>{
    let attempts=0;
    const h=load("app/api/cron/booking-refunds/route.ts",{
-     "@neondatabase/serverless":{neon:()=>async()=>[{id:"a",traveler_id:"t"},{id:"b",traveler_id:"t"}]},
+     "@neondatabase/serverless":{neon:()=>async(parts)=>parts.join("").includes("SELECT id, traveler_id")?[{id:"a",traveler_id:"t"},{id:"b",traveler_id:"t"}]:[]},
+     "@/server/payment-refunds":{retryRejectedPaymentRefund:async()=>{throw Error("No rejected payments expected");}},
      "@/server/cancel-booking":{cancelBooking:async()=>{attempts++;if(attempts===1)throw Error("temporary");return {success:true};}}
    });
    const unauthorized=await h.GET(new Request("https://audit.invalid/api/cron/booking-refunds"));assert.equal(unauthorized.status,401);assert.equal(attempts,0);
    const r=await h.GET(new Request("https://audit.invalid/api/cron/booking-refunds",{headers:{authorization:"Bearer synthetic"}}));
    const data=await r.json();assert.equal(data.processed,1);assert.equal(data.failed,1);assert.equal(attempts,2);
+ });
+
+ const extraIntent=()=>({id:"extra_1",bookingId,checkoutSessionId:"cs_extra",paymentId:"pi_extra",amountCents:7150,currency:"USD",refundId:"re_extra",refundStatus:"pending",attempts:1});
+ const providerRefund=(overrides={})=>({id:"re_extra",payment_intent:"pi_extra",amount:7150,currency:"usd",status:"succeeded",metadata:{vakaygoRefundKey:"rejected_checkout_cs_extra"},...overrides});
+ await check("A duplicate paid checkout gets its own durable refund without replacing the canonical charge",async()=>{
+   const canonical={...pending(),status:"confirmed",paymentId:"pi_original",paidAt:new Date(),refundId:null,refundStatus:null};
+   const rows={bookings:[canonical],rejectedPaymentRefunds:[]};const db=dbFor(rows);let created=0,retrieved=0;
+   const h=load("app/api/payments/webhook/route.ts",mocksFor(db,{"@/server/stripe":{
+     constructWebhookEvent:()=>complete({id:"cs_extra",payment_intent:"pi_extra"}),
+     refundBooking:async()=>{created++;return {id:"re_extra",status:"pending"};},
+     retrieveBookingRefund:async()=>{retrieved++;return providerRefund({status:"pending"});}
+   }}));
+   for(let i=0;i<2;i++)assert.equal((await h.POST(request({},"POST",true))).status,200);
+   assert.equal(rows.rejectedPaymentRefunds.length,1);assert.equal(rows.rejectedPaymentRefunds[0].refundStatus,"pending");
+   assert.equal(created,1);assert.equal(retrieved,1);assert.equal(canonical.paymentId,"pi_original");assert.equal(canonical.refundId,null);assert.equal(canonical.status,"confirmed");
+ });
+ await check("An interrupted rejected-payment refund remains durable and retries the same provider key",async()=>{
+   const rows={bookings:[{...pending(),status:"cancelled"}],rejectedPaymentRefunds:[]};const db=dbFor(rows);const keys=[];let providerCreated=0;
+   const mock=mocksFor(db,{"@/server/stripe":{
+     constructWebhookEvent:()=>complete({id:"cs_extra",payment_intent:"pi_extra"}),
+     refundBooking:async p=>{keys.push(p.idempotencyKey);if(keys.length===1){providerCreated++;throw Error("Connection lost after Stripe accepted refund");}return {id:"re_recovered",status:"succeeded"};}
+   }});
+   const h=load("app/api/payments/webhook/route.ts",mock);
+   assert.equal((await h.POST(request({},"POST",true))).status,500);
+   assert.equal(rows.rejectedPaymentRefunds.length,1);assert.equal(rows.rejectedPaymentRefunds[0].refundId,null);
+   assert.match(rows.rejectedPaymentRefunds[0].lastError,/retry scheduled/);
+   const service=load("server/payment-refunds.ts",mock);
+   await service.retryRejectedPaymentRefund(rows.rejectedPaymentRefunds[0].id);
+   assert.deepEqual(keys,["rejected_checkout_cs_extra","rejected_checkout_cs_extra"]);
+   assert.equal(providerCreated,1);assert.equal(rows.rejectedPaymentRefunds[0].refundId,"re_recovered");assert.equal(rows.rejectedPaymentRefunds[0].refundStatus,"succeeded");
+   assert.equal(rows.bookings[0].paymentId,null);assert.equal(rows.bookings[0].status,"cancelled");
+ });
+ await check("Refund events finish a pending rejected-payment refund without changing its booking",async()=>{
+   const rows={bookings:[{...pending(),status:"confirmed",paymentId:"pi_original",paidAt:new Date()}],rejectedPaymentRefunds:[extraIntent()]};const db=dbFor(rows);
+   const h=load("app/api/payments/webhook/route.ts",mocksFor(db,{"@/server/stripe":{
+     constructWebhookEvent:()=>({type:"refund.updated",data:{object:{id:"re_extra",status:"pending"}}}),
+     retrieveBookingRefund:async()=>providerRefund()
+   }}));
+   assert.equal((await h.POST(request({},"POST",true))).status,200);
+   assert.equal(rows.rejectedPaymentRefunds[0].refundStatus,"succeeded");assert.equal(rows.bookings[0].paymentId,"pi_original");assert.equal(rows.bookings[0].status,"confirmed");
+ });
+ await check("A rejected refund that later fails is persisted and surfaced even after an older success event",async()=>{
+   const rows={bookings:[pending()],rejectedPaymentRefunds:[{...extraIntent(),refundStatus:"succeeded"}]};const db=dbFor(rows);let alerts=0;
+   const h=load("app/api/payments/webhook/route.ts",mocksFor(db,{"@/lib/logger":{logger:{warn:()=>{},error:()=>{alerts++;}}},"@/server/stripe":{
+     constructWebhookEvent:()=>({type:"refund.updated",data:{object:{id:"re_extra",status:"succeeded"}}}),
+     retrieveBookingRefund:async()=>providerRefund({status:"failed",failure_reason:"expired_or_canceled_card"})
+   }}));
+   assert.equal((await h.POST(request({},"POST",true))).status,200);
+   assert.equal(rows.rejectedPaymentRefunds[0].refundStatus,"failed");assert.match(rows.rejectedPaymentRefunds[0].lastError,/expired_or_canceled_card/);assert.equal(alerts,1);
+ });
+ await check("A full cancellation refund can change from succeeded to failed without leaving a refunded booking",async()=>{
+   const rows={bookings:[{...pending(),status:"confirmed",paidAt:new Date(),paymentId:"pi_extra"}],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}],rejectedPaymentRefunds:[]};const db=dbFor(rows);
+   const mock=mocksFor(db,{"@/server/stripe":{
+     refundBooking:async()=>({id:"re_extra",status:"succeeded"}),
+     constructWebhookEvent:()=>({type:"refund.failed",data:{object:{id:"re_extra"}}}),
+     retrieveBookingRefund:async()=>providerRefund({status:"failed",metadata:{vakaygoRefundKey:"refund_"+bookingId}})
+   }});
+   await load("server/cancel-booking.ts",mock).cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(rows.bookings[0].status,"refunded");
+   const h=load("app/api/payments/webhook/route.ts",mock);
+   assert.equal((await h.POST(request({},"POST",true))).status,200);
+   assert.equal(rows.bookings[0].status,"cancelled");assert.equal(rows.bookings[0].refundStatus,"failed");assert.equal(rows.bookings[0].paymentId,"pi_extra");
+ });
+ await check("An unrelated manual refund cannot overwrite the tracked rejected-payment refund",async()=>{
+   const rows={bookings:[],rejectedPaymentRefunds:[extraIntent()]};const db=dbFor(rows);
+   await load("server/payment-refunds.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund({id:"re_manual",metadata:{}})}})).reconcileProviderRefund("re_manual");
+   assert.equal(rows.rejectedPaymentRefunds[0].refundId,"re_extra");assert.equal(db.writes.length,0);
+ });
+ await check("A refund event with a wrong amount cannot rewrite a canonical cancellation",async()=>{
+   const rows={bookings:[{...pending(),status:"cancelled",paymentId:"pi_extra",paidAt:new Date(),cancellationRequestedAt:new Date(),cancellationRefundCents:7150,refundId:"re_extra",refundStatus:"pending"}],rejectedPaymentRefunds:[]};const db=dbFor(rows);
+   await assert.rejects(load("server/payment-refunds.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund({amount:100,metadata:{vakaygoRefundKey:"refund_"+bookingId}})}})).reconcileProviderRefund("re_extra"),/identity mismatch/);
+   assert.equal(rows.bookings[0].refundStatus,"pending");assert.equal(db.writes.length,0);
+ });
+ await check("A delayed cancellation response cannot overwrite a concurrent refund failure event",async()=>{
+   const rows={bookings:[{...pending(),status:"cancelled",paymentId:"pi_extra",paidAt:new Date(),cancellationRequestedAt:new Date(),cancellationRefundCents:7150,refundId:"re_extra",refundStatus:"pending"}],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};let race=true;
+   const db=dbFor(rows,(_table,values)=>{if(race&&values.refundStatus==="succeeded"){race=false;rows.bookings[0].refundStatus="failed";}});
+   const result=await load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund()}})).cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(result.httpStatus,502);assert.equal(rows.bookings[0].refundStatus,"failed");assert.equal(rows.bookings[0].status,"cancelled");
+ });
+ await check("A delayed provider response cannot downgrade a failed rejected refund back to pending",async()=>{
+   const rows={bookings:[],rejectedPaymentRefunds:[{...extraIntent(),refundStatus:"failed"}]};const db=dbFor(rows);
+   await load("server/payment-refunds.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund({status:"pending"})}})).reconcileProviderRefund("re_extra");
+   assert.equal(rows.rejectedPaymentRefunds[0].refundStatus,"failed");
+ });
+ await check("The refund worker retries rejected payments and exposes terminal review counts",async()=>{
+   let calls=0;
+   const h=load("app/api/cron/booking-refunds/route.ts",{
+     "@/server/cancel-booking":{cancelBooking:async()=>{throw Error("No ordinary cancellations expected");}},
+     "@/server/payment-refunds":{retryRejectedPaymentRefund:async()=>({status:++calls===1?"pending":"failed"})},
+     "@neondatabase/serverless":{neon:()=>async(parts)=>{const q=parts.join("");return q.includes("SELECT id, traveler_id")?[]:q.includes("SELECT id FROM rejected")?[{id:"a"},{id:"b"}]:[{count:2}];}}
+   });
+   const r=await h.GET(new Request("https://audit.invalid/api/cron/booking-refunds",{headers:{authorization:"Bearer synthetic"}}));
+   const data=await r.json();assert.equal(data.processed,0);assert.equal(data.rejectedProcessed,1);assert.equal(data.failed,1);assert.equal(data.needsReview,2);
+ });
+ await check("Queued refund completion email becomes stale after an asynchronous failure",async()=>{
+   let emails=0,acknowledged=0;
+   const h=load("app/api/cron/booking-mail/route.ts",{
+     __env:{RESEND_API_KEY:"synthetic"},
+     resend:{Resend:class{emails={send:async()=>{emails++;return {};}};}},
+     "@neondatabase/serverless":{neon:()=>async(parts)=>{const q=parts.join("");if(q.includes("RETURNING *"))return [{id:"job1",booking_id:bookingId,kind:"refunded",recipient:"traveler"}];if(q.includes("SELECT b.*"))return [{status:"cancelled",email:"traveler@example.invalid",operator_email:"operator@example.invalid"}];acknowledged++;return [];}}
+   });
+   const r=await h.GET(new Request("https://audit.invalid/api/cron/booking-mail",{headers:{authorization:"Bearer synthetic"}}));
+   assert.equal(r.status,200);assert.equal(emails,0);assert.equal(acknowledged,1);
+ });
+
+ for(const terminal of ["failed","canceled"]) await check("Terminal refund "+terminal+" closes a booking after concurrent success reconciliation",async()=>{
+   const rows={bookings:[{...pending(),status:"cancelled",paymentId:"pi_extra",paidAt:new Date(),cancellationRequestedAt:new Date(),cancellationRefundCents:7150,refundId:"re_extra",refundStatus:"pending"}],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};let reconciled=false;
+   const db=dbFor(rows,(_table,values)=>{if(!reconciled&&values.refundStatus===terminal){reconciled=true;Object.assign(rows.bookings[0],{status:"refunded",refundStatus:"succeeded"});}});
+   const result=await load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund({status:terminal})}})).cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(reconciled,true);assert.equal(result.httpStatus,502);assert.equal(rows.bookings[0].status,"cancelled");assert.equal(rows.bookings[0].refundStatus,terminal);assert.equal(rows.bookings[0].paymentId,"pi_extra");assert.equal(rows.bookings[0].refundId,"re_extra");
+ });
+ for(const replacement of [{paymentId:"pi_replacement"},{refundId:"re_replacement"}]) await check("A stale terminal refund cannot replace a changed canonical identity: "+JSON.stringify(replacement),async()=>{
+   const rows={bookings:[{...pending(),status:"cancelled",paymentId:"pi_extra",paidAt:new Date(),cancellationRequestedAt:new Date(),cancellationRefundCents:7150,refundId:"re_extra",refundStatus:"pending"}],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};let changed=false;
+   const db=dbFor(rows,(_table,values)=>{if(!changed&&values.refundStatus==="failed"){changed=true;Object.assign(rows.bookings[0],replacement,{status:"refunded",refundStatus:"succeeded"});}});
+   const result=await load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{retrieveBookingRefund:async()=>providerRefund({status:"failed"})}})).cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(changed,true);assert.equal(result.httpStatus,502);assert.equal(rows.bookings[0].status,"refunded");assert.equal(rows.bookings[0].refundStatus,"succeeded");assert.equal(db.writes.at(-1).count,0);
+   for(const [field,value] of Object.entries(replacement))assert.equal(rows.bookings[0][field],value);
+ });
+ async function renderBookingMail(kind,refundStatus,status="cancelled",recipient="traveler",cents=7150) {
+   const sent=[];let acknowledged=0;
+   const h=load("app/api/cron/booking-mail/route.ts",{
+     __env:{RESEND_API_KEY:"synthetic"},
+     resend:{Resend:class{emails={send:async(message,options)=>{sent.push({message,options});return {};}};}},
+     "@neondatabase/serverless":{neon:()=>async(parts)=>{
+       const q=parts.join("");
+       if(q.includes("RETURNING *"))return [{id:"mail-state-case",booking_id:bookingId,kind,recipient}];
+       if(q.includes("SELECT b.*"))return [{status,refund_status:refundStatus,cancellation_refund_cents:cents,
+         email:"traveler@example.invalid",operator_email:"operator@example.invalid",name:"Audit traveler",title:"Audit tour",
+         booking_number:"VG-TEST",start_date:"2099-12-05",guest_count:1,total_amount:"71.50",currency:"USD",cancellation_policy_snapshot:"moderate"}];
+       acknowledged++;return [];
+     }}
+   });
+   const r=await h.GET(new Request("https://audit.invalid/api/cron/booking-mail",{headers:{authorization:"Bearer synthetic"}}));
+   assert.equal(r.status,200);assert.equal(acknowledged,1);return sent;
+ }
+ for(const status of ["failed","canceled"])await check("Refund status suppresses obsolete success and cancellation mail: "+status,async()=>{
+   assert.equal((await renderBookingMail("refunded",status,"refunded")).length,0);
+   assert.equal((await renderBookingMail("cancelled",status)).length,0);
+ });
+ for(const [recipient,address] of [["traveler","traveler@example.invalid"],["operator","operator@example.invalid"],["team","bookings@vakaygo.com"]])await check("Refund failure correction reaches "+recipient+" with support-review copy",async()=>{
+   const sent=await renderBookingMail("refund_failed","failed","cancelled",recipient);
+   assert.equal(sent.length,1);assert.equal(sent[0].message.to,address);
+   assert.match(sent[0].message.subject,/Refund could not be completed/);
+   assert.match(sent[0].message.text,/71\.50 USD could not be completed/);
+   assert.match(sent[0].message.text,/booking remains cancelled/);
+   assert.match(sent[0].message.text,/earlier refund confirmation, this update replaces it/);
+   assert.match(sent[0].message.text,/bookings@vakaygo\.com for support review/);
+   assert.doesNotMatch(sent[0].message.text,/being processed|Refund submitted|Refund requested/);
+   assert.equal(sent[0].options.idempotencyKey,"booking-mail-mail-state-case");
+ });
+ await check("Partial refund failure mail reports its intended amount without a processing claim",async()=>{
+   const [sent]=await renderBookingMail("refund_failed","canceled","cancelled","traveler",3575);
+   assert.match(sent.message.text,/refund of 35\.75 USD could not be completed/);
+   assert.doesNotMatch(sent.message.text,/being processed|Refund submitted|Refund requested/);
+ });
+ await check("Superseded refund failure mail is skipped after provider status changes",async()=>{
+   assert.equal((await renderBookingMail("refund_failed","succeeded","refunded")).length,0);
+ });
+ await check("Successful partial refund cancellation mail describes a submitted refund",async()=>{
+   const [sent]=await renderBookingMail("cancelled","succeeded","cancelled","traveler",3575);
+   assert.match(sent.message.text,/Refund submitted: 35\.75 USD/);
+   assert.doesNotMatch(sent.message.text,/being processed|Refund requested/);
+ });
+ await check("Pending refund cancellation mail does not claim completion",async()=>{
+   const [sent]=await renderBookingMail("cancelled","pending");
+   assert.match(sent.message.text,/Refund requested: 71\.50 USD/);
+   assert.match(sent.message.text,/being processed and has not been confirmed as completed/);
+   assert.doesNotMatch(sent.message.text,/Refund submitted/);
  });
  console.log(JSON.stringify({checks:results.length,passed:results.length,results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});

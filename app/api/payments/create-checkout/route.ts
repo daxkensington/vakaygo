@@ -11,6 +11,19 @@ import { cookies } from "next/headers";
 import { logger } from "@/lib/logger";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
+function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string): string {
+  let origin = "https://vakaygo.com";
+  try {
+    const configured = new URL(process.env.NEXT_PUBLIC_APP_URL || origin);
+    if (configured.protocol === "https:" && !configured.username && !configured.password) origin = configured.origin;
+  } catch {
+    // An absent or invalid deployment URL keeps the production fallback.
+  }
+  const url = new URL("/bookings", origin);
+  url.searchParams.set(outcome, bookingNumber);
+  return url.toString();
+}
+
 export async function POST(request: Request) {
   try {
     // Verify auth
@@ -118,8 +131,8 @@ export async function POST(request: Request) {
       bookingId: booking.id,
       listingTitle: listing?.title || "VakayGo Booking",
       travelerEmail: traveler?.email || "",
-      successUrl: `https://vakaygo.com/bookings?paid=${booking.bookingNumber}`,
-      cancelUrl: `https://vakaygo.com/bookings?cancelled=${booking.bookingNumber}`,
+      successUrl: checkoutReturnUrl("paid", booking.bookingNumber),
+      cancelUrl: checkoutReturnUrl("cancelled", booking.bookingNumber),
     });
 
     const [saved] = await db.update(bookings).set({
