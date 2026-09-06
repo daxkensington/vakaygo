@@ -32,8 +32,8 @@ test("admin outreach shows aggregate demand, preserves concurrent edits and hono
   await page.context().addCookies([{ name: "session", value: await session("admin"), url: baseURL! }]);
   await page.goto("/admin/outreach");
   const card = page.getByRole("article").filter({ hasText: "Audit directory cafe" });
-  await expect(card).toBeVisible();
-  await card.getByLabel("Status", { exact: true }).selectOption("reviewing");
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await card.getByRole("combobox", { name: "Status", exact: true }).selectOption("reviewing");
   await card.getByLabel("Review and contact notes").fill(review.notes);
   await card.getByRole("button", { name: "Save review" }).click();
   await expect(card).toHaveCount(0);

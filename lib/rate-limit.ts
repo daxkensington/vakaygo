@@ -33,6 +33,7 @@ let lastCleanup = Date.now();
  */
 export const RATE_LIMITS = {
   auth: { maxTokens: 5, refillRate: 5 / 60, windowMs: 60_000 },
+  session: { maxTokens: 60, refillRate: 60 / 60, windowMs: 60_000 },
   ai: { maxTokens: 10, refillRate: 10 / 60, windowMs: 60_000 },
   admin: { maxTokens: 20, refillRate: 20 / 60, windowMs: 60_000 },
   write: { maxTokens: 30, refillRate: 30 / 60, windowMs: 60_000 },
@@ -45,6 +46,9 @@ export type EndpointType = keyof typeof RATE_LIMITS;
  * Determine the endpoint type from the request pathname and method.
  */
 export function getEndpointType(pathname: string, method: string): EndpointType {
+  // Reading the current session is part of ordinary page navigation. It must
+  // not consume login/verification attempts or falsely sign active users out.
+  if (pathname === "/api/auth/session" && (method === "GET" || method === "HEAD")) return "session";
   if (pathname.startsWith("/api/auth")) return "auth";
   if (pathname.startsWith("/api/admin")) return "admin";
   if (
