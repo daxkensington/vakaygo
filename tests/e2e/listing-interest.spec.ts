@@ -7,6 +7,7 @@ async function session(role = "traveler") {
 }
 test("claim finder resolves a real listing and keeps its claim identifier", async ({ page, request }) => {
   await page.goto("/for-businesses");
+  await expect(page).toHaveTitle("Claim Your Caribbean Business Listing | VakayGo");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Claim it");
   await page.getByRole("textbox", { name: "Business name" }).fill("Audit directory cafe");
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -15,7 +16,7 @@ test("claim finder resolves a real listing and keeps its claim identifier", asyn
   expect((await wildcard.json()).listings).toHaveLength(0);
 });
 
-test("admin outreach shows aggregate demand, preserves concurrent edits and honors suppression", async ({ request, baseURL }) => {
+test("admin outreach shows aggregate demand, preserves concurrent edits and honors suppression", async ({ page, request, baseURL }) => {
   const id = "20000000-0000-4000-8000-000000000009";
   const customer = { Origin: baseURL!, Cookie: "session=" + await session() };
   const admin = { Origin: baseURL!, Cookie: "session=" + await session("admin") };
@@ -28,7 +29,14 @@ test("admin outreach shows aggregate demand, preserves concurrent edits and hono
   expect(item.draft).toContain("/audit-island/audit-directory-cafe");
   expect(JSON.stringify(item)).not.toMatch(/audit-traveler|user_id|userId/);
   const review = { listingId: id, status: "reviewing", notes: "Review official contact first", expectedUpdatedAt: item.updatedAt };
-  expect((await request.patch("/api/admin/outreach", { headers: admin, data: review })).status()).toBe(200);
+  await page.context().addCookies([{ name: "session", value: await session("admin"), url: baseURL! }]);
+  await page.goto("/admin/outreach");
+  const card = page.getByRole("article").filter({ hasText: "Audit directory cafe" });
+  await expect(card).toBeVisible();
+  await card.getByLabel("Status", { exact: true }).selectOption("reviewing");
+  await card.getByLabel("Review and contact notes").fill(review.notes);
+  await card.getByRole("button", { name: "Save review" }).click();
+  await expect(card).toHaveCount(0);
   expect((await request.patch("/api/admin/outreach", { headers: admin, data: review })).status()).toBe(409);
   const refreshed = await request.get("/api/admin/outreach?status=reviewing", { headers: admin });
   const edited = (await refreshed.json()).items.find((row: { id: string }) => row.id === id);

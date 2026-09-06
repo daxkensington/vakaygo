@@ -375,7 +375,7 @@ export function ListingDetailClient({
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
                   type={listing.type}
-                  unclaimed={!listing.claimVerified}
+                  unclaimed={td.unclaimed === true || td.source === "google-places"}
                 />
               </div>
 
@@ -391,7 +391,7 @@ export function ListingDetailClient({
                 <div className="mt-8 p-6 bg-gradient-to-r from-gold-700 to-gold-800 rounded-2xl text-white">
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
-                    This listing was created from public data. Claim it for free
+                    Business ownership has not been verified on VakayGo. Claim it for free
                     to manage its information and complete business onboarding.
                     Online bookings and payments are currently unavailable.
                   </p>

@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/footer";
 import { ClaimFinder } from "@/components/business/claim-finder";
 import { Search, BadgeCheck, PencilLine, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
-  title: "Claim Your Caribbean Business Listing | VakayGo",
+  title: { absolute: "Claim Your Caribbean Business Listing | VakayGo" },
   description: "Find and claim your VakayGo business listing for free. Verify ownership, update your business information, and help travelers discover you across the Caribbean.",
   alternates: { canonical: "https://vakaygo.com/for-businesses" },
   openGraph: { title: "Your business. Your story. Claim it on VakayGo.", description: "Find your listing, verify ownership, and keep your Caribbean business information up to date.", url: "https://vakaygo.com/for-businesses" },
