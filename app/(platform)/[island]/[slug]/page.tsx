@@ -1,3 +1,4 @@
+import { listingStructuredData, serializeJsonLd } from "@/lib/listing-structured-data";
 import { notFound } from "next/navigation";
 import { getListingDetail } from "@/server/listing-detail";
 import {
@@ -28,15 +29,19 @@ export default async function ListingDetailPage({
 }: {
   params: Promise<{ island: string; slug: string }>;
 }) {
-  const { slug } = await params;
-  const result = await getListingDetail(slug);
+  const { slug, island } = await params;
+  const result = await getListingDetail(slug, island);
 
   if (!result) notFound();
 
   return (
+    <>
+    <script id="listing-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(listingStructuredData(result.listing)) }} />
     <ListingDetailClient
+      key={result.listing.id}
       initialListing={result.listing as unknown as ListingDetail}
       initialSimilar={result.similar as unknown as SimilarListing[]}
     />
+    </>
   );
 }

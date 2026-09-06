@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, media, islands, users } from "@/drizzle/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 
@@ -14,7 +14,7 @@ function getDb() {
  * the page passes the result to the client component as initial data so
  * crawlers get full HTML instead of a loading skeleton.
  */
-export async function getListingDetail(slug: string) {
+export async function getListingDetail(slug: string, islandSlug?: string) {
   const db = getDb();
 
   const [listing] = await db
@@ -51,6 +51,8 @@ export async function getListingDetail(slug: string) {
       islandId: listings.islandId,
       islandSlug: islands.slug,
       islandName: islands.name,
+      islandCountry: islands.country,
+      claimVerified: sql<boolean>`vakaygo_listing_claim_verified(${listings.id})`,
       operatorName: users.businessName,
       operatorAvatar: users.avatarUrl,
       operatorId: users.id,
@@ -59,7 +61,7 @@ export async function getListingDetail(slug: string) {
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .innerJoin(users, eq(listings.operatorId, users.id))
-    .where(and(eq(listings.slug, slug), eq(listings.status, "active"), ne(listings.operatorId, "197d8586-7fd3-4999-91de-a50ad7d70e23")))
+    .where(and(eq(listings.slug, slug), islandSlug ? eq(islands.slug, islandSlug) : undefined, eq(islands.isActive, true), eq(listings.status, "active"), ne(listings.operatorId, "197d8586-7fd3-4999-91de-a50ad7d70e23")))
     .limit(1);
 
   if (!listing) return null;

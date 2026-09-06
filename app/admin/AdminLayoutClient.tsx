@@ -36,6 +36,7 @@ const navItems = [
   { href: "/admin/promos", label: "Promo Codes", icon: Tag },
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle },
   { href: "/admin/claims", label: "Claims", icon: BadgeCheck },
+  { href: "/admin/outreach", label: "Business Outreach", icon: Users },
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/blog", label: "Blog", icon: BookOpen },
   { href: "/admin/settings", label: "Settings", icon: Settings },

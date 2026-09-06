@@ -11,24 +11,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
-    { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
-    { url: `${BASE_URL}/explore`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${BASE_URL}/islands`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/services`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/for-businesses`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/for-restaurants`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
-    { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
-    // /auth/* is intentionally not in the sitemap — robots.txt disallows
-    // /auth so Google would skip these anyway. Keeping them out avoids
-    // the "submitted URL blocked by robots" noise in Search Console.
-    { url: `${BASE_URL}/guides`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${BASE_URL}/map`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE_URL}/trips/new`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
-    { url: `${BASE_URL}/faq`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE_URL}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: BASE_URL, changeFrequency: "daily", priority: 1.0 },
+    { url: `${BASE_URL}/explore`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/islands`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE_URL}/about`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/services`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/for-businesses`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/for-restaurants`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${BASE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
+    // Sign-in and account workflows are omitted from the discovery sitemap.
+    { url: `${BASE_URL}/guides`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE_URL}/map`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE_URL}/faq`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE_URL}/contact`, changeFrequency: "monthly", priority: 0.5 },
   ];
 
   // Island pages
@@ -36,9 +32,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select({ slug: islands.slug, isActive: islands.isActive })
     .from(islands);
 
-  const islandPages: MetadataRoute.Sitemap = allIslands.map((island) => ({
+  const islandPages: MetadataRoute.Sitemap = allIslands.filter(island => island.isActive).map((island) => ({
     url: `${BASE_URL}/${island.slug}`,
-    lastModified: new Date(),
+
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
@@ -48,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const thingsToDoPages: MetadataRoute.Sitemap = activeIslands.map((island) => ({
     url: `${BASE_URL}/things-to-do-in-${island.slug}`,
-    lastModified: new Date(),
+
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
@@ -68,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const restaurantPages: MetadataRoute.Sitemap = diningIslands.map((island) => ({
     url: `${BASE_URL}/best-restaurants-${island.slug}`,
-    lastModified: new Date(),
+
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
@@ -88,7 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const hotelPages: MetadataRoute.Sitemap = stayIslands.map((island) => ({
     url: `${BASE_URL}/best-hotels-${island.slug}`,
-    lastModified: new Date(),
+
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
@@ -102,7 +98,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(eq(listings.status, "active"));
+    .where(and(eq(listings.status, "active"), eq(islands.isActive, true), sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`));
 
   const listingPages: MetadataRoute.Sitemap = allListings.map((listing) => ({
     url: `${BASE_URL}/${listing.islandSlug}/${listing.slug}`,
@@ -146,7 +142,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const explorePages: MetadataRoute.Sitemap = [
     ...facetIslands.map((slug) => ({
       url: `${BASE_URL}/explore?island=${slug}`,
-      lastModified: new Date(),
+
       changeFrequency: "daily" as const,
       priority: 0.7,
     })),
@@ -155,7 +151,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .map((r) => ({
         // Next does not XML-escape <loc>; a raw & would invalidate the whole sitemap.
         url: `${BASE_URL}/explore?island=${r.slug}&amp;type=${r.type}`,
-        lastModified: new Date(),
+
         changeFrequency: "daily" as const,
         priority: 0.6,
       })),

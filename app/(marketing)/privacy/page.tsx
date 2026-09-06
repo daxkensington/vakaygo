@@ -10,7 +10,7 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-bold text-navy-700 mb-2" style={{ fontFamily: "var(--font-display)" }}>
             Privacy Policy
           </h1>
-          <p className="text-navy-400 mb-10">Last updated: March 2026</p>
+          <p className="text-navy-400 mb-10">Last updated: September 6, 2026</p>
 
           <div className="bg-white rounded-2xl p-8 md:p-10 shadow-[var(--shadow-card)] prose-navy">
             <div className="space-y-8 text-navy-600 leading-relaxed text-[15px]">
@@ -33,6 +33,14 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">4. Data Security</h2>
                 <p>We implement industry-standard security measures including encrypted data transmission (SSL/TLS), secure password hashing, and regular security audits. Payment information is processed by PCI-compliant payment processors.</p>
+              </section>
+
+              <section id="listing-interest" className="scroll-mt-24">
+                <h2 className="text-xl font-bold text-navy-700 mb-3">Listing interest and business outreach</h2>
+                <p>When you choose to record interest in a listing, we store the listing, your account identifier, the time and the version of the notice you accepted. We use this to count demand and prioritize invitations for businesses to claim or complete their listings. This does not create a booking, an availability request, or permission to send you marketing emails.</p>
+                <p className="mt-3">VakayGo staff can review aggregate interest counts. The business outreach feature does not share your name, email address or phone number with the business. We may tell the business how many verified accounts have recorded interest.</p>
+                <p className="mt-3">You can withdraw interest using “Remove my interest” on the listing. Withdrawn interest is excluded from demand counts. We retain the withdrawal record to prevent duplicate counts and limit misuse; account deletion removes the associated interest records. Contact hello@vakaygo.com if a listing is no longer accessible or you need help removing your data.</p>
+                <p className="mt-3">For business outreach, we retain business contact sources, review notes and contact or opt-out status. If you represent a business and do not want further outreach, tell us at hello@vakaygo.com so we can record that preference.</p>
               </section>
 
               <section>

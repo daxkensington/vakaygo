@@ -126,6 +126,8 @@ export const getListingForSeo = cache(
         and(
           eq(listings.slug, listingSlug),
           eq(islands.slug, islandSlug),
+          eq(islands.isActive, true),
+          sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`,
           eq(listings.status, "active")
         )
       )

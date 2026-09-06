@@ -135,6 +135,8 @@ jobs:
           done
       - name: Verify email identity and session revocation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/account-bootstrap.sql
+      - name: Verify directory interest and outreach isolation
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/listing-interest.sql
       - name: Verify automated business claim proof
         run: node tests/sql/render-business-onboarding.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
       - name: Verify inventory and transactional notifications

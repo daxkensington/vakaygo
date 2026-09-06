@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useCurrentBookingEligibility } from "@/components/listings/booking-eligibility";
+import { ListingInterest } from "@/components/listings/listing-interest";
 import { BookingWidget } from "@/components/listings/booking-widget";
 import { DiningReservation } from "@/components/listings/dining-reservation";
 import { TransferBooking } from "@/components/listings/transfer-booking";
@@ -75,6 +76,7 @@ export type ListingDetail = {
   typeData: Record<string, any> | null;
   islandSlug: string;
   islandName: string;
+  claimVerified?: boolean;
   operatorName: string | null;
   operatorAvatar: string | null;
   operatorId: string;
@@ -124,19 +126,6 @@ const typeLabels: Record<string, string> = {
   vip: "VIP Service",
   guide: "Local Guide",
   spa: "Spa & Wellness",
-};
-
-const schemaTypeMap: Record<string, string> = {
-  stay: "LodgingBusiness",
-  excursion: "TouristAttraction",
-  tour: "TouristAttraction",
-  dining: "Restaurant",
-  event: "Event",
-  transfer: "TaxiService",
-  transport: "TaxiService",
-  vip: "LocalBusiness",
-  guide: "TouristInformationCenter",
-  spa: "HealthAndBeautyBusiness",
 };
 
 export function ListingDetailClient({
@@ -220,111 +209,6 @@ export function ListingDetailClient({
       image: listing.images.length > 0 ? listing.images[0].url : null,
     });
   }, [listing]);
-
-  // Inject rich JSON-LD structured data once the API fetch resolves.
-  // (Title/description/OG/Twitter are set server-side by the layout's
-  // generateMetadata — don't duplicate them here, it just causes flicker.)
-  useEffect(() => {
-    if (!listing) return;
-
-    // Build JSON-LD
-    const schemaType = schemaTypeMap[listing.type] || "LocalBusiness";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const jsonLd: Record<string, any> = {
-      "@context": "https://schema.org",
-      "@type": schemaType,
-      name: listing.title,
-      description: listing.description || undefined,
-      url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: listing.parish || undefined,
-        addressCountry: listing.islandName,
-      },
-      image:
-        listing.images.length > 0
-          ? listing.images.map((img) => img.url)
-          : undefined,
-    };
-
-    // Google's structured-data policy: aggregateRating must come from reviews
-    // collected on THIS site. Imported Google ratings stay visible on the
-    // page but out of the markup (a mismatch is a manual-action risk).
-    const tdForLd = (listing.typeData || {}) as Record<string, unknown>;
-    const importedRating = tdForLd.unclaimed === true || tdForLd.source === "google-places";
-    if (!importedRating && listing.avgRating && listing.reviewCount && listing.reviewCount > 0) {
-      jsonLd.aggregateRating = {
-        "@type": "AggregateRating",
-        ratingValue: parseFloat(listing.avgRating).toFixed(1),
-        reviewCount: listing.reviewCount,
-        bestRating: "5",
-        worstRating: "1",
-      };
-    }
-
-    if (bookingEligible && listing.priceAmount) {
-      const price = parseFloat(listing.priceAmount);
-      // Generate human-readable priceRange
-      if (price < 20) jsonLd.priceRange = "$";
-      else if (price < 50) jsonLd.priceRange = "$$";
-      else if (price < 100) jsonLd.priceRange = "$$$";
-      else jsonLd.priceRange = "$$$$";
-
-      jsonLd.offers = {
-        "@type": "Offer",
-        price: listing.priceAmount,
-        priceCurrency: listing.priceCurrency || "XCD",
-        availability: "https://schema.org/InStock",
-      };
-    }
-
-    // Opening hours specification from operatingHours
-    if (tdForLd.operatingHours && typeof tdForLd.operatingHours === "object") {
-      const dayMap: Record<string, string> = {
-        monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
-        thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday",
-      };
-      const hours = tdForLd.operatingHours as Record<string, { open: string; close: string }>;
-      jsonLd.openingHoursSpecification = Object.entries(hours)
-        .filter(([, v]) => v && v.open && v.close)
-        .map(([day, v]) => ({
-          "@type": "OpeningHoursSpecification",
-          dayOfWeek: dayMap[day.toLowerCase()] || day,
-          opens: v.open,
-          closes: v.close,
-        }));
-    }
-
-    // Cuisine type for dining listings
-    if (listing.type === "dining" && tdForLd.cuisineType) {
-      jsonLd.servesCuisine = tdForLd.cuisineType as string;
-    }
-
-    // Add geo coordinates if available in typeData
-    const typeDataGeo = listing.typeData || {};
-    const lat = typeDataGeo.latitude || typeDataGeo.lat;
-    const lng = typeDataGeo.longitude || typeDataGeo.lng || typeDataGeo.lon;
-    if (lat && lng) {
-      jsonLd.geo = {
-        "@type": "GeoCoordinates",
-        latitude: lat,
-        longitude: lng,
-      };
-    }
-
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.textContent = JSON.stringify(jsonLd);
-    script.id = "listing-jsonld";
-    const existing = document.getElementById("listing-jsonld");
-    if (existing) existing.remove();
-    document.head.appendChild(script);
-
-    return () => {
-      const el = document.getElementById("listing-jsonld");
-      if (el) el.remove();
-    };
-  }, [listing, bookingEligible]);
 
   if (loading) {
     return (
@@ -491,7 +375,7 @@ export function ListingDetailClient({
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
                   type={listing.type}
-                  unclaimed={!!td.unclaimed}
+                  unclaimed={!listing.claimVerified}
                 />
               </div>
 
@@ -503,7 +387,7 @@ export function ListingDetailClient({
               )}
 
               {/* Operator / Claim Banner */}
-              {td.unclaimed ? (
+              {!listing.claimVerified ? (
                 <div className="mt-8 p-6 bg-gradient-to-r from-gold-700 to-gold-800 rounded-2xl text-white">
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
@@ -547,7 +431,7 @@ export function ListingDetailClient({
               )}
 
               {/* Contact Info */}
-              <ContactInfo typeData={listing.typeData} />
+              <ContactInfo typeData={listing.typeData} listingId={listing.id} />
 
               {/* Quick Info */}
               {listing.typeData && (
@@ -617,6 +501,14 @@ export function ListingDetailClient({
               </div>
 
               {/* Tour Itinerary (tour/excursion types) */}
+              <section className="mt-8 rounded-2xl border border-cream-200 bg-white p-6">
+                <h2 className="text-xl font-bold text-navy-700">Useful information</h2>
+                <h3 className="mt-5 font-semibold text-navy-700">Where is {listing.title}?</h3>
+                <p className="mt-2 text-navy-500">{listing.address || [listing.parish, listing.islandName].filter(Boolean).join(", ")}</p>
+                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Bookings are currently unavailable for this listing. You can explore the information and record interest. Interest does not reserve anything or create a payment.</p></>}
+                {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={"/auth/signup?role=operator&claim=" + listing.id}>start a free listing claim</Link>.</p></>}
+              </section>
+
               {["tour", "excursion"].includes(listing.type) && td.itinerary && Array.isArray(td.itinerary) && (
                 <TourItinerary itinerary={td.itinerary as { stopNumber: number; title: string; description: string; duration?: string; time?: string }[]} />
               )}
@@ -660,7 +552,7 @@ export function ListingDetailClient({
               )}
 
               {/* Booking Rules */}
-              {(listing.minStay || listing.maxStay || listing.advanceNotice || listing.maxGuests) && (
+              {bookingEligible && (listing.minStay || listing.maxStay || listing.advanceNotice || listing.maxGuests) && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">Booking Rules</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -740,14 +632,14 @@ export function ListingDetailClient({
 
               {/* Cancellation Policy — a request on a public-data listing has
                   nothing to cancel, so don't promise a policy nobody set. */}
-              {!td.unclaimed && (
+              {bookingEligible && (
                 <div className="mt-8">
                   <CancellationPolicy policy={listing.cancellationPolicy} />
                 </div>
               )}
 
               {/* Contact Operator */}
-              {!td.unclaimed && listing.operatorId && (
+              {listing.claimVerified && listing.operatorId && (
                 <div className="mt-8">
                   <ContactOperator
                     operatorId={listing.operatorId}
@@ -774,7 +666,7 @@ export function ListingDetailClient({
                     {relatedGuides.map((guide) => (
                       <Link
                         key={guide.id}
-                        href={`/blog/${guide.slug}`}
+                        href={`/guides/${guide.slug}`}
                         className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
                       >
                         {guide.coverImage && (
@@ -807,7 +699,9 @@ export function ListingDetailClient({
             </div>
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
-            {listing.type === "dining" ? (
+            {!bookingEligible ? (
+              <aside aria-label="Listing interest" className="lg:col-span-1"><div className="sticky top-24"><ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} /></div></aside>
+            ) : listing.type === "dining" ? (
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
                   <DiningReservation
@@ -815,7 +709,7 @@ export function ListingDetailClient({
                     listingId={listing.id}
                     listingTitle={listing.title}
                     operatorId={listing.operatorId}
-                    unclaimed={!!td.unclaimed}
+                    unclaimed={!listing.claimVerified}
                   />
                 </div>
               </div>
@@ -830,12 +724,12 @@ export function ListingDetailClient({
                     priceAmount={listing.priceAmount}
                     priceUnit={listing.priceUnit}
                     typeData={listing.typeData}
-                    unclaimed={!!td.unclaimed}
+                    unclaimed={!listing.claimVerified}
                   />
                 </div>
               </div>
             ) : (
-              <BookingWidget listing={listing} bookingEligible={bookingEligible} unclaimed={!!td.unclaimed} />
+              <BookingWidget listing={listing} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
             )}
           </div>
 

@@ -9,14 +9,14 @@ for (const reason of ["unclaimed", "onboarding_incomplete", "suspended"]) {
     }));
     await page.goto("/audit-island/audit-tour");
     await expect(page.getByRole("heading", { name: "Audit tour", exact: true })).toBeVisible();
-    await expect(page.getByRole("complementary", { name: "Booking availability" })).toContainText("Information only");
+    await expect(page.getByRole("complementary", { name: "Listing interest" })).toContainText("Bookings are currently unavailable");
     await expect(page.getByRole("button", { name: /^(Book Now|Request to Book|Reserve a Table|Request a Table|Pay Now|Continue & Book)$/ })).toHaveCount(0);
     await expect(page.locator('input[type="date"]')).toHaveCount(0);
     await expect(page.getByText("Instant Book", { exact: true })).toHaveCount(0);
     await expect.poll(async () => {
       const text = await page.locator("#listing-jsonld").textContent();
-      return text ? JSON.parse(text).offers : undefined;
-    }).toBeUndefined();
+      return text ? /"offers"|"Offer"|"InStock"/.test(text) : false;
+    }).toBe(false);
 
     await page.goto("/audit-island/audit-tour/book");
     await expect(page.getByRole("heading", { name: "Audit tour", exact: true })).toBeVisible();

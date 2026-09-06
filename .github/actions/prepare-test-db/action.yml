@@ -9,6 +9,7 @@ runs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
         done
         psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/booking-integrity.sql
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/directory-discovery-fixture.sql
         npm install --prefix /tmp/vakaygo-ci-pg --no-audit --no-fund pg@8.16.3
         VAKAYGO_CI_PG_MODULE=/tmp/vakaygo-ci-pg/node_modules/pg node tests/ci/neon-http.cjs > /tmp/vakaygo-ci-db.log 2>&1 &
         for attempt in {1..30}; do

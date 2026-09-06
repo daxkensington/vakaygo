@@ -17,6 +17,28 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+// Directory interest is independent of bookings and customer contact sharing.
+export const listingInterest = pgTable("listing_interest", {
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  noticeVersion: varchar("notice_version", { length: 32 }).notNull().default("2026-09-06"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [primaryKey({ columns: [t.listingId, t.userId] }),
+  index("listing_interest_user_updated_idx").on(t.userId, t.updatedAt),
+  index("listing_interest_active_listing_idx").on(t.listingId).where(sql`${t.active}=true`)]);
+export const businessOutreach = pgTable("business_outreach", {
+  listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 24 }).notNull().default("new"),
+  notes: text("notes").notNull().default(""),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  contactedAt: timestamp("contacted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [check("business_outreach_status_check", sql`${t.status} IN ('new','reviewing','contacted','do_not_contact')`),
+  check("business_outreach_notes_check", sql`length(${t.notes})<=4000`)]);
+
 // ─── ENUMS ──────────────────────────────────────────────────────
 export const userRoleEnum = pgEnum("user_role", [
   "traveler",
