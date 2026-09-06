@@ -42,7 +42,6 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
       AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
       RESEND_API_KEY: re_ci_only_no_live_email
-      NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       VAKAYGO_CI_DATABASE_PROXY: 1
     needs: check
     steps:
@@ -55,7 +54,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - uses: ./.github/actions/prepare-test-db
       - run: npm run build
+        env:
+          NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       - run: npx playwright test
+        env:
+          NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +86,6 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
       AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
       RESEND_API_KEY: re_ci_only_no_live_email
-      NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       VAKAYGO_CI_DATABASE_PROXY: 1
     needs: check
     steps:
@@ -95,11 +97,14 @@ jobs:
       - run: npm ci
       - uses: ./.github/actions/prepare-test-db
       - run: npm run build
+        env:
+          NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       - name: Run Lighthouse CI
         run: |
           npm install -g @lhci/cli
           lhci autorun
         env:
+          NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
   database:
