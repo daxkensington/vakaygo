@@ -14,7 +14,7 @@ const status = {
   listing: { title: "Verified company listing", slug: "verified-company", islandSlug: "grenada" },
   requirements: { claim: true, business: true, representative: true, terms: true, listing: true, payments: false, activation: false },
   business: { legalName: "Example Company", country: "GD", address: "Example business address", representativeName: "Example Representative" },
-  stripe: { connected: true }, termsVersion: "2026-09-06", activatedAt: null,
+  allowedPaymentCountries: [], stripe: { connected: true }, termsVersion: "2026-09-06", activatedAt: null,
 };
 let container: HTMLDivElement; let root: Root; let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -24,6 +24,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 async function renderPage() { const params = Promise.resolve({ listingId }); await act(async () => root.render(<Suspense fallback="Loading"><BusinessOnboardingPage params={params} /></Suspense>)); }
+function button(label: string) { return Array.from(container.querySelectorAll("button")).find(item => item.textContent === label)!; }
 
 it("rechecks provider state after onboarding return without automatically activating or creating payments", async () => {
   await renderPage();
@@ -42,6 +43,45 @@ it("does not expose business setup forms when the API rejects ownership", async 
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("current owner");
   expect(container.querySelector("form")).toBeNull();
   expect(container.textContent).not.toContain("Start secure payment setup");
+});
+
+it("accepts worldwide registration countries without implying payment availability", async () => {
+  await renderPage();
+  const select = container.querySelector("select")!;
+  expect(select.options.length).toBe(250);
+  for (const [code, name] of [["AU", "Australia"], ["DE", "Germany"], ["JP", "Japan"], ["KE", "Kenya"], ["GP", "Guadeloupe"], ["PR", "Puerto Rico"]]) {
+    expect(select.querySelector(`option[value="${code}"]`)?.textContent).toBe(name);
+  }
+  expect(container.textContent).toContain("Choose where your company is legally registered");
+  expect(container.textContent).toContain("Payment setup is not available for companies registered in Grenada yet");
+  expect(button("Save company details").disabled).toBe(false);
+  expect(button("Continue secure payment setup").disabled).toBe(true);
+  expect(button("Refresh verification status").disabled).toBe(false);
+});
+
+it("requires saved company details before connecting even when both countries are enabled", async () => {
+  const configured = { ...status, business: { ...status.business, country: "CA" }, allowedPaymentCountries: ["CA", "US"] };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(configured)));
+  await renderPage();
+  expect(button("Continue secure payment setup").disabled).toBe(false);
+  const select = container.querySelector("select")!;
+  await act(async () => { select.value = "US"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  expect(button("Continue secure payment setup").disabled).toBe(true);
+  expect(container.textContent).toContain("Save your company details before continuing");
+  expect(fetchMock.mock.calls.every(call => !call[1]?.method || call[1].method === "GET")).toBe(true);
+  await act(async () => { select.value = "CA"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  expect(button("Continue secure payment setup").disabled).toBe(false);
+});
+
+it("keeps payment setup closed when country configuration is missing while allowing verification refresh", async () => {
+  const unconfigured = { ...status, allowedPaymentCountries: undefined };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(unconfigured)));
+  await renderPage();
+  expect(button("Continue secure payment setup").disabled).toBe(true);
+  await act(async () => button("Refresh verification status").click());
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenLastCalledWith(`/api/operator/onboarding/${listingId}?refresh=1`, expect.objectContaining({ cache: "no-store" }));
+  expect(container.textContent).toContain("Verification status refreshed");
 });
 
 it("renders the exact operator terms draft version with fee, payout and refund responsibilities", async () => {

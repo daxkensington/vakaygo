@@ -4,13 +4,14 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { COUNTRIES } from "@/lib/countries";
 
 type Business = { legalName: string; country: string; address: string; representativeName: string };
 type Step = "claim" | "business" | "representative" | "terms" | "listing" | "payments" | "activation";
 type Onboarding = {
   listingId: string; state: string; eligible: boolean; reason: string; bookingsEnabled: boolean; canManage: boolean;
   listing: { title: string; slug: string; islandSlug: string }; requirements: Record<Step, boolean>;
-  business: Business; termsVersion: string; stripe: { connected: boolean }; activatedAt: string | null;
+  business: Business; termsVersion: string; allowedPaymentCountries: string[]; stripe: { connected: boolean }; activatedAt: string | null;
 };
 const steps: { key: Step; label: string }[] = [
   { key: "claim", label: "Business claim verified" }, { key: "business", label: "Legal business details" },
@@ -18,7 +19,6 @@ const steps: { key: Step; label: string }[] = [
   { key: "listing", label: "Listing information complete" }, { key: "payments", label: "Payments and payouts verified" },
   { key: "activation", label: "Onboarding finalized" },
 ];
-const countries = [["AG", "Antigua and Barbuda"], ["AI", "Anguilla"], ["AW", "Aruba"], ["BB", "Barbados"], ["BL", "Saint Barthélemy"], ["BS", "Bahamas"], ["BZ", "Belize"], ["CA", "Canada"], ["CW", "Curaçao"], ["DM", "Dominica"], ["DO", "Dominican Republic"], ["GB", "United Kingdom"], ["GD", "Grenada"], ["GP", "Guadeloupe"], ["GY", "Guyana"], ["HT", "Haiti"], ["JM", "Jamaica"], ["KN", "Saint Kitts and Nevis"], ["KY", "Cayman Islands"], ["LC", "Saint Lucia"], ["MF", "Saint Martin"], ["MQ", "Martinique"], ["MS", "Montserrat"], ["PR", "Puerto Rico"], ["SR", "Suriname"], ["SX", "Sint Maarten"], ["TC", "Turks and Caicos Islands"], ["TT", "Trinidad and Tobago"], ["US", "United States"], ["VC", "Saint Vincent and the Grenadines"], ["VG", "British Virgin Islands"], ["VI", "U.S. Virgin Islands"]];
 const emptyBusiness: Business = { legalName: "", country: "", address: "", representativeName: "" };
 
 export default function BusinessOnboardingPage({ params }: { params: Promise<{ listingId: string }> }) {
@@ -74,7 +74,13 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
 
   if (loading) return <div className="p-8" role="status"><Loader2 className="animate-spin" aria-label="Loading onboarding" /></div>;
   const allReady = status && steps.filter(step => step.key !== "activation").every(step => status.requirements[step.key] === true);
-  const canConnect = status && ["claim", "business", "representative", "terms"].every(key => status.requirements[key as Step] === true);
+  const detailsChanged = !!status && ((Object.keys(emptyBusiness) as (keyof Business)[]).some(key => business[key] !== status.business[key])
+    || authority !== status.requirements.representative || terms !== status.requirements.terms);
+  const selectedCountryName = COUNTRIES.find(country => country.code === business.country)?.name;
+  const paymentCountryAvailable = !!status?.allowedPaymentCountries?.includes(business.country);
+  const canConnect = status && !detailsChanged && paymentCountryAvailable
+    && status.business.country === business.country
+    && ["claim", "business", "representative", "terms"].every(key => status.requirements[key as Step] === true);
   const inputClass = "mt-1 w-full rounded-xl border border-cream-300 bg-white p-3 text-navy-700";
   const buttonClass = "rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white disabled:opacity-50";
   return <main className="mx-auto max-w-4xl p-6 md:p-8">
@@ -93,7 +99,8 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
       <form className="mt-6 space-y-4 rounded-2xl border border-cream-200 bg-white p-6" onSubmit={event => { event.preventDefault(); void perform("save"); }}>
         <h2 className="text-xl font-bold text-navy-700">Company and representative</h2>
         <label className="block text-sm font-semibold text-navy-600">Legal company name<input required maxLength={200} value={business.legalName || ""} onChange={event => setBusiness({ ...business, legalName: event.target.value })} className={inputClass} /></label>
-        <label className="block text-sm font-semibold text-navy-600">Country of registration<select required value={business.country || ""} onChange={event => setBusiness({ ...business, country: event.target.value })} className={inputClass}><option value="">Select country</option>{countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
+        <label className="block text-sm font-semibold text-navy-600">Country or territory of registration<select required aria-describedby="registration-country-help" value={business.country || ""} onChange={event => setBusiness({ ...business, country: event.target.value })} className={inputClass}><option value="">Select country or territory</option>{COUNTRIES.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select></label>
+        <p id="registration-country-help" className="text-sm text-navy-500">Choose where your company is legally registered. Your listing&apos;s destination and your customers&apos; countries may be different. Registering your company details does not enable bookings or payouts.</p>
         <label className="block text-sm font-semibold text-navy-600">Registered business address<textarea required maxLength={1000} value={business.address || ""} onChange={event => setBusiness({ ...business, address: event.target.value })} className={inputClass} rows={3} /></label>
         <label className="block text-sm font-semibold text-navy-600">Authorized representative&apos;s full name<input required maxLength={200} value={business.representativeName || ""} onChange={event => setBusiness({ ...business, representativeName: event.target.value })} className={inputClass} /></label>
         <label className="flex items-start gap-3 text-sm text-navy-600"><input type="checkbox" required checked={authority} onChange={event => setAuthority(event.target.checked)} className="mt-1" />I am authorized to represent this company and manage this listing.</label>
@@ -105,10 +112,16 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         <p className="mt-2 text-sm text-navy-500">Complete the listing information and Stripe&apos;s company, identity and payout checks. Eligibility is verified automatically; returning from Stripe alone does not complete onboarding.</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href={`/operator/listings/${listingId}`} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700">Review listing details</Link>
-          <button disabled={busy || !canConnect} onClick={() => void perform("connect")} className={buttonClass}>{status.stripe.connected ? "Continue secure payment setup" : "Start secure payment setup"}</button>
+          <button disabled={busy || !canConnect} aria-describedby="payment-country-status" onClick={() => void perform("connect")} className={buttonClass}>{status.stripe.connected ? "Continue secure payment setup" : "Start secure payment setup"}</button>
           <button disabled={busy} onClick={() => void perform("refresh")} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700 disabled:opacity-50">Refresh verification status</button>
         </div>
-        <p className="mt-4 text-sm text-navy-500">If payment onboarding is unavailable in your company&apos;s country, this listing remains information only.</p>
+        <p id="payment-country-status" className="mt-4 text-sm text-navy-500" aria-live="polite">{!selectedCountryName
+          ? "Choose and save your company’s country or territory of registration to check payment setup availability."
+          : !paymentCountryAvailable
+            ? `Payment setup is not available for companies registered in ${selectedCountryName} yet. You can save your company details; this listing stays information only until all onboarding and payment checks are complete.`
+            : detailsChanged
+              ? "Save your company details before continuing to secure payment setup."
+              : "Payment setup is available for your saved country of registration. Stripe must still verify your company, identity and payout account before bookings can be enabled."}</p>
       </section>
       <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-6">
         <h2 className="text-xl font-bold text-navy-700">Finalize onboarding</h2>

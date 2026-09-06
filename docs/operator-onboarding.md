@@ -4,6 +4,10 @@ VakayGo remains a directory until a listing has verified business ownership, com
 
 The directory-only production release is separate from this onboarding implementation. Do not enable bookings merely because the code or migrations have deployed. Migrations `0006`, `0007`, and `0008` have already been applied to staging and are immutable; corrections require a new migration.
 
+## Country scope
+
+The owner confirmed Canada as VakayGo’s registered country and wants all 21 listed Caribbean destinations, with worldwide expansion later. Worldwide business intake does not approve worldwide payments. Follow the [Caribbean payout setup brief](caribbean-payout-setup.md) for the actual inventory, territory exceptions, provider evaluation and unsent enquiry. Keep both provider country allowlists empty until the exact platform, funds flow and operator route are approved.
+
 ## Configuration and release order
 
 1. Keep `BOOKINGS_ENABLED=false` and the database `feature_flags` key `booking_launch_enabled` false throughout deployment and initial verification. Neither defaults to enabled. Preserve both controls for an operational pause.

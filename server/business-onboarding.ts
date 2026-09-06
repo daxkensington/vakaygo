@@ -6,6 +6,7 @@ import { requireUser } from "@/server/admin-auth";
 import { createConnectAccount, createAccountLink, getAccountStatus } from "@/server/stripe";
 import { expireListingPendingCheckouts } from "@/server/booking-checkout-safety";
 import { revalidateListing } from "@/lib/revalidate-listing";
+import { isCountryCode } from "@/lib/countries";
 
 export const OPERATOR_TERMS_VERSION = "2026-09-06";
 export const PROVIDER_READINESS_TTL_MS = 15 * 60 * 1000;
@@ -45,7 +46,7 @@ export function stripeEnvironment(): "test" | "live" | null {
   return null;
 }
 function allowedCountries() {
-  return (process.env.STRIPE_CONNECT_COUNTRIES || "").split(",").map(c => c.trim().toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c));
+  return (process.env.STRIPE_CONNECT_COUNTRIES || "").split(",").map(c => c.trim().toUpperCase()).filter(isCountryCode);
 }
 type Onboarding = {
   listing_id: string; operator_id: string; verified_claim_id: string;
@@ -83,10 +84,10 @@ function deploymentMatchesConfiguration(environment: unknown, platform: unknown,
   const deploymentPlatform = process.env.STRIPE_PLATFORM_ACCOUNT_ID || "";
   const configuredCountries = (process.env.STRIPE_CONNECT_COUNTRIES || "").split(",").map(value => value.trim().toUpperCase()).filter(Boolean);
   if (!deploymentEnvironment || !/^acct_[A-Za-z0-9]+$/.test(deploymentPlatform) || !configuredCountries.length
-    || configuredCountries.some(country => !/^[A-Z]{2}$/.test(country))
+    || configuredCountries.some(country => !isCountryCode(country))
     || environment !== deploymentEnvironment || platform !== deploymentPlatform
     || !Array.isArray(countries) || !countries.length
-    || countries.some(country => typeof country !== "string" || !/^[A-Z]{2}$/.test(country))) return false;
+    || countries.some(country => !isCountryCode(country))) return false;
   const deploymentCountries = [...new Set(configuredCountries)].sort();
   const databaseCountries = [...new Set(countries as string[])].sort();
   return databaseCountries.length === deploymentCountries.length &&
@@ -114,7 +115,7 @@ function requirements(ctx: Context) {
   const n = ctx.onboarding;
   return {
     claim: ctx.claim_valid,
-    business: !!n && (n.business_legal_name?.trim().length || 0) >= 2 && /^[A-Z]{2}$/.test(n.business_country || "") && (n.business_address?.trim().length || 0) >= 8,
+    business: !!n && (n.business_legal_name?.trim().length || 0) >= 2 && isCountryCode(n.business_country) && (n.business_address?.trim().length || 0) >= 8,
     representative: !!n?.authority_accepted_at && (n.representative_name?.trim().length || 0) >= 2,
     terms: n?.terms_version === OPERATOR_TERMS_VERSION && !!n.terms_accepted_at,
     listing: ctx.listing_valid,
@@ -178,7 +179,8 @@ export async function getOnboardingStatus(listingId: string, operatorId: string,
     bookingsEnabled: process.env.BOOKINGS_ENABLED === "true" && ctx.launch_enabled && deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries),
     business: { legalName: n?.business_legal_name || "", country: n?.business_country || "", address: n?.business_address || "", representativeName: n?.representative_name || "" },
     termsVersion: OPERATOR_TERMS_VERSION,
-    allowedPaymentCountries: allowedCountries().filter(c => ctx.config_countries?.includes(c)),
+    allowedPaymentCountries: deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries)
+      ? [...new Set(allowedCountries())] : [],
     stripe: { connected: !!n?.stripe_account_id, chargesEnabled: n?.charges_enabled || false, payoutsEnabled: n?.payouts_enabled || false,
       detailsSubmitted: n?.details_submitted || false, cardPaymentsActive: n?.card_payments_active || false, transfersActive: n?.transfers_active || false,
       checkedAt: n?.provider_checked_at || null },
@@ -196,7 +198,7 @@ export async function saveOnboarding(listingId: string, operatorId: string, inpu
   if (!body || typeof body !== "object" || !body.business) throw new OnboardingError("Business details are required");
   const legalName = boundedText(body.business.legalName, 2, 256, "Legal business name");
   const country = boundedText(body.business.country, 2, 2, "Actual business country").toUpperCase();
-  if (!/^[A-Z]{2}$/.test(country)) throw new OnboardingError("Use the actual two-letter business country code");
+  if (!isCountryCode(country)) throw new OnboardingError("Choose the actual country or territory where your company is registered");
   const address = boundedText(body.business.address, 8, 2000, "Business address");
   const representative = boundedText(body.business.representativeName, 2, 256, "Representative name");
   if (body.authorityAccepted !== true || body.termsAccepted !== true || body.termsVersion !== OPERATOR_TERMS_VERSION)
@@ -279,8 +281,8 @@ export async function connectOnboarding(listingId: string, operatorId: string, e
   const country = n.business_country!;
   const environment = stripeEnvironment();
   const platform = process.env.STRIPE_PLATFORM_ACCOUNT_ID;
-  if (!environment || !platform || ctx.config_environment !== environment || ctx.config_platform !== platform
-    || !allowedCountries().includes(country) || !ctx.config_countries?.includes(country))
+  if (!environment || !platform || !deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries)
+    || !allowedCountries().includes(country))
     throw new OnboardingError("Payment onboarding is not enabled for this business country", 409);
   if (n.provider_revoked_at || n.suspended_at) throw new OnboardingError("Payment account requires support review", 409);
   const origin = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;

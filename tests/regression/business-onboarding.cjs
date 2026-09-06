@@ -8,6 +8,11 @@ const ts = require("typescript");
 const source = ts.transpileModule(fs.readFileSync(path.join(__dirname,"../../server/business-onboarding.ts"),"utf8"),{
   compilerOptions:{ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true },
 }).outputText;
+const countrySource = ts.transpileModule(fs.readFileSync(path.join(__dirname,"../../lib/countries.ts"),"utf8"),{
+  compilerOptions:{ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022 },
+}).outputText;
+const countryModule={exports:{}};
+vm.runInNewContext(countrySource,{module:countryModule,exports:countryModule.exports},{filename:"countries.ts"});
 const id = "11111111-1111-4111-8111-111111111111";
 const operator = "22222222-2222-4222-8222-222222222222";
 const baseEnv = { DATABASE_URL:"postgresql://synthetic.invalid/test",BOOKINGS_ENABLED:"true",STRIPE_SECRET_KEY:"sk_test_synthetic",
@@ -40,6 +45,7 @@ function load(options={}) {
     "@/server/stripe":stripe,
     "@/server/booking-checkout-safety":{expireListingPendingCheckouts:async value=>expired.push(value)},
     "@/lib/revalidate-listing":{revalidateListing:async value=>invalidated.push(value)},
+    "@/lib/countries":countryModule.exports,
   };
   const testModule={exports:{}};
   const context={module:testModule,exports:testModule.exports,require:name=>name==="node:crypto"?require(name):imports[name],
@@ -188,4 +194,67 @@ test("discovery launch gate requires deployment and database provider configurat
 test("discovery launch gate fails closed on missing or unavailable database configuration",async()=>{
   assert.equal(await load({query:async()=>[]}).api.bookingLaunchEnabled(),false);
   assert.equal(await load({query:async()=>{throw Error("Database unavailable");}}).api.bookingLaunchEnabled(),false);
+});
+
+test("payment setup countries require the same exact configuration as booking eligibility",async()=>{
+  const valid=await load().api.getOnboardingStatus(id,operator);
+  assert.deepEqual(Array.from(valid.allowedPaymentCountries),["CA"]);
+  for(const {context:ctx=readyContext(),env={}} of [
+    {context:{...readyContext(),config_countries:["CA","US"]}},
+    {context:{...readyContext(),config_countries:["CA","ZZ"]},env:{STRIPE_CONNECT_COUNTRIES:"CA,ZZ"}},
+    {context:{...readyContext(),config_countries:[]}},
+    {context:{...readyContext(),config_platform:"acct_other"}},
+    {context:{...readyContext(),config_environment:"live"}},
+    {env:{STRIPE_CONNECT_COUNTRIES:"CA,US"}},
+    {env:{STRIPE_CONNECT_COUNTRIES:"CA,*"}},
+    {env:{STRIPE_CONNECT_COUNTRIES:""}},
+  ]) {
+    let providerWrites=0;
+    const h=load({context:ctx,env,stripe:{createAccountLink:async()=>{providerWrites++;},createConnectAccount:async()=>{providerWrites++;}}});
+    assert.equal((await h.api.getOnboardingStatus(id,operator)).allowedPaymentCountries.length,0);
+    await assert.rejects(h.api.connectOnboarding(id,operator,"synthetic@example.invalid"),/not enabled for this business country/);
+    assert.equal(providerWrites,0);
+    assert.equal(h.calls.some(call=>call.text.includes("UPDATE")),false);
+  }
+});
+
+test("an enabled saved country can continue provider setup while bookings remain paused",async()=>{
+  let linked;
+  const h=load({env:{BOOKINGS_ENABLED:"false",APP_URL:"https://synthetic.example.invalid"},stripe:{createAccountLink:async(accountId,urls)=>{
+    linked={accountId,urls};return "https://connect.stripe.com/synthetic";
+  }}});
+  assert.equal((await h.api.getOnboardingStatus(id,operator)).bookingsEnabled,false);
+  assert.equal((await h.api.connectOnboarding(id,operator,"synthetic@example.invalid")).url,"https://connect.stripe.com/synthetic");
+  assert.equal(linked.accountId,"acct_connected");
+  assert.equal(linked.urls.returnUrl,`https://synthetic.example.invalid/operator/onboarding/${id}?stripe=success`);
+});
+
+test("actual worldwide company details can be saved without enabling a payment route",async()=>{
+  const ctx=readyContext();ctx.onboarding.stripe_account_id=null;
+  const h=load({query:async(sql,params)=>{
+    if(sql.includes("UPDATE listing_onboarding n SET business_legal_name")) {
+      ctx.onboarding.business_country=params[3];ctx.onboarding.activated_at=null;ctx.onboarding.provider_checked_at=null;
+      return [{listing_id:id}];
+    }
+    return [ctx];
+  }});
+  const result=await h.api.saveOnboarding(id,operator,{business:{legalName:"Worldwide company",country:"jp",address:"123 Synthetic Road",representativeName:"Synthetic Operator"},
+    authorityAccepted:true,termsAccepted:true,termsVersion:"2026-09-06"});
+  assert.equal(result.business.country,"JP");assert.equal(result.requirements.business,true);assert.equal(result.eligible,false);
+  assert.equal(result.allowedPaymentCountries.includes("JP"),false);
+  await assert.rejects(h.api.connectOnboarding(id,operator,"synthetic@example.invalid"),/not enabled for this business country/);
+  assert.deepEqual(h.expired,[id]);
+});
+
+test("unassigned and wildcard country values cannot be saved or made bookable",async()=>{
+  for(const country of ["ZZ","XX","EU","UK","*"]) {
+    const ctx=readyContext();ctx.onboarding.stripe_account_id=null;
+    const h=load({context:ctx});
+    await assert.rejects(h.api.saveOnboarding(id,operator,{business:{legalName:"Synthetic company",country,address:"123 Synthetic Road",representativeName:"Synthetic Operator"},
+      authorityAccepted:true,termsAccepted:true,termsVersion:"2026-09-06"}));
+    assert.equal(h.calls.some(call=>call.text.includes("UPDATE")),false);
+    ctx.onboarding.business_country=country;ctx.onboarding.provider_country=country;
+    ctx.config_countries=[country];
+    assert.equal((await load({context:ctx,env:{STRIPE_CONNECT_COUNTRIES:country}}).api.getListingBookingEligibility(id)).eligible,false);
+  }
 });
