@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       const [b] = await q`SELECT b.*, l.title, l.type_data, u.email, u.name, u.phone, o.email AS operator_email
         FROM bookings b JOIN listings l ON l.id=b.listing_id JOIN users u ON u.id=b.traveler_id JOIN users o ON o.id=b.operator_id WHERE b.id=${job.booking_id}`;
       if (!b) throw new Error("Booking missing from outbox");
-      const stale = (job.kind === "received" && b.status !== "pending") || (job.kind === "confirmed" && !["confirmed","completed"].includes(b.status));
+      const stale = (job.kind === "requested" && b.status !== "requested") || (job.kind === "request_confirmed" && !["confirmed","completed"].includes(b.status)) || (job.kind === "received" && b.status !== "pending") || (job.kind === "confirmed" && !["confirmed","completed"].includes(b.status));
       const recipient = job.recipient === "team" ? "bookings@vakaygo.com" : job.recipient === "operator" ? b.operator_email : b.email;
       if (!stale && !(job.recipient === "operator" && recipient.includes("unclaimed"))) {
         const request = ["requested","request_confirmed"].includes(job.kind);
@@ -28,7 +28,9 @@ export async function GET(request: Request) {
           request ? "VakayGo does not collect payment for this request." : "Booking total: "+b.total_amount+" "+b.currency,
           !request ? CANCELLATION_POLICIES[cancellationPolicyKey(b.cancellation_policy_snapshot)].summary : "",
           job.recipient === "team" ? "Traveler: "+b.name+" / "+b.email+" / "+(b.phone||"")+"\nNotes: "+(b.guest_notes||"")+"\nBusiness phone: "+(b.type_data?.phone||"") : "",
-          b.cancellation_reason || "", "Manage your booking: https://vakaygo.com/bookings",
+          b.cancellation_reason || "",
+          b.cancellation_refund_cents > 0 ? "Refund requested: "+(b.cancellation_refund_cents/100).toFixed(2)+" "+b.currency+". Processing time depends on your payment provider." : "",
+          "Manage your booking: https://vakaygo.com/"+(job.recipient === "team" ? "admin/bookings" : job.recipient === "operator" ? "operator/bookings" : "bookings"),
           "Reply to this email for help."].filter(Boolean).join("\n\n");
         const result = await resend.emails.send({from:"VakayGo <hello@vakaygo.com>",to:recipient,replyTo:"bookings@vakaygo.com",subject:heading+" — "+b.title,text},{idempotencyKey:"booking-mail-"+job.id});
         if (result.error) throw new Error(result.error.message);

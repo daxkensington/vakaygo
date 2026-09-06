@@ -158,5 +158,11 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"});
    assert.equal(refunded,7150);assert.equal(rows.bookings[0].status,"refunded");
  });
+ for(const status of ["completed","no_show"])await check("Ordinary cancellation cannot reopen ended booking: "+status,async()=>{
+   const rows={bookings:[{...pending(),status}],listings:[]};const db=dbFor(rows);
+   const service=load("server/cancel-booking.ts",mocksFor(db));
+   assert.equal((await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"})).httpStatus,409);
+   assert.equal(db.writes.length,0);
+ });
  console.log(JSON.stringify({checks:results.length,passed:results.length,results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});

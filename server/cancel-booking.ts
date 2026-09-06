@@ -11,6 +11,7 @@ export async function cancelBooking(bookingId: string, actor: { id: string; role
   const db = drizzle(neon(process.env.DATABASE_URL!));
   let [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return { error: "Booking not found", httpStatus: 404 };
+  if (["completed","no_show"].includes(booking.status)) return { error: "This booking has ended. Contact support for a refund review.", httpStatus: 409 };
   const business = booking.operatorId === actor.id || actor.role === "admin";
   if (!business && booking.travelerId !== actor.id) return { error: "Forbidden", httpStatus: 403 };
   if (booking.status === "refunded") return { success: true, status: "refunded", refundAmount: (booking.cancellationRefundCents || 0) / 100 };
@@ -40,5 +41,5 @@ export async function cancelBooking(bookingId: string, actor: { id: string; role
     await db.update(bookings).set({ status, refundId: refund.id, updatedAt: new Date() }).where(eq(bookings.id,bookingId));
   }
   return { success: true, status, policy, refundAmount: cents / 100, refundPercent: booking.paymentId ? Math.round(cents/Number(booking.totalAmount)) : 0,
-    message: cents > 0 ? "Cancellation recorded. Track refund status in your booking." : "Booking cancelled." };
+    message: cents > 0 ? "Cancellation recorded. Any eligible refund is being processed." : "Booking cancelled." };
 }

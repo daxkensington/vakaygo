@@ -3,9 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
 import { eq, and, isNull, ne, sql } from "drizzle-orm";
-import { sendAbandonedBookingRecovery, sendBookingExpired } from "@/server/email";
+import { sendAbandonedBookingRecovery } from "@/server/email";
 import { createNotification } from "@/server/notifications";
-import { classifyPendingBooking, expiryReason, EXPIRE_AFTER_HOURS } from "@/lib/abandoned-bookings";
+import { classifyPendingBooking, expiryReason } from "@/lib/abandoned-bookings";
 import { isUnclaimedOperatorEmail } from "@/lib/booking-request";
 import { logger } from "@/lib/logger";
 
@@ -120,19 +120,7 @@ export async function GET(request: Request) {
       if (closed.length === 0) continue; // paid or moved on since we read it
       result.expired.push(b.bookingNumber);
 
-      try {
-        await sendBookingExpired({
-          to: b.travelerEmail,
-          travelerName: b.travelerName || "Traveler",
-          bookingNumber: b.bookingNumber,
-          listingTitle: b.listingTitle,
-          listingUrl,
-          expiresAfterHours: EXPIRE_AFTER_HOURS,
-        });
-      } catch (err) {
-        logger.error("Booking expired email failed", { bookingNumber: b.bookingNumber, err });
-        result.failed.push(b.bookingNumber);
-      }
+      // The status change atomically queued cancellation mail in the outbox.
       createNotification({
         userId: b.travelerId,
         type: "booking",

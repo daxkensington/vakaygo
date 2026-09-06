@@ -42,6 +42,8 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
       AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
       RESEND_API_KEY: re_ci_only_no_live_email
+      NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
+      VAKAYGO_CI_DATABASE_PROXY: 1
     needs: check
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +83,8 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
       AUTH_SECRET: ci-only-secret-for-isolated-booking-tests-32chars
       RESEND_API_KEY: re_ci_only_no_live_email
+      NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
+      VAKAYGO_CI_DATABASE_PROXY: 1
     needs: check
     steps:
       - uses: actions/checkout@v4
