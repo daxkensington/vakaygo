@@ -286,3 +286,5 @@ export async function expireCheckoutSession(id: string) {
   if (session.status === "open") await getStripe().checkout.sessions.expire(id);
 }
 export async function retrieveBookingPayment(id: string) { return getStripe().paymentIntents.retrieve(id); }
+
+export async function retrieveBookingRefund(id: string) { return getStripe().refunds.retrieve(id); }

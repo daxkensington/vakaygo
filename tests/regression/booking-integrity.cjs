@@ -164,5 +164,28 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    assert.equal((await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"})).httpStatus,409);
    assert.equal(db.writes.length,0);
  });
+ await check("A pending refund is refreshed without creating another refund",async()=>{
+   const rows={bookings:[{...pending(),status:"confirmed",paymentId:"pi_paid",paidAt:new Date()}],listings:[{id:listingId,timezone:"America/Grenada",policy:"moderate"}]};
+   const db=dbFor(rows);let created=0,retrieved=0;
+   const service=load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{
+     refundBooking:async()=>{created++;return {id:"re_pending",status:"pending"};},
+     retrieveBookingRefund:async()=>{retrieved++;return {id:"re_pending",status:"succeeded"};}
+   }}));
+   await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(rows.bookings[0].refundStatus,"pending");
+   await service.cancelBooking(bookingId,{id:"traveler",role:"traveler"});
+   assert.equal(rows.bookings[0].status,"refunded");assert.equal(rows.bookings[0].refundStatus,"succeeded");
+   assert.equal(created,1);assert.equal(retrieved,1);
+ });
+ await check("The refund worker retries persisted intents and reports failures",async()=>{
+   let attempts=0;
+   const h=load("app/api/cron/booking-refunds/route.ts",{
+     "@neondatabase/serverless":{neon:()=>async()=>[{id:"a",traveler_id:"t"},{id:"b",traveler_id:"t"}]},
+     "@/server/cancel-booking":{cancelBooking:async()=>{attempts++;if(attempts===1)throw Error("temporary");return {success:true};}}
+   });
+   const unauthorized=await h.GET(new Request("https://audit.invalid/api/cron/booking-refunds"));assert.equal(unauthorized.status,401);assert.equal(attempts,0);
+   const r=await h.GET(new Request("https://audit.invalid/api/cron/booking-refunds",{headers:{authorization:"Bearer synthetic"}}));
+   const data=await r.json();assert.equal(data.processed,1);assert.equal(data.failed,1);assert.equal(attempts,2);
+ });
  console.log(JSON.stringify({checks:results.length,passed:results.length,results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});

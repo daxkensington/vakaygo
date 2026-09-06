@@ -324,6 +324,7 @@ export const bookings = pgTable(
     cancellationRequestedAt: timestamp("cancellation_requested_at"),
     cancellationRefundCents: integer("cancellation_refund_cents"),
     refundId: varchar("refund_id", { length: 256 }),
+    refundStatus: varchar("refund_status", { length: 32 }),
     // Set by the abandoned-bookings cron when the one "complete your
     // booking" email goes out; the claim that stops it repeating.
     recoveryEmailSentAt: timestamp("recovery_email_sent_at"),

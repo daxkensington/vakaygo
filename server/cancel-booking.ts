@@ -4,16 +4,16 @@ import { and, eq, isNull } from "drizzle-orm";
 import { bookings, listings, islands } from "@/drizzle/schema";
 import { calculateRefundPercent } from "@/lib/cancellation";
 import { localBookingNow } from "@/lib/booking-validation";
-import { refundBooking, expireCheckoutSession } from "@/server/stripe";
+import { refundBooking, expireCheckoutSession, retrieveBookingRefund } from "@/server/stripe";
 
 type CancellationResult = { error: string; httpStatus: number } | { success: true; status: string; refundAmount: number; refundPercent?: number; policy?: string; message?: string };
 export async function cancelBooking(bookingId: string, actor: { id: string; role: string }, reason?: unknown): Promise<CancellationResult> {
   const db = drizzle(neon(process.env.DATABASE_URL!));
   let [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return { error: "Booking not found", httpStatus: 404 };
-  if (["completed","no_show"].includes(booking.status)) return { error: "This booking has ended. Contact support for a refund review.", httpStatus: 409 };
   const business = booking.operatorId === actor.id || actor.role === "admin";
   if (!business && booking.travelerId !== actor.id) return { error: "Forbidden", httpStatus: 403 };
+  if (["completed","no_show"].includes(booking.status)) return { error: "This booking has ended. Contact support for a refund review.", httpStatus: 409 };
   if (booking.status === "refunded") return { success: true, status: "refunded", refundAmount: (booking.cancellationRefundCents || 0) / 100 };
   const [listing] = await db.select({ policy: listings.cancellationPolicy, timezone: islands.timezone }).from(listings).innerJoin(islands,eq(listings.islandId,islands.id)).where(eq(listings.id,booking.listingId)).limit(1);
   const policy = booking.cancellationPolicySnapshot || listing?.policy || "moderate";
@@ -33,12 +33,15 @@ export async function cancelBooking(bookingId: string, actor: { id: string; role
   if (booking.checkoutSessionId && !booking.paidAt) await expireCheckoutSession(booking.checkoutSessionId);
   const cents = booking.cancellationRefundCents || 0;
   let status = booking.status;
-  if (booking.paymentId && cents > 0 && !booking.refundId) {
-    const refund = await refundBooking({ paymentIntentId: booking.paymentId, amount: cents,
+  if (booking.paymentId && cents > 0 && booking.refundStatus !== "succeeded") {
+    const refund = booking.refundId ? await retrieveBookingRefund(booking.refundId) : await refundBooking({ paymentIntentId: booking.paymentId, amount: cents,
       fullRefund: cents === Math.round(Number(booking.totalAmount)*100), idempotencyKey: "refund_" + booking.id });
-    if (refund.status === "failed" || refund.status === "canceled") throw new Error("Refund failed; support review required");
+    if (refund.status === "failed" || refund.status === "canceled") {
+      await db.update(bookings).set({ refundId: refund.id, refundStatus: refund.status, updatedAt: new Date() }).where(eq(bookings.id,bookingId));
+      return { error: "Refund failed; support review required", httpStatus: 502 };
+    }
     status = refund.status === "succeeded" && cents === Math.round(Number(booking.totalAmount)*100) ? "refunded" : "cancelled";
-    await db.update(bookings).set({ status, refundId: refund.id, updatedAt: new Date() }).where(eq(bookings.id,bookingId));
+    await db.update(bookings).set({ status, refundId: refund.id, refundStatus: refund.status, updatedAt: new Date() }).where(eq(bookings.id,bookingId));
   }
   return { success: true, status, policy, refundAmount: cents / 100, refundPercent: booking.paymentId ? Math.round(cents/Number(booking.totalAmount)) : 0,
     message: cents > 0 ? "Cancellation recorded. Any eligible refund is being processed." : "Booking cancelled." };

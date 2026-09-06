@@ -70,7 +70,7 @@ export function CurrencySwitcher() {
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        aria-label="Select currency"
+        aria-label={`${CURRENCY_FLAGS[currency]} ${CURRENCY_SYMBOLS[currency]} ${currency}: Select currency`}
         aria-expanded={open}
         title={
           ratesUpdatedAt

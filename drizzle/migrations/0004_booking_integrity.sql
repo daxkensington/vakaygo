@@ -8,7 +8,8 @@ ALTER TABLE bookings
  ADD COLUMN cancellation_policy_version integer,
  ADD COLUMN cancellation_requested_at timestamp,
  ADD COLUMN cancellation_refund_cents integer,
- ADD COLUMN refund_id varchar(256);
+ ADD COLUMN refund_id varchar(256),
+ ADD COLUMN refund_status varchar(32);
 --> statement-breakpoint
 CREATE TABLE booking_mail_outbox (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

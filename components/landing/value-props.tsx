@@ -17,7 +17,7 @@ const props = [
   },
   {
     icon: ShieldCheck,
-    title: "Trusted Local Operators",
+    title: "Local Businesses",
     description:
       "Discover local businesses, read reviews and see clear booking terms. Requests are confirmed with the business before payment.",
     gradient: "from-teal-500 to-teal-600",
@@ -75,7 +75,7 @@ export function ValueProps() {
                     alt=""
                     fill
                     loading="lazy"
-                    sizes="(min-width: 768px) 50vw, 100vw"
+                    sizes="(min-width: 1280px) 616px, (min-width: 768px) calc(50vw - 24px), calc(100vw - 48px)"
                     quality={75}
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />

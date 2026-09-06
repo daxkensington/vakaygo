@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({
@@ -97,6 +97,6 @@ export default withSentryConfig(
     project: "vakaygo-web",
     silent: true,
     widenClientFileUpload: true,
-    disableLogger: true,
+    webpack: { treeshake: { removeDebugLogging: true } },
   }
 );

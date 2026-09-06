@@ -156,7 +156,7 @@ export default function RootLayout({
         <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner /><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
-        <Analytics />
+        {process.env.VERCEL === "1" && <Analytics />}
         <GoogleAnalytics />
       </body>
     </html>
