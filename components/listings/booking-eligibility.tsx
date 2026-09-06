@@ -67,7 +67,7 @@ export function BookingUnavailableNotice({ listingId, operatorId, unclaimed = fa
   const owner = Boolean(operatorId && user?.id === operatorId);
   return (
     <aside className="rounded-2xl border border-cream-200 bg-white p-6 shadow-[var(--shadow-card)]" aria-label="Booking availability">
-      <h3 className="text-lg font-bold text-navy-700">Information only</h3>
+      <h2 className="text-lg font-bold text-navy-700">Information only</h2>
       <p className="mt-2 text-sm leading-relaxed text-navy-500">Online bookings, reservation requests and payments are currently unavailable for this listing.</p>
       {unclaimed ? (
         <>

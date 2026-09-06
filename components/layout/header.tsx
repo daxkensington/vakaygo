@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import Link from "next/link";
 
@@ -18,10 +18,36 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const isLanding = pathname === "/";
 
   useFocusTrap(mobileMenuRef, mobileOpen);
+
+  useLayoutEffect(() => {
+    const announcements = document.getElementById("site-announcements");
+    const header = headerRef.current;
+    if (!announcements || !header) return;
+    let previous = -1;
+    const updateTop = () => {
+      // Banners remain in document flow. Only their visible portion offsets
+      // the fixed header, including stacked or wrapped banners on mobile.
+      const top = Math.max(0, announcements.getBoundingClientRect().bottom);
+      if (top === previous) return;
+      previous = top;
+      header.style.top = `${top}px`;
+    };
+    updateTop();
+    const observer = new ResizeObserver(updateTop);
+    observer.observe(announcements);
+    window.addEventListener("scroll", updateTop, { passive: true });
+    window.addEventListener("resize", updateTop);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateTop);
+      window.removeEventListener("resize", updateTop);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -40,7 +66,8 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      ref={headerRef}
+      className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,box-shadow,backdrop-filter] duration-500 ${
         scrolled || !isLanding
           ? "bg-white/90 backdrop-blur-xl shadow-[0_1px_20px_rgba(0,0,0,0.06)]"
           : "bg-transparent"

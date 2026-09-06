@@ -153,7 +153,7 @@ export default function RootLayout({
           }}
         />
         <LocaleHtmlAttrs />
-        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><PromoBanner /><EmailVerificationBanner /><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
         {process.env.VERCEL === "1" && <Analytics />}
