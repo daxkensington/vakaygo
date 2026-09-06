@@ -41,3 +41,15 @@ test("listing gallery supports keyboard entry, navigation, Escape and focus rest
   await expect(dialog).not.toBeVisible();
   await expect(opener).toBeFocused();
 });
+
+test("operator sees an availability conflict when accepting a full booking request",async({request})=>{
+  const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000001",role:"operator"}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+  const headers={Cookie:"session="+token};
+  const bookings=await request.get("/api/bookings?view=operator",{headers});
+  expect(bookings.status()).toBe(200);
+  const booking=(await bookings.json()).bookings.find((item:{bookingNumber:string})=>item.bookingNumber==="request-two");
+  expect(booking).toBeTruthy();
+  const response=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"confirmed"}});
+  expect(response.status()).toBe(409);
+  expect((await response.json()).error).toMatch(/availability/);
+});

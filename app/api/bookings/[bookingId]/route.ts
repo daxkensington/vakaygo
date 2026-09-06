@@ -226,6 +226,9 @@ export async function PATCH(
 
     return NextResponse.json({ booking: { id: updated.id, status: updated.status } });
   } catch (error) {
+    const dbError = error as { cause?: { message?: string }; message?: string };
+    const detail = dbError.cause?.message || dbError.message || "";
+    if (/VG_BOOKING:/.test(detail)) return NextResponse.json({ error: detail.split("VG_BOOKING:")[1].trim() }, { status: 409 });
     logger.error("Update booking error", error);
     return NextResponse.json({ error: "Failed to update booking" }, { status: 500 });
   }
