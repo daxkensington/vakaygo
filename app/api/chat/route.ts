@@ -14,6 +14,12 @@ import { eq, desc, sql } from "drizzle-orm";
 import { jwtVerify } from "jose";
 
 import { logger } from "@/lib/logger";
+import { env } from "@/lib/env";
+
+const unavailable = () => NextResponse.json({
+  error: "The concierge is temporarily unavailable. Please retry or contact hello@vakaygo.com.",
+  code: "CONCIERGE_UNAVAILABLE",
+}, { status: 503 });
 // ─── Auth Helper ───────────────────────────────────────────────
 async function getUserId(): Promise<string | null> {
   try {
@@ -390,7 +396,10 @@ function extractListings(toolResults: { name: string; result: any }[]): ListingC
 // ─── POST Handler ───────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid chat request" }, { status: 400 });
+    }
     const { messages, context, personality, locale, voiceMode } = body as {
       messages: { role: "user" | "assistant"; content: string }[];
       personality?: string;
@@ -408,6 +417,10 @@ export async function POST(request: Request) {
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages are required" }, { status: 400 });
+    }
+
+    if (messages.some(m => !m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || !m.content.trim())) {
+      return NextResponse.json({ error: "Messages must contain text and a valid role" }, { status: 400 });
     }
 
     // SECURITY: bound the request so anonymous traffic can't drive an unbounded
@@ -429,6 +442,14 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const apiKey = env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      logger.error("Concierge provider is not configured");
+      return unavailable();
+    }
+    // One shared deadline bounds all provider turns, including response bodies.
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
 
     // Get authenticated user for memory
     const userId = await getUserId();
@@ -477,15 +498,17 @@ export async function POST(request: Request) {
     const MAX_ITERATIONS = 4;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
+      signal.throwIfAborted();
       const res = await fetch("https://api.anthropic.com/v1/messages", {
+        signal,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY!,
+          "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: env.ANTHROPIC_CONCIERGE_MODEL,
           max_tokens: voiceMode ? 300 : 1024,
           system: systemPrompt,
           messages: apiMessages,
@@ -494,9 +517,11 @@ export async function POST(request: Request) {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        logger.error("Anthropic API error", null, { status: res.status, body: errorText });
-        return NextResponse.json({ error: "Failed to get response from AI" }, { status: 500 });
+        logger.error("Concierge provider request failed", null, {
+          status: res.status,
+          requestId: res.headers.get("request-id"),
+        });
+        return unavailable();
       }
 
       const data = await res.json();
@@ -519,6 +544,7 @@ export async function POST(request: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolResults: any[] = [];
       for (const block of toolUseBlocks) {
+        signal.throwIfAborted();
         try {
           const result = await executeTool(block.name, block.input, userId);
           allToolResults.push({ name: block.name, result });
@@ -550,13 +576,14 @@ export async function POST(request: Request) {
     }
 
     const listingCards = extractListings(allToolResults);
+    if (!finalText.trim()) return unavailable();
 
     return NextResponse.json({
-      message: finalText || "Sorry, I couldn't generate a response. Please try again!",
+      message: finalText,
       ...(listingCards.length > 0 ? { listings: listingCards } : {}),
     });
   } catch (error) {
     logger.error("Chat API error", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return unavailable();
   }
 }

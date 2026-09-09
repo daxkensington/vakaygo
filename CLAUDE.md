@@ -48,6 +48,7 @@ npx playwright test tests/e2e/homepage.spec.ts
 - `app/api/` — 90+ API routes
 
 ### Critical Shared Modules
+- **Concierge provider** — `/api/chat` uses `ANTHROPIC_API_KEY` and the validated `ANTHROPIC_CONCIERGE_MODEL` setting (default `claude-sonnet-4-6`). The former hardcoded `claude-sonnet-4-20250514` returned a model-not-found error in September 2026. Check both credential validity and model availability when diagnosing a 503. Provider failures return `CONCIERGE_UNAVAILABLE` and the published support address; never expose raw provider errors or credentials to visitors. The provider loop has a shared 35-second deadline, and client history is kept within 40 messages / 24,000 characters.
 - **`lib/env.ts`** — Zod-validated env vars. `DATABASE_URL` and `AUTH_SECRET` are required. Import `env` from here, not `process.env`.
 - **`lib/logger.ts`** — Structured logging. Routes to Sentry in prod, console in dev. Use `logger.{debug,info,warn,error}`.
 - **`server/admin-auth.ts`** — `requireUser()`, `requireAdmin()`, `requireOperator()`, `assertListingOwnership()`, `createSessionToken()`, `verifySessionToken()`, `setSessionCookie()`, `clearSessionCookie()`.
