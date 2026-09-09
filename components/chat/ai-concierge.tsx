@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
 
@@ -91,7 +92,8 @@ function loadMessages(): Message[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = sessionStorage.getItem(SESSION_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const parsed: unknown = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string").slice(-40) : [];
   } catch {
     return [];
   }
@@ -99,7 +101,7 @@ function loadMessages(): Message[] {
 
 function saveMessages(messages: Message[]) {
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages.slice(-40)));
   } catch {}
 }
 
@@ -474,6 +476,32 @@ export function AIConcierge({
   // Audio element ref for API-based TTS playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const audioGenerationRef = useRef(0);
+  const ttsRequestRef = useRef<AbortController | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const voiceEnabledRef = useRef(voiceEnabled);
+  voiceEnabledRef.current = voiceEnabled;
+
+  const stopSpeaking = useCallback(() => {
+    audioGenerationRef.current += 1;
+    ttsRequestRef.current?.abort();
+    ttsRequestRef.current = null;
+    window.speechSynthesis?.cancel();
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setIsSpeaking(false);
+    setVoiceState("idle");
+  }, []);
+
 
   const speakText = useCallback(async (text: string, onDone?: () => void) => {
     if (typeof window === "undefined" || !text.trim()) {
@@ -481,12 +509,19 @@ export function AIConcierge({
       return;
     }
 
+    stopSpeaking();
+    const generation = audioGenerationRef.current;
+    const request = new AbortController();
+    ttsRequestRef.current = request;
+    const timeout = setTimeout(() => request.abort(), 20000);
+    const isCurrent = () => generation === audioGenerationRef.current;
     setIsSpeaking(true);
     setVoiceState("speaking");
 
     try {
       // Call our TTS API which uses OpenAI's HD voices
       const res = await fetch("/api/tts", {
+        signal: request.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -498,6 +533,8 @@ export function AIConcierge({
       if (!res.ok) throw new Error("TTS failed");
 
       const audioBlob = await res.blob();
+      if (!isCurrent()) return;
+      clearTimeout(timeout);
 
       // Clean up previous audio URL
       if (audioUrlRef.current) {
@@ -511,12 +548,20 @@ export function AIConcierge({
       audioRef.current = audio;
 
       audio.onended = () => {
+        if (!isCurrent()) return;
+        URL.revokeObjectURL(audioUrl);
+        audioUrlRef.current = null;
+        audioRef.current = null;
         setIsSpeaking(false);
         setVoiceState("idle");
         onDone?.();
       };
 
       audio.onerror = () => {
+        if (!isCurrent()) return;
+        URL.revokeObjectURL(audioUrl);
+        audioUrlRef.current = null;
+        audioRef.current = null;
         setIsSpeaking(false);
         setVoiceState("idle");
         onDone?.();
@@ -524,6 +569,17 @@ export function AIConcierge({
 
       await audio.play();
     } catch (err) {
+      if (!isCurrent()) return;
+      if (audioRef.current) {
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
       console.error("TTS playback error:", err);
       // Fallback to browser speech synthesis if API TTS fails
       try {
@@ -531,9 +587,9 @@ export function AIConcierge({
           const clean = text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/[#*_~`]/g, "").slice(0, 500);
           const utterance = new SpeechSynthesisUtterance(clean);
           utterance.rate = 1.0;
-          utterance.lang = "en-US";
-          utterance.onend = () => { setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
-          utterance.onerror = () => { setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
+          utterance.lang = LOCALE_TO_LANG[getUserLocale()] || "en-US";
+          utterance.onend = () => { if (!isCurrent()) return; setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
+          utterance.onerror = () => { if (!isCurrent()) return; setIsSpeaking(false); setVoiceState("idle"); onDone?.(); };
           window.speechSynthesis.speak(utterance);
           return;
         }
@@ -541,25 +597,19 @@ export function AIConcierge({
       setIsSpeaking(false);
       setVoiceState("idle");
       onDone?.();
+    } finally {
+      clearTimeout(timeout);
     }
-  }, [personality]);
+  }, [personality, stopSpeaking, getUserLocale]);
 
-  const stopSpeaking = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-    }
-    setIsSpeaking(false);
-    setVoiceState("idle");
-  }, []);
 
   // Start listening (used by both manual mic button and voice mode loop)
   const startListening = useCallback((onResult: (transcript: string) => void) => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.abort();
+    }
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return;
 
     const SpeechRecognition =
@@ -578,18 +628,27 @@ export function AIConcierge({
     };
 
     recognition.onerror = () => {
+      if (recognitionRef.current !== recognition) return;
       setIsListening(false);
       setVoiceState("idle");
     };
     recognition.onend = () => {
+      if (recognitionRef.current !== recognition) return;
+      recognitionRef.current = null;
       setIsListening(false);
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-    setVoiceState("listening");
-  }, []);
+    try {
+      recognition.start();
+      setIsListening(true);
+      setVoiceState("listening");
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceState("idle");
+    }
+  }, [getUserLocale]);
 
   // Toggle mic for text mode
   const toggleVoice = useCallback(() => {
@@ -608,7 +667,11 @@ export function AIConcierge({
 
   const sendMessage = useCallback(
     async (content: string, isVoice = false) => {
-      if (!content.trim() || isLoading) return;
+      if (!content.trim() || isLoading || requestRef.current) return;
+      const request = new AbortController();
+      requestRef.current = request;
+      const timeout = setTimeout(() => request.abort(), 45000);
+      const searchTimer = setTimeout(() => setLoadingLabel("Searching listings..."), 1500);
 
       const userMessage: Message = { role: "user", content: content.trim() };
       analytics.useConcierge(content.trim());
@@ -620,13 +683,18 @@ export function AIConcierge({
       if (isVoice) setVoiceState("thinking");
 
       try {
-        const searchTimer = setTimeout(() => setLoadingLabel("Searching listings..."), 1500);
-
+        // Keep recent context within the server's limits as a conversation grows.
+        const requestMessages = newMessages.slice(-40).map(({ role, content }) => ({ role, content }));
+        let requestChars = requestMessages.reduce((total, message) => total + message.content.length, 0);
+        while (requestMessages.length > 1 && (requestChars > 24000 || requestMessages[0].role !== "user")) {
+          requestChars -= requestMessages.shift()!.content.length;
+        }
         const res = await fetch("/api/chat", {
+          signal: request.signal,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            messages: requestMessages,
             context: buildContext(),
             personality,
             locale: getUserLocale(),
@@ -639,6 +707,8 @@ export function AIConcierge({
         if (!res.ok) throw new Error("Failed to get response");
 
         const data = await res.json();
+        if (requestRef.current !== request) return;
+        if (typeof data.message !== "string" || !data.message.trim()) throw new Error("Empty reply");
         const assistantMessage: Message = {
           role: "assistant",
           content: data.message,
@@ -648,11 +718,12 @@ export function AIConcierge({
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Voice response: speak and then auto-listen again in voice mode
-        if ((voiceEnabled || isVoice) && data.message) {
+        if (voiceEnabledRef.current && data.message) {
           speakText(data.message, () => {
             // After speaking, auto-listen if still in voice mode
             if (voiceModeRef.current) {
               setTimeout(() => {
+                if (!voiceModeRef.current) return;
                 startListening((transcript) => {
                   setLastTranscript(transcript);
                   // Auto-send in voice mode
@@ -669,17 +740,24 @@ export function AIConcierge({
 
         if (!isOpen) setHasUnread(true);
       } catch {
+        if (requestRef.current !== request) return;
+        setInput(current => current || content.trim());
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "Sorry, I'm having trouble connecting right now. Please try again in a moment!",
+            content: "I couldn't get a reply right now. Your message is ready to retry. For help, email hello@vakaygo.com or visit our Contact page.",
           },
         ]);
         setVoiceState("idle");
       } finally {
-        setIsLoading(false);
-        setLoadingLabel(undefined);
+        clearTimeout(timeout);
+        clearTimeout(searchTimer);
+        if (requestRef.current === request) {
+          requestRef.current = null;
+          setIsLoading(false);
+          setLoadingLabel(undefined);
+        }
       }
     },
     [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening, getUserLocale]
@@ -709,6 +787,8 @@ export function AIConcierge({
   };
 
   const navigateToListing = (url: string) => {
+    if (!url.startsWith("/") || url.startsWith("//") || url.includes("\\")) return;
+    exitVoiceMode();
     router.push(url);
     setIsOpen(false);
   };
@@ -726,6 +806,8 @@ export function AIConcierge({
 
   // Enter voice mode with spoken welcome
   const enterVoiceMode = useCallback(() => {
+    voiceModeRef.current = true;
+    voiceEnabledRef.current = true;
     setVoiceMode(true);
     setVoiceEnabled(true);
     // Speak a welcome greeting, then start listening
@@ -734,6 +816,7 @@ export function AIConcierge({
       // After welcome, start listening
       if (voiceModeRef.current) {
         setTimeout(() => {
+          if (!voiceModeRef.current) return;
           startListening((transcript) => {
             voiceSend(transcript);
           });
@@ -744,16 +827,39 @@ export function AIConcierge({
 
   // Exit voice mode
   const exitVoiceMode = useCallback(() => {
+    voiceModeRef.current = false;
+    voiceEnabledRef.current = false;
+    setVoiceEnabled(false);
     setVoiceMode(false);
     setVoiceState("idle");
     stopSpeaking();
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
     }
     setIsListening(false);
   }, [stopSpeaking]);
 
+  useEffect(() => () => {
+    voiceModeRef.current = false;
+    audioGenerationRef.current += 1;
+    ttsRequestRef.current?.abort();
+    requestRef.current?.abort();
+    requestRef.current = null;
+    if (recognitionRef.current) { recognitionRef.current.onresult = null; recognitionRef.current.onend = null; recognitionRef.current.abort(); }
+    if (audioRef.current) { audioRef.current.onended = null; audioRef.current.onerror = null; audioRef.current.pause(); }
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    window.speechSynthesis?.cancel();
+  }, []);
+
   const handlePersonalityChange = (id: string) => {
+    exitVoiceMode();
+    requestRef.current?.abort();
+    requestRef.current = null;
+    setIsLoading(false);
+    setLoadingLabel(undefined);
     // Stop any ongoing speech/listening before switching
     stopSpeaking();
     if (recognitionRef.current) recognitionRef.current.stop();
@@ -766,7 +872,7 @@ export function AIConcierge({
     setShowPersonalities(false);
     // Clear conversation when switching personality
     setMessages([]);
-    sessionStorage.removeItem(SESSION_KEY);
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Persistence is optional. */ }
   };
 
   const hasSpeechApi =
@@ -780,7 +886,10 @@ export function AIConcierge({
       {/* ── Chat Panel ───────────────────────────────────── */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[600px] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-slide-up"
+          role="dialog"
+          aria-label="VakayGo AI concierge"
+          onKeyDown={(event) => { if (event.key === "Escape") { exitVoiceMode(); setIsOpen(false); } }}
+          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[600px] max-h-[calc(100dvh-7rem)] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden animate-slide-up"
           style={{
             background: "linear-gradient(white, white) padding-box, linear-gradient(135deg, #c8912e, #2dd4bf, #c8912e) border-box",
             border: "2px solid transparent",
@@ -826,6 +935,7 @@ export function AIConcierge({
               <button
                 onClick={() => {
                   setVoiceEnabled((v) => {
+                    voiceEnabledRef.current = !v;
                     if (v) stopSpeaking();
                     return !v;
                   });
@@ -843,7 +953,7 @@ export function AIConcierge({
                 )}
               </button>
               <button
-                onClick={() => { setIsOpen(false); if (voiceMode) exitVoiceMode(); }}
+                onClick={() => { setIsOpen(false); exitVoiceMode(); }}
                 className="p-1 rounded-lg hover:bg-white/20 transition-colors"
                 aria-label="Close chat"
               >
@@ -908,16 +1018,12 @@ export function AIConcierge({
                       setVoiceState("idle");
                     } else if (!isLoading && !isSpeaking) {
                       startListening((transcript) => {
-                        setLastTranscript(transcript);
-                        setInput(transcript);
-                        setTimeout(() => {
-                          const form = document.getElementById("concierge-form") as HTMLFormElement;
-                          form?.requestSubmit();
-                        }, 100);
+                        voiceSend(transcript);
                       });
                     }
                   }}
                   disabled={isLoading || isSpeaking}
+                  aria-label={isListening ? "Stop listening" : "Start listening"}
                   className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
                     isListening
                       ? "bg-red-500 text-white scale-110 animate-pulse shadow-red-500/40"
@@ -946,7 +1052,7 @@ export function AIConcierge({
           ) : (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation" className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                 {/* Welcome message */}
                 <div className="flex gap-2 justify-start">
                   <div className={`flex-shrink-0 w-7 h-7 bg-gradient-to-br ${currentPersonality.color} rounded-full flex items-center justify-center mt-1`}>
@@ -1063,8 +1169,11 @@ export function AIConcierge({
                 <input
                   ref={inputRef}
                   type="text"
+                  aria-label="Message your AI concierge"
+                  maxLength={4000}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault(); }}
                   placeholder={isListening ? "Listening..." : `Ask ${currentPersonality.name}...`}
                   className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-cream-50 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-transparent text-navy-700 placeholder:text-navy-300"
                   disabled={isLoading}
@@ -1082,6 +1191,8 @@ export function AIConcierge({
             <div className="px-4 pb-2 flex items-center justify-center gap-1">
               <span className="text-[10px] text-navy-300">Powered by</span>
               <span className="text-[10px] font-semibold text-navy-400">Claude</span>
+              <span aria-hidden="true" className="text-navy-300">·</span>
+              <Link href="/contact" className="text-xs text-navy-600 underline">Contact support</Link>
             </div>
           </div>
 
@@ -1091,7 +1202,10 @@ export function AIConcierge({
 
       {/* ── Floating Chat Button ─────────────────────────── */}
       <button
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (isOpen) exitVoiceMode();
+          setIsOpen((prev) => !prev);
+        }}
         className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br ${currentPersonality.color} text-white shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:shadow-[0_6px_28px_rgba(200,145,46,0.5)] hover:scale-105 transition-all duration-200 flex items-center justify-center ${showPulse ? "animate-pulse" : ""}`}
         aria-label={isOpen ? "Close concierge chat" : "Open concierge chat"}
       >

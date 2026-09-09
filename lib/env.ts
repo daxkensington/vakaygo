@@ -22,6 +22,7 @@ const EnvSchema = z.object({
   XAI_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_CONCIERGE_MODEL: z.string().min(1).default("claude-sonnet-4-6"),
   GEMINI_API_KEY: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   VAPID_PUBLIC_KEY: z.string().optional(),
