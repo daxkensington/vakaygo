@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
 
@@ -1191,7 +1192,7 @@ export function AIConcierge({
               <span className="text-[10px] text-navy-300">Powered by</span>
               <span className="text-[10px] font-semibold text-navy-400">Claude</span>
               <span aria-hidden="true" className="text-navy-300">·</span>
-              <a href="/contact" className="text-xs text-navy-600 underline">Contact support</a>
+              <Link href="/contact" className="text-xs text-navy-600 underline">Contact support</Link>
             </div>
           </div>
 
