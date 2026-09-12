@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/checkout-safety",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/schema-drift",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
