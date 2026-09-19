@@ -7,8 +7,6 @@ import { eq, and, sql } from "drizzle-orm";
 const BASE_URL = "https://vakaygo.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const db = drizzle(neon(process.env.DATABASE_URL!));
-
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "daily", priority: 1.0 },
@@ -26,6 +24,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/faq`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/contact`, changeFrequency: "monthly", priority: 0.5 },
   ];
+
+  // A sitemap is discovery metadata, not a page anyone waits on, so it must not
+  // be able to fail a build. Preview deployments carry no DATABASE_URL, and
+  // `neon()` throws on an empty connection string during prerender of
+  // /sitemap.xml -- which took the whole build down ("Export encountered an
+  // error on /sitemap.xml/route, exiting the build") and meant every preview in
+  // this project failed. Production has the variable and still emits the full
+  // sitemap; without it we serve the static routes rather than nothing.
+  if (!process.env.DATABASE_URL) {
+    console.warn(
+      "[sitemap] No DATABASE_URL — emitting static routes only. " +
+        "Expected in preview and local builds; in production this means the " +
+        "sitemap is incomplete.",
+    );
+    return staticPages;
+  }
+
+  const db = drizzle(neon(process.env.DATABASE_URL));
 
   // Island pages
   const allIslands = await db
