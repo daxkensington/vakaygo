@@ -76,13 +76,16 @@ export function canonicalUrl(f: Pick<ListingFilters, "island" | "type">): string
 }
 
 export async function buildMetadata(f: ListingFilters, data?: ExploreData | null): Promise<Metadata> {
-  const indexable = isIndexableFilterSet(f);
+  const landing = isIndexableFilterSet(f);
   const canonical = canonicalUrl(f);
 
-  let islandName: string | null = data?.island?.name ?? null;
-  if (islandName == null && f.island && indexable && data === undefined) {
-    islandName = (await loadInitial(f))?.island?.name ?? null;
-  }
+  // A valid island/type filter can still have no listings. Keep its empty
+  // browse page usable, but don't invite Google to index a soft 404. Only
+  // treat a successful zero-count response as empty: a temporary DB failure
+  // must not remove an otherwise populated landing from the index.
+  const initial = data === undefined && landing ? await loadInitial(f) : data;
+  const indexable = landing && initial?.totalCount !== 0;
+  const islandName = initial?.island?.name ?? null;
   const { title, description } = describe(f, islandName);
 
   return {
