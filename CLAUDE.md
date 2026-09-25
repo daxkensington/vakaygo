@@ -95,7 +95,7 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 
 ## Build Gotchas
 
-- **`app/sitemap.ts` queries the DB at build time.** Building locally without a valid `DATABASE_URL` fails at sitemap prerender. Use the Neon `ci-test` branch URL for local builds.
+- **Several statically prerendered pages (e.g. `/islands`) query the DB at build time**, so `npm run build` needs a real `DATABASE_URL`. `app/sitemap.ts` alone degrades to static routes when it is unset. For local builds use the Neon `vercel-preview` branch (`br-broad-lake-am17nibq`) — the same copy-on-write branch Vercel previews use. The old `ci-test` branch is archived. CI builds against its own throwaway Postgres service.
 - **mapbox-gl is ~1.73 MB.** It's lazy-loaded only on `/explore`, `/map`, and listing detail pages. Never import map components into homepage/landing — it regresses LCP.
 - **CSP uses `unsafe-inline`/`unsafe-eval`** because nonce-based CSP forces all pages into dynamic rendering (kills CDN caching for 7k+ listings). Mitigation: experimental SRI in `next.config.ts`.
 - **Don't reintroduce:** `next-auth`, `@auth/drizzle-adapter`, `superjson`, `leaflet`, `react-leaflet` — all removed as dead deps.
