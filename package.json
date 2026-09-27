@@ -33,7 +33,7 @@
     "jose": "^6.2.2",
     "lucide-react": "^1.7.0",
     "mapbox-gl": "^3.21.0",
-    "next": "16.3.4",
+    "next": "16.3.6",
     "next-intl": "^4.8.3",
     "otpauth": "^9.5.0",
     "qrcode": "^1.5.4",
@@ -50,9 +50,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "16.3.4",
+    "@next/bundle-analyzer": "16.3.6",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -61,10 +62,16 @@
     "@vitest/ui": "^4.1.4",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.3.6",
     "happy-dom": "^20.9.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "^7.3.6",
     "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    }
   }
 }
