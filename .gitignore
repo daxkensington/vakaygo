@@ -54,3 +54,6 @@ lighthouse-latest
 lighthouse-report.*
 sweep-lighthouse.mjs
 a11y-failures.mjs
+
+scripts/_*
+
