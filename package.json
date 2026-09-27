@@ -72,6 +72,9 @@
   "overrides": {
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
+    },
+    "eslint-config-next": {
+      "eslint-plugin-react-hooks": "7.0.1"
     }
   }
 }
