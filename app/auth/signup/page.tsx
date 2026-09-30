@@ -59,7 +59,7 @@ function SignUpContent() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, role, referralCode: referralCode || undefined }),
+        body: JSON.stringify({ email, password, name, role, referralCode: referralCode || undefined, ...(claimListingId ? { claimListingId } : {}) }),
       });
 
       const data = await res.json();
@@ -72,8 +72,9 @@ function SignUpContent() {
       analytics.signUp("email");
 
       // Inbox proof is required before password sign-in or business access.
+      // The verification email carries the listing id across devices.
       setPassword("");
-      router.push("/auth/verify-email");
+      router.push(claimListingId ? `/auth/verify-email?claim=${claimListingId}` : "/auth/verify-email");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -160,7 +161,11 @@ function SignUpContent() {
               {/* Google OAuth */}
               <button
                 type="button"
-                onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
+                onClick={() => {
+                  const url = new URL("/api/auth/google", window.location.origin);
+                  if (claimListingId) url.searchParams.set("claim", claimListingId);
+                  window.location.assign(url.href);
+                }}
                 className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -179,7 +184,7 @@ function SignUpContent() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-sm text-navy-500">After creating your account, confirm the link sent to your email before signing in or claiming a business.</p>
+                <p className="text-sm text-navy-500">{claimListingId ? "After you confirm the link sent to your email, you return to this business to verify its phone. Claiming does not enable bookings." : "After creating your account, confirm the link sent to your email before signing in or claiming a business."}</p>
                 <div>
                   <label className="block text-sm font-medium text-navy-600 mb-1.5">
                     Full Name

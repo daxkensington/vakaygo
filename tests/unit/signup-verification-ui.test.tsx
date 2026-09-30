@@ -29,6 +29,23 @@ it("sends a successful signup to inbox verification without attempting password 
   expect(router.push).toHaveBeenCalledExactlyOnceWith("/auth/verify-email");
 });
 
+it("carries a listing claim through signup and into inbox verification", async () => {
+  navigation.query = "role=operator&claim=20000000-0000-4000-8000-000000000009";
+  await act(async () => root.render(<SignUpPage />));
+  expect(container.textContent).toContain("you return to this business");
+  await submit();
+  expect(fetchMock).toHaveBeenCalledWith("/api/auth/signup", expect.objectContaining({
+    body: expect.stringContaining("\"claimListingId\":\"20000000-0000-4000-8000-000000000009\""),
+  }));
+  expect(router.push).toHaveBeenCalledExactlyOnceWith("/auth/verify-email?claim=20000000-0000-4000-8000-000000000009");
+});
+
+it("keeps a claim listing when a signed-out visitor chooses sign up", async () => {
+  navigation.query = "next=/operator/claim/20000000-0000-4000-8000-000000000009";
+  await act(async () => root.render(<SignInPage />));
+  expect(container.querySelector("a[href='/auth/signup?role=operator&claim=20000000-0000-4000-8000-000000000009']")).not.toBeNull();
+});
+
 it("offers unauthenticated email-link recovery instead of a resend button that requires an existing session", async () => {
   navigation.query = ""; await act(async () => root.render(<VerifyEmailPage />));
   expect(container.querySelector('a[href="/auth/signin?method=email"]')?.textContent).toContain("email sign-in link");

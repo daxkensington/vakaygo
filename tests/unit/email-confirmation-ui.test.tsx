@@ -4,17 +4,19 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ user: null, refresh: vi.fn(async () => {}) }));
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
+const navigation = vi.hoisted(() => ({ query: "token=synthetic-confirmation-token" }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  useSearchParams: () => new URLSearchParams("token=synthetic-confirmation-token"),
+  useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => React.createElement("a", props, children) }));
 import VerifyEmailPage from "@/app/(platform)/auth/verify-email/page";
 
 let container: HTMLDivElement; let root: Root; let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
-  vi.clearAllMocks(); vi.stubGlobal("React", React); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.clearAllMocks(); navigation.query = "token=synthetic-confirmation-token";
+  vi.stubGlobal("React", React); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, redirect: "/operator" }), { headers: { "Content-Type": "application/json" } }));
   vi.stubGlobal("fetch", fetchMock); container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
 });
@@ -38,6 +40,12 @@ it("consumes the supplied proof only after confirmation and refreshes the establ
     method: "POST", body: JSON.stringify({ token: "synthetic-confirmation-token" }),
   }));
   expect(auth.refresh).toHaveBeenCalledTimes(1); expect(router.replace).toHaveBeenCalledWith("/operator");
+});
+
+it("returns a confirmed operator to the listing claim carried by the email link", async () => {
+  navigation.query = "token=synthetic-confirmation-token&claim=20000000-0000-4000-8000-000000000009";
+  await renderPage(); await submit();
+  expect(router.replace).toHaveBeenCalledWith("/operator/claim/20000000-0000-4000-8000-000000000009");
 });
 
 it("shows the provider error and requires regular sign-in when an existing account needs its password or second factor", async () => {

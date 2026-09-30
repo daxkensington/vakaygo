@@ -17,7 +17,7 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
   const [summary, setSummary] = useState<ClaimSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [needsSwitch, setNeedsSwitch] = useState(false);
+  const [blocked, setBlocked] = useState<"email" | "role" | null>(null);
   const [error, setError] = useState("");
   const [channel, setChannel] = useState<"sms" | "call">("sms");
   const [code, setCode] = useState("");
@@ -26,7 +26,11 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
     try {
       const response = await fetch(`/api/listings/claim?listingId=${encodeURIComponent(listingId)}`, { cache: "no-store" });
       if (response.status === 401) { router.replace(`/auth/signin?next=/operator/claim/${listingId}`); return; }
-      if (response.status === 403) { setNeedsSwitch(true); return; }
+      if (response.status === 403) {
+        const data = await response.json().catch(() => ({}));
+        setBlocked(data.code === "email_unverified" ? "email" : "role");
+        return;
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load this listing.");
       setSummary(data);
@@ -52,7 +56,12 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
   }
 
   if (loading) return <div className="p-8" role="status"><Loader2 className="animate-spin" aria-label="Loading business verification" /></div>;
-  if (needsSwitch) return <main className="max-w-xl p-8">
+  if (blocked === "email") return <main className="max-w-xl p-8">
+    <h1 className="text-2xl font-bold text-navy-700">Confirm your email</h1>
+    <p className="mt-3 text-navy-500">Verify the inbox on this account before claiming the business. The confirmation link brings you back to this listing. Claiming does not enable bookings.</p>
+    <Link href={`/auth/verify-email?claim=${listingId}`} className="mt-6 inline-flex rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white">Continue email verification</Link>
+  </main>;
+  if (blocked === "role") return <main className="max-w-xl p-8">
     <h1 className="text-2xl font-bold text-navy-700">Claim this business</h1>
     <p className="mt-3 text-navy-500">A business account is needed to verify your authority and manage a listing. Switching is free and keeps your traveler history.</p>
     {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
@@ -91,7 +100,15 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
           <input id="business-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{4,10}" minLength={4} maxLength={10} required value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ""))} className="w-full rounded-xl border border-cream-300 p-3" />
           <button disabled={busy || code.length < 4} className="rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white disabled:opacity-50">Verify and claim</button>
         </form>}
-      </div> : <p className="mt-6 rounded-xl bg-cream-50 p-4 text-sm text-navy-600">Automatic verification is currently unavailable for this listing. It will remain information only until a trusted business contact can be verified.</p>}
+      </div> : <div className="mt-6 rounded-xl bg-cream-50 p-4 text-sm text-navy-600">
+        <p>{summary?.verification?.reason === "trusted_contact_unavailable"
+          ? "This listing does not have a business phone on file that we can verify automatically. It stays information only until support reviews a trusted contact. Do not substitute a different phone number."
+          : summary?.verification?.reason === "verification_unavailable"
+            ? "Text and voice verification is temporarily unavailable. Contact VakayGo with this listing and we will review it with you."
+            : "Automatic verification is currently unavailable for this listing. It will remain information only until a trusted business contact can be verified."}</p>
+        <p className="mt-3">Include this listing: <span className="font-semibold">{listing.url}</span></p>
+        <Link href={`/contact?listing=${encodeURIComponent(listing.url)}`} className="mt-3 inline-flex font-semibold text-gold-700 underline">Contact VakayGo</Link>
+      </div>}
     </section>}
   </main>;
 }

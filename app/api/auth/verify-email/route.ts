@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { requireUser } from "@/server/admin-auth";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail } from "@/server/email";
+import { claimListingPath } from "@/lib/claim-return";
 
 import { logger } from "@/lib/logger";
 
@@ -13,8 +14,12 @@ function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const claimListingId = claimListingPath(typeof body?.claimListingId === "string" ? body.claimListingId : null)
+      ? body.claimListingId
+      : undefined;
     const auth = await requireUser();
     if (!auth.ok) return auth.error;
     const userId = auth.userId;
@@ -61,6 +66,7 @@ export async function POST() {
       to: user.email,
       name: user.name || "Traveler",
       token: verificationToken,
+      claimListingId,
     });
 
     return NextResponse.json({ sent: true });

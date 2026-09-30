@@ -8,9 +8,11 @@ import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 import { logger } from "@/lib/logger";
+import { claimListingPath } from "@/lib/claim-return";
 export async function POST(request: Request) {
   try {
-    const { email, password, name, role, referralCode } = await request.json();
+    const { email, password, name, role, referralCode, claimListingId } = await request.json();
+    const claimReturn = claimListingPath(typeof claimListingId === "string" ? claimListingId : null) ? claimListingId : undefined;
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
           emailVerificationExpires: expires,
         })
         .where(eq(users.id, user.id));
-      sendVerificationEmail({ to: email, name, token: verificationToken }).catch(() => {});
+      sendVerificationEmail({ to: email, name, token: verificationToken, claimListingId: claimReturn }).catch(() => {});
     } catch (_verifyErr) {
       // Verification email failure should not break signup
     }

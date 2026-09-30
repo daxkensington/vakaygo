@@ -34,9 +34,15 @@ export function onboardingErrorResponse(error: unknown) {
 export async function requireCurrentOperator() {
   const auth = await requireUser();
   if (!auth.ok) return auth;
-  const [user] = await query<{ id: string; role: string; email: string; name: string | null }>(
-    "SELECT id,role,email,name FROM users WHERE id=$1 AND email_verified=true AND role IN ('operator','admin')", [auth.userId]);
+  const [user] = await query<{ id: string; role: string; email: string; name: string | null; email_verified: boolean | null }>(
+    "SELECT id,role,email,name,email_verified FROM users WHERE id=$1", [auth.userId]);
   if (!user) return { ok: false as const, error: NextResponse.json({ error: "Business account required" }, { status: 403 }) };
+  if (user.email_verified !== true) {
+    return { ok: false as const, error: NextResponse.json({ error: "Verify your email before managing a business.", code: "email_unverified" }, { status: 403 }) };
+  }
+  if (user.role !== "operator" && user.role !== "admin") {
+    return { ok: false as const, error: NextResponse.json({ error: "Business account required", code: "role_required" }, { status: 403 }) };
+  }
   return { ok: true as const, userId: user.id, role: user.role, email: user.email, name: user.name };
 }
 export function stripeEnvironment(): "test" | "live" | null {

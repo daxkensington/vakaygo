@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { claimStartHref } from "@/lib/claim-return";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
@@ -136,6 +138,7 @@ export function ListingDetailClient({
   initialSimilar: SimilarListing[];
 }) {
   const params = useParams();
+  const { user } = useAuth();
   const [listing, setListing] = useState<ListingDetail | null>(initialListing);
   const bookingState = useCurrentBookingEligibility(listing?.id);
   const bookingEligible = bookingState.eligible === true;
@@ -396,7 +399,7 @@ export function ListingDetailClient({
                     Online bookings and payments are currently unavailable.
                   </p>
                   <a
-                    href={`/auth/signup?role=operator&claim=${listing.id}`}
+                    href={claimStartHref(listing.id, Boolean(user))}
                     className="inline-flex items-center gap-2 bg-white text-gold-700 px-5 py-2.5 rounded-xl font-semibold mt-4 hover:bg-cream-100 transition-colors text-sm"
                   >
                     Claim This Business — Free
@@ -506,7 +509,7 @@ export function ListingDetailClient({
                 <h3 className="mt-5 font-semibold text-navy-700">Where is {listing.title}?</h3>
                 <p className="mt-2 text-navy-500">{listing.address || [listing.parish, listing.islandName].filter(Boolean).join(", ")}</p>
                 {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Bookings are currently unavailable for this listing. You can explore the information and record interest. Interest does not reserve anything or create a payment.</p></>}
-                {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={"/auth/signup?role=operator&claim=" + listing.id}>start a free listing claim</Link>.</p></>}
+                {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={claimStartHref(listing.id, Boolean(user))}>start a free listing claim</Link>.</p></>}
               </section>
 
               {["tour", "excursion"].includes(listing.type) && td.itinerary && Array.isArray(td.itinerary) && (

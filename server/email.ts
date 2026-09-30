@@ -1,5 +1,6 @@
 import { sendEmail } from "@/server/mail-client";
 import { formatBookingDateTime } from "@/lib/booking-time";
+import { verificationUrl } from "@/lib/claim-return";
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 // hello@ is send-only — replies must land in a real mailbox.
@@ -353,9 +354,13 @@ export async function sendVerificationEmail(params: {
   to: string;
   name: string;
   token: string;
+  claimListingId?: string | null;
 }) {
-  const { to, name, token } = params;
-  const verifyUrl = `https://vakaygo.com/api/auth/verify-email/confirm?token=${token}`;
+  const { to, name, token, claimListingId } = params;
+  const verifyUrl = verificationUrl(token, claimListingId);
+  const claimNote = verifyUrl.includes("claim=")
+    ? "Please verify your email address to continue claiming your business listing. After you confirm, you return to that listing to verify the business phone. Bookings stay unavailable until onboarding is complete."
+    : "Please verify your email address to continue on VakayGo.";
 
   await sendEmail({
     from: FROM,
@@ -374,7 +379,7 @@ export async function sendVerificationEmail(params: {
   </div>
   <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
     <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
-    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Please verify your email address to unlock all features on VakayGo, including bookings, messaging, and trip planning.</p>
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">${claimNote}</p>
     <div style="text-align:center;margin-bottom:16px">
       <a href="${verifyUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Verify Email</a>
     </div>
