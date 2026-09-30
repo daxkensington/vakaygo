@@ -36,6 +36,7 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const emailRecovery = searchParams.get("method") === "email";
+  const claimFromNext = claimIdFromPath(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -110,7 +111,7 @@ function SignInContent() {
       const res = await fetch("/api/auth/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...(claimFromNext ? { claimListingId: claimFromNext } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -125,7 +126,6 @@ function SignInContent() {
     }
   }
 
-  const claimFromNext = claimIdFromPath(searchParams.get("next"));
   const signupHref = claimFromNext ? `/auth/signup?role=operator&claim=${claimFromNext}` : "/auth/signup";
 
   return (
