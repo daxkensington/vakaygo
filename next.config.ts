@@ -26,6 +26,9 @@ const EXPLORE_QUERY_KEYS = [
 ];
 
 const nextConfig: NextConfig = {
+  // The home directory also has a lockfile. Without an explicit root, Next
+  // treats C:\Users\ianwe as the app and cannot resolve this project's CSS.
+  turbopack: { root: process.cwd() },
   images: {
     qualities: [75, 80],
     // Listing photos are immutable Blob objects (new photo = new URL), so

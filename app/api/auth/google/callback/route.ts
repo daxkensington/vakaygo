@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { users, accounts } from "@/drizzle/schema";
 
 import { logger } from "@/lib/logger";
+import { claimListingPath } from "@/lib/claim-return";
 import { setSessionCookie } from "@/server/admin-auth";
 import { establishEmailIdentity } from "@/server/email-identity";
 
@@ -252,8 +253,9 @@ export async function GET(request: Request) {
       sessionVersion: user.sessionVersion,
     });
 
-    // Redirect based on role
-    const redirectPath = user.role === "operator" ? "/operator" : "/explore";
+    const claimPath = claimListingPath(cookieStore.get("oauth_claim")?.value);
+    cookieStore.delete("oauth_claim");
+    const redirectPath = claimPath || (user.role === "operator" ? "/operator" : "/explore");
     return NextResponse.redirect(new URL(redirectPath, url.origin));
   } catch (error) {
     logger.error("Google OAuth callback error", error);

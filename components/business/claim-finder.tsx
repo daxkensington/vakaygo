@@ -2,8 +2,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Search, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { claimStartHref } from "@/lib/claim-return";
 type Result = { id: string; title: string; slug: string; islandSlug: string; islandName: string; address: string | null; claimVerified: boolean };
 export function ClaimFinder() {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
@@ -31,7 +34,7 @@ export function ClaimFinder() {
       {results.length > 0 && <p className="mt-5 text-sm text-navy-500">Showing up to 12 matches. Refine the name if needed.</p>}
       <ul className="mt-3 divide-y divide-cream-200">{results.map(item => <li key={item.id} className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div><Link className="font-semibold text-navy-800 hover:underline" href={"/" + item.islandSlug + "/" + item.slug}>{item.title}</Link><p className="mt-1 flex items-start gap-1 text-sm text-navy-500"><MapPin size={15} className="mt-0.5 shrink-0" />{item.address || item.islandName}</p><p className="text-xs text-navy-400 mt-1">{item.islandName}{item.claimVerified ? " · Ownership verified" : ""}</p></div>
-        <Link className="inline-flex shrink-0 items-center gap-2 font-semibold text-gold-700 hover:underline" href={item.claimVerified ? "/contact" : "/auth/signup?role=operator&claim=" + item.id}>{item.claimVerified ? "Need access?" : "Claim this listing"}<ArrowRight size={16} /></Link>
+        <Link className="inline-flex shrink-0 items-center gap-2 font-semibold text-gold-700 hover:underline" href={item.claimVerified ? "/contact" : claimStartHref(item.id, Boolean(user))}>{item.claimVerified ? "Need access?" : "Claim this listing"}<ArrowRight size={16} /></Link>
       </li>)}</ul>
     </div>
   </div>;

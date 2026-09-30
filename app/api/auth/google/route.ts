@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 
 import { logger } from "@/lib/logger";
+import { claimListingPath } from "@/lib/claim-return";
 function getRedirectUri(requestUrl: string): string {
   // Use NEXT_PUBLIC_APP_URL if set, otherwise derive from the request
   const baseUrl =
@@ -38,6 +39,18 @@ export async function GET(request: Request) {
     maxAge: 600, // 10 minutes
     path: "/",
   });
+  const claim = new URL(request.url).searchParams.get("claim");
+  if (claimListingPath(claim)) {
+    cookieStore.set("oauth_claim", claim!, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+  } else {
+    cookieStore.delete("oauth_claim");
+  }
 
   const redirectUri = getRedirectUri(request.url);
 

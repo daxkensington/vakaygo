@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { claimIdFromPath } from "@/lib/claim-return";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -124,6 +125,9 @@ function SignInContent() {
     }
   }
 
+  const claimFromNext = claimIdFromPath(searchParams.get("next"));
+  const signupHref = claimFromNext ? `/auth/signup?role=operator&claim=${claimFromNext}` : "/auth/signup";
+
   return (
     <main className="min-h-screen bg-cream-50 flex items-center justify-center px-6">
       <div className="w-full max-w-md">
@@ -150,7 +154,11 @@ function SignInContent() {
           )}
 
           {/* Google OAuth */}
-          <button type="button" onClick={() => window.location.assign(new URL("/api/auth/google", window.location.origin).href)}
+          <button type="button" onClick={() => {
+            const url = new URL("/api/auth/google", window.location.origin);
+            if (claimFromNext) url.searchParams.set("claim", claimFromNext);
+            window.location.assign(url.href);
+          }}
             className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -271,7 +279,7 @@ function SignInContent() {
 
         <p className="text-center text-navy-400 text-sm mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-gold-700 font-semibold hover:text-gold-600">
+          <Link href={signupHref} className="text-gold-700 font-semibold hover:text-gold-600">
             Sign up
           </Link>
         </p>

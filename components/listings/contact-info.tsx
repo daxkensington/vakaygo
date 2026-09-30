@@ -1,6 +1,8 @@
 "use client";
 
 import { safeWebUrl } from "@/lib/listing-structured-data";
+import { useAuth } from "@/lib/auth-context";
+import { claimStartHref } from "@/lib/claim-return";
 import {
   Phone,
   Globe,
@@ -16,6 +18,7 @@ type ContactInfoProps = {
 };
 
 export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
+  const { user } = useAuth();
   if (!typeData) return null;
 
   const { phone, hours, unclaimed } = typeData;
@@ -126,7 +129,7 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
         <p className="mt-5 pt-4 border-t border-cream-200 text-xs text-navy-400">
           This listing was created from public data. If this is your business,{" "}
           <a
-            href={listingId ? "/auth/signup?role=operator&claim=" + listingId : "/for-businesses#find-listing"}
+            href={listingId ? claimStartHref(listingId, Boolean(user)) : "/for-businesses#find-listing"}
             className="text-gold-700 font-semibold hover:underline"
           >
             claim it for free

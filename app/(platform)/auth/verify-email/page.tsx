@@ -3,6 +3,7 @@
 import { useState, Suspense, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { claimListingPath } from "@/lib/claim-return";
 import { Mail, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -50,7 +51,8 @@ function VerifyEmailContent() {
       }
       setPassword("");
       await refresh();
-      router.replace(data.redirect === "/operator" ? "/operator" : "/explore");
+      const claimPath = claimListingPath(searchParams.get("claim"));
+      router.replace(claimPath || (data.redirect === "/operator" ? "/operator" : "/explore"));
     } catch {
       setConfirmationError("We could not confirm this email. Please try again.");
     } finally {
@@ -62,7 +64,12 @@ function VerifyEmailContent() {
     setSending(true);
     setResendError(null);
     try {
-      const res = await fetch("/api/auth/verify-email", { method: "POST" });
+      const claimListingId = searchParams.get("claim");
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(claimListingPath(claimListingId) ? { claimListingId } : {}),
+      });
       const data = await res.json();
       if (!res.ok) {
         setResendError(data.error || "Failed to send");
@@ -172,6 +179,7 @@ function VerifyEmailContent() {
               <p className="text-navy-300 text-sm mb-8">
                 Click the link in the email to verify your account. The link
                 expires in 24 hours.
+                {claimListingPath(searchParams.get("claim")) ? " The link returns you to your business claim." : ""}
               </p>
 
               {sent ? (

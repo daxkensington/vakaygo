@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setSessionCookie } from "@/server/admin-auth";
 import { consumeEmailIdentityToken, validNewPassword } from "@/server/email-identity";
+import { claimListingPath } from "@/lib/claim-return";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   // Scanners may follow email links; only the explicit confirmation POST mutates.
-  const token = new URL(request.url).searchParams.get("token");
+  const source = new URL(request.url);
+  const token = source.searchParams.get("token");
   const destination = new URL("/auth/verify-email", request.url);
   if (token && /^[a-f0-9]{64}$/.test(token)) destination.searchParams.set("token", token);
   else destination.searchParams.set("error", "invalid_token");
+  const claim = source.searchParams.get("claim");
+  if (claimListingPath(claim)) destination.searchParams.set("claim", claim!);
   return NextResponse.redirect(destination);
 }
 export async function POST(request: Request) {

@@ -4,7 +4,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { Mail, Clock, MessageCircle, Send, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const CATEGORIES = [
   "General",
@@ -26,6 +26,17 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const listing = new URLSearchParams(window.location.search).get("listing");
+    if (!listing || !/^\/[\w-]+\/[\w-]+$/.test(listing)) return;
+    setForm((current) => ({
+      ...current,
+      category: current.category || "Operator Support",
+      subject: current.subject || "Listing claim review",
+      message: current.message || `Please review this listing so the owner can verify it: https://vakaygo.com${listing}`,
+    }));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
