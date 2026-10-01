@@ -65,9 +65,8 @@ export async function PATCH(req: NextRequest) {
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const body = await req.json();
-    const { settings, adminId } = body as {
+    const { settings } = body as {
       settings: Record<string, string>;
-      adminId?: string;
     };
 
     if (!settings || typeof settings !== "object") {
@@ -93,7 +92,7 @@ export async function PATCH(req: NextRequest) {
         .values({
           key,
           value: String(value),
-          updatedBy: adminId || null,
+          updatedBy: adminId,
           updatedAt: now,
         })
         .onConflictDoUpdate({
