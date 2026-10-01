@@ -85,10 +85,19 @@ export default function ABTestsPage() {
     setFormVariants((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const totalWeight = formVariants.reduce((sum, v) => sum + (Number(v.weight) || 0), 0);
+  const weightsValid = totalWeight === 100;
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!weightsValid) {
+      setError("Variant weights must sum to exactly 100%.");
+      return;
+    }
+
     setFormSaving(true);
 
     try {
@@ -155,8 +164,6 @@ export default function ABTestsPage() {
       </div>
     );
   }
-
-  const totalWeight = formVariants.reduce((sum, v) => sum + (Number(v.weight) || 0), 0);
 
   return (
     <div>
@@ -310,7 +317,7 @@ export default function ABTestsPage() {
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                disabled={formSaving}
+                disabled={formSaving || totalWeight !== 100}
                 className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
               >
                 {formSaving ? <Loader2 size={16} className="animate-spin" /> : null}
