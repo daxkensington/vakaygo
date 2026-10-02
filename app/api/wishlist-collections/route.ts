@@ -123,6 +123,13 @@ export async function PUT(request: Request) {
     if (name !== undefined) setData.name = name;
     if (description !== undefined) setData.description = description;
 
+    if (Object.keys(setData).length === 0) {
+      return NextResponse.json(
+        { error: "At least one field is required" },
+        { status: 400 }
+      );
+    }
+
     const [updated] = await db
       .update(wishlistCollections)
       .set(setData)
