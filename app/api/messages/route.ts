@@ -61,8 +61,10 @@ export async function GET(request: Request) {
         .from(messages)
         .innerJoin(users, eq(messages.senderId, users.id))
         .where(and(...conditions))
-        .orderBy(messages.createdAt)
+        .orderBy(desc(messages.createdAt))
         .limit(100);
+
+      msgs.reverse();
 
       // Mark received messages as read
       await db
@@ -101,10 +103,14 @@ export async function GET(request: Request) {
 
     // Build conversations
     const convMap = new Map<string, { userId: string; lastMessage: string; lastDate: string; unread: number; listingId: string | null }>();
+    const convDateMap = new Map<string, Date>();
 
     for (const msg of [...sent, ...received]) {
       const key = msg.userId;
-      if (!convMap.has(key)) {
+      const existingDate = convDateMap.get(key);
+      const msgDate = new Date(msg.createdAt);
+
+      if (!existingDate) {
         convMap.set(key, {
           userId: msg.userId,
           lastMessage: msg.content,
@@ -112,6 +118,13 @@ export async function GET(request: Request) {
           unread: 0,
           listingId: msg.listingId,
         });
+        convDateMap.set(key, msgDate);
+      } else if (msgDate.getTime() > existingDate.getTime()) {
+        const conv = convMap.get(key)!;
+        conv.lastMessage = msg.content;
+        conv.lastDate = msg.createdAt.toISOString();
+        conv.listingId = msg.listingId;
+        convDateMap.set(key, msgDate);
       }
     }
 
