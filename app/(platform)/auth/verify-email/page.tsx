@@ -3,7 +3,7 @@
 import { useState, Suspense, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { claimListingPath } from "@/lib/claim-return";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
 import { Mail, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -83,6 +83,10 @@ function VerifyEmailContent() {
     }
   }
 
+  const claimId = searchParams.get("claim");
+  const inboxRecoveryHref = signInHref(claimId, { method: "email" });
+  const secureSignInHref = signInHref(claimId);
+
   const errorMessages: Record<string, string> = {
     missing_token: "The verification link is invalid. Please request a new one.",
     invalid_token:
@@ -116,7 +120,7 @@ function VerifyEmailContent() {
                 </p>
                 {confirmationError && <p role="alert" className="text-sm text-red-600">{confirmationError}</p>}
                 {requiresLogin ? (
-                  <Link href="/auth/signin" className="inline-block text-gold-700 underline">Continue to secure sign in</Link>
+                  <Link href={secureSignInHref} className="inline-block text-gold-700 underline">Continue to secure sign in</Link>
                 ) : (
                   <button type="submit" disabled={confirming}
                     className="w-full inline-flex items-center justify-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-6 py-3 rounded-xl disabled:opacity-50">
@@ -154,7 +158,7 @@ function VerifyEmailContent() {
                   {sent ? "Email Sent!" : "Resend Verification Email"}
                 </button>
               )}
-              {!user && <Link href="/auth/signin?method=email" className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>}
+              {!user && <Link href={inboxRecoveryHref} className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>}
             </>
           ) : (
             <>
@@ -204,7 +208,7 @@ function VerifyEmailContent() {
                 {sent ? "Email Sent!" : "Resend Verification Email"}
               </button> : <>
                 <p className="mb-4 text-sm text-navy-500">If your verification email is missing or expired, request an email sign-in link to verify your inbox. You do not need to be signed in.</p>
-                <Link href="/auth/signin?method=email" className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>
+                <Link href={inboxRecoveryHref} className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>
               </>}
 
               <p className="text-navy-300 text-xs mt-6">
