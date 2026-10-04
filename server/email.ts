@@ -415,7 +415,7 @@ export async function sendMagicLinkEmail(params: {
   </div>
   <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
     <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
-    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Click the button below to sign in to your VakayGo account. No password needed.</p>
+    <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">${url.includes("claim=") ? "Click the button below to sign in. You return to the business listing you were claiming. Signing in does not enable bookings." : "Click the button below to sign in to your VakayGo account. No password needed."}</p>
     <div style="text-align:center;margin-bottom:16px">
       <a href="${url}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Sign In</a>
     </div>

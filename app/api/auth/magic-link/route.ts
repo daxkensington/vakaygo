@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { users } from "@/drizzle/schema";
 import { sendMagicLinkEmail } from "@/server/email";
+import { claimListingPath, magicLinkUrl } from "@/lib/claim-return";
 
 import { logger } from "@/lib/logger";
 
@@ -13,7 +14,8 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // don't re-issue within 60s of a prior li
 
 /**
  * POST — request a passwordless sign-in link.
- * Body: { email }
+ * Body: { email, claimListingId? }
+ * claimListingId is only a return path after sign-in. It is not ownership proof.
  *
  * Anti-enumeration: the synchronous response path is SELECT-only and returns
  * the SAME 200 body whether or not the email exists. ALL writes + the email
@@ -22,7 +24,11 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // don't re-issue within 60s of a prior li
  */
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const body = await request.json();
+    const { email } = body;
+    const claimReturn = claimListingPath(typeof body?.claimListingId === "string" ? body.claimListingId : null)
+      ? body.claimListingId
+      : undefined;
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
@@ -62,13 +68,14 @@ export async function POST(request: Request) {
 
       try {
         const token = randomBytes(32).toString("hex");
+        const url = magicLinkUrl(token, claimReturn);
+        if (!url) return;
         const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
         await db
           .update(users)
           .set({ magicLinkToken: token, magicLinkExpires: expires })
           .where(eq(users.id, user.id));
 
-        const url = `https://vakaygo.com/auth/continue?token=${token}`;
         await sendMagicLinkEmail({
           to: user.email,
           name: user.name || "there",
