@@ -55,6 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    alternates: { canonical: `https://vakaygo.com/guides/${slug}` },
     openGraph: {
       title: `${title} | VakayGo`,
       description,
