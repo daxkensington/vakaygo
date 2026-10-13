@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Star, MapPin } from "lucide-react";
+import { Star, MapPin, Loader2 } from "lucide-react";
 import { useSaved } from "@/lib/use-saved";
 import { useCurrency } from "@/lib/currency";
 import { getImageUrl } from "@/lib/image-utils";
@@ -27,6 +27,7 @@ type ListingCardProps = {
   bookingEligible?: boolean;
   /** "google" when the rating/count is imported from Google Places (every unclaimed listing). */
   reviewSource?: "google" | "vakaygo";
+  showSaveButton?: boolean;
 };
 
 const typeConfig: Record<string, { color: string; bg: string }> = {
@@ -59,7 +60,7 @@ const typeLabels: Record<string, string> = {
 export function ListingCard(props: ListingCardProps) {
   const config = typeConfig[props.type] || typeConfig.tour;
   const rating = props.avgRating ? parseFloat(props.avgRating) : 0;
-  const { isSaved, toggle } = useSaved();
+  const { isSaved, toggle, pendingIds, loading: savedLoading } = useSaved();
   const { format } = useCurrency();
   const saved = isSaved(props.id);
   // Cards render at ~300-400 px wide; request 400 maxwidth from Google
@@ -97,15 +98,17 @@ export function ListingCard(props: ListingCardProps) {
         )}
 
         {/* Save button */}
-        <button
+        {props.showSaveButton !== false && <button
           aria-label={saved ? "Unsave listing" : "Save listing"}
+          aria-busy={pendingIds.has(props.id)}
+          disabled={savedLoading || pendingIds.size > 0}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(props.id); }}
-          className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
+          className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors disabled:cursor-wait disabled:opacity-60"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={saved ? "text-red-500" : "text-navy-600"}>
+          {pendingIds.has(props.id) ? <Loader2 size={14} className="animate-spin text-navy-600" /> : <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={saved ? "text-red-500" : "text-navy-600"}>
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </button>
+          </svg>}
+        </button>}
       </div>
 
       {/* Content */}

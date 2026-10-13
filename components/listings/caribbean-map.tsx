@@ -41,6 +41,7 @@ const categoryConfig: Record<string, { color: string; emoji: string; label: stri
   transfer:   { color: "#6366F1", emoji: "✈️", label: "Transfers" },
   vip:        { color: "#A855F7", emoji: "💎", label: "VIP" },
   guide:      { color: "#22C55E", emoji: "🧭", label: "Guides" },
+  spa:        { color: "#DB2777", emoji: "🧖", label: "Spa & Wellness" },
 };
 
 // Escape HTML before interpolating user-controlled strings into popup HTML.
@@ -1287,6 +1288,7 @@ export default function CaribbeanMap({
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={toggleAllCategories}
+            aria-pressed={activeCategories.size === Object.keys(categoryConfig).length}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg transition-colors ${
               activeCategories.size === Object.keys(categoryConfig).length
                 ? "bg-navy-700 text-white"
@@ -1298,6 +1300,7 @@ export default function CaribbeanMap({
           {Object.entries(categoryConfig).map(([key, cfg]) => (
             <button
               key={key}
+              aria-pressed={activeCategories.has(key)}
               onClick={() => toggleCategory(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg transition-colors flex items-center gap-1 ${
                 activeCategories.has(key)
