@@ -27,9 +27,25 @@ function escapeHtml(s: string): string {
 }
 
 export async function POST(request: Request) {
-  try {
-    const { name, email, category, subject, message } = await request.json();
+  const body: unknown = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Please provide valid contact details" }, { status: 400 });
+  }
+  const fields = body as Record<string, unknown>;
+  if (["name", "email", "category", "subject", "message"].some(key => typeof fields[key] !== "string")) {
+    return NextResponse.json({ error: "Please provide valid contact details" }, { status: 400 });
+  }
+  if ((fields.name as string).length > 120 || (fields.email as string).length > 320 || (fields.category as string).length > 80 ||
+    (fields.subject as string).length > 200 || (fields.message as string).length > 5000) {
+    return NextResponse.json({ error: "One or more fields are too long" }, { status: 400 });
+  }
+  const name = (fields.name as string).trim();
+  const email = (fields.email as string).trim();
+  const category = (fields.category as string).trim();
+  const subject = (fields.subject as string).trim();
+  const message = (fields.message as string).trim();
 
+  try {
     // Validate all fields
     if (!name || !email || !category || !subject || !message) {
       return NextResponse.json(
@@ -38,29 +54,16 @@ export async function POST(request: Request) {
       );
     }
 
-    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
         { error: "Please provide a valid email address" },
         { status: 400 }
       );
     }
 
-    if (!VALID_CATEGORIES.includes(category)) {
+    if (!VALID_CATEGORIES.some(value => value === category)) {
       return NextResponse.json(
         { error: "Invalid category" },
-        { status: 400 }
-      );
-    }
-
-    // Length caps — prevent oversized payloads / abuse.
-    if (
-      typeof name !== "string" || name.length > 120 ||
-      typeof subject !== "string" || subject.length > 200 ||
-      typeof message !== "string" || message.length > 5000 ||
-      email.length > 320
-    ) {
-      return NextResponse.json(
-        { error: "One or more fields are too long" },
         { status: 400 }
       );
     }
@@ -113,7 +116,7 @@ export async function POST(request: Request) {
     logger.error("Contact form error", error);
     return NextResponse.json(
       { error: "Failed to send message. Please try again." },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

@@ -98,6 +98,7 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
   </main>;
 
   const listing = summary?.listing;
+  const supportHref = listing && /^\/[\w-]+\/[\w-]+$/.test(listing.url) ? `/contact?listing=${encodeURIComponent(listing.url)}` : "/contact";
   const verified = summary?.claimVerified === true;
   const pending = summary?.verification?.state === "pending" || codeSent;
   const sending = summary?.verification?.state === "sending";
@@ -106,7 +107,7 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
     <Link href="/operator/listings" className="text-sm font-semibold text-gold-700">Back to your listings</Link>
     <h1 className="mt-5 text-3xl font-bold text-navy-700">Verify your business</h1>
     <p className="mt-2 text-navy-500">Claiming verifies control of the business. Bookings remain unavailable until company onboarding is complete and booking services are enabled.</p>
-    {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}
+    {error && <div role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-red-700"><p>{error}</p>{listing && summary?.verification?.available === true && <Link href={supportHref} className="mt-3 inline-flex font-semibold underline">Contact VakayGo about this listing</Link>}</div>}
     <button type="button" disabled={busy || refreshing} onClick={() => void load()} className="mt-4 rounded-xl border border-cream-300 px-5 py-2.5 font-semibold text-navy-700 disabled:opacity-50">{refreshing ? "Refreshing status…" : summary ? "Refresh claim status" : "Try loading again"}</button>
     {listing && <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-6">
       <h2 className="text-xl font-bold text-navy-700">{listing.title}</h2>
@@ -135,7 +136,7 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
             ? "Text and voice verification is temporarily unavailable. Contact VakayGo with this listing and we will review it with you."
             : "Automatic verification is currently unavailable for this listing. It will remain information only until a trusted business contact can be verified."}</p>
         <p className="mt-3">Include this listing: <span className="font-semibold">{listing.url}</span></p>
-        <Link href={`/contact?listing=${encodeURIComponent(listing.url)}`} className="mt-3 inline-flex font-semibold text-gold-700 underline">Contact VakayGo</Link>
+        <Link href={supportHref} className="mt-3 inline-flex font-semibold text-gold-700 underline">Contact VakayGo</Link>
       </div>}
     </section>}
   </main>;

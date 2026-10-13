@@ -97,3 +97,15 @@ it("retains an incorrect code for retry and redirects only after verified approv
   expect(code.value).toBe("123456"); expect(container.querySelector('[role="alert"]')?.textContent).toContain("incorrect"); expect(router.push).not.toHaveBeenCalled();
   await submit(); expect(router.push).toHaveBeenCalledExactlyOnceWith(`/operator/onboarding/${listingId}`);
 });
+
+it("offers contextual support after a configured provider fails without fabricating sent or verified status", async () => {
+  fetchMock.mockResolvedValueOnce(response(summary())).mockResolvedValueOnce(response({ error: "Unable to send a code to the business contact; contact support or try again later" }, 503));
+  await render();
+  expect(container.querySelector('a[href^="/contact"]')).toBeNull();
+  await act(async () => button("Send verification code").click());
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Unable to send a code");
+  expect(container.querySelector('a[href="/contact?listing=%2Fgrenada%2Faudit-cafe"]')?.textContent).toContain("Contact VakayGo about this listing");
+  expect(container.querySelector('input[autocomplete="one-time-code"]')).toBeNull();
+  expect(container.textContent).not.toContain("Business claim verified");
+  expect(button("Send verification code").disabled).toBe(false);
+});
