@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -32,43 +32,72 @@ type Trip = {
 };
 
 export default function TripsPage() {
+  const { user } = useAuth();
+  const actorRef = useRef(user?.id);
+  useLayoutEffect(() => { actorRef.current = user?.id; }, [user?.id]);
+  return <TripsContent key={user?.id || "guest"} actorRef={actorRef} />;
+}
+
+function TripsContent({ actorRef }: { actorRef: RefObject<string | undefined> }) {
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const deletionRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    const pending = deletionRequest.current;
+    deletionRequest.current = null;
+    pending?.abort();
+  }, []);
 
   useEffect(() => {
-    if (!user) {
-      if (!authLoading) setLoading(false);
-      return;
-    }
+    setTrips([]); setError(""); setLoading(true);
+    if (authLoading) return;
+    if (!userId) { setLoading(false); return; }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let current = true;
 
     (async () => {
       try {
-        const res = await fetch("/api/trips");
-        if (!res.ok) return;
-        const data = await res.json();
-        setTrips(data.trips || []);
+        const res = await fetch("/api/trips", { signal: controller.signal, cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (!current || actorRef.current !== userId) return;
+        if (controller.signal.aborted || !res.ok || !Array.isArray(data?.trips)) throw new Error("Trips could not be loaded. Please try again.");
+        setTrips(data.trips);
       } catch {
-        /* silently fail */
+        if (current && actorRef.current === userId) setError("Trips could not be loaded. Please try again.");
       } finally {
-        setLoading(false);
+        clearTimeout(timeout);
+        if (current && actorRef.current === userId) setLoading(false);
       }
     })();
-  }, [user, authLoading]);
+    return () => { current = false; clearTimeout(timeout); controller.abort(); };
+  }, [userId, authLoading, retry, actorRef]);
 
   async function handleDelete(id: string) {
+    if (deletionRequest.current || !user || actorRef.current !== user.id) return;
     if (!confirm("Delete this trip?")) return;
+    const controller = new AbortController();
+    deletionRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    setError("");
     setDeleting(id);
     try {
-      const res = await fetch(`/api/trips/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setTrips((prev) => prev.filter((t) => t.id !== id));
-      }
+      const res = await fetch(`/api/trips/${id}`, { method: "DELETE", signal: controller.signal });
+      const data = await res.json().catch(() => null);
+      if (deletionRequest.current !== controller || actorRef.current !== user.id) return;
+      if (controller.signal.aborted || !res.ok || data?.deleted !== true) throw new Error("Deletion could not be confirmed.");
+      setTrips((prev) => prev.filter((t) => t.id !== id));
     } catch {
-      /* silently fail */
+      if (deletionRequest.current === controller && actorRef.current === user.id) setError("Deletion could not be confirmed. Refresh your trips before trying again.");
     } finally {
-      setDeleting(null);
+      clearTimeout(timeout);
+      if (deletionRequest.current === controller && actorRef.current === user.id) { deletionRequest.current = null; setDeleting(null); }
     }
   }
 
@@ -145,7 +174,7 @@ export default function TripsPage() {
                 with travel companions.
               </p>
               <Link
-                href="/auth/signin"
+                href="/auth/signin?next=%2Ftrips"
                 className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
@@ -155,13 +184,14 @@ export default function TripsPage() {
 
           {/* Loading */}
           {(authLoading || (user && loading)) && (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-gold-700" />
+            <div role="status" className="flex items-center justify-center py-24">
+              <Loader2 aria-label="Loading trips" size={32} className="animate-spin text-gold-700" />
             </div>
           )}
 
           {/* Empty state */}
-          {user && !loading && trips.length === 0 && (
+          {user && !authLoading && !loading && error && <div role="alert" className="mb-6 rounded-xl bg-red-50 p-4 text-red-700"><p>{error}</p><button type="button" disabled={deleting !== null} onClick={() => setRetry(value => value + 1)} className="mt-3 font-semibold underline disabled:opacity-50">Try loading trips again</button></div>}
+          {user && !authLoading && !loading && !error && trips.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="w-20 h-20 bg-gradient-to-br from-gold-100 to-teal-50 rounded-full flex items-center justify-center mb-6">
                 <Sparkles size={32} className="text-gold-700" />
@@ -171,7 +201,7 @@ export default function TripsPage() {
               </h2>
               <p className="text-navy-400 mb-6 text-center max-w-md">
                 Let our AI plan the perfect island getaway for you. Choose your
-                destination, dates, and interests -- we'll handle the rest.
+                destination, dates, and interests -- we&apos;ll handle the rest.
               </p>
               <Link
                 href="/trips/new"
@@ -184,7 +214,7 @@ export default function TripsPage() {
           )}
 
           {/* Trip cards */}
-          {user && !loading && trips.length > 0 && (
+          {user && !authLoading && !loading && trips.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {trips.map((trip) => (
                 <div
@@ -248,9 +278,9 @@ export default function TripsPage() {
                       e.preventDefault();
                       handleDelete(trip.id);
                     }}
-                    disabled={deleting === trip.id}
+                    disabled={deleting !== null}
                     className="absolute top-5 right-4 opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-full bg-cream-50 hover:bg-red-50 flex items-center justify-center text-navy-300 hover:text-red-500"
-                    aria-label="Delete trip"
+                    aria-label={`Delete ${trip.title}`}
                   >
                     {deleting === trip.id ? (
                       <Loader2 size={14} className="animate-spin" />

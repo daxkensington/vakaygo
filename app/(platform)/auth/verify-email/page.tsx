@@ -189,15 +189,6 @@ function VerifyEmailContent() {
                 {claimListingPath(searchParams.get("claim")) ? " The link returns you to your business claim." : ""}
               </p>}
 
-              {sent ? (
-                <div className="flex items-center justify-center gap-2 text-teal-600 font-semibold mb-4">
-                  <CheckCircle size={16} />
-                  Verification email sent!
-                </div>
-              ) : resendError ? (
-                <p className="text-red-500 text-sm mb-4">{resendError}</p>
-              ) : null}
-
               {user && !user.emailVerified ? <button
                 onClick={handleResend}
                 disabled={sending || sent}
@@ -226,6 +217,8 @@ function VerifyEmailContent() {
               </p>
             </>
           )}
+          {sent && <p role="status" className="mt-4 flex items-center justify-center gap-2 text-teal-600 font-semibold"><CheckCircle size={16} />Verification email sent!</p>}
+          {resendError && <p role="alert" className="mt-4 text-red-600 text-sm">{resendError}</p>}
         </div>
       </div>
     </div>

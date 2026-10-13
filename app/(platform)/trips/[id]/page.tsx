@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, use, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
@@ -101,7 +101,16 @@ export default function TripDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { user } = useAuth();
+  const context = `${user?.id || "guest"}:${id}`;
+  const contextRef = useRef(context);
+  useLayoutEffect(() => { contextRef.current = context; }, [context]);
+  return <TripDetailContent key={context} id={id} contextRef={contextRef} />;
+}
+
+function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObject<string> }) {
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
   const router = useRouter();
 
   const [trip, setTrip] = useState<TripDetail | null>(null);
@@ -110,36 +119,48 @@ export default function TripDetailPage({
   const [error, setError] = useState("");
   const [activeDay, setActiveDay] = useState(1);
   const [editing, setEditing] = useState(false);
+  const editingRef = useRef(false);
   const [editTitle, setEditTitle] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<"save" | "share" | "delete" | null>(null);
+  const [actionError, setActionError] = useState("");
   const [shared, setShared] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const actionRequest = useRef<AbortController | null>(null);
+  const sharedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    const pending = actionRequest.current;
+    actionRequest.current = null;
+    pending?.abort();
+    if (sharedTimer.current) clearTimeout(sharedTimer.current);
+  }, []);
 
   useEffect(() => {
-    if (!user && !authLoading) {
-      setLoading(false);
-      return;
-    }
-    if (!user) return;
+    setTrip(null); setItems([]); setError(""); setActionError(""); setLoading(true);
+    if (authLoading) return;
+    if (!userId) { setLoading(false); return; }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let current = true;
 
     (async () => {
       try {
-        const res = await fetch(`/api/trips/${id}`);
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data.error || "Failed to load trip");
-          return;
-        }
-        const data = await res.json();
+        const res = await fetch(`/api/trips/${id}`, { signal: controller.signal, cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (!current || contextRef.current !== `${userId}:${id}`) return;
+        if (controller.signal.aborted || !res.ok || data?.trip?.id !== id || typeof data.trip.title !== "string" || !Array.isArray(data.items)) throw new Error("Trip could not be loaded.");
         setTrip(data.trip);
-        setItems(data.items || []);
-        setEditTitle(data.trip.title);
+        setItems(data.items);
+        if (!editingRef.current) setEditTitle(data.trip.title);
       } catch {
-        setError("Something went wrong");
+        if (current && contextRef.current === `${userId}:${id}`) setError("This trip could not be loaded. It may be unavailable to this account. Try again or return to My Trips.");
       } finally {
-        setLoading(false);
+        clearTimeout(timeout);
+        if (current && contextRef.current === `${userId}:${id}`) setLoading(false);
       }
     })();
-  }, [id, user, authLoading]);
+    return () => { current = false; clearTimeout(timeout); controller.abort(); };
+  }, [id, userId, authLoading, retry, contextRef]);
 
   // Group items by day
   const dayGroups = items.reduce<Record<number, TripItem[]>>((acc, item) => {
@@ -167,51 +188,53 @@ export default function TripDetailPage({
 
   const allDays = Array.from({ length: totalDays }, (_, i) => i + 1);
 
-  async function handleSaveTitle() {
-    if (!trip || !editTitle.trim()) return;
-    setSaving(true);
+  async function performAction(nextAction: "save" | "share" | "delete") {
+    if (!trip || !user || trip.userId !== user.id || actionRequest.current || contextRef.current !== `${user.id}:${id}`) return;
+    if (nextAction === "save" && !editTitle.trim()) return;
+    if (nextAction === "delete" && !confirm("Delete this trip? This cannot be undone.")) return;
+    const controller = new AbortController();
+    actionRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    setAction(nextAction); setActionError(""); setShared(false);
     try {
       const res = await fetch(`/api/trips/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editTitle.trim() }),
+        method: nextAction === "delete" ? "DELETE" : "PATCH",
+        ...(nextAction === "delete" ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(nextAction === "share" ? { isPublic: true } : { title: editTitle.trim() }) }),
+        signal: controller.signal,
       });
-      if (res.ok) {
-        const data = await res.json();
-        setTrip((prev) => (prev ? { ...prev, title: data.trip.title } : prev));
+      const data = await res.json().catch(() => null);
+      if (actionRequest.current !== controller || contextRef.current !== `${user.id}:${id}`) return;
+      if (controller.signal.aborted || !res.ok) throw new Error("The change could not be confirmed.");
+      if (nextAction === "delete") {
+        if (data?.deleted !== true) throw new Error("Deletion could not be confirmed.");
+        router.push("/trips"); return;
+      }
+      if (data?.trip?.id !== id || data.trip.userId !== user.id || typeof data.trip.title !== "string") throw new Error("The change could not be confirmed.");
+      if (nextAction === "save") {
+        setTrip(prev => prev ? { ...prev, title: data.trip.title } : prev);
+        editingRef.current = false;
         setEditing(false);
+      } else {
+        if (data.trip.isPublic !== true) throw new Error("Sharing could not be confirmed.");
+        setTrip(prev => prev ? { ...prev, isPublic: true } : prev);
+        try {
+          await navigator.clipboard.writeText(new URL(`/trips/${id}`, window.location.origin).href);
+        } catch {
+          if (actionRequest.current === controller && contextRef.current === `${user.id}:${id}`) setActionError("This trip is shared, but its link could not be copied. Copy the trip address from your browser.");
+          return;
+        }
+        if (actionRequest.current !== controller || contextRef.current !== `${user.id}:${id}` || controller.signal.aborted) return;
+        setShared(true);
+        if (sharedTimer.current) clearTimeout(sharedTimer.current);
+        sharedTimer.current = setTimeout(() => setShared(false), 2000);
       }
     } catch {
-      /* silently fail */
+      if (actionRequest.current === controller && contextRef.current === `${user.id}:${id}`) setActionError(nextAction === "share"
+        ? "Sharing could not be confirmed. The link was not copied. Reload this trip before trying again."
+        : "The change could not be confirmed. Your trip and title draft are kept. Reload the trip before trying again.");
     } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleShare() {
-    if (!trip) return;
-    // Toggle public and copy link
-    try {
-      await fetch(`/api/trips/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPublic: true }),
-      });
-      await navigator.clipboard.writeText(window.location.href);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
-    } catch {
-      /* silently fail */
-    }
-  }
-
-  async function handleDelete() {
-    if (!confirm("Delete this trip? This cannot be undone.")) return;
-    try {
-      const res = await fetch(`/api/trips/${id}`, { method: "DELETE" });
-      if (res.ok) router.push("/trips");
-    } catch {
-      /* silently fail */
+      clearTimeout(timeout);
+      if (actionRequest.current === controller && contextRef.current === `${user.id}:${id}`) { actionRequest.current = null; setAction(null); }
     }
   }
 
@@ -257,7 +280,7 @@ export default function TripDetailPage({
                 Sign in to view this trip
               </h2>
               <Link
-                href="/auth/signin"
+                href={`/auth/signin?next=${encodeURIComponent(`/trips/${id}`)}`}
                 className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
@@ -266,16 +289,17 @@ export default function TripDetailPage({
           )}
 
           {/* Loading */}
-          {loading && (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-gold-700" />
+          {(authLoading || (user && loading)) && (
+            <div role="status" className="flex items-center justify-center py-24">
+              <Loader2 aria-label="Loading trip" size={32} className="animate-spin text-gold-700" />
             </div>
           )}
 
           {/* Error */}
-          {error && (
+          {user && !authLoading && error && (
             <div className="flex flex-col items-center justify-center py-24">
-              <p className="text-red-500 mb-4">{error}</p>
+              <p role="alert" className="text-red-500 mb-4">{error}</p>
+              <button type="button" onClick={() => setRetry(value => value + 1)} className="mb-4 font-semibold text-gold-700 underline">Try loading trip again</button>
               <Link
                 href="/trips"
                 className="text-gold-700 hover:underline font-medium"
@@ -286,8 +310,9 @@ export default function TripDetailPage({
           )}
 
           {/* Trip detail */}
-          {!loading && !error && trip && (
+          {user && !authLoading && !loading && !error && trip && (
             <>
+              {actionError && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-red-700"><p>{actionError}</p><button type="button" disabled={action !== null} onClick={() => setRetry(value => value + 1)} className="mt-3 font-semibold underline disabled:opacity-50">Reload trip status</button></div>}
               {/* Trip header */}
               <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] overflow-hidden mb-8">
                 <div className="h-2 bg-gradient-to-r from-gold-400 via-teal-400 to-gold-500" />
@@ -297,6 +322,8 @@ export default function TripDetailPage({
                       {editing ? (
                         <div className="flex items-center gap-2 mb-3">
                           <input
+                            aria-label="Trip title"
+                            disabled={action !== null}
                             type="text"
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
@@ -304,18 +331,22 @@ export default function TripDetailPage({
                             style={{ fontFamily: "var(--font-display)" }}
                           />
                           <button
-                            onClick={handleSaveTitle}
-                            disabled={saving}
+                            onClick={() => void performAction("save")}
+                            disabled={action !== null}
+                            aria-label="Save trip title"
                             className="w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center hover:bg-teal-600 transition-colors"
                           >
-                            {saving ? (
+                            {action === "save" ? (
                               <Loader2 size={14} className="animate-spin" />
                             ) : (
                               <Check size={14} />
                             )}
                           </button>
                           <button
+                            disabled={action !== null}
+                            aria-label="Cancel title edit"
                             onClick={() => {
+                              editingRef.current = false;
                               setEditing(false);
                               setEditTitle(trip.title);
                             }}
@@ -384,9 +415,11 @@ export default function TripDetailPage({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {trip.userId === user.id && <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={handleShare}
+                        onClick={() => void performAction("share")}
+                        aria-label="Share trip"
+                        disabled={action !== null}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cream-50 text-navy-500 hover:bg-cream-100 transition-colors text-sm font-medium"
                       >
                         {shared ? (
@@ -402,20 +435,22 @@ export default function TripDetailPage({
                         )}
                       </button>
                       <button
-                        onClick={() => setEditing(true)}
+                        onClick={() => { editingRef.current = true; setEditing(true); }}
+                        disabled={action !== null}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cream-50 text-navy-500 hover:bg-cream-100 transition-colors text-sm font-medium"
                       >
                         <Pencil size={14} />
                         Edit
                       </button>
                       <button
-                        onClick={handleDelete}
+                        onClick={() => void performAction("delete")}
+                        disabled={action !== null}
                         className="w-9 h-9 rounded-xl bg-cream-50 text-navy-400 hover:bg-red-50 hover:text-red-500 transition-colors flex items-center justify-center"
                         aria-label="Delete trip"
                       >
                         <Trash2 size={14} />
                       </button>
-                    </div>
+                    </div>}
                   </div>
                 </div>
               </div>

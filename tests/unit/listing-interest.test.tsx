@@ -15,7 +15,7 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
-async function render() { await act(async () => root.render(<ListingInterest listingId="11111111-1111-4111-8111-111111111111" listingPath="/barbados/business" operatorId="owner" />)); }
+async function render(listingPath = "/barbados/business") { await act(async () => root.render(<ListingInterest listingId="11111111-1111-4111-8111-111111111111" listingPath={listingPath} operatorId="owner" />)); }
 it("explains interest and preserves a guest's listing without submitting anything", async () => {
   await render(); expect(fetchMock).not.toHaveBeenCalled();
   expect(container.querySelector('a[href^="/auth/signin"]')?.getAttribute("href")).toBe("/auth/signin?next=%2Fbarbados%2Fbusiness");
@@ -38,6 +38,18 @@ it("blocks unverified accounts and business owners in the UI", async () => {
   expect(container.textContent).toContain("Verify your email"); expect(container.querySelector("button")).toBeNull();
   auth.user = { id: "owner", emailVerified: true, role: "operator" }; await render();
   expect(container.textContent).toContain("Manage your business"); expect(container.querySelector("button")).toBeNull();
+});
+it("preserves the exact listing query and fragment through email verification without recording interest", async () => {
+  const path = "/barbados/business?guests=2#listing-interest";
+  auth.user = { id: "customer", emailVerified: false, role: "traveler" }; await render(path);
+  expect(container.querySelector('a[href^="/auth/verify-email"]')?.getAttribute("href")).toBe(`/auth/verify-email?next=${encodeURIComponent(path)}`);
+  expect(fetchMock.mock.calls.every(call => !call[1]?.method)).toBe(true);
+});
+it.each(["https://external.invalid", "//external.invalid", "/%2f%2fexternal.invalid"])("drops unsafe auth continuation %s", async path => {
+  await render(path);
+  expect(container.querySelector('a[href^="/auth/signin"]')?.getAttribute("href")).toBe("/auth/signin");
+  auth.user = { id: "customer", emailVerified: false, role: "traveler" }; await render(path);
+  expect(container.querySelector('a[href^="/auth/verify-email"]')?.getAttribute("href")).toBe("/auth/verify-email");
 });
 it("does not report success when the save fails", async () => {
   auth.user = { id: "customer", emailVerified: true, role: "traveler" }; await render();

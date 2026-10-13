@@ -2,28 +2,20 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { trips, tripItems, listings, islands, media } from "@/drizzle/schema";
-import { eq, and, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, asc, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireUser } from "@/server/admin-auth";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
 
 async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
+  const auth = await requireUser();
+  return auth.ok ? auth.userId : null;
 }
 
 // ─── GET: Fetch trip with items and listing details ────────────
@@ -96,6 +88,7 @@ export async function GET(
           type: listings.type,
           headline: listings.headline,
           priceAmount: listings.priceAmount,
+          bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
           priceCurrency: listings.priceCurrency,
           priceUnit: listings.priceUnit,
           avgRating: listings.avgRating,
@@ -106,10 +99,10 @@ export async function GET(
         })
         .from(listings)
         .innerJoin(islands, eq(listings.islandId, islands.id))
-        .where(inArray(listings.id, listingIds));
+        .where(and(inArray(listings.id, listingIds), eq(listings.status, "active")));
 
       for (const l of listingRows) {
-        listingMap.set(l.id, l);
+        listingMap.set(l.id, { ...l, priceAmount: l.bookingEligible === true ? l.priceAmount : null });
       }
 
       const images = await db
@@ -124,7 +117,7 @@ export async function GET(
 
     const itemsWithListings = items.map((item) => ({
       ...item,
-      listing: item.listingId
+      listing: item.listingId && listingMap.has(item.listingId)
         ? {
             ...listingMap.get(item.listingId),
             image: imageMap.get(item.listingId) || null,
