@@ -5,6 +5,7 @@ import { verificationUrl } from "@/lib/claim-return";
 const FROM = "VakayGo <hello@vakaygo.com>";
 // hello@ is send-only — replies must land in a real mailbox.
 const REPLY_TO = "bookings@vakaygo.com";
+const escapeEmailText = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 export async function sendBookingConfirmation(params: {
   to: string;
@@ -318,12 +319,14 @@ export async function sendWelcomeEmail(params: {
   to: string;
   name: string;
 }) {
-  const { to, name } = params;
+  const { to } = params;
+  const name = escapeEmailText(params.name);
 
   await sendEmail({
     from: FROM,
     to,
     subject: "Welcome to VakayGo!",
+    replyTo: REPLY_TO,
     html: `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -357,7 +360,8 @@ export async function sendVerificationEmail(params: {
   claimListingId?: string | null;
   next?: string | null;
 }) {
-  const { to, name, token, claimListingId, next } = params;
+  const { to, token, claimListingId, next } = params;
+  const name = escapeEmailText(params.name);
   const verifyUrl = verificationUrl(token, claimListingId, next);
   const claimNote = verifyUrl.includes("claim=")
     ? "Please verify your email address to continue claiming your business listing. After you confirm, you return to that listing to verify the business phone. Bookings stay unavailable until onboarding is complete."
@@ -367,6 +371,7 @@ export async function sendVerificationEmail(params: {
     from: FROM,
     to,
     subject: "Verify your email — VakayGo",
+    replyTo: REPLY_TO,
     html: `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -382,7 +387,7 @@ export async function sendVerificationEmail(params: {
     <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
     <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">${claimNote}</p>
     <div style="text-align:center;margin-bottom:16px">
-      <a href="${verifyUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Verify Email</a>
+      <a href="${escapeEmailText(verifyUrl)}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Verify Email</a>
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 24 hours. If you didn't create an account on VakayGo, you can safely ignore this email.</p>
   </div>
@@ -397,12 +402,14 @@ export async function sendMagicLinkEmail(params: {
   name: string;
   url: string;
 }) {
-  const { to, name, url } = params;
+  const { to, url } = params;
+  const name = escapeEmailText(params.name);
 
   await sendEmail({
     from: FROM,
     to,
     subject: "Your VakayGo sign-in link",
+    replyTo: REPLY_TO,
     html: `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -418,7 +425,7 @@ export async function sendMagicLinkEmail(params: {
     <p style="color:#1C2333;margin:0 0 16px">Hi ${name},</p>
     <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">${url.includes("claim=") ? "Click the button below to sign in. You return to the business listing you were claiming. Signing in does not enable bookings." : "Click the button below to sign in to your VakayGo account. No password needed."}</p>
     <div style="text-align:center;margin-bottom:16px">
-      <a href="${url}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Sign In</a>
+      <a href="${escapeEmailText(url)}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Sign In</a>
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 15 minutes and can be used once. If you didn't request it, you can safely ignore this email.</p>
   </div>

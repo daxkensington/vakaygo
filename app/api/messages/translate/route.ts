@@ -3,11 +3,10 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messages } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireUser } from "@/server/admin-auth";
+import { isMessageId } from "@/lib/message-input";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -19,17 +18,12 @@ function getDb() {
  */
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const userId = auth.userId;
 
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
-
-    const { messageId, targetLanguage } = await request.json();
-    if (!messageId || !targetLanguage) {
+    const { messageId, targetLanguage } = await request.json().catch(() => ({}));
+    if (!isMessageId(messageId) || typeof targetLanguage !== "string" || !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(targetLanguage)) {
       return NextResponse.json(
         { error: "messageId and targetLanguage required" },
         { status: 400 }
@@ -63,6 +57,7 @@ export async function POST(request: Request) {
     }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      signal: AbortSignal.timeout(15000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -97,14 +92,15 @@ export async function POST(request: Request) {
 
     try {
       const parsed = JSON.parse(assistantContent);
-      translatedText = parsed.translated;
-      sourceLanguage = parsed.sourceLanguage || "unknown";
+      translatedText = typeof parsed.translated === "string" ? parsed.translated.slice(0, 10000) : "";
+      sourceLanguage = typeof parsed.sourceLanguage === "string" && parsed.sourceLanguage.length <= 8 ? parsed.sourceLanguage : "unknown";
     } catch {
       // Fallback if OpenAI didn't return JSON
-      translatedText = assistantContent;
+      translatedText = typeof assistantContent === "string" ? assistantContent.slice(0, 10000) : "";
       sourceLanguage = "unknown";
     }
 
+    if (!translatedText) return NextResponse.json({ error: "Translation failed" }, { status: 502 });
     // Store translation in the message row
     await db
       .update(messages)

@@ -1,54 +1,51 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { listings, users } from "@/drizzle/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { requireOperator } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
     const { slug } = await params;
     const body = await request.json();
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
     // Verify ownership
-    const [listing] = await db
+    const matches = await db
       .select({ id: listings.id, operatorId: listings.operatorId, status: listings.status })
       .from(listings)
-      .where(eq(listings.slug, slug))
-      .limit(1);
+      .where(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(slug) ? eq(listings.id, slug) : and(eq(listings.slug, slug), auth.role === "admin" ? undefined : eq(listings.operatorId, auth.userId)))
+      .limit(2);
+    if (matches.length > 1) return NextResponse.json({ error: "Open the exact listing from your dashboard before editing." }, { status: 409 });
+    const listing = matches[0];
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    const role = payload.role as string;
-    if (listing.operatorId !== payload.id && role !== "admin") {
+    const role = auth.role;
+    if (listing.operatorId !== auth.userId && role !== "admin") {
       return NextResponse.json({ error: "Not your listing" }, { status: 403 });
     }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (body.title) updateData.title = body.title;
-    if (body.description) updateData.description = body.description;
-    if (body.headline) updateData.headline = body.headline;
-    if (body.address) updateData.address = body.address;
-    if (body.parish) updateData.parish = body.parish;
+    for (const field of ["description", "headline", "address", "parish"]) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        if (body[field] !== null && typeof body[field] !== "string") return NextResponse.json({ error: `Invalid ${field}` }, { status: 400 });
+        updateData[field] = body[field] || null;
+      }
+    }
     if (body.priceAmount !== undefined) updateData.priceAmount = body.priceAmount?.toString();
     if (body.priceUnit) updateData.priceUnit = body.priceUnit;
     if (body.typeData) updateData.typeData = body.typeData;
@@ -89,7 +86,14 @@ export async function PATCH(
     if (body.advanceNotice !== undefined) updateData.advanceNotice = body.advanceNotice;
     if (body.maxGuests !== undefined) updateData.maxGuests = body.maxGuests;
 
-    await db.update(listings).set(updateData).where(eq(listings.id, listing.id));
+    const [updated] = await db.update(listings).set(updateData).where(and(
+      eq(listings.id, listing.id),
+      role === "admin" ? undefined : eq(listings.operatorId, auth.userId),
+      eq(listings.status, listing.status),
+      // Recheck the authenticated proof at the write, including admin edits.
+      sql<boolean>`exists (select 1 from ${users} where ${users.id}=${auth.userId}::uuid and ${users.sessionVersion}=${auth.sessionVersion} and ${users.role}=${role} and ${users.emailVerified}=true)`,
+    )).returning({ id: listings.id });
+    if (!updated) return NextResponse.json({ error: "This listing or account changed. Reload it before saving." }, { status: 409 });
     await revalidateListing(listing.id);
 
     return NextResponse.json({ success: true });

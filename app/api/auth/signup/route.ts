@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createUser } from "@/server/auth";
 import { sendWelcomeEmail, sendVerificationEmail } from "@/server/email";
 import { neon } from "@neondatabase/serverless";
@@ -15,9 +15,9 @@ export async function POST(request: Request) {
     const { email, password, name, role, referralCode, claimListingId, next } = await request.json();
     const claimReturn = claimListingPath(typeof claimListingId === "string" ? claimListingId : null) ? claimListingId : undefined;
 
-    if (!email || !password || !name) {
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || typeof name !== "string" || !name.trim() || name.length > 200 || typeof password !== "string") {
       return NextResponse.json(
-        { error: "Email, password, and name are required" },
+        { error: "A valid email, full name, and password are required" },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // (createUser also coerces defensively.)
     const safeRole = role === "operator" ? "operator" : "traveler";
 
-    const user = await createUser(email, password, name, safeRole);
+    const user = await createUser(email.trim().toLowerCase(), password, name.trim(), safeRole);
 
     // Handle referral code if provided
     if (referralCode) {
@@ -70,14 +70,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send welcome email (non-blocking)
-    try {
-      sendWelcomeEmail({ to: email, name }).catch(() => {});
-    } catch (_emailErr) {
-      // Email failure should not break signup
-    }
-
-    // Send verification email (non-blocking)
+    // Required inbox proof must receive a provider response before claiming it was sent.
+    let verificationEmailSent = false;
     try {
       const verificationToken = randomBytes(32).toString("hex");
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -89,12 +83,18 @@ export async function POST(request: Request) {
           emailVerificationExpires: expires,
         })
         .where(eq(users.id, user.id));
-      sendVerificationEmail({ to: email, name, token: verificationToken, claimListingId: claimReturn, next: safeAuthNext(next) }).catch(() => {});
-    } catch (_verifyErr) {
-      // Verification email failure should not break signup
+      await sendVerificationEmail({ to: user.email, name: user.name || "Traveler", token: verificationToken, claimListingId: claimReturn, next: safeAuthNext(next) });
+      verificationEmailSent = true;
+    } catch (verificationError) {
+      // The account already exists; report recoverable email failure without suggesting a duplicate signup.
+      logger.error("Signup verification email unavailable", verificationError);
     }
 
-    return NextResponse.json({ user });
+    after(async () => {
+      try { await sendWelcomeEmail({ to: user.email, name: user.name || "Traveler" }); }
+      catch (welcomeError) { logger.error("Signup welcome email unavailable", welcomeError); }
+    });
+    return NextResponse.json({ user, verificationEmailSent });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Something went wrong";
@@ -105,6 +105,6 @@ export async function POST(request: Request) {
       );
     }
     logger.error("Signup error", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Could not create your account. Please try again." }, { status: 500 });
   }
 }

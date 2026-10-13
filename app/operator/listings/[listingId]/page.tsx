@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Save,
@@ -47,6 +47,9 @@ export default function EditListingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -97,13 +100,19 @@ export default function EditListingPage() {
   const [pricingLoading, setPricingLoading] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setLoading(true); setError("");
     async function fetchListing() {
       try {
-        // Fetch by slug from the listing detail API
-        const res = await fetch(`/api/listings/${params.listingId}`);
-        if (!res.ok) throw new Error();
+        const res = await fetch(`/api/operator/listings/${encodeURIComponent(String(params.listingId))}`, { cache: "no-store", signal: controller.signal });
+        if (!active) return;
+        if (res.status === 401) { router.replace(`/auth/signin?next=${encodeURIComponent(`/operator/listings/${params.listingId}`)}`); return; }
         const data = await res.json();
+        if (!active) return;
+        if (!res.ok) throw new Error(data.error || "Could not load this listing.");
         const l = data.listing;
+        if (!l || l.id !== params.listingId) throw new Error("Could not load this listing.");
         setListing(l);
         setTitle(l.title || "");
         setHeadline(l.headline || "");
@@ -119,26 +128,29 @@ export default function EditListingPage() {
         setAdvanceNotice(l.advanceNotice ? String(l.advanceNotice) : "");
         setMaxGuests(l.maxGuests ? String(l.maxGuests) : "");
         const td = l.typeData || {};
-        setIncludedItems((td.included as string[]) || []);
-        setExcludedItems((td.excluded as string[]) || []);
-        setMeetingPoint((td.meetingPoint as string) || "");
-        setImages(l.images || []);
-      } catch {
-        setListing(null);
+        setIncludedItems(Array.isArray(td.included) ? td.included.filter((item: unknown) => typeof item === "string") : []);
+        setExcludedItems(Array.isArray(td.excluded) ? td.excluded.filter((item: unknown) => typeof item === "string") : []);
+        setMeetingPoint(typeof td.meetingPoint === "string" ? td.meetingPoint : "");
+        setImages(Array.isArray(l.images) ? l.images : []);
+      } catch (cause) {
+        if (active && !controller.signal.aborted) { setListing(null); setError(cause instanceof Error ? cause.message : "Could not load this listing."); }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
     if (params.listingId) fetchListing();
-  }, [params.listingId]);
+    return () => { active = false; controller.abort(); };
+  }, [params.listingId, loadAttempt, router]);
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!listing) return;
-    setSaving(true);
+    if (!listing || saving) return;
+    setSaving(true); setSaved(false); setError("");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
 
     try {
-      const res = await fetch(`/api/listings/${listing.slug}/update`, {
+      const res = await fetch(`/api/listings/${listing.id}/update`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -157,19 +169,21 @@ export default function EditListingPage() {
           maxGuests: maxGuests ? parseInt(maxGuests) : null,
           typeData: {
             ...(listing?.typeData || {}),
-            included: includedItems.length > 0 ? includedItems : undefined,
-            excluded: excludedItems.length > 0 ? excludedItems : undefined,
-            meetingPoint: meetingPoint || undefined,
+            included: includedItems,
+            excluded: excludedItems,
+            meetingPoint,
           },
         }),
       });
 
-      if (res.ok) {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      }
-    } catch {
-      // handle error
+      const data = await res.json();
+      if (res.status === 401) { router.replace(`/auth/signin?next=${encodeURIComponent(`/operator/listings/${listing.id}`)}`); return; }
+      if (!res.ok) throw new Error(data.error || "Your changes could not be saved. Please try again.");
+      setListing(current => current ? { ...current, title, headline, description, address, parish, status, typeData: { ...current.typeData, included: includedItems, excluded: excludedItems, meetingPoint } } : current);
+      setSaved(true);
+      saveTimer.current = setTimeout(() => setSaved(false), 3000);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Your changes could not be saved. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -224,7 +238,8 @@ export default function EditListingPage() {
   if (!listing) {
     return (
       <div className="text-center py-20">
-        <p className="text-navy-400">Listing not found</p>
+        <p role="alert" className="text-navy-600">{error || "This listing is unavailable in your business account."}</p>
+        <button type="button" onClick={() => setLoadAttempt(attempt => attempt + 1)} className="mt-4 rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700">Try loading again</button>
         <Link href="/operator/listings" className="text-gold-700 font-semibold mt-4 inline-block">
           Back to listings
         </Link>
@@ -236,7 +251,7 @@ export default function EditListingPage() {
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Link href="/operator/listings" className="text-navy-400 hover:text-navy-600">
+          <Link href="/operator/listings" aria-label="Back to your listings" className="text-navy-400 hover:text-navy-600">
             <ArrowLeft size={20} />
           </Link>
           <div>
@@ -246,24 +261,29 @@ export default function EditListingPage() {
             <p className="text-navy-400 text-sm capitalize">{listing.type}</p>
           </div>
         </div>
-        <Link
+        {listing.status === "active" ? <Link
           href={`/${listing.islandSlug}/${listing.slug}`}
           className="flex items-center gap-2 text-sm text-navy-500 hover:text-gold-500"
         >
           <Eye size={16} />
-          View Live
-        </Link>
+          View directory listing
+        </Link> : <span className="text-sm text-navy-500">Listing is not published</span>}
       </div>
 
+      {error && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{error} Your changes are still in the form.</p>}
+      <Link href={`/operator/onboarding/${listing.id}`} className="mb-5 inline-block font-semibold text-gold-700">Continue business onboarding</Link>
       <form onSubmit={handleSave} className="space-y-6">
+        <fieldset disabled={saving} className="space-y-6 min-w-0">
         {/* Status */}
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
           <h2 className="font-bold text-navy-700 mb-4">Status</h2>
-          <div className="flex gap-3">
-            {["active", "paused", "draft"].map((s) => (
+          <div className="flex flex-wrap gap-3">
+            {(["active", "paused"].includes(listing.status) ? ["active", "paused", "draft", "pending_review"] : ["draft", "pending_review"]).map((s) => (
               <button
                 key={s}
                 type="button"
+                aria-pressed={status === s}
+                disabled={saving}
                 onClick={() => setStatus(s)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${
                   status === s
@@ -275,7 +295,7 @@ export default function EditListingPage() {
                     : "bg-cream-50 text-navy-500 hover:bg-cream-100"
                 }`}
               >
-                {s}
+                {s === "pending_review" ? "Submit for review" : s}
               </button>
             ))}
           </div>
@@ -286,8 +306,9 @@ export default function EditListingPage() {
           <h2 className="font-bold text-navy-700 mb-4">Details</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Title</label>
+              <label htmlFor="edit-title" className="block text-sm font-medium text-navy-600 mb-1.5">Title</label>
               <input
+                id="edit-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -295,8 +316,9 @@ export default function EditListingPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Headline</label>
+              <label htmlFor="edit-headline" className="block text-sm font-medium text-navy-600 mb-1.5">Headline</label>
               <input
+                id="edit-headline"
                 type="text"
                 value={headline}
                 onChange={(e) => setHeadline(e.target.value)}
@@ -306,7 +328,7 @@ export default function EditListingPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-navy-600">Description</label>
+                <label htmlFor="edit-description" className="block text-sm font-medium text-navy-600">Description</label>
                 <AIDescriptionButton
                   title={title}
                   type={listing.type}
@@ -318,6 +340,7 @@ export default function EditListingPage() {
                 />
               </div>
               <textarea
+                id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
@@ -632,8 +655,9 @@ export default function EditListingPage() {
           <h2 className="font-bold text-navy-700 mb-4">Location</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Address</label>
+              <label htmlFor="edit-address" className="block text-sm font-medium text-navy-600 mb-1.5">Address</label>
               <input
+                id="edit-address"
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -641,8 +665,9 @@ export default function EditListingPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Parish / Area</label>
+              <label htmlFor="edit-parish" className="block text-sm font-medium text-navy-600 mb-1.5">Parish / Area</label>
               <input
+                id="edit-parish"
                 type="text"
                 value={parish}
                 onChange={(e) => setParish(e.target.value)}
@@ -657,10 +682,11 @@ export default function EditListingPage() {
           <h2 className="font-bold text-navy-700 mb-4">Pricing</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Price (USD)</label>
+              <label htmlFor="edit-price" className="block text-sm font-medium text-navy-600 mb-1.5">Price (USD)</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400">$</span>
                 <input
+                id="edit-price"
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
@@ -669,8 +695,9 @@ export default function EditListingPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Per</label>
+              <label htmlFor="edit-priceUnit" className="block text-sm font-medium text-navy-600 mb-1.5">Per</label>
               <select
+                id="edit-priceUnit"
                 value={priceUnit}
                 onChange={(e) => setPriceUnit(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 appearance-none"
@@ -738,8 +765,9 @@ export default function EditListingPage() {
             {listing?.type === "stay" && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Min. Nights</label>
+                  <label htmlFor="edit-minStay" className="block text-sm font-medium text-navy-600 mb-1.5">Min. Nights</label>
                   <input
+                id="edit-minStay"
                     type="number"
                     min="0"
                     value={minStay}
@@ -749,8 +777,9 @@ export default function EditListingPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1.5">Max. Nights</label>
+                  <label htmlFor="edit-maxStay" className="block text-sm font-medium text-navy-600 mb-1.5">Max. Nights</label>
                   <input
+                id="edit-maxStay"
                     type="number"
                     min="0"
                     value={maxStay}
@@ -762,8 +791,9 @@ export default function EditListingPage() {
               </>
             )}
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Advance Notice (hours)</label>
+              <label htmlFor="edit-advanceNotice" className="block text-sm font-medium text-navy-600 mb-1.5">Advance Notice (hours)</label>
               <input
+                id="edit-advanceNotice"
                 type="number"
                 min="0"
                 value={advanceNotice}
@@ -773,8 +803,9 @@ export default function EditListingPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-600 mb-1.5">Max. Guests</label>
+              <label htmlFor="edit-maxGuests" className="block text-sm font-medium text-navy-600 mb-1.5">Max. Guests</label>
               <input
+                id="edit-maxGuests"
                 type="number"
                 min="1"
                 value={maxGuests}
@@ -793,13 +824,14 @@ export default function EditListingPage() {
 
             {/* Included */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-navy-600 mb-2">Included</label>
+              <label htmlFor="edit-newIncluded" className="block text-sm font-semibold text-navy-600 mb-2">Included</label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {includedItems.map((item, i) => (
                   <span key={i} className="inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 text-sm px-3 py-1.5 rounded-full">
                     {item}
                     <button
                       type="button"
+                      aria-label={`Remove included item: ${item}`}
                       onClick={() => setIncludedItems(includedItems.filter((_, idx) => idx !== i))}
                       className="text-teal-400 hover:text-teal-600"
                     >
@@ -810,6 +842,7 @@ export default function EditListingPage() {
               </div>
               <div className="flex gap-2">
                 <input
+                id="edit-newIncluded"
                   type="text"
                   value={newIncluded}
                   onChange={(e) => setNewIncluded(e.target.value)}
@@ -842,13 +875,14 @@ export default function EditListingPage() {
 
             {/* Excluded */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-navy-600 mb-2">Not Included</label>
+              <label htmlFor="edit-newExcluded" className="block text-sm font-semibold text-navy-600 mb-2">Not Included</label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {excludedItems.map((item, i) => (
                   <span key={i} className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 text-sm px-3 py-1.5 rounded-full">
                     {item}
                     <button
                       type="button"
+                      aria-label={`Remove excluded item: ${item}`}
                       onClick={() => setExcludedItems(excludedItems.filter((_, idx) => idx !== i))}
                       className="text-red-400 hover:text-red-600"
                     >
@@ -859,6 +893,7 @@ export default function EditListingPage() {
               </div>
               <div className="flex gap-2">
                 <input
+                id="edit-newExcluded"
                   type="text"
                   value={newExcluded}
                   onChange={(e) => setNewExcluded(e.target.value)}
@@ -891,8 +926,9 @@ export default function EditListingPage() {
 
             {/* Meeting Point */}
             <div>
-              <label className="block text-sm font-semibold text-navy-600 mb-2">Meeting Point</label>
+              <label htmlFor="edit-meetingPoint" className="block text-sm font-semibold text-navy-600 mb-2">Meeting Point</label>
               <input
+                id="edit-meetingPoint"
                 type="text"
                 value={meetingPoint}
                 onChange={(e) => setMeetingPoint(e.target.value)}
@@ -913,7 +949,7 @@ export default function EditListingPage() {
             Delete Listing
           </button>
           <div className="flex items-center gap-4">
-            {saved && <span className="text-sm text-teal-600 font-medium">Saved!</span>}
+            {saved && <span role="status" className="text-sm text-teal-600 font-medium">Saved!</span>}
             <button
               type="submit"
               disabled={saving}
@@ -924,6 +960,7 @@ export default function EditListingPage() {
             </button>
           </div>
         </div>
+        </fieldset>
       </form>
     </div>
   );

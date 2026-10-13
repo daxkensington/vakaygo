@@ -22,8 +22,13 @@ export async function GET(request: Request) {
   let cookieStore: Awaited<ReturnType<typeof cookies>> | undefined;
   let continuationClaim: string | undefined;
   let returnPath: string | null = null;
+  let newAccountRole: "operator" | "traveler" = "traveler";
   let clearAttempt = false;
-  const failure = (error: string) => NextResponse.redirect(new URL(signInHref(continuationClaim, { error, next: returnPath }), url.origin));
+  const failure = (error: string) => {
+    const destination = new URL(signInHref(continuationClaim, { error, next: returnPath }), url.origin);
+    if (newAccountRole === "operator") destination.searchParams.set("role", "operator");
+    return NextResponse.redirect(destination);
+  };
 
   try {
     cookieStore = await cookies();
@@ -69,6 +74,10 @@ export async function GET(request: Request) {
     }
 
     // Only use continuation cookies after verifying the OAuth state.
+    try {
+      const roleChoice = JSON.parse(cookieStore.get("oauth_role")?.value || "null");
+      if (roleChoice?.state === state && roleChoice.role === "operator") newAccountRole = "operator";
+    } catch { /* A missing or invalid choice retains the traveler default. */ }
     const claim = cookieStore.get("oauth_claim")?.value;
     if (claimListingPath(claim)) continuationClaim = claim;
     try {
@@ -212,7 +221,7 @@ export async function GET(request: Request) {
           email: googleEmail,
           name: googleName,
           avatarUrl: googleAvatar || null,
-          role: "traveler",
+          role: newAccountRole,
           emailVerified: true,
         })
         .returning({
@@ -257,6 +266,6 @@ export async function GET(request: Request) {
     return failure("callback_failed");
   } finally {
     // Clear a consumed matching attempt on every outcome; leave newer attempts intact.
-    if (clearAttempt) for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_redirect_uri"]) cookieStore?.delete(name);
+    if (clearAttempt) for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_role", "oauth_redirect_uri"]) cookieStore?.delete(name);
   }
 }
