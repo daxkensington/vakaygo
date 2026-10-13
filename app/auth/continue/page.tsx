@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Loader2 } from "lucide-react";
 
 export default function ContinuePage() {
@@ -26,6 +27,7 @@ function ContinueContent() {
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const token = searchParams.get("token") || "";
+  const returnPath = safeAuthNext(searchParams.get("next"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,14 +43,14 @@ function ContinueContent() {
       const data = await res.json();
       if (!res.ok) {
         if (data.requiresPassword) {
-          router.push(signInHref(searchParams.get("claim"), { error: "use_password" }));
+          router.push(signInHref(searchParams.get("claim"), { error: "use_password", next: returnPath }));
           return;
         }
         setError(data.error || "This sign-in link is invalid or has expired.");
         return;
       }
       await refresh();
-      router.push(claimListingPath(searchParams.get("claim")) || data.redirect || "/explore");
+      router.push(claimListingPath(searchParams.get("claim")) || returnPath || safeAuthNext(data.redirect) || "/explore");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -82,7 +84,7 @@ function ContinueContent() {
                 {error}
               </div>
               <Link
-                href={signInHref(searchParams.get("claim"), { method: "email" })}
+                href={signInHref(searchParams.get("claim"), { method: "email", next: returnPath })}
                 className="text-gold-700 font-semibold hover:text-gold-600"
               >
                 Request a new sign-in link

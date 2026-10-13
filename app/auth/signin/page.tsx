@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { claimIdFromPath } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -36,7 +37,8 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const emailRecovery = searchParams.get("method") === "email";
-  const claimFromNext = claimIdFromPath(searchParams.get("next"));
+  const returnPath = safeAuthNext(searchParams.get("next"));
+  const claimFromNext = claimIdFromPath(returnPath);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -86,10 +88,8 @@ function SignInContent() {
       }
 
       await refresh();
-      const next = searchParams.get("next");
-      // Only same-origin relative paths — never an absolute URL from the query string.
-      if (next && /^\/(?!\/)[\w\-./?=&%]*$/.test(next)) {
-        router.push(next);
+      if (returnPath) {
+        router.push(returnPath);
         return;
       }
       router.push(data.user.role === "operator" ? "/operator" : "/explore");
@@ -111,7 +111,7 @@ function SignInContent() {
       const res = await fetch("/api/auth/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, ...(claimFromNext ? { claimListingId: claimFromNext } : {}) }),
+        body: JSON.stringify({ email, ...(claimFromNext ? { claimListingId: claimFromNext } : returnPath ? { next: returnPath } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -126,7 +126,7 @@ function SignInContent() {
     }
   }
 
-  const signupHref = claimFromNext ? `/auth/signup?role=operator&claim=${claimFromNext}` : "/auth/signup";
+  const signupHref = claimFromNext ? `/auth/signup?role=operator&claim=${claimFromNext}` : returnPath ? `/auth/signup?next=${encodeURIComponent(returnPath)}` : "/auth/signup";
 
   return (
     <main className="min-h-screen bg-cream-50 flex items-center justify-center px-6">
@@ -157,6 +157,7 @@ function SignInContent() {
           <button type="button" onClick={() => {
             const url = new URL("/api/auth/google", window.location.origin);
             if (claimFromNext) url.searchParams.set("claim", claimFromNext);
+            else if (returnPath) url.searchParams.set("next", returnPath);
             window.location.assign(url.href);
           }}
             className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"

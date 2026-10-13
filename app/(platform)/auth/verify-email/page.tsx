@@ -4,6 +4,7 @@ import { useState, Suspense, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Mail, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,6 +22,7 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const token = searchParams.get("token");
+  const returnPath = safeAuthNext(searchParams.get("next"));
   const [password, setPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ function VerifyEmailContent() {
       setPassword("");
       await refresh();
       const claimPath = claimListingPath(searchParams.get("claim"));
-      router.replace(claimPath || (data.redirect === "/operator" ? "/operator" : "/explore"));
+      router.replace(claimPath || returnPath || (data.redirect === "/operator" ? "/operator" : "/explore"));
     } catch {
       setConfirmationError("We could not confirm this email. Please try again.");
     } finally {
@@ -68,7 +70,7 @@ function VerifyEmailContent() {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(claimListingPath(claimListingId) ? { claimListingId } : {}),
+        body: JSON.stringify(claimListingPath(claimListingId) ? { claimListingId } : returnPath ? { next: returnPath } : {}),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -84,8 +86,8 @@ function VerifyEmailContent() {
   }
 
   const claimId = searchParams.get("claim");
-  const inboxRecoveryHref = signInHref(claimId, { method: "email" });
-  const secureSignInHref = signInHref(claimId);
+  const inboxRecoveryHref = signInHref(claimId, { method: "email", next: returnPath });
+  const secureSignInHref = signInHref(claimId, { next: returnPath });
 
   const errorMessages: Record<string, string> = {
     missing_token: "The verification link is invalid. Please request a new one.",

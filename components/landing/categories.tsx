@@ -7,7 +7,6 @@ const categories = [
     icon: Home,
     name: "Stays",
     slug: "stay",
-    count: 682,
     description: "Villas, guesthouses & boutique hotels",
     image:
       "/images/sections/stays.jpg",
@@ -16,7 +15,6 @@ const categories = [
     icon: Compass,
     name: "Excursions",
     slug: "excursion",
-    count: 1192,
     description: "Boat trips, island hopping & adventure days",
     image: "/images/categories/excursion.jpg",
   },
@@ -24,7 +22,6 @@ const categories = [
     icon: Compass,
     name: "Tours",
     slug: "tour",
-    count: 2227,
     description: "Walking tours, sightseeing & cultural experiences",
     image:
       "/images/sections/tours.jpg",
@@ -33,7 +30,6 @@ const categories = [
     icon: UtensilsCrossed,
     name: "Dining",
     slug: "dining",
-    count: 1615,
     description: "Local spots, street food & fine dining",
     image:
       "/images/sections/dining.jpg",
@@ -42,7 +38,6 @@ const categories = [
     icon: Music,
     name: "Events",
     slug: "event",
-    count: 86,
     description: "Fetes, festivals & beach parties",
     image:
       "/images/sections/events.jpg",
@@ -51,7 +46,6 @@ const categories = [
     icon: Plane,
     name: "Airport Transfers",
     slug: "transfer",
-    count: 508,
     description: "Meet & greet, flight tracking, door-to-door",
     image: "/images/categories/transfer.jpg",
   },
@@ -59,7 +53,6 @@ const categories = [
     icon: Car,
     name: "Transport",
     slug: "transport",
-    count: 419,
     description: "Car rental, taxi, water taxi & ferry",
     image:
       "/images/sections/transport.jpg",
@@ -68,7 +61,6 @@ const categories = [
     icon: Shield,
     name: "VIP Services",
     slug: "vip",
-    count: 498,
     description: "Security, concierge & luxury transfers",
     image: "/images/categories/vip.jpg",
   },
@@ -76,7 +68,6 @@ const categories = [
     icon: Users,
     name: "Guides",
     slug: "guide",
-    count: 3,
     description: "Expert locals who show you the real island",
     image:
       "/images/sections/guides.jpg",
@@ -85,7 +76,6 @@ const categories = [
     icon: Sparkles,
     name: "Spa & Wellness",
     slug: "spa",
-    count: 0,
     description: "Spa treatments, massages & wellness retreats",
     image: "/images/categories/spa.jpg",
   },
@@ -142,10 +132,10 @@ export function Categories() {
                 </p>
               </div>
 
-              {/* Count + arrow */}
+              {/* Category action */}
               <div className="absolute top-5 right-5 flex items-center gap-2">
                 <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                  {cat.count > 0 ? `${cat.count} listings` : "Coming soon"}
+                  Explore listings
                 </span>
               </div>
 

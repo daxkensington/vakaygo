@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { MessageCircle, Send, Loader2, X } from "lucide-react";
 
@@ -9,19 +10,34 @@ type ContactOperatorProps = {
   operatorName: string;
   listingId: string;
   listingTitle: string;
+  listingPath?: string;
 };
 
-export function ContactOperator({ operatorId, operatorName, listingId, listingTitle }: ContactOperatorProps) {
+export function ContactOperator({ operatorId, operatorName, listingId, listingTitle, listingPath }: ContactOperatorProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [authExpired, setAuthExpired] = useState(false);
+  const messageId = useId();
+  const messageInput = useRef<HTMLTextAreaElement>(null);
+  const openButton = useRef<HTMLButtonElement>(null);
+  const signInHref = listingPath && listingPath.startsWith("/") && !listingPath.startsWith("//")
+    ? `/auth/signin?next=${encodeURIComponent(listingPath)}`
+    : "/auth/signin";
+
+  useEffect(() => {
+    if (open) messageInput.current?.focus();
+  }, [open]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!message.trim() || !user) return;
+    if (!message.trim() || !user || sending) return;
     setSending(true);
+    setError(null);
+    setAuthExpired(false);
 
     try {
       const res = await fetch("/api/messages", {
@@ -29,7 +45,7 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           receiverId: operatorId,
-          content: message,
+          content: message.trim(),
           listingId,
         }),
       });
@@ -37,9 +53,16 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
       if (res.ok) {
         setSent(true);
         setMessage("");
+      } else {
+        setAuthExpired(res.status === 401);
+        setError(res.status === 401
+          ? "Your session has expired. Sign in again to send your message."
+          : res.status === 429
+            ? "Too many messages. Please wait a moment and try again."
+            : "Your message could not be sent. Please try again.");
       }
     } catch {
-      // handle error
+      setError("Your message could not be sent. Check your connection and try again.");
     } finally {
       setSending(false);
     }
@@ -47,20 +70,21 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
 
   if (!user) {
     return (
-      <a
-        href="/auth/signin"
+      <Link
+        href={signInHref}
         className="flex items-center gap-2 bg-white hover:bg-cream-50 text-navy-600 px-5 py-3 rounded-xl font-semibold shadow-[var(--shadow-card)] transition-colors w-full justify-center"
       >
         <MessageCircle size={18} />
         Sign in to message operator
-      </a>
+      </Link>
     );
   }
 
   if (sent) {
     return (
-      <div className="bg-teal-50 text-teal-700 px-5 py-3 rounded-xl text-sm font-medium text-center">
-        Message sent to {operatorName}! They&apos;ll reply in your inbox.
+      <div role="status" className="bg-teal-50 text-teal-700 px-5 py-3 rounded-xl text-sm font-medium text-center">
+        Message sent to {operatorName}.{" "}
+        <Link href="/messages" className="font-semibold underline">Check your inbox for replies</Link>.
       </div>
     );
   }
@@ -69,6 +93,8 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
     <div>
       {!open ? (
         <button
+          ref={openButton}
+          type="button"
           onClick={() => setOpen(true)}
           className="flex items-center gap-2 bg-white hover:bg-cream-50 text-navy-600 px-5 py-3 rounded-xl font-semibold shadow-[var(--shadow-card)] transition-colors w-full justify-center"
         >
@@ -81,25 +107,35 @@ export function ContactOperator({ operatorId, operatorName, listingId, listingTi
             <p className="text-sm font-semibold text-navy-700">
               Message about {listingTitle}
             </p>
-            <button onClick={() => setOpen(false)} className="text-navy-300 hover:text-navy-500">
+            <button type="button" aria-label="Close message form" disabled={sending} onClick={() => {
+              setOpen(false);
+              requestAnimationFrame(() => openButton.current?.focus());
+            }} className="text-navy-300 hover:text-navy-500 disabled:opacity-50">
               <X size={16} />
             </button>
           </div>
           <form onSubmit={handleSend}>
+            <label htmlFor={messageId} className="block mb-2 text-sm font-medium text-navy-600">Your message</label>
             <textarea
+              ref={messageInput}
+              id={messageId}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
+              disabled={sending}
+              aria-describedby={`${messageId}-notice${error ? ` ${messageId}-error` : ""}`}
               placeholder="Hi, I have a question about this listing..."
               className="w-full px-3 py-2.5 rounded-lg bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none text-sm resize-none focus:ring-2 focus:ring-gold-500/50"
             />
+            <p id={`${messageId}-notice`} className="mt-2 text-xs text-navy-400">Sending a message does not reserve anything or create a booking.</p>
+            {error && <p id={`${messageId}-error`} role="alert" className="mt-2 text-sm text-red-600">{error}{authExpired && <> <Link href={signInHref} className="font-semibold underline">Sign in</Link></>}</p>}
             <button
               type="submit"
               disabled={sending || !message.trim()}
               className="mt-2 w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
             >
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Send Message
+              {sending ? "Sending message..." : "Send Message"}
             </button>
           </form>
         </div>
