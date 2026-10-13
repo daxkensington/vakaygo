@@ -30,10 +30,33 @@ beforeEach(() => {
   fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
   container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function list() { await act(async () => root.render(<TripsPage />)); }
 async function trip(tripId = id) { await act(async () => root.render(<TripDetailPage params={Promise.resolve({ id: tripId })} />)); }
 const button = (text: string) => Array.from(container.querySelectorAll("button")).find(item => item.textContent?.trim() === text || item.getAttribute("aria-label") === text)!;
+
+it.each(["America/Bogota", "Pacific/Honolulu", "Pacific/Auckland"])("keeps the saved trip's calendar dates in the list for a viewer in %s", async viewerZone => {
+  const original = Date.prototype.toLocaleDateString;
+  vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementation(function (this: Date, locale, options) {
+    return original.call(this, locale, { timeZone: viewerZone, ...options });
+  });
+  fetchMock.mockResolvedValueOnce(response({ trips: [{ ...card("Calendar trip"), startDate: "2026-11-10T00:00:00.000Z", endDate: "2026-11-12T00:00:00.000Z" }] }));
+  await list();
+  expect(container.textContent).toContain("Nov 10, 2026 - Nov 12, 2026");
+});
+
+it.each(["America/Bogota", "Pacific/Honolulu", "Pacific/Auckland"])("keeps the trip range and day headings on their calendar dates for a viewer in %s", async viewerZone => {
+  const original = Date.prototype.toLocaleDateString;
+  vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementation(function (this: Date, locale, options) {
+    return original.call(this, locale, { timeZone: viewerZone, ...options });
+  });
+  const fixture = data("Calendar trip");
+  fetchMock.mockResolvedValueOnce(response({ ...fixture, trip: { ...fixture.trip, startDate: "2026-11-10T00:00:00.000Z", endDate: "2026-11-12T00:00:00.000Z" }, items: [...fixture.items, { ...fixture.items[0], id: "second-day", dayNumber: 2 }] }));
+  await trip();
+  expect(container.textContent).toContain("Nov 10, 2026 - Nov 12, 2026");
+  expect(container.textContent).toContain("Tue, Nov 10");
+  expect(container.textContent).toContain("Wed, Nov 11");
+});
 async function click(text: string) { expect(button(text), text).toBeDefined(); await act(async () => button(text).click()); }
 async function title(value: string) {
   const input = container.querySelector('input[aria-label="Trip title"]') as HTMLInputElement;

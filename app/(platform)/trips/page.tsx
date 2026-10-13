@@ -104,6 +104,7 @@ function TripsContent({ actorRef }: { actorRef: RefObject<string | undefined> })
   function formatDate(d: string | null) {
     if (!d) return "";
     return new Date(d).toLocaleDateString("en-US", {
+      timeZone: "UTC",
       month: "short",
       day: "numeric",
       year: "numeric",

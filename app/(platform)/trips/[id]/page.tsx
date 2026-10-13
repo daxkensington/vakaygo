@@ -241,6 +241,7 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
   function formatDate(d: string | null) {
     if (!d) return "";
     return new Date(d).toLocaleDateString("en-US", {
+      timeZone: "UTC",
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -253,6 +254,7 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
       new Date(trip.startDate).getTime() + (dayNum - 1) * 86400000
     );
     return d.toLocaleDateString("en-US", {
+      timeZone: "UTC",
       weekday: "short",
       month: "short",
       day: "numeric",
