@@ -67,4 +67,7 @@ it("requires the current account's confirmed save receipt and keeps failed draft
   fetchMock.mockResolvedValueOnce(response(profile("a", "draft"))).mockResolvedValueOnce(response(profile("wrong"))).mockResolvedValueOnce(response(profile("a", "confirmed")));
   await render(); await submit(); expect(container.textContent).not.toContain("Profile updated!"); expect(phone().value).toBe("draft");
   await submit(); expect(phone().value).toBe("confirmed"); expect(auth.refresh).toHaveBeenCalledOnce(); expect(container.textContent).toContain("Profile updated!");
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(phone(), "New unsaved phone"); phone().dispatchEvent(new Event("input", { bubbles: true })); });
+  expect(container.textContent).not.toContain("Profile updated!");
+  expect(fetchMock).toHaveBeenCalledTimes(3);
 });

@@ -207,7 +207,7 @@ function AccountProfile({ user, signOut, refresh }: {
                   disabled={!profileReady || saving}
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); setSaved(false); }}
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
                   placeholder="Your full name"
                 />
@@ -221,7 +221,7 @@ function AccountProfile({ user, signOut, refresh }: {
                     disabled={!profileReady || saving}
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => { setPhone(e.target.value); setSaved(false); }}
                     className="w-full pl-11 pr-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
                     placeholder="+1 (555) 123-4567"
                   />
