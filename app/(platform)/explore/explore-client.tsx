@@ -1043,8 +1043,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4 defer-offscreen">
-                      {listings.map((listing) => (
-                        <ListingCard key={listing.id} {...listing} />
+                      {listings.map((listing, index) => (
+                        <ListingCard key={listing.id} {...listing} priority={index === 0} />
                       ))}
                     </div>
                     {hasMore && !listError && listings.length > 0 && (
@@ -1126,8 +1126,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 defer-offscreen">
-                  {listings.map((listing) => (
-                    <ListingCard key={listing.id} {...listing} />
+                  {listings.map((listing, index) => (
+                    <ListingCard key={listing.id} {...listing} priority={index < 4} />
                   ))}
                 </div>
 

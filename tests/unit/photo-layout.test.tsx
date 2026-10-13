@@ -3,12 +3,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { compile } from "tailwindcss";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
-type OptimizedProps = { src: string; alt: string; fill: boolean; sizes: string; priority: boolean; loading: string; quality: number; onError: React.ReactEventHandler<HTMLImageElement>; className: string };
+type OptimizedProps = { src: string; alt: string; fill: boolean; sizes: string; priority: boolean; loading: string; fetchPriority: "high" | "auto"; quality: number; onError: React.ReactEventHandler<HTMLImageElement>; className: string };
 const imageState = vi.hoisted(() => ({ props: [] as OptimizedProps[] }));
 vi.mock("next/image", () => ({
   default: (props: OptimizedProps) => {
     imageState.props.push(props);
-    return React.createElement("img", { src: props.src, alt: props.alt, onError: props.onError, className: props.className, "data-optimized-image": "true", style: props.fill ? { position: "absolute", width: "100%", height: "100%" } : undefined });
+    return React.createElement("img", { src: props.src, alt: props.alt, onError: props.onError, className: props.className, fetchPriority: props.fetchPriority, "data-optimized-image": "true", style: props.fill ? { position: "absolute", width: "100%", height: "100%" } : undefined });
   },
 }));
 import { ImageWithFallback } from "@/components/shared/image-fallback";
@@ -66,7 +66,7 @@ it("provides one relative containing block by default and keeps explicit dimensi
 it("preserves absolute positioning and fill/priority/sizes at the optimized image boundary", async () => {
   await render(<ImageWithFallback src="/owned-photo.png" type="tour" alt="Optimized owned photo" className="absolute inset-0" priority sizes="310px" />);
   expect(getComputedStyle(wrapper()).position).toBe("absolute");
-  expect(imageState.props.at(-1)).toMatchObject({ src: "/owned-photo.png", alt: "Optimized owned photo", fill: true, priority: true, loading: "eager", sizes: "310px", quality: 75 });
+  expect(imageState.props.at(-1)).toMatchObject({ src: "/owned-photo.png", alt: "Optimized owned photo", fill: true, priority: true, loading: "eager", fetchPriority: "high", sizes: "310px", quality: 75 });
   await act(async () => container.querySelector("img")!.dispatchEvent(new Event("error")));
   expect(getComputedStyle(wrapper()).position).toBe("absolute");
   expect(container.querySelector("svg")).not.toBeNull();

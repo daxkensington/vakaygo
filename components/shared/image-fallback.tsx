@@ -145,6 +145,7 @@ export function ImageWithFallback({
           sizes={sizes}
           priority={priority}
           loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           quality={75}
           onError={() => setFailed(true)}
           className="object-cover"
