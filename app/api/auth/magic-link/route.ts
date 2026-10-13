@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import { users } from "@/drizzle/schema";
 import { sendMagicLinkEmail } from "@/server/email";
 import { claimListingPath, magicLinkUrl } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 
 import { logger } from "@/lib/logger";
 
@@ -14,7 +15,7 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // don't re-issue within 60s of a prior li
 
 /**
  * POST — request a passwordless sign-in link.
- * Body: { email, claimListingId? }
+ * Body: { email, claimListingId?, next? }
  * claimListingId is only a return path after sign-in. It is not ownership proof.
  *
  * Anti-enumeration: the synchronous response path is SELECT-only and returns
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
     const claimReturn = claimListingPath(typeof body?.claimListingId === "string" ? body.claimListingId : null)
       ? body.claimListingId
       : undefined;
+    const next = safeAuthNext(body?.next);
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
 
       try {
         const token = randomBytes(32).toString("hex");
-        const url = magicLinkUrl(token, claimReturn);
+        const url = magicLinkUrl(token, claimReturn, next);
         if (!url) return;
         const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
         await db

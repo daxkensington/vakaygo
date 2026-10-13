@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { analytics } from "@/lib/analytics";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Eye, EyeOff, Loader2, Home, Compass, Gift } from "lucide-react";
 
 export default function SignUpPage() {
@@ -21,7 +23,8 @@ function SignUpContent() {
   // Without the preselect, businesses landed on the traveler default and
   // could never claim (five did exactly that in Aug 2026).
   const presetRole = searchParams.get("role") === "operator" ? "operator" : null;
-  const claimListingId = (searchParams.get("claim") || "").match(/^[0-9a-f-]{36}$/i)?.[0] || null;
+  const claimListingId = claimListingPath(searchParams.get("claim")) ? searchParams.get("claim") : null;
+  const returnPath = safeAuthNext(searchParams.get("next"));
   const [step, setStep] = useState<"role" | "details">(presetRole ? "details" : "role");
   const [role, setRole] = useState<"traveler" | "operator">(presetRole || "traveler");
   const [name, setName] = useState("");
@@ -59,7 +62,7 @@ function SignUpContent() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, role, referralCode: referralCode || undefined, ...(claimListingId ? { claimListingId } : {}) }),
+        body: JSON.stringify({ email, password, name, role, referralCode: referralCode || undefined, ...(claimListingId ? { claimListingId } : returnPath ? { next: returnPath } : {}) }),
       });
 
       const data = await res.json();
@@ -74,7 +77,7 @@ function SignUpContent() {
       // Inbox proof is required before password sign-in or business access.
       // The verification email carries the listing id across devices.
       setPassword("");
-      router.push(claimListingId ? `/auth/verify-email?claim=${claimListingId}` : "/auth/verify-email");
+      router.push(claimListingId ? `/auth/verify-email?claim=${claimListingId}` : returnPath ? `/auth/verify-email?next=${encodeURIComponent(returnPath)}` : "/auth/verify-email");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -164,6 +167,7 @@ function SignUpContent() {
                 onClick={() => {
                   const url = new URL("/api/auth/google", window.location.origin);
                   if (claimListingId) url.searchParams.set("claim", claimListingId);
+                  else if (returnPath) url.searchParams.set("next", returnPath);
                   window.location.assign(url.href);
                 }}
                 className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
@@ -265,7 +269,7 @@ function SignUpContent() {
 
         <p className="text-center text-navy-400 text-sm mt-6">
           Already have an account?{" "}
-          <Link href={claimListingId ? `/auth/signin?next=/operator/claim/${claimListingId}` : "/auth/signin"} className="text-gold-700 font-semibold hover:text-gold-600">
+          <Link href={signInHref(claimListingId, { next: returnPath })} className="text-gold-700 font-semibold hover:text-gold-600">
             Sign in
           </Link>
         </p>

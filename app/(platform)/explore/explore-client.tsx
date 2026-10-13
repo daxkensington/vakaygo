@@ -9,9 +9,12 @@ import { RecentlyViewed } from "@/components/listings/recently-viewed";
 import { ListingCard } from "@/components/listings/listing-card";
 import { ListingSkeletonGrid } from "@/components/listings/listing-skeleton";
 import { SearchAutocomplete } from "@/components/search/search-autocomplete";
+import { Sheet, SheetTrigger, SheetContent, SheetClose, SheetTitle } from "@/components/ui/sheet";
 import {
   filtersToSearchParams,
+  parseListingFilters,
   EXPLORE_PAGE_SIZE,
+  TYPE_LABELS,
   type ListingFilters,
   type ListingResult,
   type ListingType,
@@ -161,15 +164,18 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   const [searchQuery, setSearchQuery] = useState(f.q ?? "");
   const [listings, setListings] = useState<Listing[]>(initial.listings);
   const [loading, setLoading] = useState(!initial.loaded);
+  const [listError, setListError] = useState("");
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(!initial.loaded || initial.listings.length === EXPLORE_PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(!initial.loaded || initial.listings.length < initial.totalCount);
   const [activeIsland, setActiveIsland] = useState(f.island ?? "");
   const [sortBy, setSortBy] = useState<string>(f.sort);
   const [selectedDate, setSelectedDate] = useState(f.date ?? "");
   const [minPrice, setMinPrice] = useState(f.minPrice != null ? String(f.minPrice) : "");
   const [maxPrice, setMaxPrice] = useState(f.maxPrice != null ? String(f.maxPrice) : "");
   const [minRating, setMinRating] = useState(f.minRating != null ? String(f.minRating) : "");
-  const [totalCount, setTotalCount] = useState(initial.totalCount);
+  const [totalCount, setTotalCount] = useState<number | null>(initial.loaded ? initial.totalCount : null);
+  const [countError, setCountError] = useState(false);
   const [guestCount, setGuestCount] = useState(f.guests != null ? String(f.guests) : "");
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(f.amenities);
   const [selectedDuration, setSelectedDuration] = useState(f.duration ?? "");
@@ -196,7 +202,21 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   // rendered so the first effect run does not refetch (and re-skeleton)
   // the page the visitor is already looking at.
   const loadedListKey = useRef(initial.loaded ? listKey + "|0" : "");
-  const loadedCountKey = useRef(initial.loaded ? countKey : "");
+  const loadedCountKey = useRef<string | null>(initial.loaded ? countKey : null);
+  const requestedFilterKey = useRef(listKey);
+  const loadedResultsKey = useRef(initial.loaded ? listKey : "");
+  const currentFilterKey = useRef(listKey);
+  currentFilterKey.current = listKey;
+  const smartRequest = useRef(0);
+  const smartController = useRef<AbortController | null>(null);
+  const smartFilterKey = useRef<string | null>(null);
+  const islandName = activeIsland
+    ? activeIsland === f.island && initial.islandName
+      ? initial.islandName
+      : activeIsland.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : null;
+  const what = activeCategory === "all" ? "Experiences" : TYPE_LABELS[activeCategory as ListingType]?.plural ?? "Experiences";
+  const heading = islandName ? `${what} in ${islandName}` : activeCategory === "all" ? "Explore Caribbean experiences" : `${what} in the Caribbean`;
 
   const mobileFilterCount =
     (selectedDate ? 1 : 0) +
@@ -206,15 +226,22 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     (minRating ? 1 : 0) +
     (guestCount ? 1 : 0);
 
-  // Lock body scroll when filter sheet is open
+  function cancelSmartSearch() {
+    smartRequest.current += 1;
+    smartController.current?.abort();
+    smartFilterKey.current = null;
+    setAiSearchLoading(false);
+    setAiSearchActive(false);
+    setAiSummary("");
+    setAiSuggestions([]);
+    setAiResultsSummary("");
+  }
+
   useEffect(() => {
-    if (!showFilters) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [showFilters]);
+    if (smartFilterKey.current !== null && smartFilterKey.current !== listKey) cancelSmartSearch();
+  }, [listKey]);
+
+  useEffect(() => () => { smartController.current?.abort(); }, []);
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
@@ -260,14 +287,16 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   }
 
   async function handleSmartSearch(query: string) {
+    cancelSmartSearch();
     if (!isNaturalLanguageQuery(query)) {
-      setAiSearchActive(false);
-      setAiSummary("");
-      setAiSuggestions([]);
-      setAiResultsSummary("");
       return;
     }
 
+    const request = ++smartRequest.current;
+    const filterKey = currentFilterKey.current;
+    const controller = new AbortController();
+    smartController.current = controller;
+    smartFilterKey.current = filterKey;
     setAiSearchLoading(true);
     setAiResultsSummary("");
     try {
@@ -275,39 +304,49 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
+        signal: controller.signal,
       });
 
-      if (!res.ok) return;
-
-      const { filters, summary, suggestions } = await res.json();
+      if (!res.ok) throw new Error("Smart search unavailable");
+      const payload = await res.json();
+      if (request !== smartRequest.current || controller.signal.aborted || filterKey !== currentFilterKey.current) return;
+      if (!payload || typeof payload.filters !== "object" || payload.filters === null || Array.isArray(payload.filters)) throw new Error("Invalid smart search response");
+      const params = new URLSearchParams();
+      for (const [name, value] of Object.entries(payload.filters)) {
+        if (name === "amenities" && Array.isArray(value)) params.set(name, value.filter((item) => typeof item === "string").join(","));
+        else if (typeof value === "string" || typeof value === "number") params.set(name, String(value));
+      }
+      const filters = parseListingFilters(params);
+      smartFilterKey.current = null;
       setAiSearchActive(true);
-      setAiSummary(summary || "");
-      setAiSuggestions(Array.isArray(suggestions) ? suggestions : []);
+      setAiSummary(typeof payload.summary === "string" ? payload.summary : "");
+      setAiSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions.filter((suggestion: unknown): suggestion is string => typeof suggestion === "string").slice(0, 5) : []);
 
       // Apply parsed filters
       if (filters.type) setActiveCategory(filters.type);
       if (filters.island) setActiveIsland(filters.island);
-      if (filters.minPrice) setMinPrice(String(filters.minPrice));
-      if (filters.maxPrice) setMaxPrice(String(filters.maxPrice));
-      if (filters.minRating) setMinRating(String(filters.minRating));
-      if (filters.guests) setGuestCount(String(filters.guests));
+      if (filters.minPrice !== null) setMinPrice(String(filters.minPrice));
+      if (filters.maxPrice !== null) setMaxPrice(String(filters.maxPrice));
+      if (filters.minRating !== null) setMinRating(String(filters.minRating));
+      if (filters.guests !== null) setGuestCount(String(filters.guests));
       if (Array.isArray(filters.amenities) && filters.amenities.length > 0)
         setSelectedAmenities(filters.amenities);
       if (filters.duration) setSelectedDuration(filters.duration);
       if (filters.q) setSearchQuery(filters.q);
     } catch {
       // Fall back to normal search
-      setAiSearchActive(false);
-      setAiSummary("");
-      setAiSuggestions([]);
+      if (request === smartRequest.current) cancelSmartSearch();
     } finally {
-      setAiSearchLoading(false);
+      if (request === smartRequest.current) {
+        smartFilterKey.current = null;
+        setAiSearchLoading(false);
+      }
     }
   }
 
   // Fetch AI results summary when results load from an AI search
   useEffect(() => {
-    if (!aiSearchActive || loading || listings.length === 0) return;
+    if (!aiSearchActive || loading || listings.length === 0 || totalCount === null) return;
 
     const topResults = listings.slice(0, 5).map((l) => ({
       title: l.title,
@@ -316,6 +355,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
       price: l.priceAmount ? parseFloat(l.priceAmount) : undefined,
     }));
 
+    let cancelled = false;
+    const controller = new AbortController();
     fetch("/api/ai/search-summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -324,14 +365,15 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
         resultCount: totalCount,
         topResults,
       }),
+      signal: controller.signal,
     })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); })
       .then((d) => {
-        if (d.summary) setAiResultsSummary(d.summary);
+        if (!cancelled && typeof d.summary === "string") setAiResultsSummary(d.summary);
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiSearchActive, loading, listings.length, totalCount]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [aiSearchActive, loading, listings, totalCount, searchQuery]);
 
 
   // SEO: Update document title based on active filters
@@ -356,21 +398,33 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   }, [activeCategory, activeIsland, searchQuery]);
 
   useEffect(() => {
+    if (requestedFilterKey.current !== listKey) {
+      requestedFilterKey.current = listKey;
+      if (page !== 0) return; // the paging reset below will request the new first page
+    }
     const key = listKey + "|" + page;
     if (loadedListKey.current === key) return; // already showing this (server-rendered or just fetched)
 
     let cancelled = false;
+    const controller = new AbortController();
+    setLoading(true);
+    setListError("");
+    if (loadedResultsKey.current !== listKey) {
+      loadedListKey.current = "";
+      setListings([]);
+    }
     async function fetchListings() {
-      setLoading(true);
       const params = new URLSearchParams(listKey);
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(page * PAGE_SIZE));
 
       try {
-        const res = await fetch(`/api/listings?${params}`);
+        const res = await fetch(`/api/listings?${params}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Listings unavailable");
         const data = await res.json();
         if (cancelled) return;
-        const newListings: Listing[] = data.listings || [];
+        if (!Array.isArray(data.listings)) throw new Error("Invalid listings response");
+        const newListings: Listing[] = data.listings;
         if (page === 0) {
           setListings(newListings);
           if (searchQuery) analytics.search(searchQuery);
@@ -379,23 +433,24 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
         }
         setHasMore(newListings.length === PAGE_SIZE);
         loadedListKey.current = key;
+        loadedResultsKey.current = listKey;
       } catch {
-        if (!cancelled) setListings([]);
+        if (!cancelled) setListError(page > 0 ? "More listings couldn't load. Your results are still here." : "Listings couldn't load. Please try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     const debounce = setTimeout(fetchListings, searchQuery ? 300 : 0);
-    return () => { cancelled = true; clearTimeout(debounce); };
+    return () => { cancelled = true; controller.abort(); clearTimeout(debounce); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listKey, page]);
+  }, [listKey, page, retryAttempt]);
 
   // Reset paging when filters or sort change; keep the URL shareable.
   useEffect(() => {
     setPage(0);
-    setHasMore(true);
     if (loadedListKey.current !== listKey + "|0") {
+      setHasMore(true);
       window.history.replaceState(null, "", listKey ? `/explore?${listKey}` : "/explore");
     }
   }, [listKey]);
@@ -404,22 +459,30 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   useEffect(() => {
     if (loadedCountKey.current === countKey) return;
     let cancelled = false;
-    fetch(`/api/listings/count?${countKey}`)
-      .then((r) => r.json())
+    const controller = new AbortController();
+    loadedCountKey.current = null;
+    setTotalCount(null);
+    setCountError(false);
+    fetch(`/api/listings/count?${countKey}`, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error("Count unavailable");
+        return r.json();
+      })
       .then((d) => {
         if (cancelled) return;
-        setTotalCount(d.count || 0);
+        if (!Number.isSafeInteger(d.count) || d.count < 0) throw new Error("Invalid count response");
+        setTotalCount(d.count);
         loadedCountKey.current = countKey;
       })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [countKey]);
+      .catch(() => { if (!cancelled) setCountError(true); });
+    return () => { cancelled = true; controller.abort(); };
+  }, [countKey, retryAttempt]);
 
   return (
-    <>
+    <Sheet open={showFilters} onOpenChange={setShowFilters}>
       <Header />
       <main className="pt-20 bg-cream-50 min-h-screen">
-        <h1 className="sr-only">Explore Caribbean stays and experiences</h1>
+        <h1 className="sr-only">{heading}</h1>
         {/* Search Header */}
         <div className="bg-white shadow-sm sticky top-16 z-40">
           <div className="mx-auto max-w-7xl px-4 md:px-6 py-3 md:py-4">
@@ -430,10 +493,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   value={searchQuery}
                   onChange={(val) => {
                     setSearchQuery(val);
-                    setAiSearchActive(false);
-                    setAiSummary("");
-                    setAiSuggestions([]);
-                    setAiResultsSummary("");
+                    cancelSmartSearch();
                     setShowSearchHistory(!val && searchFocused);
                   }}
                   onEnter={(val) => {
@@ -473,8 +533,9 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     {searchHistory.map((term) => (
                       <button
                         key={term}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
                           setSearchQuery(term);
                           setShowSearchHistory(false);
                           handleSmartSearch(term);
@@ -489,9 +550,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 )}
               </div>
               {/* Mobile-only Filters trigger */}
-              <button
+              <SheetTrigger
                 type="button"
-                onClick={() => setShowFilters(true)}
                 aria-label="Open filters"
                 className="md:hidden relative flex items-center gap-2 px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium hover:bg-cream-100 transition-colors shrink-0"
               >
@@ -502,12 +562,13 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     {mobileFilterCount}
                   </span>
                 )}
-              </button>
+              </SheetTrigger>
               {/* Date + Island row on mobile */}
               <div className="hidden md:flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="date"
+                  aria-label="Filter by date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="bg-transparent text-navy-700 text-sm font-medium outline-none cursor-pointer min-w-[8rem]"
@@ -550,6 +611,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <input
                   type="number"
                   placeholder="Min"
+                  aria-label="Minimum price"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -559,6 +621,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <input
                   type="number"
                   placeholder="Max"
+                  aria-label="Maximum price"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -614,6 +677,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                       : "text-navy-500 hover:bg-cream-100"
                   }`}
                   title="Grid view"
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === "grid"}
                 >
                   <LayoutGrid size={16} />
                   <span className="hidden sm:inline">Grid</span>
@@ -626,6 +691,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                       : "text-navy-500 hover:bg-cream-100"
                   }`}
                   title="Map view"
+                  aria-label="Map view"
+                  aria-pressed={viewMode === "map"}
                 >
                   <Map size={16} />
                   <span className="hidden sm:inline">Map</span>
@@ -739,6 +806,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 )}
                 <button
                   onClick={() => {
+                    cancelSmartSearch();
                     setActiveCategory("all");
                     setSearchQuery("");
                     setActiveIsland("");
@@ -763,11 +831,13 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               {categoryTabs.map((cat) => (
                 <button
                   key={cat.id}
+                  aria-pressed={activeCategory === cat.id}
                   onClick={() => {
                     setActiveCategory(cat.id);
                     // Clear context-specific filters when switching categories
                     if (cat.id !== "stay") setSelectedAmenities([]);
                     if (cat.id !== "tour" && cat.id !== "excursion") setSelectedDuration("");
+                    if (cat.id !== "dining") setCuisineType("");
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     activeCategory === cat.id
@@ -789,6 +859,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   return (
                     <button
                       key={amenity.id}
+                      aria-pressed={isSelected}
                       onClick={() =>
                         setSelectedAmenities((prev) =>
                           isSelected
@@ -817,6 +888,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 {durationOptions.map((opt) => (
                   <button
                     key={opt.id}
+                    aria-pressed={selectedDuration === opt.id}
                     onClick={() =>
                       setSelectedDuration((prev) =>
                         prev === opt.id ? "" : opt.id
@@ -873,7 +945,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     <button
                       key={suggestion}
                       onClick={() => {
-                        setSearchQuery("");
+                        cancelSmartSearch();
+                        setSearchQuery(suggestion);
                         setActiveCategory("all");
                         setActiveIsland("");
                         setMinPrice("");
@@ -882,6 +955,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         setGuestCount("");
                         setSelectedAmenities([]);
                         setSelectedDuration("");
+                        setCuisineType("");
+                        setSelectedDate("");
                         setTimeout(() => handleSmartSearch(suggestion), 50);
                       }}
                       className="px-3 py-1 bg-white/70 hover:bg-white text-xs font-medium text-navy-600 rounded-full transition-colors shadow-sm"
@@ -908,6 +983,14 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
           />
         </div>
 
+        {(listError || countError) && (
+          <div className="mx-auto max-w-7xl px-6 pt-4" role="alert">
+            <div className="rounded-xl bg-white border border-cream-200 p-4 flex items-center justify-between gap-3">
+              <p className="text-sm text-navy-600">{listError || "The total couldn't load. You can still browse the listings."}</p>
+              <button type="button" onClick={() => setRetryAttempt((attempt) => attempt + 1)} disabled={loading} className="shrink-0 rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Try again</button>
+            </div>
+          </div>
+        )}
         {/* Results */}
         {viewMode === "map" ? (
           /* ── Map View ─────────────────────────────────────────── */
@@ -920,7 +1003,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-navy-700">
-                  {loading && listings.length === 0 ? "..." : totalCount.toLocaleString()}
+                  {totalCount === null ? countError ? "an unavailable total" : "..." : totalCount.toLocaleString()}
                 </span>{" "}
                 experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
               </p>
@@ -945,12 +1028,12 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               <div className="lg:w-[40%] overflow-y-auto pr-1 order-2 lg:order-1 max-h-[50vh] lg:max-h-none">
                 {loading && listings.length === 0 ? (
                   <ListingSkeletonGrid count={4} />
-                ) : listings.length === 0 ? (
+                ) : listError && listings.length === 0 ? null : listings.length === 0 ? (
                   <div className="text-center py-12">
                     <Compass size={32} className="text-navy-200 mx-auto mb-3" />
                     <p className="text-navy-500 font-semibold">No listings found</p>
                     <button
-                      onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setCuisineType(""); }}
+                      onClick={() => { cancelSmartSearch(); setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setCuisineType(""); }}
                       className="mt-4 bg-gold-700 hover:bg-gold-800 text-white px-5 py-2 rounded-xl font-semibold transition-colors text-sm"
                     >
                       Clear Filters
@@ -963,13 +1046,14 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         <ListingCard key={listing.id} {...listing} />
                       ))}
                     </div>
-                    {hasMore && listings.length > 0 && (
+                    {hasMore && !listError && listings.length > 0 && (
                       <div className="text-center mt-6 pb-4">
                         <button
                           onClick={() => setPage((p) => p + 1)}
+                          disabled={loading}
                           className="bg-white hover:bg-cream-50 text-navy-600 px-6 py-2.5 rounded-xl font-semibold shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all text-sm"
                         >
-                          Load More
+                          {loading ? "Loading..." : "Load More"}
                         </button>
                       </div>
                     )}
@@ -993,8 +1077,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
             <div className="flex items-center justify-between mb-6 gap-4">
               <p className="text-navy-400 text-sm">
-                <span className="block sm:inline text-navy-700 font-semibold text-base sm:mr-2" style={{ fontFamily: "var(--font-display)" }} role="heading" aria-level={1}>
-                  {initial.heading}
+                <span className="block sm:inline text-navy-700 font-semibold text-base sm:mr-2" style={{ fontFamily: "var(--font-display)" }} role="heading" aria-level={2}>
+                  {heading}
                 </span>
                 Showing{" "}
                 <span className="font-semibold text-navy-700">
@@ -1002,7 +1086,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-navy-700">
-                  {loading && listings.length === 0 ? "..." : totalCount.toLocaleString()}
+                  {totalCount === null ? countError ? "an unavailable total" : "..." : totalCount.toLocaleString()}
                 </span>{" "}
                 experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
               </p>
@@ -1023,7 +1107,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
             {loading && listings.length === 0 ? (
               <ListingSkeletonGrid count={8} />
-            ) : listings.length === 0 ? (
+            ) : listError && listings.length === 0 ? null : listings.length === 0 ? (
               <div className="text-center py-20">
                 <Compass size={40} className="text-navy-200 mx-auto mb-4" />
                 <p className="text-navy-500 text-lg font-semibold">No listings found</p>
@@ -1031,7 +1115,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   Try adjusting your filters, searching for something else, or exploring a different island.
                 </p>
                 <button
-                  onClick={() => { setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setCuisineType(""); }}
+                  onClick={() => { cancelSmartSearch(); setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setCuisineType(""); }}
                   className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   Clear All Filters
@@ -1045,13 +1129,14 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   ))}
                 </div>
 
-                {hasMore && listings.length > 0 && (
+                {hasMore && !listError && listings.length > 0 && (
                   <div className="text-center mt-10">
                     <button
                       onClick={() => setPage((p) => p + 1)}
+                      disabled={loading}
                       className="bg-white hover:bg-cream-50 text-navy-600 px-8 py-3 rounded-xl font-semibold shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all"
                     >
-                      Load More
+                      {loading ? "Loading..." : "Load More"}
                     </button>
                   </div>
                 )}
@@ -1062,25 +1147,16 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
       </main>
 
       {/* Mobile filters bottom sheet */}
-      {showFilters && (
-        <div className="md:hidden fixed inset-0 z-[60] flex flex-col">
-          <button
-            type="button"
-            aria-label="Close filters"
-            onClick={() => setShowFilters(false)}
-            className="flex-1 bg-navy-900/50"
-          />
-          <div className="bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[85vh] flex flex-col">
+      <SheetContent side="bottom" showCloseButton={false} className="bg-white rounded-t-2xl max-h-[85vh] gap-0">
             <div className="flex items-center justify-between px-5 py-4 border-b border-cream-200">
-              <h2 className="text-lg font-semibold text-navy-700">Filters</h2>
-              <button
+              <SheetTitle className="text-lg font-semibold text-navy-700">Filters</SheetTitle>
+              <SheetClose
                 type="button"
-                onClick={() => setShowFilters(false)}
                 aria-label="Close filters"
                 className="p-1 text-navy-400 hover:text-navy-700"
               >
                 <X size={22} />
-              </button>
+              </SheetClose>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
@@ -1145,6 +1221,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <input
                     type="number"
                     placeholder="Min"
+                    aria-label="Minimum price"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -1154,6 +1231,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <input
                     type="number"
                     placeholder="Max"
+                    aria-label="Maximum price"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -1234,12 +1312,10 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 onClick={() => setShowFilters(false)}
                 className="flex-1 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
               >
-                Show {totalCount} result{totalCount !== 1 ? "s" : ""}
+                {totalCount === null ? "Show results" : `Show ${totalCount} result${totalCount !== 1 ? "s" : ""}`}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -13,36 +13,49 @@ import {
 
 type ContactInfoProps = {
   listingId?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  typeData: Record<string, any> | null;
+  bookingEligible?: boolean;
+  unclaimed?: boolean;
+  typeData: Record<string, unknown> | null;
 };
 
-export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
+function phoneContact(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const label = value.trim();
+  const match = label.match(/^(\+?[\d\s().-]+?)(?:\s*(?:ext\.?|x|#)\s*(\d{1,6}))?$/i);
+  if (!match) return undefined;
+  const number = match[1].replace(/[^\d+]/g, "");
+  if (number.replace(/\D/g, "").length < 7 || number.replace(/\D/g, "").length > 15) return undefined;
+  return { label, href: `tel:${number}${match[2] ? `;ext=${match[2]}` : ""}` };
+}
+
+export function ContactInfo({ typeData, listingId, bookingEligible = false, unclaimed }: ContactInfoProps) {
   const { user } = useAuth();
   if (!typeData) return null;
 
-  const { phone, hours, unclaimed } = typeData;
+  const phone = phoneContact(typeData.phone);
   const website = safeWebUrl(typeData.website);
   const googleMapsUrl = safeWebUrl(typeData.googleMapsUrl);
+  const hours = Array.isArray(typeData.hours) ? typeData.hours : [typeData.hours];
+  const hoursList = hours.filter((line): line is string => typeof line === "string" && Boolean(line.trim())).map(line => line.trim());
+  const isUnclaimed = unclaimed ?? typeData.unclaimed === true;
 
   // Don't render if there's nothing to show
-  const hasContact = phone || website || hours || googleMapsUrl;
+  const hasContact = phone || website || hoursList.length > 0 || googleMapsUrl;
   if (!hasContact) return null;
 
-  // hours can be a string or an array of strings (e.g. per-day schedule)
-  const hoursList: string[] | null = hours
-    ? Array.isArray(hours)
-      ? hours
-      : [hours]
-    : null;
-
   return (
-    <div className="mt-8 p-6 bg-cream-50 rounded-2xl shadow-[var(--shadow-card)]">
-      <h2 className="text-lg font-bold text-navy-700 mb-4">
-        Contact &amp; Location
+    <section id="business-contact" aria-label="Contact and location" className="mt-8 p-6 bg-white rounded-2xl border border-cream-200 shadow-[var(--shadow-card)]">
+      <h2 className="text-lg font-bold text-navy-700">
+        {phone || website ? "Contact this business" : "Location & hours"}
       </h2>
+      {(phone || website) && (
+        <p className="mt-2 text-sm leading-relaxed text-navy-500">
+          Contact the business directly for current hours, availability and prices.
+          {!bookingEligible && " Online bookings and payments are unavailable on VakayGo for this listing."}
+        </p>
+      )}
 
-      <div className="space-y-4">
+      <div className="mt-4 space-y-4">
         {/* Phone */}
         {phone && (
           <div className="flex items-center gap-3">
@@ -50,10 +63,10 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
               <Phone size={16} className="text-gold-700" />
             </div>
             <a
-              href={`tel:${phone}`}
-              className="text-navy-600 hover:text-gold-600 transition-colors font-medium"
+              href={phone.href}
+              className="text-navy-600 hover:text-gold-600 transition-colors font-semibold break-words focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-700"
             >
-              {String(phone)}
+              Call {phone.label}
             </a>
           </div>
         )}
@@ -64,22 +77,24 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
               <Globe size={16} className="text-gold-700" />
             </div>
-            <a
-              href={String(website)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-navy-600 hover:text-gold-600 transition-colors font-medium flex items-center gap-1.5 truncate"
-            >
-              <span className="truncate">
-                {String(website).replace(/^https?:\/\/(www\.)?/, "")}
-              </span>
-              <ExternalLink size={13} className="shrink-0 text-navy-300" />
-            </a>
+            <div className="min-w-0">
+              <a
+                href={website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gold-700 hover:text-gold-800 transition-colors font-semibold inline-flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-700"
+              >
+                Visit business website
+                <ExternalLink size={13} className="shrink-0" aria-hidden="true" />
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+              <p className="text-xs text-navy-400 break-all">{new URL(website).hostname.replace(/^www\./, "")}</p>
+            </div>
           </div>
         )}
 
         {/* Business Hours */}
-        {hoursList && hoursList.length > 1 ? (
+        {hoursList.length > 1 ? (
           <details>
             <summary className="flex items-center gap-3 w-full text-left cursor-pointer">
               <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
@@ -96,7 +111,7 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
                 ))}
               </ul>
           </details>
-        ) : hoursList ? (
+        ) : hoursList.length === 1 ? (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
               <Clock size={16} className="text-gold-700" />
@@ -112,22 +127,23 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
               <MapPin size={16} className="text-gold-700" />
             </div>
             <a
-              href={String(googleMapsUrl)}
+              href={googleMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-navy-600 hover:text-gold-600 transition-colors font-medium flex items-center gap-1.5"
+              className="text-navy-600 hover:text-gold-600 transition-colors font-medium flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-700"
             >
               View on Google Maps
-              <ExternalLink size={13} className="text-navy-300" />
+              <ExternalLink size={13} className="text-navy-300" aria-hidden="true" />
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
           </div>
         )}
       </div>
 
       {/* Claim banner */}
-      {unclaimed && (
+      {isUnclaimed && (
         <p className="mt-5 pt-4 border-t border-cream-200 text-xs text-navy-400">
-          This listing was created from public data. If this is your business,{" "}
+          Business ownership has not been verified on VakayGo. If this is your business,{" "}
           <a
             href={listingId ? claimStartHref(listingId, Boolean(user)) : "/for-businesses#find-listing"}
             className="text-gold-700 font-semibold hover:underline"
@@ -137,6 +153,6 @@ export function ContactInfo({ typeData, listingId }: ContactInfoProps) {
           to manage your details.
         </p>
       )}
-    </div>
+    </section>
   );
 }

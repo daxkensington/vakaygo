@@ -19,7 +19,7 @@ const props = [
     icon: ShieldCheck,
     title: "Local Businesses",
     description:
-      "Discover local businesses, read reviews and see clear booking terms. Requests are confirmed with the business before payment.",
+      "Discover local businesses, read reviews and find their contact details. Check availability and arrangements directly with the business.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image:

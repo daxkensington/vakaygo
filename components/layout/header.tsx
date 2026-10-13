@@ -146,8 +146,8 @@ export function Header() {
                 <line
                   key={angle}
                   x1="0" y1="0"
-                  x2={Math.cos((angle * Math.PI) / 180) * 8}
-                  y2={Math.sin((angle * Math.PI) / 180) * 8}
+                  x2={(Math.cos((angle * Math.PI) / 180) * 8).toFixed(6)}
+                  y2={(Math.sin((angle * Math.PI) / 180) * 8).toFixed(6)}
                   stroke="#C8912E"
                   strokeWidth="1.2"
                   strokeLinecap="round"

@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 
 import { logger } from "@/lib/logger";
-import { claimListingPath } from "@/lib/claim-return";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 function getRedirectUri(requestUrl: string): string {
   // Use NEXT_PUBLIC_APP_URL if set, otherwise derive from the request
   const baseUrl =
@@ -13,6 +14,12 @@ function getRedirectUri(requestUrl: string): string {
 
 export async function GET(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
+  const source = new URL(request.url);
+  const claim = source.searchParams.get("claim");
+  const next = safeAuthNext(source.searchParams.get("next"));
+  const cookieStore = await cookies();
+  // Every new attempt replaces the previous attempt, even without a return path.
+  for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_redirect_uri"]) cookieStore.delete(name);
 
   if (
     !clientId ||
@@ -22,8 +29,8 @@ export async function GET(request: Request) {
     logger.error("GOOGLE_CLIENT_ID is not configured in environment variables");
     return NextResponse.redirect(
       new URL(
-        "/auth/signin?error=oauth_not_configured",
-        new URL(request.url).origin
+        signInHref(claim, { error: "oauth_not_configured", next }),
+        source.origin
       )
     );
   }
@@ -31,7 +38,6 @@ export async function GET(request: Request) {
   // Generate CSRF state token
   const state = crypto.randomBytes(32).toString("hex");
 
-  const cookieStore = await cookies();
   cookieStore.set("oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -39,7 +45,6 @@ export async function GET(request: Request) {
     maxAge: 600, // 10 minutes
     path: "/",
   });
-  const claim = new URL(request.url).searchParams.get("claim");
   if (claimListingPath(claim)) {
     cookieStore.set("oauth_claim", claim!, {
       httpOnly: true,
@@ -48,8 +53,15 @@ export async function GET(request: Request) {
       maxAge: 600,
       path: "/",
     });
-  } else {
-    cookieStore.delete("oauth_claim");
+  } else if (next) {
+    // Bind the destination to this exact OAuth attempt, not just the browser.
+    cookieStore.set("oauth_next", JSON.stringify({ state, next }), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
   }
 
   const redirectUri = getRedirectUri(request.url);

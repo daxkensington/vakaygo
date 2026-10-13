@@ -355,9 +355,10 @@ export async function sendVerificationEmail(params: {
   name: string;
   token: string;
   claimListingId?: string | null;
+  next?: string | null;
 }) {
-  const { to, name, token, claimListingId } = params;
-  const verifyUrl = verificationUrl(token, claimListingId);
+  const { to, name, token, claimListingId, next } = params;
+  const verifyUrl = verificationUrl(token, claimListingId, next);
   const claimNote = verifyUrl.includes("claim=")
     ? "Please verify your email address to continue claiming your business listing. After you confirm, you return to that listing to verify the business phone. Bookings stay unavailable until onboarding is complete."
     : "Please verify your email address to continue on VakayGo.";
