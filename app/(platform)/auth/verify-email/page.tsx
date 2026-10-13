@@ -131,6 +131,9 @@ function VerifyEmailContent() {
                     {confirming ? "Confirming…" : "Confirm email"}
                   </button>
                 )}
+                {confirmationError && !requiresLogin && (
+                  <Link href={inboxRecoveryHref} className="block text-sm font-semibold text-gold-700 underline">Request a new email sign-in link</Link>
+                )}
               </form>
             </>
           ) : error ? (
