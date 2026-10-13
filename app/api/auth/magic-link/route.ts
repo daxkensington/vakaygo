@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { users } from "@/drizzle/schema";
 import { sendMagicLinkEmail } from "@/server/email";
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
     const [user] = await db
@@ -48,6 +48,8 @@ export async function POST(request: Request) {
         name: users.name,
         email: users.email,
         magicLinkExpires: users.magicLinkExpires,
+        magicLinkToken: users.magicLinkToken,
+        sessionVersion: users.sessionVersion,
       })
       .from(users)
       .where(eq(users.email, normalizedEmail))
@@ -68,15 +70,21 @@ export async function POST(request: Request) {
         return;
       }
 
+      const token = randomBytes(32).toString("hex");
+      let issued = false;
       try {
-        const token = randomBytes(32).toString("hex");
         const url = magicLinkUrl(token, claimReturn, next);
         if (!url) return;
         const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
-        await db
+        const [stored] = await db
           .update(users)
           .set({ magicLinkToken: token, magicLinkExpires: expires })
-          .where(eq(users.id, user.id));
+          .where(and(
+            eq(users.id, user.id), eq(users.sessionVersion, user.sessionVersion),
+            user.magicLinkToken == null ? isNull(users.magicLinkToken) : eq(users.magicLinkToken, user.magicLinkToken),
+          )).returning({ id: users.id });
+        if (!stored) return;
+        issued = true;
 
         await sendMagicLinkEmail({
           to: user.email,
@@ -85,6 +93,13 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         logger.error("Magic link issue/send failed", err);
+        // Only this failed issuance may restore the prior link. A newer link or consumed proof wins.
+        if (issued) {
+          try {
+            await db.update(users).set({ magicLinkToken: user.magicLinkToken, magicLinkExpires: user.magicLinkExpires })
+              .where(and(eq(users.id, user.id), eq(users.sessionVersion, user.sessionVersion), eq(users.magicLinkToken, token)));
+          } catch (restoreError) { logger.error("Magic link failed-send recovery failed", restoreError); }
+        }
       }
     });
 

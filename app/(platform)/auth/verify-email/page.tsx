@@ -22,6 +22,7 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const token = searchParams.get("token");
+  const deliveryUnavailable = searchParams.get("delivery") === "unavailable";
   const returnPath = safeAuthNext(searchParams.get("next"));
   const [password, setPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -171,9 +172,9 @@ function VerifyEmailContent() {
                 className="text-2xl font-bold text-navy-700 mb-3"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Check Your Email
+                {deliveryUnavailable ? "Your account is created" : "Check Your Email"}
               </h1>
-              <p className="text-navy-400 mb-2">
+              {deliveryUnavailable ? <p role="alert" className="text-navy-500 mb-6">We could not confirm that your verification email was sent. Request an email sign-in link below to verify your inbox and continue. You do not need to create your account again.</p> : <p className="text-navy-400 mb-2">
                 We sent a verification link to{" "}
                 {user?.email ? (
                   <strong className="text-navy-600">{user.email}</strong>
@@ -181,12 +182,12 @@ function VerifyEmailContent() {
                   "your email"
                 )}
                 .
-              </p>
-              <p className="text-navy-300 text-sm mb-8">
+              </p>}
+              {!deliveryUnavailable && <p className="text-navy-300 text-sm mb-8">
                 Click the link in the email to verify your account. The link
                 expires in 24 hours.
                 {claimListingPath(searchParams.get("claim")) ? " The link returns you to your business claim." : ""}
-              </p>
+              </p>}
 
               {sent ? (
                 <div className="flex items-center justify-center gap-2 text-teal-600 font-semibold mb-4">

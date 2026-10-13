@@ -92,3 +92,37 @@ it("renders the exact operator terms draft version with fee, payout and refund r
   expect(container.textContent).toContain("Payments and payouts");
   expect(container.textContent).toContain("Cancellations and refunds");
 });
+
+it("preserves company drafts through a refresh failure and re-enables actions only after recovery", async () => {
+  await renderPage(); const legalName = container.querySelector("input")!;
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(legalName, "Unsaved Company Draft"); legalName.dispatchEvent(new Event("input", { bubbles: true })); });
+  fetchMock.mockRejectedValueOnce(new Error("Current status unavailable"));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(container.querySelector("input")!.value).toBe("Unsaved Company Draft");
+  expect(button("Save company details").disabled).toBe(true);
+  expect(container.textContent).not.toContain("This listing is eligible for online bookings");
+  await act(async () => button("Try loading status again").click());
+  expect(container.querySelector("input")!.value).toBe("Unsaved Company Draft");
+  expect(button("Save company details").disabled).toBe(false);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("ignores an older ready refresh after a newer ownership denial", async () => {
+  await renderPage(); let resolveOld!: (response: Response) => void;
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { resolveOld = resolve; })).mockResolvedValueOnce(new Response(JSON.stringify({ error: "Ownership changed" }), { status: 403 }));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await act(async () => window.dispatchEvent(new Event("pageshow")));
+  expect(container.querySelector("form")).toBeNull();
+  await act(async () => resolveOld(new Response(JSON.stringify({ ...status, eligible: true, requirements: { ...status.requirements, payments: true } }))));
+  expect(container.querySelector("form")).toBeNull();
+  expect(container.textContent).not.toContain("This listing is eligible for online bookings");
+});
+
+it("offers recovery when onboarding status cannot load initially", async () => {
+  fetchMock.mockRejectedValueOnce(new Error("Status unavailable"));
+  await renderPage();
+  expect(container.querySelector("form")).toBeNull();
+  await act(async () => button("Try loading status again").click());
+  expect(container.querySelector("input")!.value).toBe("Example Company");
+  expect(button("Save company details").disabled).toBe(false);
+});

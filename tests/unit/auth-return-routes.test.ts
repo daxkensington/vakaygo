@@ -24,7 +24,7 @@ vi.mock("@neondatabase/serverless", () => ({ neon: vi.fn(() => ({})) }));
 vi.mock("drizzle-orm/neon-http", () => ({ drizzle: () => ({
   select: () => { const query = { from: () => query, where: () => query, limit: async () => state.rows.shift() || [] }; return query; },
   update: () => ({ set: (values: unknown) => ({ where: () => { state.writes.push(values); return Object.assign(Promise.resolve(), { returning: async () => [{ id: "synthetic-user" }] }); } }) }),
-  insert: () => ({ values: (values: unknown) => { state.writes.push(values); return Object.assign(Promise.resolve(), { returning: async () => [state.identity] }); } }),
+  insert: () => ({ values: (values: Record<string, unknown>) => { state.writes.push(values); return Object.assign(Promise.resolve(), { returning: async () => [{ ...state.identity, ...(values.role ? { role: values.role } : {}) }] }); } }),
 }) }));
 import { GET as startGoogle } from "@/app/api/auth/google/route";
 import { GET as finishGoogle } from "@/app/api/auth/google/callback/route";
@@ -60,6 +60,35 @@ function prepareCallback(next: unknown = listing, boundState = "synthetic-state"
 }
 
 describe("Google auth continuation", () => {
+  it("binds an explicit business signup choice to the matching OAuth state for a new account", async () => {
+    const started = await startGoogle(new Request("https://vakaygo.com/api/auth/google?role=operator"));
+    const oauthState = location(started).searchParams.get("state");
+    expect(JSON.parse(state.cookies.get("oauth_role")!)).toEqual({ state: oauthState, role: "operator" });
+    state.rows = [[]];
+    const finished = await finishGoogle(new Request(`https://vakaygo.com/api/auth/google/callback?code=synthetic-code&state=${oauthState}`));
+    expect(state.writes.some(value => (value as { role?: string }).role === "operator")).toBe(true);
+    expect(location(finished).pathname).toBe("/operator");
+    expect(state.cookies.has("oauth_role")).toBe(false);
+  });
+
+  it.each([{ state: "older-state", role: "operator" }, { state: "synthetic-state", role: "admin" }])("ignores an unmatched or privileged Google signup role %j", async roleChoice => {
+    prepareCallback(null); state.cookies.set("oauth_role", JSON.stringify(roleChoice)); state.rows = [[]];
+    const finished = await finishGoogle(new Request("https://vakaygo.com/api/auth/google/callback?code=synthetic-code&state=synthetic-state"));
+    expect(state.writes.some(value => (value as { role?: string }).role === "traveler")).toBe(true);
+    expect(location(finished).pathname).toBe("/explore");
+  });
+
+  it("preserves an existing account role and keeps the selected business choice on a valid cancelled attempt", async () => {
+    prepareCallback(null); state.cookies.set("oauth_role", JSON.stringify({ state: "synthetic-state", role: "operator" }));
+    const finished = await finishGoogle(new Request("https://vakaygo.com/api/auth/google/callback?code=synthetic-code&state=synthetic-state"));
+    expect(location(finished).pathname).toBe("/explore");
+    expect(state.writes.some(value => "role" in (value as Record<string, unknown>))).toBe(false);
+    prepareCallback(null); state.cookies.set("oauth_role", JSON.stringify({ state: "synthetic-state", role: "operator" }));
+    const cancelled = await finishGoogle(new Request("https://vakaygo.com/api/auth/google/callback?error=access_denied&state=synthetic-state"));
+    expect(location(cancelled).searchParams.get("role")).toBe("operator");
+    expect(location(cancelled).searchParams.get("error")).toBe("google_denied");
+  });
+
   it("binds a valid listing return to the generated OAuth state using a short HttpOnly cookie", async () => {
     const response = await startGoogle(new Request(`https://vakaygo.com/api/auth/google?next=${encodeURIComponent(listing)}`));
     const oauth = location(response);
@@ -140,6 +169,17 @@ describe("Google auth continuation", () => {
     prepareCallback();
     await finishGoogle(new Request("https://vakaygo.com/api/auth/google/callback?code=x&state=synthetic-state"));
     for (const cookie of oauthCookies) expect(state.cookies.has(cookie)).toBe(false);
+  });
+  it.each(["", "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID"])("preserves explicit business intent on unavailable Google start %s", async clientId => {
+    prepareCallback(); state.cookies.set("oauth_role", JSON.stringify({ state: "older-state", role: "operator" }));
+    vi.stubEnv("GOOGLE_CLIENT_ID", clientId);
+    const result = await startGoogle(new Request(`https://vakaygo.com/api/auth/google?role=operator&next=${encodeURIComponent(listing)}`));
+    expect(location(result).searchParams.get("role")).toBe("operator");
+    expect(location(result).searchParams.get("next")).toBe(listing);
+    expect(location(result).searchParams.get("error")).toBe("oauth_not_configured");
+    expect(state.cookies.has("oauth_role")).toBe(false); expect(fetchMock).not.toHaveBeenCalled();
+    const invalidRole = await startGoogle(new Request("https://vakaygo.com/api/auth/google?role=admin"));
+    expect(location(invalidRole).searchParams.has("role")).toBe(false);
   });
 
   it("preserves the validated listing for retry after a provider failure and clears cookies", async () => {

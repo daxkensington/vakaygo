@@ -97,9 +97,9 @@ describe("operator messages", () => {
     expect(textarea.value).toBe("  Are you open on Sunday?  ");
     expect(container.querySelector('[role="status"]')).toBeNull();
     await submitMessage();
-    expect(fetchMock).toHaveBeenLastCalledWith("/api/messages", expect.objectContaining({ body: JSON.stringify({ receiverId: "owner", content: "Are you open on Sunday?", listingId }) }));
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toMatchObject({ receiverId: "owner", content: "Are you open on Sunday?", listingId, clientMessageId: expect.any(String) });
     expect(container.querySelector('[role="status"]')?.textContent).toContain("Message sent to Business owner");
-    expect(container.querySelector('a[href="/messages"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/messages?with=owner"]')).not.toBeNull();
     expect(container.textContent).not.toContain("They'll reply");
     expect(container.querySelector("textarea")).toBeNull();
   });
@@ -124,5 +124,36 @@ describe("operator messages", () => {
     await submitMessage();
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("Your session has expired");
     expect(container.querySelector('[role="alert"] a')?.getAttribute("href")).toBe(`/auth/signin?next=${encodeURIComponent(listingPath)}`);
+  });
+
+  it("suppresses duplicate submits and reuses the send identity after an ambiguous connection failure", async () => {
+    auth.user = { id: "traveler" };
+    let rejectSend: (error: Error) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectSend = reject; }));
+    await render(<ContactOperator {...operatorProps} />); await openMessage();
+    await act(async () => {
+      const form = container.querySelector("form")!;
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const first = JSON.parse(fetchMock.mock.calls[0][1].body).clientMessageId;
+    await act(async () => rejectSend!(new Error("connection lost after save")));
+    await submitMessage();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).clientMessageId).toBe(first);
+    expect(container.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it("clears the previous listing draft and ignores its delayed response after changing listings", async () => {
+    auth.user = { id: "traveler" };
+    let resolveSend: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { resolveSend = resolve; }));
+    await render(<ContactOperator {...operatorProps} />); await openMessage("private old listing draft");
+    await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+    await render(<ContactOperator {...operatorProps} listingId="20000000-0000-4000-8000-000000000002" listingTitle="Another business" />);
+    await act(async () => resolveSend!(new Response(JSON.stringify({ message: { id: "saved-old" } }))));
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.textContent).not.toContain("private old listing");
+    await openMessage(""); expect(container.querySelector("textarea")?.value).toBe("");
   });
 });

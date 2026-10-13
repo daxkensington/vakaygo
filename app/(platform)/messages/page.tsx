@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { useAuth } from "@/lib/auth-context";
 import { useMessages, type Message } from "@/lib/use-messages";
+import { isMessageId } from "@/lib/message-input";
+import { safeWebUrl } from "@/lib/listing-structured-data";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,14 +16,12 @@ import {
   Paperclip,
   Check,
   CheckCheck,
-  Image as ImageIcon,
   File,
   X,
   Wifi,
   WifiOff,
   Globe,
   FileText,
-  ChevronDown,
 } from "lucide-react";
 
 function formatTime(dateStr: string) {
@@ -44,17 +44,23 @@ function formatDate(dateStr: string) {
 }
 
 export default function MessagesPage() {
+  const { user } = useAuth();
+  return <MessagesContent key={user?.id || "guest"} />;
+}
+
+function MessagesContent() {
   const { user, loading: authLoading } = useAuth();
   const [activeConv, setActiveConv] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendPending = useRef(false);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentType, setAttachmentType] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [templates, setTemplates] = useState<{ id: string; title: string; content: string }[]>([]);
-  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +73,7 @@ export default function MessagesPage() {
     loadingConversations,
     loadingMessages,
     sendMessage,
-    markAsRead,
+    conversationError, messageError, fetchConversations, fetchMessages,
   } = useMessages(user?.id || null, activeConv);
 
   // Auto-scroll to bottom on new messages
@@ -84,21 +90,22 @@ export default function MessagesPage() {
     }
   }, [newMessage]);
 
-  // Mark as read when switching conversation
+  // The success link opens the actual partner thread, including after sign-in.
   useEffect(() => {
-    if (activeConv) {
-      markAsRead(activeConv);
-    }
-  }, [activeConv, markAsRead]);
+    const partner = new URLSearchParams(window.location.search).get("with");
+    if (isMessageId(partner) && partner.toLowerCase() !== user?.id) setActiveConv(partner.toLowerCase());
+  }, [user?.id]);
+  useEffect(() => { setNewMessage(""); setAttachmentUrl(null); setAttachmentType(null); setSendError(null); }, [activeConv, user?.id]);
 
   // Poll typing indicator
   useEffect(() => {
-    if (!activeConv) return;
+    setPartnerTyping(false);
+    if (!activeConv || !user?.id) return;
     let cancelled = false;
 
     async function pollTyping() {
       try {
-        const res = await fetch(`/api/messages/typing?conversationWith=${activeConv}`);
+        const res = await fetch(`/api/messages/typing?senderId=${activeConv}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setPartnerTyping(!!data.isTyping);
@@ -113,29 +120,40 @@ export default function MessagesPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [activeConv]);
+  }, [activeConv, user?.id]);
+  useEffect(() => {
+    if (!activeConv || !newMessage.trim() || !user?.id || sending) return;
+    const timer = setTimeout(() => { void fetch("/api/messages/typing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ receiverId: activeConv }) }).catch(() => {}); }, 300);
+    return () => clearTimeout(timer);
+  }, [activeConv, newMessage, user?.id, sending]);
+  useEffect(() => { if (activeConv) requestAnimationFrame(() => textareaRef.current?.focus()); }, [activeConv]);
 
   // Fetch operator templates (only if user is an operator)
   useEffect(() => {
-    if (templatesLoaded) return;
+    setTemplates([]); setShowTemplates(false);
+    if (user?.role !== "operator") return;
+    let cancelled = false;
     fetch("/api/operator/message-templates")
       .then((r) => {
         if (!r.ok) return null;
         return r.json();
       })
       .then((data) => {
+        if (cancelled) return;
         if (data?.templates) {
           setTemplates(data.templates);
         }
-        setTemplatesLoaded(true);
       })
-      .catch(() => setTemplatesLoaded(true));
-  }, [templatesLoaded]);
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id, user?.role]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if ((!newMessage.trim() && !attachmentUrl) || !activeConv) return;
+    if ((!newMessage.trim() && !attachmentUrl) || !activeConv || sendPending.current || uploading) return;
+    sendPending.current = true;
     setSending(true);
+    setSendError(null);
 
     try {
       await sendMessage(activeConv, newMessage, {
@@ -148,14 +166,19 @@ export default function MessagesPage() {
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "Your message could not be sent. Please try again.");
     } finally {
+      sendPending.current = false;
       setSending(false);
     }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (sendPending.current || uploading) return;
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || file.size > 5 * 1024 * 1024) { setSendError("Choose a JPG, PNG, WebP or GIF image smaller than 5 MB."); return; }
 
     setUploading(true);
     try {
@@ -169,7 +192,7 @@ export default function MessagesPage() {
       setAttachmentUrl(data.url);
       setAttachmentType(file.type.startsWith("image/") ? "image" : "file");
     } catch {
-      // Upload failed silently
+      setSendError("The image could not be uploaded. Please try again.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -177,7 +200,7 @@ export default function MessagesPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend(e);
     }
@@ -204,7 +227,7 @@ export default function MessagesPage() {
             Sign in to view messages
           </h1>
           <Link
-            href="/auth/signin"
+            href={`/auth/signin?next=${encodeURIComponent(activeConv ? `/messages?with=${activeConv}` : "/messages")}`}
             className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold"
           >
             Sign In
@@ -248,6 +271,7 @@ export default function MessagesPage() {
               )}
             </div>
           </div>
+          {conversationError && <p role="alert" className="mb-4 text-sm text-red-600">{conversationError} <button type="button" onClick={() => void fetchConversations()} className="font-semibold underline">Retry conversations</button></p>}
 
           <div
             className="bg-white rounded-2xl shadow-[var(--shadow-card)] overflow-hidden"
@@ -274,7 +298,7 @@ export default function MessagesPage() {
                         className="animate-spin text-gold-700"
                       />
                     </div>
-                  ) : conversations.length === 0 ? (
+                  ) : conversations.length === 0 && conversationError ? null : conversations.length === 0 ? (
                     <div className="p-8 text-center">
                       <MessageCircle
                         size={32}
@@ -290,6 +314,8 @@ export default function MessagesPage() {
                       {conversations.map((conv) => (
                         <button
                           key={conv.userId}
+                          data-conversation-id={conv.userId}
+                          disabled={sending || uploading}
                           onClick={() => setActiveConv(conv.userId)}
                           className={`w-full p-4 text-left hover:bg-cream-50 transition-colors ${
                             activeConv === conv.userId
@@ -352,7 +378,10 @@ export default function MessagesPage() {
                     {/* Thread Header */}
                     <div className="p-4 border-b border-cream-200 flex items-center gap-3">
                       <button
-                        onClick={() => setActiveConv(null)}
+                        type="button"
+                        aria-label="Back to conversations"
+                        disabled={sending || uploading}
+                        onClick={() => { setActiveConv(null); requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-conversation-id="${activeConv}"]`)?.focus()); }}
                         className="md:hidden text-navy-400 hover:text-navy-600 transition-colors"
                       >
                         <ArrowLeft size={20} />
@@ -379,6 +408,7 @@ export default function MessagesPage() {
 
                     {/* Messages Area */}
                     <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                      {messageError && <p role="alert" className="text-sm text-red-600">{messageError} <button type="button" onClick={() => void fetchMessages(activeConv)} className="font-semibold underline">Retry conversation</button></p>}
                       {loadingMessages ? (
                         <div className="flex items-center justify-center py-12">
                           <Loader2
@@ -386,7 +416,7 @@ export default function MessagesPage() {
                             className="animate-spin text-gold-700"
                           />
                         </div>
-                      ) : messages.length === 0 ? (
+                      ) : messages.length === 0 && messageError ? null : messages.length === 0 ? (
                         <div className="flex items-center justify-center py-12 text-center">
                           <div>
                             <MessageCircle
@@ -435,6 +465,9 @@ export default function MessagesPage() {
                             </div>
                           )}
                           <button
+                            type="button"
+                            aria-label="Remove attachment"
+                            disabled={sending || uploading}
                             onClick={() => {
                               setAttachmentUrl(null);
                               setAttachmentType(null);
@@ -470,6 +503,7 @@ export default function MessagesPage() {
                       onSubmit={handleSend}
                       className="p-4 border-t border-cream-200"
                     >
+                      {sendError && <p role="alert" className="mb-3 text-sm text-red-600">{sendError}</p>}
                       {/* Template Picker */}
                       {templates.length > 0 && showTemplates && (
                         <div className="mb-3 bg-cream-50 rounded-xl p-2 max-h-40 overflow-y-auto">
@@ -480,6 +514,7 @@ export default function MessagesPage() {
                             <button
                               key={tpl.id}
                               type="button"
+                              disabled={sending || uploading}
                               onClick={() => {
                                 setNewMessage(tpl.content);
                                 setShowTemplates(false);
@@ -499,6 +534,7 @@ export default function MessagesPage() {
                         {templates.length > 0 && (
                           <button
                             type="button"
+                            disabled={sending || uploading}
                             onClick={() => setShowTemplates(!showTemplates)}
                             className={`p-2.5 transition-colors shrink-0 ${
                               showTemplates
@@ -515,7 +551,7 @@ export default function MessagesPage() {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading}
+                          disabled={uploading || sending}
                           className="p-2.5 text-navy-400 hover:text-gold-500 transition-colors shrink-0 disabled:opacity-40"
                           aria-label="Attach file"
                         >
@@ -531,7 +567,8 @@ export default function MessagesPage() {
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept="image/*,.pdf,.doc,.docx"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          disabled={sending || uploading}
                           onChange={handleFileUpload}
                           className="hidden"
                         />
@@ -539,6 +576,8 @@ export default function MessagesPage() {
                         {/* Textarea */}
                         <div className="flex-1 relative">
                           <textarea
+                            aria-label="Your message"
+                            disabled={sending || uploading}
                             ref={textareaRef}
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
@@ -566,8 +605,9 @@ export default function MessagesPage() {
                         {/* Send button */}
                         <button
                           type="submit"
+                          aria-label={sending ? "Sending message" : "Send message"}
                           disabled={
-                            sending ||
+                            sending || uploading ||
                             (!newMessage.trim() && !attachmentUrl)
                           }
                           className="bg-gold-700 hover:bg-gold-800 disabled:opacity-40 text-white p-3 rounded-xl transition-colors shrink-0"
@@ -601,8 +641,10 @@ export default function MessagesPage() {
 }
 
 function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
+  const safeAttachment = safeWebUrl(msg.attachmentUrl);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
 
   async function handleTranslate() {
     if (translatedText) {
@@ -611,17 +653,18 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
     }
     if (!msg.content) return;
     setTranslating(true);
+    setTranslationError(null);
     try {
       const res = await fetch("/api/messages/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId: msg.id, text: msg.content }),
+        body: JSON.stringify({ messageId: msg.id, targetLanguage: "en" }),
       });
-      if (!res.ok) return;
       const data = await res.json();
-      setTranslatedText(data.translatedText || null);
+      if (!res.ok) { setTranslationError(data.error || "Translation is temporarily unavailable."); return; }
+      setTranslatedText(data.translatedContent || null);
     } catch {
-      // silently fail
+      setTranslationError("Translation is temporarily unavailable. Please try again.");
     } finally {
       setTranslating(false);
     }
@@ -638,12 +681,12 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
 
       <div className="max-w-[75%]">
         {/* Attachment */}
-        {msg.attachmentUrl && (
+        {safeAttachment && (
           <div className="mb-1">
             {msg.attachmentType === "image" ? (
               <div className="relative rounded-xl overflow-hidden max-w-[280px]">
                 <Image
-                  src={msg.attachmentUrl}
+                  src={safeAttachment}
                   alt="Shared image"
                   width={280}
                   height={200}
@@ -652,7 +695,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
               </div>
             ) : (
               <a
-                href={msg.attachmentUrl}
+                href={safeAttachment}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${
@@ -684,8 +727,10 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
             {/* Translate button */}
             <button
               onClick={handleTranslate}
+              type="button"
+              aria-label={translatedText ? "Hide translation" : "Translate to English"}
               disabled={translating}
-              className={`absolute -bottom-1 ${isOwn ? "left-0 -translate-x-full mr-1" : "right-0 translate-x-full ml-1"} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-cream-100 text-navy-300 hover:text-teal-600 disabled:opacity-40`}
+              className={`absolute -bottom-1 ${isOwn ? "left-0 -translate-x-full mr-1" : "right-0 translate-x-full ml-1"} opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1 rounded-full hover:bg-cream-100 text-navy-300 hover:text-teal-600 disabled:opacity-40`}
               title={translatedText ? "Hide translation" : "Translate"}
             >
               {translating ? (
@@ -696,6 +741,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
             </button>
 
             {/* Translated text */}
+            {translationError && <p role="alert" className="mt-2 text-xs text-red-600">{translationError}</p>}
             {translatedText && (
               <div
                 className={`mt-1 px-4 py-2 rounded-xl text-xs italic ${

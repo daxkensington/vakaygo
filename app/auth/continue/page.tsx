@@ -30,9 +30,12 @@ function ContinueContent() {
   const returnPath = safeAuthNext(searchParams.get("next"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retryable, setRetryable] = useState(false);
 
   async function handleContinue() {
+    if (loading || !token) return;
     setError("");
+    setRetryable(false);
     setLoading(true);
     try {
       const res = await fetch("/api/auth/magic-link/verify", {
@@ -47,12 +50,15 @@ function ContinueContent() {
           return;
         }
         setError(data.error || "This sign-in link is invalid or has expired.");
+        setRetryable(res.status >= 500 || res.status === 429);
         return;
       }
+      if (data.ok !== true) throw new Error("Incomplete sign-in response");
       await refresh();
       router.push(claimListingPath(searchParams.get("claim")) || returnPath || safeAuthNext(data.redirect) || "/explore");
     } catch {
       setError("Something went wrong. Please try again.");
+      setRetryable(true);
     } finally {
       setLoading(false);
     }
@@ -78,11 +84,12 @@ function ContinueContent() {
             Click below to finish signing in to your account.
           </p>
 
-          {error ? (
+          {error || !token ? (
             <>
-              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
-                {error}
+              <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
+                {error || "This sign-in link is missing its token. Please request a new link."}
               </div>
+              {retryable && <button type="button" onClick={handleContinue} disabled={loading} className="mb-4 w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold">{loading ? "Signing in…" : "Try again"}</button>}
               <Link
                 href={signInHref(searchParams.get("claim"), { method: "email", next: returnPath })}
                 className="text-gold-700 font-semibold hover:text-gold-600"

@@ -23,6 +23,11 @@ export function Header() {
   const isLanding = pathname === "/";
 
   useFocusTrap(mobileMenuRef, mobileOpen);
+  useEffect(() => {
+    const closeAtDesktop = () => { if (window.innerWidth >= 1280) setMobileOpen(false); };
+    window.addEventListener("resize", closeAtDesktop);
+    return () => window.removeEventListener("resize", closeAtDesktop);
+  }, []);
 
   useLayoutEffect(() => {
     const announcements = document.getElementById("site-announcements");
@@ -168,7 +173,7 @@ export function Header() {
           </svg>
         </Link>
 
-        <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav role="navigation" aria-label="Main navigation" className="hidden xl:flex items-center gap-6 text-sm font-medium">
           <Link
             href="/explore"
             aria-current={pathname === "/explore" ? "page" : undefined}
@@ -261,9 +266,9 @@ export function Header() {
                 Rewards
               </Link>
               <MessageBadge scrolled={scrolled} isLanding={isLanding} />
-              <NotificationBell scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
+                aria-label={user.role === "operator" ? "Open business dashboard" : "Profile"}
                 className="w-9 h-9 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-sm hover:bg-gold-200 transition-colors"
               >
                 {user.name?.charAt(0) || <User size={16} />}
@@ -289,20 +294,23 @@ export function Header() {
           )}
         </nav>
 
+        <div className="flex items-center gap-2">
+          {user && <div className="hidden md:block"><NotificationBell scrolled={scrolled} isLanding={isLanding} /></div>}
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
-          className={`md:hidden p-2 transition-colors ${
+          className={`xl:hidden p-2 transition-colors ${
             scrolled || !isLanding ? "text-navy-700" : "text-white"
           }`}
           onClick={() => setMobileOpen(!mobileOpen)}
         >
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
+        </div>
       </div>
 
       {mobileOpen && (
-        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="md:hidden max-h-[calc(100dvh_-_var(--site-announcement-offset,0px)_-_4rem)] overflow-y-auto overscroll-contain bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
+        <div ref={mobileMenuRef} role="navigation" aria-label="Mobile navigation" className="xl:hidden max-h-[calc(100dvh_-_var(--site-announcement-offset,0px)_-_4rem)] overflow-y-auto overscroll-contain bg-white/95 backdrop-blur-xl border-t border-cream-200 px-6 py-6 space-y-4 shadow-lg">
           <Link href="/explore" className="block text-navy-600 font-medium py-2" onClick={() => setMobileOpen(false)}>
             Explore
           </Link>

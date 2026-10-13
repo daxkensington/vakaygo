@@ -33,6 +33,7 @@ function SignUpContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [accountExists, setAccountExists] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [referrerName, setReferrerName] = useState("");
 
@@ -55,7 +56,9 @@ function SignUpContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError("");
+    setAccountExists(false);
     setLoading(true);
 
     try {
@@ -68,6 +71,7 @@ function SignUpContent() {
       const data = await res.json();
 
       if (!res.ok) {
+        setAccountExists(res.status === 409);
         setError(data.error || "Something went wrong");
         return;
       }
@@ -77,7 +81,11 @@ function SignUpContent() {
       // Inbox proof is required before password sign-in or business access.
       // The verification email carries the listing id across devices.
       setPassword("");
-      router.push(claimListingId ? `/auth/verify-email?claim=${claimListingId}` : returnPath ? `/auth/verify-email?next=${encodeURIComponent(returnPath)}` : "/auth/verify-email");
+      const destination = new URL("/auth/verify-email", window.location.origin);
+      if (claimListingId) destination.searchParams.set("claim", claimListingId);
+      else if (returnPath) destination.searchParams.set("next", returnPath);
+      if (data.verificationEmailSent === false) destination.searchParams.set("delivery", "unavailable");
+      router.push(destination.pathname + destination.search);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -156,8 +164,9 @@ function SignUpContent() {
           ) : (
             <>
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
+                <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
                   {error}
+                  {accountExists && <Link href={signInHref(claimListingId, { method: "email", next: returnPath })} className="mt-2 block font-semibold underline">Request an email sign-in link</Link>}
                 </div>
               )}
 
@@ -166,6 +175,7 @@ function SignUpContent() {
                 type="button"
                 onClick={() => {
                   const url = new URL("/api/auth/google", window.location.origin);
+                  if (role === "operator") url.searchParams.set("role", "operator");
                   if (claimListingId) url.searchParams.set("claim", claimListingId);
                   else if (returnPath) url.searchParams.set("next", returnPath);
                   window.location.assign(url.href);
@@ -190,11 +200,12 @@ function SignUpContent() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <p className="text-sm text-navy-500">{claimListingId ? "After you confirm the link sent to your email, you return to this business to verify its phone. Claiming does not enable bookings." : "After creating your account, confirm the link sent to your email before signing in or claiming a business."}</p>
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                  <label htmlFor="signup-name" className="block text-sm font-medium text-navy-600 mb-1.5">
                     Full Name
                   </label>
                   <input
                     type="text"
+                    id="signup-name" autoComplete="name" maxLength={200} disabled={loading}
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -204,11 +215,12 @@ function SignUpContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                  <label htmlFor="signup-email" className="block text-sm font-medium text-navy-600 mb-1.5">
                     Email
                   </label>
                   <input
                     type="email"
+                    id="signup-email" autoComplete="email" disabled={loading}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -218,12 +230,13 @@ function SignUpContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                  <label htmlFor="signup-password" className="block text-sm font-medium text-navy-600 mb-1.5">
                     Password
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      id="signup-password" autoComplete="new-password" disabled={loading}
                       required
                       minLength={8}
                       value={password}
@@ -258,6 +271,7 @@ function SignUpContent() {
                 <button
                   type="button"
                   onClick={() => setStep("role")}
+                  disabled={loading}
                   className="w-full text-navy-400 text-sm hover:text-navy-600 transition-colors"
                 >
                   ← Change role

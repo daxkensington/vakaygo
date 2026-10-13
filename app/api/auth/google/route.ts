@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const next = safeAuthNext(source.searchParams.get("next"));
   const cookieStore = await cookies();
   // Every new attempt replaces the previous attempt, even without a return path.
-  for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_redirect_uri"]) cookieStore.delete(name);
+  for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_role", "oauth_redirect_uri"]) cookieStore.delete(name);
 
   if (
     !clientId ||
@@ -27,12 +27,9 @@ export async function GET(request: Request) {
     clientId.trim() === ""
   ) {
     logger.error("GOOGLE_CLIENT_ID is not configured in environment variables");
-    return NextResponse.redirect(
-      new URL(
-        signInHref(claim, { error: "oauth_not_configured", next }),
-        source.origin
-      )
-    );
+    const retry = new URL(signInHref(claim, { error: "oauth_not_configured", next }), source.origin);
+    if (source.searchParams.get("role") === "operator") retry.searchParams.set("role", "operator");
+    return NextResponse.redirect(retry);
   }
 
   // Generate CSRF state token
@@ -45,6 +42,11 @@ export async function GET(request: Request) {
     maxAge: 600, // 10 minutes
     path: "/",
   });
+  if (source.searchParams.get("role") === "operator") {
+    cookieStore.set("oauth_role", JSON.stringify({ state, role: "operator" }), {
+      httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 600, path: "/",
+    });
+  }
   if (claimListingPath(claim)) {
     cookieStore.set("oauth_claim", claim!, {
       httpOnly: true,

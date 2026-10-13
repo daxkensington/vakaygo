@@ -99,7 +99,7 @@ export default function RootLayout({
   // lang/dir are fixed up client-side by <LocaleHtmlAttrs/>; reading the
   // locale cookie here made every page dynamic (see that component).
   return (
-    <html lang="en" dir="ltr" data-dir="ltr" className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" dir="ltr" data-dir="ltr" data-scroll-behavior="smooth" className={`${dmSans.variable} ${dmSerif.variable}`}>
       <head>
         {/* manifest + theme-color moved to the metadata/viewport exports below.
             A hardcoded <link>/<meta> always wins (the browser takes the first),

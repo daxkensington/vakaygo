@@ -72,16 +72,22 @@ export default function OperatorDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    fetch("/api/operator/stats")
-      .then((r) => r.json())
+    let active = true; const controller = new AbortController();
+    fetch("/api/operator/stats", { cache: "no-store", signal: controller.signal })
+      .then((r) => { if (!r.ok) throw new Error("Your business statistics could not load. Please try again."); return r.json(); })
       .then((data) => {
-        if (!data.error) setStats(data);
+        if (!active) return;
+        if (data.error || !Array.isArray(data.monthlyRevenue) || !Array.isArray(data.recentBookings)) throw new Error("Your business statistics could not load. Please try again.");
+        setStats(data);
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(cause => { if (active && !controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Your business statistics could not load. Please try again."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [loadAttempt]);
 
   if (loading) {
     return (
@@ -90,6 +96,7 @@ export default function OperatorDashboard() {
       </div>
     );
   }
+  if (error) return <div className="mx-auto max-w-6xl"><h1 className="text-3xl font-bold text-navy-700">Business dashboard</h1><p role="alert" className="mt-5 rounded-xl bg-white p-5 text-navy-600">{error}</p><button type="button" onClick={() => { setLoading(true); setError(""); setLoadAttempt(attempt => attempt + 1); }} className="mt-4 rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white">Try loading again</button><Link href="/operator/listings" className="ml-4 font-semibold text-gold-700">Go to your listings</Link></div>;
 
   const displayName = user?.businessName || user?.name || "Operator";
   const maxRevenue = stats
@@ -125,7 +132,7 @@ export default function OperatorDashboard() {
           </p>
           <p className="text-sm text-navy-400 mt-1">Total Revenue</p>
           <p className="text-xs text-navy-300 mt-2">
-            {stats?.totalBookings ?? 0} completed booking{stats?.totalBookings !== 1 ? "s" : ""}
+            {stats?.totalBookings ?? 0} all-time booking{stats?.totalBookings !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -317,7 +324,7 @@ export default function OperatorDashboard() {
                 description:
                   "High-quality photos are the #1 factor in getting bookings. Add at least 5.",
                 action: "Upload Photos",
-                href: "#",
+                href: "/operator/listings",
                 icon: Eye,
               },
               {
@@ -326,16 +333,16 @@ export default function OperatorDashboard() {
                 description:
                   "Configure your rates, availability, and cancellation policy.",
                 action: "Set Pricing",
-                href: "#",
+                href: "/operator/listings",
                 icon: DollarSign,
               },
               {
                 step: "4",
                 title: "Go live",
                 description:
-                  "Submit your listing for review. We'll publish it within 24 hours.",
+                  "Open a listing and submit it for review. Publication and online bookings require the relevant checks.",
                 action: "Submit",
-                href: "#",
+                href: "/operator/listings",
                 icon: CalendarCheck,
               },
             ].map((item) => (
