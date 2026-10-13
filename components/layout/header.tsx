@@ -261,7 +261,6 @@ export function Header() {
                 Rewards
               </Link>
               <MessageBadge scrolled={scrolled} isLanding={isLanding} />
-              <NotificationBell scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
                 aria-label={user.role === "operator" ? "Open business dashboard" : "Profile"}
@@ -290,6 +289,8 @@ export function Header() {
           )}
         </nav>
 
+        <div className="flex items-center gap-2">
+          {user && <div className="hidden md:block"><NotificationBell scrolled={scrolled} isLanding={isLanding} /></div>}
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
@@ -300,6 +301,7 @@ export function Header() {
         >
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
+        </div>
       </div>
 
       {mobileOpen && (
