@@ -79,3 +79,25 @@ it("names mobile navigation controls and restores trigger focus and body scrolli
   expect(trigger.getAttribute("aria-expanded")).toBe("false"); expect(document.activeElement).toBe(trigger); expect(document.body.style.overflow).toBe(priorOverflow);
   expect(container.querySelector('a[href="/operator/listings"][aria-current="page"]')).not.toBeNull();
 });
+it("releases mobile navigation focus and scrolling when resized to desktop", async () => {
+  const priorWidth = Object.getOwnPropertyDescriptor(window, "innerWidth")!;
+  const priorOverflow = document.body.style.overflow;
+  try {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    await render(<DashboardShell><button>Main content action</button></DashboardShell>);
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Open business navigation"]')!;
+    await act(async () => trigger.click());
+    const sidebar = container.querySelector("aside")!;
+    const lastControl = Array.from(sidebar.querySelectorAll("button")).find(item => item.textContent?.trim() === "Sign Out")!;
+    lastControl.focus();
+    const trappedTab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    lastControl.dispatchEvent(trappedTab);
+    expect(trappedTab.defaultPrevented).toBe(true); expect(document.body.style.overflow).toBe("hidden");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1200 });
+    await act(async () => window.dispatchEvent(new Event("resize")));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false"); expect(document.body.style.overflow).toBe(priorOverflow);
+    lastControl.focus();
+    const releasedTab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    lastControl.dispatchEvent(releasedTab); expect(releasedTab.defaultPrevented).toBe(false);
+  } finally { Object.defineProperty(window, "innerWidth", priorWidth); }
+});

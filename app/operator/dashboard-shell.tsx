@@ -40,6 +40,11 @@ export default function OperatorLayout({
   const menuTrigger = useRef<HTMLButtonElement>(null);
   useFocusTrap(sidebarRef, sidebarOpen);
   useEffect(() => {
+    const closeAtDesktop = () => { if (window.innerWidth >= 1024) setSidebarOpen(false); };
+    window.addEventListener("resize", closeAtDesktop);
+    return () => window.removeEventListener("resize", closeAtDesktop);
+  }, []);
+  useEffect(() => {
     if (!sidebarOpen) return;
     const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setSidebarOpen(false); menuTrigger.current?.focus(); } };
     const originalOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";

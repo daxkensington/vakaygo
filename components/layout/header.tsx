@@ -23,6 +23,11 @@ export function Header() {
   const isLanding = pathname === "/";
 
   useFocusTrap(mobileMenuRef, mobileOpen);
+  useEffect(() => {
+    const closeAtDesktop = () => { if (window.innerWidth >= 1280) setMobileOpen(false); };
+    window.addEventListener("resize", closeAtDesktop);
+    return () => window.removeEventListener("resize", closeAtDesktop);
+  }, []);
 
   useLayoutEffect(() => {
     const announcements = document.getElementById("site-announcements");
