@@ -1,0 +1,84 @@
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { MapListing } from "@/components/listings/caribbean-map";
+
+vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => React.createElement("a", props, children) }));
+vi.mock("next/dynamic", () => ({ default: () => ({ listings, activeIsland }: { listings: MapListing[]; activeIsland: string }) => React.createElement("div", { "data-map": true, "data-island": activeIsland }, listings.map(listing => React.createElement("p", { key: listing.id }, listing.title))) }));
+import MapPage from "@/app/(platform)/map/page";
+
+const fixture = (title: string, islandSlug = "grenada"): MapListing => ({ id: title, title, slug: "synthetic-listing", type: "tour", priceAmount: null, priceUnit: null, avgRating: null, reviewCount: 0, parish: null, islandSlug, islandName: islandSlug, image: null, isFeatured: false, latitude: "12.1", longitude: "-61.7" });
+const response = (listings: MapListing[]) => Response.json({ listings });
+function deferred() { let finish!: (value: Response) => void; return { promise: new Promise<Response>(resolve => { finish = resolve; }), resolve: (value: Response) => finish(value) }; }
+let root: Root, container: HTMLDivElement, fetchMock: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  vi.stubGlobal("React", React); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+  container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
+});
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+async function render() { await act(async () => root.render(<MapPage />)); }
+const button = (text: string) => Array.from(container.querySelectorAll("button")).find(item => item.textContent?.trim() === text)!;
+async function click(text: string) { expect(button(text), text).toBeDefined(); await act(async () => button(text).click()); }
+
+it("hides previous pins while an island loads and rejects the older island after a newer response even when fetch ignores abort", async () => {
+  const old = deferred(), current = deferred();
+  fetchMock.mockResolvedValueOnce(response([fixture("Initial pin")])).mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+  await render(); expect(container.textContent).toContain("Initial pin");
+  await click("Grenada"); expect(container.querySelector("[data-map]")).toBeNull(); expect(container.querySelector('[role="region"]')?.getAttribute("aria-busy")).toBe("true");
+  await click("Barbados"); expect(fetchMock.mock.calls[1][1].signal.aborted).toBe(true);
+  await act(async () => current.resolve(response([fixture("Current Barbados", "barbados")])));
+  await act(async () => old.resolve(response([fixture("Obsolete Grenada")])));
+  expect(container.querySelector("[data-map]")?.getAttribute("data-island")).toBe("barbados");
+  expect(container.textContent).toContain("Current Barbados"); expect(container.textContent).not.toContain("Obsolete Grenada");
+  expect(button("Barbados").getAttribute("aria-pressed")).toBe("true");
+});
+
+it("rejects an obsolete All Islands response after leaving and returning to that same island context", async () => {
+  const old = deferred();
+  fetchMock.mockReturnValueOnce(old.promise).mockResolvedValueOnce(response([fixture("Grenada pin")])).mockResolvedValueOnce(response([fixture("Fresh overview", "barbados")]));
+  await render(); await click("Grenada"); await click("All Islands");
+  await act(async () => old.resolve(response([fixture("Obsolete overview")])));
+  expect(container.textContent).toContain("Fresh overview"); expect(container.textContent).not.toContain("Obsolete overview");
+  expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+});
+
+it.each(["HTTP", "network", "malformed"])("shows an honest %s failure and retries the selected island without claiming zero listings", async kind => {
+  fetchMock.mockResolvedValueOnce(response([fixture("Initial pin")]));
+  if (kind === "HTTP") fetchMock.mockResolvedValueOnce(Response.json({ error: "Unavailable" }, { status: 503 }));
+  else if (kind === "network") fetchMock.mockRejectedValueOnce(new Error("Synthetic network failure"));
+  else fetchMock.mockResolvedValueOnce(Response.json({ listings: [null] }));
+  fetchMock.mockResolvedValueOnce(response([fixture("Recovered Barbados", "barbados")]));
+  await render(); await click("Barbados");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not be loaded");
+  expect(container.textContent).not.toContain("0 mapped listings"); expect(container.textContent).not.toContain("No map locations"); expect(container.querySelector("[data-map]")).toBeNull();
+  await click("Try loading map listings again");
+  expect(container.querySelector('[role="alert"]')).toBeNull(); expect(container.textContent).toContain("Recovered Barbados");
+  expect(fetchMock.mock.calls[2][0]).toContain("island=barbados"); expect(fetchMock.mock.calls.every(call => call[1].cache === "no-store")).toBe(true);
+});
+
+it("distinguishes successful empty and unmapped results from failures with readable map status", async () => {
+  fetchMock.mockResolvedValueOnce(response([])).mockResolvedValueOnce(response([{ ...fixture("No coordinates"), latitude: null, longitude: null }]));
+  await render(); expect(container.querySelector('[role="alert"]')).toBeNull(); expect(container.textContent).toContain("No map locations are available for these listings");
+  await click("Grenada"); expect(container.querySelector('[role="region"]')?.getAttribute("aria-label")).toBe("Grenada listing map");
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("No map locations are available for Grenada");
+  expect(container.querySelector("[data-map]")).toBeNull(); expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("bounds an abort-ignoring stalled request and ignores its late success after the visitor retries", async () => {
+  vi.useFakeTimers(); const old = deferred();
+  fetchMock.mockReturnValueOnce(old.promise).mockResolvedValueOnce(response([fixture("Retry succeeded")]));
+  await render(); await act(async () => vi.advanceTimersByTimeAsync(20_000));
+  expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true); expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  await click("Try loading map listings again");
+  await act(async () => old.resolve(response([fixture("Late timeout result")])));
+  expect(container.textContent).toContain("Retry succeeded"); expect(container.textContent).not.toContain("Late timeout result");
+});
+
+it("aborts a pending read on disposal and never starts a follow-up request", async () => {
+  const pending = deferred(); fetchMock.mockReturnValueOnce(pending.promise);
+  await render(); await act(async () => root.render(<p>Left map</p>));
+  expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+  await act(async () => pending.resolve(response([fixture("Late unmount result")])));
+  expect(container.textContent).toBe("Left map"); expect(fetchMock).toHaveBeenCalledTimes(1);
+});

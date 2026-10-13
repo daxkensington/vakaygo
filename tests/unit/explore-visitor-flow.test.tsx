@@ -38,6 +38,23 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
+it("explains unavailable online date inventory and removes only the date to recover directory browsing", async () => {
+  await render(initial({ filters: parseListingFilters(new URLSearchParams("date=2099-12-02&type=spa&island=grenada&q=massage&sort=rating")), listings: [], totalCount: 0 }));
+  expect(container.textContent).toContain("No online availability for this date");
+  expect(container.textContent).toContain("Directory businesses may still be available");
+  expect(container.textContent).not.toContain("No listings found");
+  await click("Browse without a date"); await tick();
+  const request = fetchMock.mock.calls.find(([url]) => url.startsWith("/api/listings?"))![0];
+  const query = new URL(request, "https://vakaygo.com").searchParams;
+  expect(query.get("date")).toBeNull(); expect(query.get("type")).toBe("spa"); expect(query.get("island")).toBe("grenada"); expect(query.get("q")).toBe("massage"); expect(query.get("sort")).toBe("rating");
+  expect(container.querySelectorAll("[data-listing]")).toHaveLength(1);
+});
+
+it("keeps confirmed empty directory results distinct from unavailable online date inventory", async () => {
+  await render(initial({ listings: [], totalCount: 0 }));
+  expect(container.textContent).toContain("No listings found"); expect(container.textContent).not.toContain("No online availability for this date");
+});
+
 it("keeps the server-rendered first page without refetching or offering an extra exact-size page", async () => {
   await render(initial({ totalCount: 24 })); await tick();
   expect(container.querySelectorAll("[data-listing]")).toHaveLength(24);

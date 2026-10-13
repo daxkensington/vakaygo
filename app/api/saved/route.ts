@@ -1,123 +1,29 @@
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import { savedListings, listings, islands } from "@/drizzle/schema";
-import { eq, and } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireUser } from "@/server/admin-auth";
+import { getSavedListings, saveListing, removeSavedListing, objectBody, uuid, expectedActor, wishlistFailure } from "@/server/saved-wishlist";
 
-import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-function getDb() {
-  return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-export async function GET() {
+export async function GET(request?: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    // Anonymous visitors have no saved listings — return empty instead of
-    // 401 so the SavedProvider on every page doesn't fire a console error
-    // for the bulk of SEO traffic.
-    if (!token) {
-      return NextResponse.json({ saved: [] });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
-
-    const db = getDb();
-
-    const results = await db
-      .select({
-        id: listings.id,
-        title: listings.title,
-        slug: listings.slug,
-        type: listings.type,
-        priceAmount: listings.priceAmount,
-        priceUnit: listings.priceUnit,
-        avgRating: listings.avgRating,
-        reviewCount: listings.reviewCount,
-        parish: listings.parish,
-        isFeatured: listings.isFeatured,
-        islandSlug: islands.slug,
-        islandName: islands.name,
-        savedAt: savedListings.createdAt,
-      })
-      .from(savedListings)
-      .innerJoin(listings, eq(savedListings.listingId, listings.id))
-      .innerJoin(islands, eq(listings.islandId, islands.id))
-      .where(eq(savedListings.userId, userId))
-      .orderBy(savedListings.createdAt);
-
-    return NextResponse.json({ saved: results });
-  } catch (error) {
-    logger.error("Get saved error", error);
-    return NextResponse.json({ error: "Failed to fetch saved listings" }, { status: 500 });
-  }
+    const auth = await requireUser(); if (!auth.ok) return auth.error;
+    expectedActor(auth, request ? new URL(request.url).searchParams.get("expectedUserId") : null, false);
+    return NextResponse.json({ userId: auth.userId, saved: await getSavedListings(auth) }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) { return wishlistFailure(error); }
 }
-
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
-
-    const { listingId } = await request.json();
-    if (!listingId) {
-      return NextResponse.json({ error: "listingId is required" }, { status: 400 });
-    }
-
-    const db = getDb();
-
-    await db
-      .insert(savedListings)
-      .values({ userId, listingId })
-      .onConflictDoNothing();
-
-    return NextResponse.json({ saved: true });
-  } catch (error) {
-    logger.error("Save listing error", error);
-    return NextResponse.json({ error: "Failed to save listing" }, { status: 500 });
-  }
+    const auth = await requireUser(); if (!auth.ok) return auth.error;
+    const body = await objectBody(request); expectedActor(auth, body.expectedUserId);
+    const listingId = uuid(body.listingId, "listingId");
+    await saveListing(auth, listingId);
+    return NextResponse.json({ userId: auth.userId, saved: true, listingId });
+  } catch (error) { return wishlistFailure(error); }
 }
-
 export async function DELETE(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
-
-    const { listingId } = await request.json();
-    if (!listingId) {
-      return NextResponse.json({ error: "listingId is required" }, { status: 400 });
-    }
-
-    const db = getDb();
-
-    await db
-      .delete(savedListings)
-      .where(
-        and(
-          eq(savedListings.userId, userId),
-          eq(savedListings.listingId, listingId)
-        )
-      );
-
-    return NextResponse.json({ removed: true });
-  } catch (error) {
-    logger.error("Unsave listing error", error);
-    return NextResponse.json({ error: "Failed to unsave listing" }, { status: 500 });
-  }
+    const auth = await requireUser(); if (!auth.ok) return auth.error;
+    const body = await objectBody(request); expectedActor(auth, body.expectedUserId);
+    const listingId = uuid(body.listingId, "listingId");
+    await removeSavedListing(auth, listingId);
+    return NextResponse.json({ userId: auth.userId, removed: true, listingId });
+  } catch (error) { return wishlistFailure(error); }
 }

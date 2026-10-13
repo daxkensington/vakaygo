@@ -569,6 +569,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <input
                   type="date"
                   aria-label="Filter by date"
+                  title="Show listings with online booking availability on this date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="bg-transparent text-navy-700 text-sm font-medium outline-none cursor-pointer min-w-[8rem]"
@@ -1110,10 +1111,11 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
             ) : listError && listings.length === 0 ? null : listings.length === 0 ? (
               <div className="text-center py-20">
                 <Compass size={40} className="text-navy-200 mx-auto mb-4" />
-                <p className="text-navy-500 text-lg font-semibold">No listings found</p>
+                <p className="text-navy-500 text-lg font-semibold">{selectedDate ? "No online availability for this date" : "No listings found"}</p>
                 <p className="text-navy-400 text-sm mt-2 max-w-md mx-auto">
-                  Try adjusting your filters, searching for something else, or exploring a different island.
+                  {selectedDate ? "The date filter checks online booking availability. Directory businesses may still be available: remove the date to browse and contact them directly." : "Try adjusting your filters, searching for something else, or exploring a different island."}
                 </p>
+                {selectedDate && <button onClick={() => setSelectedDate("")} className="mt-6 mr-3 text-gold-700 hover:text-gold-800 px-4 py-2.5 rounded-xl font-semibold text-sm underline">Browse without a date</button>}
                 <button
                   onClick={() => { cancelSmartSearch(); setActiveCategory("all"); setSearchQuery(""); setActiveIsland(""); setSelectedDate(""); setMinPrice(""); setMaxPrice(""); setMinRating(""); setGuestCount(""); setSelectedAmenities([]); setSelectedDuration(""); setCuisineType(""); }}
                   className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
@@ -1169,6 +1171,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <input
                     id="m-date"
                     type="date"
+                    title="Show listings with online booking availability on this date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     className="bg-transparent text-navy-700 text-sm font-medium outline-none w-full"
