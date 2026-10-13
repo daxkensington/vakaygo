@@ -28,6 +28,8 @@ type ListingCardProps = {
   /** "google" when the rating/count is imported from Google Places (every unclaimed listing). */
   reviewSource?: "google" | "vakaygo";
   showSaveButton?: boolean;
+  /** Opt in only for cards expected above the fold; other images stay lazy. */
+  priority?: boolean;
 };
 
 const typeConfig: Record<string, { color: string; bg: string }> = {
@@ -78,6 +80,7 @@ export function ListingCard(props: ListingCardProps) {
           src={imageUrl}
           type={props.type}
           alt={props.title}
+          priority={props.priority}
           className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
         />
 

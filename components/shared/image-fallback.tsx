@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import {
   Bed,
   Compass,
@@ -122,17 +123,20 @@ export function ImageWithFallback({
   sizes?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  // Fill images need a positioned wrapper. Merge the default so explicit
+  // caller positioning also controls the missing/failed image placeholder.
+  const wrapperClassName = cn("relative overflow-hidden", className);
 
   if (!src || failed) {
     return (
-      <ImageFallback type={type} className={className} iconSize={iconSize} onClick={onClick}>
+      <ImageFallback type={type} className={wrapperClassName} iconSize={iconSize} onClick={onClick}>
         {children}
       </ImageFallback>
     );
   }
 
   return (
-    <div className={`relative overflow-hidden ${className}`} onClick={onClick}>
+    <div className={wrapperClassName} onClick={onClick}>
       {isOptimizable(src) ? (
         <Image
           src={src}
@@ -141,6 +145,7 @@ export function ImageWithFallback({
           sizes={sizes}
           priority={priority}
           loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           quality={75}
           onError={() => setFailed(true)}
           className="object-cover"
