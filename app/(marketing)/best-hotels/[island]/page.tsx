@@ -56,12 +56,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: {
-      canonical: `https://vakaygo.com/best-hotels-${slug}`,
+      canonical: `https://vakaygo.com/best-hotels/${slug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://vakaygo.com/best-hotels-${slug}`,
+      url: `https://vakaygo.com/best-hotels/${slug}`,
       type: "website",
       images: [
         {
@@ -185,7 +185,7 @@ export default async function BestHotelsPage({ params }: Props) {
     "@type": "ItemList",
     name: `Best Hotels in ${island.name}`,
     description: `Top-rated hotels, villas, and accommodations in ${island.name}.`,
-    url: `https://vakaygo.com/best-hotels-${slug}`,
+    url: `https://vakaygo.com/best-hotels/${slug}`,
     numberOfItems: stayListings.length,
     itemListElement: stayListings.map((listing, idx) => ({
       "@type": "ListItem",
@@ -558,7 +558,7 @@ export default async function BestHotelsPage({ params }: Props) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Link
-                href={`/things-to-do-in-${slug}`}
+                href={`/things-to-do-in/${slug}`}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <Compass size={24} className="text-teal-500 mb-3" />
@@ -570,7 +570,7 @@ export default async function BestHotelsPage({ params }: Props) {
                 </p>
               </Link>
               <Link
-                href={`/best-restaurants-${slug}`}
+                href={`/best-restaurants/${slug}`}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <UtensilsCrossed size={24} className="text-gold-700 mb-3" />
@@ -649,7 +649,7 @@ export default async function BestHotelsPage({ params }: Props) {
                 Browse Stays <ArrowRight size={16} />
               </Link>
               <Link
-                href={`/things-to-do-in-${slug}`}
+                href={`/things-to-do-in/${slug}`}
                 className="bg-white/10 text-white border border-white/20 px-8 py-3.5 rounded-xl font-semibold hover:bg-white/20 transition-colors"
               >
                 All Things to Do
