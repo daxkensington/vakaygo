@@ -1,32 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
-import { users, bookings, reviews, savedListings } from "@/drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { users, bookings, reviews } from "@/drizzle/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { requireUser } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function getAuthUserId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
+export async function GET(request: Request) {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
-}
-
-export async function GET() {
-  try {
-    const userId = await getAuthUserId();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const userId = auth.userId;
+    const expectedUserId = new URL(request.url).searchParams.get("expectedUserId");
+    if (expectedUserId && expectedUserId !== userId) return NextResponse.json({ error: "Your account changed. Reload your profile." }, { status: 409 });
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -62,9 +48,12 @@ export async function GET() {
         .where(eq(reviews.travelerId, userId))
         .then((r) => r[0].count),
       db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(savedListings)
-        .where(eq(savedListings.userId, userId))
+        .select({ count: sql<number>`(SELECT count(*)::int FROM (
+          SELECT s.listing_id FROM saved_listings s JOIN listings l ON l.id=s.listing_id AND l.status='active' WHERE s.user_id=${userId}::uuid
+          UNION SELECT wi.listing_id FROM wishlist_items wi JOIN wishlist_collections wc ON wc.id=wi.collection_id JOIN listings l ON l.id=wi.listing_id AND l.status='active' WHERE wc.user_id=${userId}::uuid
+        ) own_saved)` })
+        .from(users)
+        .where(eq(users.id, userId))
         .then((r) => r[0].count),
     ]);
 
@@ -75,7 +64,7 @@ export async function GET() {
         reviews: reviewCount,
         saved: savedCount,
       },
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     logger.error("GET /api/profile error", error);
     return NextResponse.json(
@@ -87,12 +76,13 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const userId = await getAuthUserId();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const userId = auth.userId;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid profile update" }, { status: 400 });
+    if (body.expectedUserId !== userId) return NextResponse.json({ error: "Your account changed. Reload your profile before saving." }, { status: 409 });
     const { name, phone } = body as { name?: string; phone?: string };
 
     // Build update object with only provided fields
@@ -112,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     const [updated] = await db
       .update(users)
       .set(updates)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), eq(users.sessionVersion, auth.sessionVersion), sql`${users.role}=${auth.role}`))
       .returning({
         id: users.id,
         email: users.email,
@@ -125,10 +115,10 @@ export async function PATCH(request: NextRequest) {
       });
 
     if (!updated) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Your account changed. Reload your profile before saving." }, { status: 409 });
     }
 
-    return NextResponse.json({ user: updated });
+    return NextResponse.json({ user: updated }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     logger.error("PATCH /api/profile error", error);
     return NextResponse.json(

@@ -15,6 +15,6 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     logger.error("Listings count error", error);
-    return NextResponse.json({ count: 0 });
+    return NextResponse.json({ error: "Failed to fetch listing count" }, { status: 500 });
   }
 }

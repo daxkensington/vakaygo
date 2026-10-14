@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { trips, tripItems, islands } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { islands } from "@/drizzle/schema";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { requireUser } from "@/server/admin-auth";
+import { env } from "@/lib/env";
 import {
   searchListings,
   getListingDetails,
@@ -12,22 +13,57 @@ import {
 } from "@/server/trip-planner-tools";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+export const maxDuration = 60;
+
+const UNAVAILABLE = {
+  code: "TRIP_PLANNER_UNAVAILABLE",
+  error: "Trip planning is temporarily unavailable. Your preferences are kept so you can try again. For help, contact hello@vakaygo.com.",
+};
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+});
+const requestSchema = z.object({
+  islandId: z.number().int().positive(), startDate: date, endDate: date,
+  guestCount: z.number().int().min(1).max(50).default(2),
+  budget: z.enum(["Budget", "Mid-Range", "Luxury"]).default("Mid-Range"),
+  pace: z.enum(["relaxed", "moderate", "active"]).default("moderate"),
+  interests: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  specialRequests: z.string().trim().max(2000).default(""),
+}).refine(value => {
+  const days = (Date.parse(value.endDate) - Date.parse(value.startDate)) / 86400000;
+  return days > 0 && days <= 30;
+}, { message: "Choose an end date after your start date, within 30 days." });
+const itinerarySchema = z.object({
+  title: z.string().trim().min(1).max(256), summary: z.string().max(4000),
+  estimatedBudget: z.object({ accommodation: z.number().nonnegative(), activities: z.number().nonnegative(), dining: z.number().nonnegative(), transport: z.number().nonnegative(), total: z.number().nonnegative() }),
+  days: z.array(z.object({
+    dayNumber: z.number().int().min(1).max(30), date, theme: z.string().max(256),
+    items: z.array(z.object({
+      timeSlot: z.enum(["morning", "afternoon", "evening"]),
+      type: z.enum(["stay", "tour", "dining", "event", "excursion", "transport", "transfer", "guide", "spa", "vip", "free"]),
+      title: z.string().trim().min(1).max(256), listingId: z.string().uuid().nullable(),
+      listingSlug: z.string().nullable().optional(), listingTitle: z.string().nullable().optional(),
+      price: z.number().nonnegative().nullable(), rating: z.number().min(0).max(5).nullable(),
+      image: z.string().nullable(), note: z.string().max(4000).nullable(),
+    })).max(12),
+  })).min(1).max(30),
+});
 
 function getDb() {
-  return drizzle(neon(process.env.DATABASE_URL!));
+  return drizzle(neon(env.DATABASE_URL));
 }
 
-async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
+async function runWhileActive<T>(signal: AbortSignal, work: () => PromiseLike<T>): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise<T>((resolve, reject) => {
+    const aborted = () => reject(signal.reason);
+    signal.addEventListener("abort", aborted, { once: true });
+    Promise.resolve().then(() => { signal.throwIfAborted(); return work(); }).then(
+      value => { signal.removeEventListener("abort", aborted); resolve(value); },
+      error => { signal.removeEventListener("abort", aborted); reject(error); },
+    );
+  });
 }
 
 const SYSTEM_PROMPT = `You are VakayGo's AI Trip Planner. You create personalized Caribbean itineraries using REAL listings from the VakayGo platform.
@@ -171,12 +207,11 @@ async function handleToolCall(name: string, input: any) {
 
 export async function POST(request: Request) {
   try {
-    const userId = await getUser();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
 
-    const body = await request.json();
+    const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Select an island, valid dates up to 30 days apart, and valid trip preferences." }, { status: 400 });
     const {
       islandId,
       startDate,
@@ -186,23 +221,19 @@ export async function POST(request: Request) {
       interests = [],
       pace = "moderate",
       specialRequests = "",
-    } = body;
-
-    if (!islandId || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "islandId, startDate, and endDate are required" },
-        { status: 400 }
-      );
-    }
+    } = parsed.data;
+    const anthropicKey = env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) return NextResponse.json(UNAVAILABLE, { status: 503 });
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45000)]);
 
     const db = getDb();
 
     // Get island info
-    const [island] = await db
+    const [island] = await runWhileActive(signal, () => db
       .select({ id: islands.id, name: islands.name, slug: islands.slug })
       .from(islands)
       .where(eq(islands.id, islandId))
-      .limit(1);
+      .limit(1));
 
     if (!island) {
       return NextResponse.json({ error: "Island not found" }, { status: 404 });
@@ -228,20 +259,14 @@ ${specialRequests ? `Special requests: ${specialRequests}` : ""}
 Search for real listings on this island and build a day-by-day itinerary. Start by searching for different listing types (stays, tours, dining, excursions) on the island "${island.slug}", then assemble the best options into a cohesive trip plan.`;
 
     // Call Claude with tool use loop
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      return NextResponse.json(
-        { error: "AI service not configured" },
-        { status: 500 }
-      );
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let messages: any[] = [{ role: "user", content: userPrompt }];
+    const messages: any[] = [{ role: "user", content: userPrompt }];
     let itineraryData = null;
     const MAX_ITERATIONS = 8;
+    const knownListings = new Map<string, Awaited<ReturnType<typeof getListingDetails>> & {}>();
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
+      signal.throwIfAborted();
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -250,25 +275,24 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
+          model: env.ANTHROPIC_CONCIERGE_MODEL,
+          max_tokens: 8192,
           system: SYSTEM_PROMPT,
           tools: CLAUDE_TOOLS,
           messages,
         }),
+        signal,
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        logger.error("Claude API error", errorText);
-        return NextResponse.json(
-          { error: "AI generation failed" },
-          { status: 500 }
-        );
+        logger.error("Trip planner provider request failed", null, { status: res.status });
+        return NextResponse.json(UNAVAILABLE, { status: 503 });
       }
 
       const data = await res.json();
       const { content, stop_reason } = data;
+      signal.throwIfAborted();
+      if (!Array.isArray(content)) return NextResponse.json(UNAVAILABLE, { status: 503 });
 
       // Add assistant response to messages
       messages.push({ role: "assistant", content });
@@ -310,14 +334,22 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
         const toolResults: any[] = [];
 
         for (const toolUse of toolUseBlocks) {
+          signal.throwIfAborted();
           try {
-            const result = await handleToolCall(toolUse.name, toolUse.input);
+            const result = await runWhileActive(signal, () => handleToolCall(toolUse.name, toolUse.input));
+            signal.throwIfAborted();
+            if (toolUse.name === "search_listings" && Array.isArray(result)) {
+              for (const listing of result) knownListings.set(listing.id, listing);
+            } else if (toolUse.name === "get_listing_details" && result && "id" in result) {
+              knownListings.set(result.id, result);
+            }
             toolResults.push({
               type: "tool_result",
               tool_use_id: toolUse.id,
               content: JSON.stringify(result),
             });
           } catch (err) {
+            if (signal.aborted) throw err;
             logger.error("Trip generate tool failed", err, { tool: toolUse.name });
             toolResults.push({
               type: "tool_result",
@@ -332,37 +364,14 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
       }
     }
 
-    if (!itineraryData) {
-      return NextResponse.json(
-        { error: "Failed to generate itinerary" },
-        { status: 500 }
-      );
-    }
+    const validated = itinerarySchema.safeParse(itineraryData);
+    if (!validated.success) return NextResponse.json(UNAVAILABLE, { status: 503 });
+    const itinerary = validated.data;
+    if (itinerary.days.length !== days || itinerary.days.some((day, index) =>
+      day.dayNumber !== index + 1 || day.date !== new Date(start.getTime() + index * 86400000).toISOString().slice(0, 10)
+    )) return NextResponse.json(UNAVAILABLE, { status: 503 });
 
-    // Save the trip and items to DB
-    const tripTitle =
-      itineraryData.title ||
-      `${island.name} ${days}-Day Adventure`;
-
-    const [trip] = await db
-      .insert(trips)
-      .values({
-        userId,
-        islandId,
-        title: tripTitle,
-        startDate: start,
-        endDate: end,
-        guestCount,
-        budget,
-        interests,
-        isAiGenerated: true,
-        isPublic: false,
-      })
-      .returning();
-
-    // Save trip items
     const itemValues: {
-      tripId: string;
       listingId: string | null;
       dayNumber: number;
       timeSlot: string;
@@ -371,13 +380,28 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
       sortOrder: number;
     }[] = [];
 
-    if (itineraryData.days && Array.isArray(itineraryData.days)) {
-      for (const day of itineraryData.days) {
-        if (day.items && Array.isArray(day.items)) {
+      for (const day of itinerary.days) {
           for (let i = 0; i < day.items.length; i++) {
             const item = day.items[i];
+            if (item.listingId) {
+              const listing = knownListings.get(item.listingId);
+              if (!listing || listing.islandSlug !== island.slug || listing.type !== item.type) return NextResponse.json(UNAVAILABLE, { status: 503 });
+              // Listing links and facts come from the catalog, never model text.
+              item.listingSlug = listing.slug;
+              item.listingTitle = listing.title;
+              item.image = listing.image;
+              item.rating = listing.avgRating === null ? null : Number(listing.avgRating);
+              item.price = listing.bookingEligible && listing.priceAmount !== null ? Number(listing.priceAmount) : null;
+            } else if (item.type !== "free") {
+              return NextResponse.json(UNAVAILABLE, { status: 503 });
+            } else {
+              item.listingSlug = null;
+              item.listingTitle = null;
+              item.image = null;
+              item.price = 0;
+              item.rating = null;
+            }
             itemValues.push({
-              tripId: trip.id,
               listingId: item.listingId || null,
               dayNumber: day.dayNumber,
               timeSlot: item.timeSlot || "morning",
@@ -386,26 +410,39 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
               sortOrder: i,
             });
           }
-        }
       }
-    }
-
-    if (itemValues.length > 0) {
-      await db.insert(tripItems).values(itemValues);
-    }
+    signal.throwIfAborted();
+    // One PostgreSQL statement commits the trip and all items together. The
+    // actor lock checks the current session after the potentially long AI call.
+    const result = await db.execute(sql`
+      WITH actor AS (
+        SELECT id FROM users WHERE id=${auth.userId}::uuid
+          AND session_version=${auth.sessionVersion} AND role=${auth.role}
+          AND coalesce(email_verified,false)=${auth.emailVerified} FOR SHARE
+      ), new_trip AS (
+        INSERT INTO trips (user_id,island_id,title,start_date,end_date,guest_count,budget,interests,is_ai_generated,is_public)
+        SELECT id,${islandId},${itinerary.title},${start.toISOString()}::timestamp,${end.toISOString()}::timestamp,
+          ${guestCount},${budget},${JSON.stringify(interests)}::json,true,false FROM actor
+        RETURNING id,title
+      ), saved_items AS (
+        INSERT INTO trip_items (trip_id,listing_id,day_number,time_slot,custom_title,custom_note,sort_order)
+        SELECT new_trip.id,item."listingId"::uuid,item."dayNumber",item."timeSlot",item."customTitle",item."customNote",item."sortOrder"
+        FROM new_trip CROSS JOIN jsonb_to_recordset(${JSON.stringify(itemValues)}::jsonb)
+          AS item("listingId" text,"dayNumber" integer,"timeSlot" text,"customTitle" text,"customNote" text,"sortOrder" integer)
+      ) SELECT id,title FROM new_trip
+    `);
+    const trip = result.rows[0];
+    if (!trip) return NextResponse.json({ error: "Your account changed while planning. Sign in again before creating a trip." }, { status: 409 });
 
     return NextResponse.json({
       trip: {
         id: trip.id,
         title: trip.title,
       },
-      itinerary: itineraryData,
+      itinerary,
     });
   } catch (error) {
-    logger.error("Trip generate error", error);
-    return NextResponse.json(
-      { error: "Failed to generate trip" },
-      { status: 500 }
-    );
+    logger.error("Trip planning unavailable", null, { reason: error instanceof Error ? error.name : "UnknownError" });
+    return NextResponse.json(UNAVAILABLE, { status: 503 });
   }
 }

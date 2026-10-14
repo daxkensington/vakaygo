@@ -1,10 +1,12 @@
 import { NextResponse, after } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { users } from "@/drizzle/schema";
 import { sendMagicLinkEmail } from "@/server/email";
+import { claimListingPath, magicLinkUrl } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 
 import { logger } from "@/lib/logger";
 
@@ -13,7 +15,8 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // don't re-issue within 60s of a prior li
 
 /**
  * POST — request a passwordless sign-in link.
- * Body: { email }
+ * Body: { email, claimListingId?, next? }
+ * claimListingId is only a return path after sign-in. It is not ownership proof.
  *
  * Anti-enumeration: the synchronous response path is SELECT-only and returns
  * the SAME 200 body whether or not the email exists. ALL writes + the email
@@ -22,7 +25,12 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // don't re-issue within 60s of a prior li
  */
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const body = await request.json();
+    const { email } = body;
+    const claimReturn = claimListingPath(typeof body?.claimListingId === "string" ? body.claimListingId : null)
+      ? body.claimListingId
+      : undefined;
+    const next = safeAuthNext(body?.next);
 
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
@@ -31,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
     const [user] = await db
@@ -40,6 +48,8 @@ export async function POST(request: Request) {
         name: users.name,
         email: users.email,
         magicLinkExpires: users.magicLinkExpires,
+        magicLinkToken: users.magicLinkToken,
+        sessionVersion: users.sessionVersion,
       })
       .from(users)
       .where(eq(users.email, normalizedEmail))
@@ -60,15 +70,22 @@ export async function POST(request: Request) {
         return;
       }
 
+      const token = randomBytes(32).toString("hex");
+      let issued = false;
       try {
-        const token = randomBytes(32).toString("hex");
+        const url = magicLinkUrl(token, claimReturn, next);
+        if (!url) return;
         const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
-        await db
+        const [stored] = await db
           .update(users)
           .set({ magicLinkToken: token, magicLinkExpires: expires })
-          .where(eq(users.id, user.id));
+          .where(and(
+            eq(users.id, user.id), eq(users.sessionVersion, user.sessionVersion),
+            user.magicLinkToken == null ? isNull(users.magicLinkToken) : eq(users.magicLinkToken, user.magicLinkToken),
+          )).returning({ id: users.id });
+        if (!stored) return;
+        issued = true;
 
-        const url = `https://vakaygo.com/auth/continue?token=${token}`;
         await sendMagicLinkEmail({
           to: user.email,
           name: user.name || "there",
@@ -76,6 +93,13 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         logger.error("Magic link issue/send failed", err);
+        // Only this failed issuance may restore the prior link. A newer link or consumed proof wins.
+        if (issued) {
+          try {
+            await db.update(users).set({ magicLinkToken: user.magicLinkToken, magicLinkExpires: user.magicLinkExpires })
+              .where(and(eq(users.id, user.id), eq(users.sessionVersion, user.sessionVersion), eq(users.magicLinkToken, token)));
+          } catch (restoreError) { logger.error("Magic link failed-send recovery failed", restoreError); }
+        }
       }
     });
 

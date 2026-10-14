@@ -4,6 +4,8 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Loader2 } from "lucide-react";
 
 export default function ContinuePage() {
@@ -25,11 +27,15 @@ function ContinueContent() {
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const token = searchParams.get("token") || "";
+  const returnPath = safeAuthNext(searchParams.get("next"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retryable, setRetryable] = useState(false);
 
   async function handleContinue() {
+    if (loading || !token) return;
     setError("");
+    setRetryable(false);
     setLoading(true);
     try {
       const res = await fetch("/api/auth/magic-link/verify", {
@@ -40,16 +46,19 @@ function ContinueContent() {
       const data = await res.json();
       if (!res.ok) {
         if (data.requiresPassword) {
-          router.push("/auth/signin?error=use_password");
+          router.push(signInHref(searchParams.get("claim"), { error: "use_password", next: returnPath }));
           return;
         }
         setError(data.error || "This sign-in link is invalid or has expired.");
+        setRetryable(res.status >= 500 || res.status === 429);
         return;
       }
+      if (data.ok !== true) throw new Error("Incomplete sign-in response");
       await refresh();
-      router.push(data.redirect || "/explore");
+      router.push(claimListingPath(searchParams.get("claim")) || returnPath || safeAuthNext(data.redirect) || "/explore");
     } catch {
       setError("Something went wrong. Please try again.");
+      setRetryable(true);
     } finally {
       setLoading(false);
     }
@@ -75,13 +84,14 @@ function ContinueContent() {
             Click below to finish signing in to your account.
           </p>
 
-          {error ? (
+          {error || !token ? (
             <>
-              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
-                {error}
+              <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
+                {error || "This sign-in link is missing its token. Please request a new link."}
               </div>
+              {retryable && <button type="button" onClick={handleContinue} disabled={loading} className="mb-4 w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold">{loading ? "Signing in…" : "Try again"}</button>}
               <Link
-                href="/auth/signin"
+                href={signInHref(searchParams.get("claim"), { method: "email", next: returnPath })}
                 className="text-gold-700 font-semibold hover:text-gold-600"
               >
                 Request a new sign-in link

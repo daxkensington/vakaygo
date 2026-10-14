@@ -46,11 +46,35 @@ it("keeps a claim listing when a signed-out visitor chooses sign up", async () =
   expect(container.querySelector("a[href='/auth/signup?role=operator&claim=20000000-0000-4000-8000-000000000009']")).not.toBeNull();
 });
 
+it("keeps the listing on email-link recovery from the verification page", async () => {
+  navigation.query = "claim=20000000-0000-4000-8000-000000000009";
+  await act(async () => root.render(<VerifyEmailPage />));
+  expect(container.querySelector("a[href='/auth/signin?method=email&next=/operator/claim/20000000-0000-4000-8000-000000000009']")?.textContent).toContain("email sign-in link");
+});
+
 it("offers unauthenticated email-link recovery instead of a resend button that requires an existing session", async () => {
   navigation.query = ""; await act(async () => root.render(<VerifyEmailPage />));
   expect(container.querySelector('a[href="/auth/signin?method=email"]')?.textContent).toContain("email sign-in link");
   expect(container.textContent).toContain("You do not need to be signed in");
   expect(container.querySelector("button")).toBeNull(); expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("sends the claim listing with an email sign-in link", async () => {
+  navigation.query = "method=email&next=/operator/claim/20000000-0000-4000-8000-000000000009";
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } }));
+  await act(async () => root.render(<SignInPage />));
+  const email = container.querySelector("input[type='email']") as HTMLInputElement;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(email, "owner@example.com");
+    email.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const button = Array.from(container.querySelectorAll("button")).find((item) => item.textContent?.includes("Email me a sign-in link"));
+  await act(async () => { button?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  expect(fetchMock).toHaveBeenCalledWith("/api/auth/magic-link", expect.objectContaining({
+    method: "POST",
+    body: JSON.stringify({ email: "owner@example.com", claimListingId: "20000000-0000-4000-8000-000000000009" }),
+  }));
 });
 
 it("keeps inbox recovery visible when password sign-in rejects an unverified account", async () => {

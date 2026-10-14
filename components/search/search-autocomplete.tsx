@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -10,11 +10,11 @@ import {
   Music,
   Car,
   Users,
-  MapPin,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
+import { parseAutocompleteResults, type AutocompleteResult } from "@/lib/autocomplete-results";
 
 type ListingSuggestion = {
   title: string;
@@ -27,11 +27,6 @@ type ListingSuggestion = {
 type IslandSuggestion = {
   name: string;
   slug: string;
-};
-
-type AutocompleteResult = {
-  listings: ListingSuggestion[];
-  islands: IslandSuggestion[];
 };
 
 const typeIcons: Record<string, typeof Search> = {
@@ -91,14 +86,22 @@ export function SearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [focusAttempt, setFocusAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const listRef = useRef<HTMLDivElement>(null);
+  const focusedRef = useRef(false);
+  const requestRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const listId = `search-suggestions-${useId()}`;
 
-  const totalItems =
-    results.listings.length +
-    results.islands.length +
-    (results.islands.length > 0 && results.listings.length > 0 ? 0 : 0);
+  function dismissSuggestions() {
+    requestRef.current += 1;
+    controllerRef.current?.abort();
+    setIsOpen(false);
+    setActiveIndex(-1);
+    setLoading(false);
+  }
 
   const flatItems: Array<
     | { kind: "listing"; data: ListingSuggestion }
@@ -112,41 +115,51 @@ export function SearchAutocomplete({
     ),
   ];
 
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setResults({ listings: [], islands: [] });
-      setIsOpen(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/listings/autocomplete?q=${encodeURIComponent(query)}`
-      );
-      if (!res.ok) return;
-      const data: AutocompleteResult = await res.json();
-      setResults(data);
-      setIsOpen(
-        data.listings.length > 0 || data.islands.length > 0
-      );
-      setActiveIndex(-1);
-    } catch {
-      setResults({ listings: [], islands: [] });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchSuggestions(value);
+    const request = ++requestRef.current;
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setResults({ listings: [], islands: [] });
+    setIsOpen(false);
+    setActiveIndex(-1);
+    setLoading(false);
+    if (value.trim().length < 2) return;
+    const debounce = setTimeout(async () => {
+      if (request !== requestRef.current) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/listings/autocomplete?q=${encodeURIComponent(value.trim())}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Suggestions unavailable");
+        const data = parseAutocompleteResults(await res.json());
+        if (request !== requestRef.current || controller.signal.aborted) return;
+        if (!data) throw new Error("Invalid suggestions response");
+        setResults(data);
+        setIsOpen(focusedRef.current && (data.listings.length > 0 || data.islands.length > 0));
+      } catch {
+        if (request === requestRef.current) {
+          setResults({ listings: [], islands: [] });
+          setIsOpen(false);
+        }
+      } finally {
+        if (request === requestRef.current) setLoading(false);
+      }
     }, 300);
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      clearTimeout(debounce);
+      controller.abort();
     };
-  }, [value, fetchSuggestions]);
+  }, [value, focusAttempt]);
+
+  // Scroll only the popup; keyboard navigation must not move the document.
+  useEffect(() => {
+    const list = listRef.current;
+    const option = list?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`);
+    if (!list || !option) return;
+    if (option.offsetTop < list.scrollTop) list.scrollTop = option.offsetTop;
+    else if (option.offsetTop + option.offsetHeight > list.scrollTop + list.clientHeight) {
+      list.scrollTop = option.offsetTop + option.offsetHeight - list.clientHeight;
+    }
+  }, [activeIndex]);
 
   // Close on click outside
   useEffect(() => {
@@ -155,7 +168,7 @@ export function SearchAutocomplete({
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false);
+        dismissSuggestions();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -167,19 +180,26 @@ export function SearchAutocomplete({
       | { kind: "listing"; data: ListingSuggestion }
       | { kind: "island"; data: IslandSuggestion }
   ) {
-    setIsOpen(false);
+    dismissSuggestions();
     if (item.kind === "island") {
-      router.push(`/islands/${item.data.slug}`);
+      router.push(`/${item.data.slug}`);
     } else {
       router.push(
-        `/islands/${item.data.islandSlug}/${item.data.slug}`
+        `/${item.data.islandSlug}/${item.data.slug}`
       );
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      dismissSuggestions();
+      return;
+    }
     if (!isOpen || flatItems.length === 0) {
       if (e.key === "Enter" && onEnter && value.trim()) {
+        e.preventDefault();
+        dismissSuggestions();
         onEnter(value.trim());
       }
       return;
@@ -203,13 +223,13 @@ export function SearchAutocomplete({
         if (activeIndex >= 0 && activeIndex < flatItems.length) {
           navigateToItem(flatItems[activeIndex]);
         } else if (onEnter && value.trim()) {
-          setIsOpen(false);
+          dismissSuggestions();
           onEnter(value.trim());
         }
         break;
       case "Escape":
-        setIsOpen(false);
-        setActiveIndex(-1);
+        e.preventDefault();
+        dismissSuggestions();
         break;
     }
   }
@@ -232,9 +252,15 @@ export function SearchAutocomplete({
           type="text"
           placeholder={placeholder}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            dismissSuggestions();
+            setResults({ listings: [], islands: [] });
+            onChange(e.target.value);
+          }}
           onKeyDown={handleKeyDown}
           onFocus={() => {
+            focusedRef.current = true;
+            setFocusAttempt((attempt) => attempt + 1);
             onFocus?.();
             if (
               value.length >= 2 &&
@@ -244,18 +270,22 @@ export function SearchAutocomplete({
             }
           }}
           onBlur={() => {
+            focusedRef.current = false;
+            dismissSuggestions();
             onBlur?.();
           }}
           className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
           role="combobox"
+          aria-label="Search Caribbean listings"
           aria-expanded={isOpen}
           aria-autocomplete="list"
+          aria-controls={isOpen ? listId : undefined}
           aria-activedescendant={
-            activeIndex >= 0 ? `autocomplete-item-${activeIndex}` : undefined
+            isOpen && activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined
           }
         />
         {aiSearchActive && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gold-700 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+          <span className="text-[10px] font-semibold text-gold-700 bg-gold-100 px-2 py-0.5 rounded-full whitespace-nowrap">
             AI-powered
           </span>
         )}
@@ -265,13 +295,21 @@ export function SearchAutocomplete({
             className="text-navy-300 shrink-0 animate-spin"
           />
         )}
+        {onEnter && (
+          <button type="button" aria-label="Search listings" disabled={!value.trim() || aiSearchLoading} onClick={() => { dismissSuggestions(); onEnter(value.trim()); }} className="shrink-0 rounded-lg bg-navy-700 p-2 text-white disabled:opacity-50">
+            <Search size={16} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {/* Dropdown */}
       {isOpen && flatItems.length > 0 && (
         <div
+          ref={listRef}
+          id={listId}
           className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-cream-200 overflow-hidden z-50 max-h-80 overflow-y-auto"
           role="listbox"
+          aria-label="Search suggestions"
         >
           {/* Island suggestions */}
           {results.islands.length > 0 && (
@@ -283,8 +321,11 @@ export function SearchAutocomplete({
                 const flatIdx = idx;
                 return (
                   <button
+                    type="button"
+                    tabIndex={-1}
                     key={`island-${island.slug}`}
-                    id={`autocomplete-item-${flatIdx}`}
+                    id={`${listId}-option-${flatIdx}`}
+                    data-option-index={flatIdx}
                     role="option"
                     aria-selected={activeIndex === flatIdx}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
@@ -295,6 +336,7 @@ export function SearchAutocomplete({
                     onClick={() =>
                       navigateToItem({ kind: "island", data: island })
                     }
+                    onMouseDown={(e) => e.preventDefault()}
                     onMouseEnter={() => setActiveIndex(flatIdx)}
                   >
                     <span className="text-base shrink-0">{getIslandFlag(island.slug)}</span>
@@ -320,8 +362,11 @@ export function SearchAutocomplete({
                   typeBadgeColors[listing.type] || "bg-cream-100 text-navy-600";
                 return (
                   <button
+                    type="button"
+                    tabIndex={-1}
                     key={`listing-${listing.slug}-${idx}`}
-                    id={`autocomplete-item-${flatIdx}`}
+                    id={`${listId}-option-${flatIdx}`}
+                    data-option-index={flatIdx}
                     role="option"
                     aria-selected={activeIndex === flatIdx}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
@@ -332,6 +377,7 @@ export function SearchAutocomplete({
                     onClick={() =>
                       navigateToItem({ kind: "listing", data: listing })
                     }
+                    onMouseDown={(e) => e.preventDefault()}
                     onMouseEnter={() => setActiveIndex(flatIdx)}
                   >
                     <Icon size={16} className="text-navy-400 shrink-0" />

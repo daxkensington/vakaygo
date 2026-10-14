@@ -4,26 +4,17 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { trips, tripItems, listings, islands, media } from "@/drizzle/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireUser } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
 
 async function getUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
-  } catch {
-    return null;
-  }
+  const auth = await requireUser();
+  return auth.ok ? auth.userId : null;
 }
 
 // ─── GET: Fetch user's trips ───────────────────────────────────

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { claimIdFromPath, claimListingPath, claimStartHref, verificationUrl } from "@/lib/claim-return";
+import { claimIdFromPath, claimListingPath, claimStartHref, magicLinkUrl, signInHref, verificationUrl } from "@/lib/claim-return";
 
 const id = "20000000-0000-4000-8000-000000000009";
 
@@ -21,4 +21,15 @@ it("puts a valid claim on the verification link and drops anything else", () => 
   const token = "a".repeat(64);
   expect(verificationUrl(token, id)).toBe(`https://vakaygo.com/api/auth/verify-email/confirm?token=${token}&claim=${id}`);
   expect(verificationUrl(token, "https://evil.example")).toBe(`https://vakaygo.com/api/auth/verify-email/confirm?token=${token}`);
+});
+
+it("puts a valid claim on a sign-in link and rejects a bad token", () => {
+  const token = "b".repeat(64);
+  expect(magicLinkUrl(token, id)).toBe(`https://vakaygo.com/auth/continue?token=${token}&claim=${id}`);
+  expect(magicLinkUrl(token, "https://evil.example")).toBe(`https://vakaygo.com/auth/continue?token=${token}`);
+  expect(magicLinkUrl("not-a-token", id)).toBeNull();
+  expect(signInHref(id, { method: "email" })).toBe(`/auth/signin?method=email&next=/operator/claim/${id}`);
+  expect(signInHref("https://evil.example", { method: "email" })).toBe("/auth/signin?method=email");
+  expect(signInHref(id, { error: "use_password" })).toBe(`/auth/signin?error=use_password&next=/operator/claim/${id}`);
+  expect(signInHref(id, { error: "https://evil.example" })).toBe(`/auth/signin?next=/operator/claim/${id}`);
 });

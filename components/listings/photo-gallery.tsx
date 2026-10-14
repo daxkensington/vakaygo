@@ -97,7 +97,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                 <ImageWithFallback
                   src={displayPhotos[0].url || null}
                   type={type}
-                  className="hover:opacity-95 transition-opacity"
+                  className="absolute inset-0 hover:opacity-95 transition-opacity"
                   iconSize={56}
                   priority
                   sizes="(max-width: 768px) 100vw, 66vw"
@@ -120,7 +120,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                     sizes="(max-width: 768px) 50vw, 25vw"
                     src={photo.url || null}
                     type={type}
-                    className="hover:opacity-90 transition-opacity relative"
+                    className="absolute inset-0 hover:opacity-90 transition-opacity"
                     iconSize={32}
                   />
                 )}
@@ -150,7 +150,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                 <ImageWithFallback
                   src={displayPhotos[0].url || null}
                   type={type}
-                  className="hover:opacity-95 transition-opacity"
+                  className="absolute inset-0 hover:opacity-95 transition-opacity"
                   iconSize={56}
                   priority
                   sizes="(max-width: 768px) 100vw, 66vw"
@@ -174,7 +174,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                     sizes="(max-width: 768px) 50vw, 25vw"
                       src={photo.url || null}
                       type={type}
-                      className="hover:opacity-90 transition-opacity"
+                      className="absolute inset-0 hover:opacity-90 transition-opacity"
                       iconSize={32}
                     />
                   )}
@@ -197,7 +197,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
               <ImageWithFallback
                 src={displayPhotos[0].url || null}
                 type={type}
-                className="h-full"
+                className="absolute inset-0"
                 iconSize={56}
                 priority
                   sizes="(max-width: 768px) 100vw, 66vw"

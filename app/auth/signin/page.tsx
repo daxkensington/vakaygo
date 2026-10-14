@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { claimIdFromPath } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -36,6 +37,9 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const emailRecovery = searchParams.get("method") === "email";
+  const operatorSignup = searchParams.get("role") === "operator";
+  const returnPath = safeAuthNext(searchParams.get("next"));
+  const claimFromNext = claimIdFromPath(returnPath);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -45,6 +49,13 @@ function SignInContent() {
   const [totpCode, setTotpCode] = useState("");
   const [magicLoading, setMagicLoading] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
+  const [magicCooldown, setMagicCooldown] = useState(0);
+
+  useEffect(() => {
+    if (magicCooldown <= 0) return;
+    const timer = setTimeout(() => setMagicCooldown((remaining) => Math.max(0, remaining - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [magicCooldown]);
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -58,6 +69,7 @@ function SignInContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading || magicLoading) return;
     setError("");
     setLoading(true);
 
@@ -85,10 +97,8 @@ function SignInContent() {
       }
 
       await refresh();
-      const next = searchParams.get("next");
-      // Only same-origin relative paths — never an absolute URL from the query string.
-      if (next && /^\/(?!\/)[\w\-./?=&%]*$/.test(next)) {
-        router.push(next);
+      if (returnPath) {
+        router.push(returnPath);
         return;
       }
       router.push(data.user.role === "operator" ? "/operator" : "/explore");
@@ -100,6 +110,7 @@ function SignInContent() {
   }
 
   async function handleMagicLink() {
+    if (magicLoading || loading || magicCooldown > 0) return;
     setError("");
     if (!email) {
       setError("Enter your email first, then request a sign-in link.");
@@ -110,14 +121,15 @@ function SignInContent() {
       const res = await fetch("/api/auth/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...(claimFromNext ? { claimListingId: claimFromNext } : returnPath ? { next: returnPath } : {}) }),
       });
       const data = await res.json();
-      if (!res.ok) {
+      if (!res.ok || data.ok !== true) {
         setError(data.error || "Could not send a sign-in link.");
         return;
       }
       setMagicSent(true);
+      setMagicCooldown(60);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -125,8 +137,11 @@ function SignInContent() {
     }
   }
 
-  const claimFromNext = claimIdFromPath(searchParams.get("next"));
-  const signupHref = claimFromNext ? `/auth/signup?role=operator&claim=${claimFromNext}` : "/auth/signup";
+  const signupUrl = new URL("/auth/signup", "https://vakaygo.com");
+  if (claimFromNext || operatorSignup) signupUrl.searchParams.set("role", "operator");
+  if (claimFromNext) signupUrl.searchParams.set("claim", claimFromNext);
+  else if (returnPath) signupUrl.searchParams.set("next", returnPath);
+  const signupHref = signupUrl.pathname + signupUrl.search;
 
   return (
     <main className="min-h-screen bg-cream-50 flex items-center justify-center px-6">
@@ -156,7 +171,9 @@ function SignInContent() {
           {/* Google OAuth */}
           <button type="button" onClick={() => {
             const url = new URL("/api/auth/google", window.location.origin);
+            if (operatorSignup) url.searchParams.set("role", "operator");
             if (claimFromNext) url.searchParams.set("claim", claimFromNext);
+            else if (returnPath) url.searchParams.set("next", returnPath);
             window.location.assign(url.href);
           }}
             className="w-full flex items-center justify-center gap-3 bg-white border border-cream-300 hover:bg-cream-50 text-navy-700 py-3 rounded-xl font-semibold transition-colors mb-6"
@@ -185,7 +202,8 @@ function SignInContent() {
                 type="email" id="signin-email" autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading || magicLoading}
+                onChange={(e) => { setEmail(e.target.value); setMagicSent(false); setMagicCooldown(0); setRequires2fa(false); setTotpCode(""); }}
                 className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50"
                 placeholder="you@example.com"
               />
@@ -200,7 +218,8 @@ function SignInContent() {
                   id="signin-password" autoComplete="current-password" type={showPassword ? "text" : "password"}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading || magicLoading}
+                  onChange={(e) => { setPassword(e.target.value); setRequires2fa(false); setTotpCode(""); }}
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50 pr-12"
                   placeholder="Your password"
                 />
@@ -258,21 +277,20 @@ function SignInContent() {
           {!requires2fa && (
             <div className="mt-4 text-center">
               <p className="mb-3 text-sm text-navy-500">Email not verified, or cannot use your password? Enter your email above and request a sign-in link to verify your inbox.</p>
-              {magicSent ? (
+              {magicSent && (
                 <p className="text-sm text-teal-700 bg-teal-50 rounded-xl px-4 py-3">
                   Check your email — if an account exists, a one-time sign-in link is on its way.
                 </p>
-              ) : (
+              )}
                 <button
                   type="button"
                   onClick={handleMagicLink}
-                  disabled={magicLoading}
+                  disabled={magicLoading || loading || magicCooldown > 0}
                   className="text-sm text-gold-700 font-semibold hover:text-gold-600 disabled:opacity-60 inline-flex items-center gap-2"
                 >
                   {magicLoading && <Loader2 size={14} className="animate-spin" />}
-                  Email me a sign-in link
+                  {magicCooldown > 0 ? `Try again in ${magicCooldown}s` : magicSent ? "Send another sign-in link" : "Email me a sign-in link"}
                 </button>
-              )}
             </div>
           )}
         </div>

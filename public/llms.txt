@@ -1,0 +1,38 @@
+# VakayGo — Caribbean Travel & Direct Booking Platform
+
+> VakayGo is an island travel platform connecting travelers directly with verified stays, tours, boat charters, dining, and local experiences across Grenada and the Caribbean.
+
+## Platform Overview
+- **Website:** https://vakaygo.com
+- **Headquarters & Primary Hub:** Grenada (Spice Isle of the Caribbean)
+- **Primary Regions:** Grenada, Carriacou, Petite Martinique, and expanding Caribbean destinations (Barbados, St. Lucia, Antigua).
+- **Core Mission:** Commission-friendly direct connections between travelers and verified local Caribbean hosts, operators, and guides.
+
+## Travel Categories & Experiences
+
+### 1. Accommodations & Stays
+- **Villas & Residences:** Private luxury hillside villas with infinity pools and panoramic Caribbean Sea views.
+- **Beachfront Cottages & Apartments:** Walk-to-beach accommodations along Grand Anse Beach, Morne Rouge (BBC Beach), and Lance Aux Epines.
+- **Eco-Lodges & Boutique Stays:** Mountain retreats in rainforest settings near Grand Etang National Park.
+
+### 2. Tours & Island Excursions
+- **Waterfalls & Rainforest Treks:** Guided excursions to Annandale Falls, Concord Falls, Seven Sisters Waterfalls, and Mount Qua Qua.
+- **Marine & Boat Charters:** Snorkeling at the world-renowned Molinere Underwater Sculpture Park, sunset catamaran sails, private yacht charters, and sport fishing.
+- **Spice & Heritage Tours:** Interactive tours of historic nutmeg processing stations (Gouyave), River Antoine Rum Distillery (oldest water-powered distillery in the Caribbean), and organic cocoa plantations.
+
+### 3. Food, Dining & Nightlife
+- Traditional Grenadian "Oil Down" feasts, beachside fish fries at Gouyave, authentic roadside barbecues, and waterfront dining in St. George's and Prickly Bay.
+
+### 4. Island Transportation
+- Jeep rentals, 4x4 SUV hires for rugged island terrain, and airport pickup/transfer services from Maurice Bishop International Airport (GND).
+
+## For Hosts & Tour Operators
+- Verified local operators can list properties, excursions, and services directly on VakayGo.
+- Transparent direct customer communication and automated inquiry management.
+
+## Useful Links
+- Main Platform: https://vakaygo.com
+- Explore Stays: https://vakaygo.com/stays
+- Island Tours & Experiences: https://vakaygo.com/tours
+- Destination Guide (Grenada): https://vakaygo.com/destinations/grenada
+- List a Property / Service: https://vakaygo.com/operator

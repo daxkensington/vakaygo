@@ -6,23 +6,23 @@ const steps = [
     icon: Globe,
     title: "Choose Your Island",
     description:
-      "Pick your destination from our growing list of Caribbean islands. Each one curated by people who actually live there.",
+      "Choose a Caribbean island and discover its stays, food, transport and experiences.",
     color: "bg-gold-500",
   },
   {
     number: "02",
     icon: Search,
-    title: "Discover & Book",
+    title: "Discover & Compare",
     description:
-      "Browse stays, tours, restaurants, events, and transport. Compare prices, read real reviews, book in seconds.",
+      "Browse listing details, photos and reviews. Save your favorites and check the business contact details where available.",
     color: "bg-teal-500",
   },
   {
     number: "03",
     icon: TreePalm,
-    title: "Enjoy Your Vakay",
+    title: "Plan Your Visit",
     description:
-      "Show up relaxed. Your whole trip is planned, booked, and confirmed. Just soak it in.",
+      "Contact the business directly to confirm availability, prices and arrangements before you travel.",
     color: "bg-gold-500",
   },
 ];

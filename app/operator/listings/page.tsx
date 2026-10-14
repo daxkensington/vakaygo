@@ -51,14 +51,18 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<MyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    fetch("/api/listings/my")
-      .then((r) => r.json())
-      .then((data) => setListings(data.listings || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true; const controller = new AbortController();
+    fetch("/api/listings/my", { cache: "no-store", signal: controller.signal })
+      .then((r) => { if (!r.ok) throw new Error("Your listings could not load. Please try again."); return r.json(); })
+      .then((data) => { if (!Array.isArray(data.listings)) throw new Error("Your listings could not load. Please try again."); if (active) setListings(data.listings); })
+      .catch(cause => { if (active && !controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Your listings could not load. Please try again."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [loadAttempt]);
 
   const filtered = searchQuery
     ? listings.filter((l) => l.title.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -75,7 +79,7 @@ export default function ListingsPage() {
             My Listings
           </h1>
           <p className="text-navy-400 mt-1">
-            {listings.length} listing{listings.length !== 1 ? "s" : ""}
+            {loading || error ? "Manage your business listings" : `${listings.length} listing${listings.length !== 1 ? "s" : ""}`}
           </p>
         </div>
         <Link
@@ -93,6 +97,7 @@ export default function ListingsPage() {
         <input
           type="text"
           placeholder="Search your listings..."
+          aria-label="Search your listings"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -103,7 +108,7 @@ export default function ListingsPage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 size={32} className="animate-spin text-gold-700" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : error ? <div className="rounded-2xl bg-white p-6"><p role="alert" className="text-navy-600">{error}</p><button type="button" onClick={() => { setLoading(true); setError(""); setLoadAttempt(attempt => attempt + 1); }} className="mt-4 rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white">Try loading again</button></div> : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center">
           <div className="w-16 h-16 bg-cream-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Plus size={28} className="text-navy-300" />
@@ -136,7 +141,7 @@ export default function ListingsPage() {
             return (
               <div
                 key={listing.id}
-                className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow flex items-center gap-4"
+                className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow flex flex-wrap items-center gap-4"
               >
                 {/* Type icon */}
                 <div className="w-12 h-12 bg-cream-50 rounded-xl flex items-center justify-center shrink-0">
@@ -176,19 +181,21 @@ export default function ListingsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
+                <div className="flex w-full sm:w-auto items-center gap-2 shrink-0">
+                  {listing.status === "active" && <Link
                     href={`/${listing.islandSlug}/${listing.slug}`}
                     className="w-9 h-9 bg-cream-50 rounded-lg flex items-center justify-center text-navy-400 hover:text-navy-600 hover:bg-cream-100 transition-colors"
                     title="View"
+                    aria-label={`View ${listing.title}`}
                   >
                     <Eye size={16} />
-                  </Link>
+                  </Link>}
                   <Link href={`/operator/onboarding/${listing.id}`} className="rounded-lg border border-gold-200 px-3 py-2 text-sm font-semibold text-gold-700">Business onboarding</Link>
                   <Link
                     href={`/operator/listings/${listing.id}`}
                     className="w-9 h-9 bg-cream-50 rounded-lg flex items-center justify-center text-navy-400 hover:text-navy-600 hover:bg-cream-100 transition-colors"
                     title="Edit"
+                    aria-label={`Edit ${listing.title}`}
                   >
                     <Edit size={16} />
                   </Link>

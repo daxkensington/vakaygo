@@ -7,6 +7,7 @@ import { requireUser } from "@/server/admin-auth";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail } from "@/server/email";
 import { claimListingPath } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 
 import { logger } from "@/lib/logger";
 
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       name: user.name || "Traveler",
       token: verificationToken,
       claimListingId,
+      next: safeAuthNext(body?.next),
     });
 
     return NextResponse.json({ sent: true });

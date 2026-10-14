@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messages, users } from "@/drizzle/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, desc } from "drizzle-orm";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
@@ -52,6 +52,7 @@ export async function GET() {
       const db = drizzle(neon(process.env.DATABASE_URL!));
       let lastChecked = new Date();
       let heartbeatCounter = 0;
+      const reportedRead = new Set<string>();
       const POLL_INTERVAL = 3000; // 3 seconds
       const HEARTBEAT_INTERVAL = 5; // every 5 polls = 15 seconds
       const MAX_DURATION = 290_000; // just under 5 min
@@ -84,7 +85,7 @@ export async function GET() {
             .orderBy(messages.createdAt)
             .limit(50);
 
-          // Check for messages that were recently marked as read (sent by current user)
+          // Read receipts include older inquiries opened by their recipient today.
           const readMessages = await db
             .select({ id: messages.id })
             .from(messages)
@@ -92,10 +93,10 @@ export async function GET() {
               and(
                 eq(messages.senderId, user.id),
                 eq(messages.isRead, true),
-                gt(messages.createdAt, new Date(Date.now() - 30000)) // last 30s
               )
             )
-            .limit(50);
+            .orderBy(desc(messages.createdAt), desc(messages.id))
+            .limit(100);
 
           // An open stream must not outlive revocation or first email proof.
           if (!await verifyCurrentSessionToken(user.token)) {
@@ -109,7 +110,7 @@ export async function GET() {
           }
 
           for (const msg of readMessages) {
-            send("message", { type: "message_read", messageId: msg.id });
+            if (!reportedRead.has(msg.id)) { send("message", { type: "message_read", messageId: msg.id }); reportedRead.add(msg.id); }
           }
 
           if (newMessages.length > 0) {
@@ -118,8 +119,6 @@ export async function GET() {
                 ...newMessages.map((m) => new Date(m.createdAt).getTime())
               )
             );
-          } else {
-            lastChecked = new Date();
           }
 
           // Heartbeat

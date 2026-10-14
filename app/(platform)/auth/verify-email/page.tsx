@@ -3,7 +3,8 @@
 import { useState, Suspense, type FormEvent } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { claimListingPath } from "@/lib/claim-return";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { Mail, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,6 +22,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const token = searchParams.get("token");
+  const deliveryUnavailable = searchParams.get("delivery") === "unavailable";
+  const returnPath = safeAuthNext(searchParams.get("next"));
   const [password, setPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
@@ -52,7 +55,7 @@ function VerifyEmailContent() {
       setPassword("");
       await refresh();
       const claimPath = claimListingPath(searchParams.get("claim"));
-      router.replace(claimPath || (data.redirect === "/operator" ? "/operator" : "/explore"));
+      router.replace(claimPath || returnPath || (data.redirect === "/operator" ? "/operator" : "/explore"));
     } catch {
       setConfirmationError("We could not confirm this email. Please try again.");
     } finally {
@@ -68,7 +71,7 @@ function VerifyEmailContent() {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(claimListingPath(claimListingId) ? { claimListingId } : {}),
+        body: JSON.stringify(claimListingPath(claimListingId) ? { claimListingId } : returnPath ? { next: returnPath } : {}),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -82,6 +85,10 @@ function VerifyEmailContent() {
       setSending(false);
     }
   }
+
+  const claimId = searchParams.get("claim");
+  const inboxRecoveryHref = signInHref(claimId, { method: "email", next: returnPath });
+  const secureSignInHref = signInHref(claimId, { next: returnPath });
 
   const errorMessages: Record<string, string> = {
     missing_token: "The verification link is invalid. Please request a new one.",
@@ -116,13 +123,16 @@ function VerifyEmailContent() {
                 </p>
                 {confirmationError && <p role="alert" className="text-sm text-red-600">{confirmationError}</p>}
                 {requiresLogin ? (
-                  <Link href="/auth/signin" className="inline-block text-gold-700 underline">Continue to secure sign in</Link>
+                  <Link href={secureSignInHref} className="inline-block text-gold-700 underline">Continue to secure sign in</Link>
                 ) : (
                   <button type="submit" disabled={confirming}
                     className="w-full inline-flex items-center justify-center gap-2 bg-gold-700 hover:bg-gold-800 text-white font-semibold px-6 py-3 rounded-xl disabled:opacity-50">
                     {confirming && <Loader2 size={16} className="animate-spin" />}
                     {confirming ? "Confirming…" : "Confirm email"}
                   </button>
+                )}
+                {confirmationError && !requiresLogin && (
+                  <Link href={inboxRecoveryHref} className="block text-sm font-semibold text-gold-700 underline">Request a new email sign-in link</Link>
                 )}
               </form>
             </>
@@ -154,7 +164,7 @@ function VerifyEmailContent() {
                   {sent ? "Email Sent!" : "Resend Verification Email"}
                 </button>
               )}
-              {!user && <Link href="/auth/signin?method=email" className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>}
+              {!user && <Link href={inboxRecoveryHref} className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>}
             </>
           ) : (
             <>
@@ -165,9 +175,9 @@ function VerifyEmailContent() {
                 className="text-2xl font-bold text-navy-700 mb-3"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Check Your Email
+                {deliveryUnavailable ? "Your account is created" : "Check Your Email"}
               </h1>
-              <p className="text-navy-400 mb-2">
+              {deliveryUnavailable ? <p role="alert" className="text-navy-500 mb-6">We could not confirm that your verification email was sent. Request an email sign-in link below to verify your inbox and continue. You do not need to create your account again.</p> : <p className="text-navy-400 mb-2">
                 We sent a verification link to{" "}
                 {user?.email ? (
                   <strong className="text-navy-600">{user.email}</strong>
@@ -175,21 +185,12 @@ function VerifyEmailContent() {
                   "your email"
                 )}
                 .
-              </p>
-              <p className="text-navy-300 text-sm mb-8">
+              </p>}
+              {!deliveryUnavailable && <p className="text-navy-300 text-sm mb-8">
                 Click the link in the email to verify your account. The link
                 expires in 24 hours.
                 {claimListingPath(searchParams.get("claim")) ? " The link returns you to your business claim." : ""}
-              </p>
-
-              {sent ? (
-                <div className="flex items-center justify-center gap-2 text-teal-600 font-semibold mb-4">
-                  <CheckCircle size={16} />
-                  Verification email sent!
-                </div>
-              ) : resendError ? (
-                <p className="text-red-500 text-sm mb-4">{resendError}</p>
-              ) : null}
+              </p>}
 
               {user && !user.emailVerified ? <button
                 onClick={handleResend}
@@ -204,7 +205,7 @@ function VerifyEmailContent() {
                 {sent ? "Email Sent!" : "Resend Verification Email"}
               </button> : <>
                 <p className="mb-4 text-sm text-navy-500">If your verification email is missing or expired, request an email sign-in link to verify your inbox. You do not need to be signed in.</p>
-                <Link href="/auth/signin?method=email" className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>
+                <Link href={inboxRecoveryHref} className="inline-block font-semibold text-gold-700 underline">Request an email sign-in link</Link>
               </>}
 
               <p className="text-navy-300 text-xs mt-6">
@@ -219,6 +220,8 @@ function VerifyEmailContent() {
               </p>
             </>
           )}
+          {sent && <p role="status" className="mt-4 flex items-center justify-center gap-2 text-teal-600 font-semibold"><CheckCircle size={16} />Verification email sent!</p>}
+          {resendError && <p role="alert" className="mt-4 text-red-600 text-sm">{resendError}</p>}
         </div>
       </div>
     </div>

@@ -336,9 +336,13 @@ export async function getClaimStatus(listingId: string, operatorId: string) {
   assertListingId(listingId);
   const [row] = await query<{
     id: string; title: string; type: string; address: string | null; island_name: string; island_slug: string; slug: string;
+    operator_id: string; claim_valid: boolean; verification_busy_until: string | null;
     unclaimed: boolean; phone: string | null; claim: { id: string; status: string; createdAt: string; adminNotes: string | null } | null;
     verification: ClaimVerification | null;
-  }>(`SELECT l.id,l.title,l.type,l.address,i.name island_name,i.slug island_slug,l.slug,t.phone,
+  }>(`SELECT l.id,l.title,l.type,l.address,i.name island_name,i.slug island_slug,l.slug,t.phone,l.operator_id,
+   vakaygo_listing_claim_verified(l.id) claim_valid,
+   (SELECT min(active.expires_at) FROM listing_claim_verifications active
+    WHERE (active.target_phone=t.phone OR active.listing_id=l.id) AND active.status IN ('sending','pending') AND active.expires_at>now()) verification_busy_until,
    EXISTS(SELECT 1 FROM users u WHERE u.id=l.operator_id AND lower(u.email)='unclaimed@vakaygo.com') unclaimed,
    (SELECT json_build_object('id',c.id,'status',c.status,'createdAt',c.created_at,'adminNotes',c.admin_notes)
     FROM listing_claims c WHERE c.listing_id=l.id AND c.operator_id=$2 ORDER BY c.created_at DESC LIMIT 1) claim,
@@ -350,21 +354,27 @@ export async function getClaimStatus(listingId: string, operatorId: string) {
   let configured = true;
   try { verifyConfiguration(); } catch { configured = false; }
   const expired = !!v && !["verified","revoked"].includes(v.status) && Date.parse(v.expires_at) <= Date.now();
+  const claimVerified = row.operator_id === operatorId && row.claim_valid === true && row.claim?.status === "approved";
+  const contactChanged = !!v && !expired && ["sending", "pending"].includes(v.status) && v.target_phone !== row.phone;
+  const available = row.unclaimed === true && !!row.phone && configured && !contactChanged;
   const phoneHint = row.phone ? "••• ••• " + row.phone.slice(-2) : null;
   return {
     listing: { id: row.id,title: row.title,type: row.type,address: row.address,islandName: row.island_name,
       url: "/" + row.island_slug + "/" + row.slug,unclaimed: row.unclaimed === true,phoneHint },
-    claim: row.claim,
-    verification: { state: expired ? "expired" : v?.status || "not_started", phoneHint,
-      available: row.unclaimed === true && !!row.phone && configured,
-      reason: !row.phone ? "trusted_contact_unavailable" : !configured ? "verification_unavailable" : null,
-      expiresAt: v?.expires_at || null, channels: ["sms","call"] },
+    claim: row.claim, claimVerified,
+    verification: { state: claimVerified ? "verified" : contactChanged ? "contact_changed" : v?.status === "verified" ? "revoked" : expired ? "expired" : v?.status || "not_started", phoneHint,
+      available, canStart: available && !row.verification_busy_until,
+      reason: contactChanged ? "trusted_contact_changed" : !row.phone ? "trusted_contact_unavailable" : !configured ? "verification_unavailable" : null,
+      expiresAt: v?.expires_at || null, busyUntil: row.verification_busy_until || null, channels: ["sms","call"] },
   };
 }
 export async function startClaimVerification(listingId: string, operatorId: string, channel: "sms" | "call" = "sms") {
   assertListingId(listingId);
   if (channel !== "sms" && channel !== "call") throw new OnboardingError("Choose text message or voice call");
   const provider = verifyConfiguration();
+  // Release only expired challenges for this listing, including an older trusted phone.
+  await query(`UPDATE listing_claim_verifications SET status='expired',updated_at=now()
+    WHERE listing_id=$1 AND status IN ('sending','pending') AND expires_at<=now()`, [listingId]);
   const [created] = await query<{ id: string }>("SELECT vakaygo_begin_claim($1,$2,$3,$4) id",[listingId,operatorId,provider.service,provider.account]);
   const [v] = await query<ClaimVerification>("SELECT * FROM listing_claim_verifications WHERE id=$1 AND operator_id=$2",[created.id,operatorId]);
   try {
@@ -383,11 +393,14 @@ export async function startClaimVerification(listingId: string, operatorId: stri
 export async function completeClaimVerification(listingId: string, operatorId: string, code: unknown) {
   assertListingId(listingId);
   if (typeof code !== "string" || !/^[0-9]{4,10}$/.test(code)) throw new OnboardingError("Enter the verification code");
-  const provider = verifyConfiguration();
   const [previous] = await query<ClaimVerification>(`SELECT * FROM listing_claim_verifications
     WHERE listing_id=$1 AND operator_id=$2 ORDER BY created_at DESC LIMIT 1`,[listingId,operatorId]);
-  if (previous?.status === "verified") return { claim: { id: previous.claim_id,status: "approved" },
-    verification: { state: "verified" },onboardingUrl: "/operator/onboarding/" + listingId };
+  if (previous?.status === "verified") {
+    const ctx = await ownedContext(listingId, operatorId);
+    if (!ctx.claim_valid || ctx.onboarding?.verified_claim_id !== previous.id) throw new OnboardingError("Business verification changed; reload the claim status or contact support", 409);
+    return { claim: { id: previous.claim_id,status: "approved" }, verification: { state: "verified" },onboardingUrl: "/operator/onboarding/" + listingId };
+  }
+  const provider = verifyConfiguration();
   const lease = randomUUID();
   const [v] = await query<ClaimVerification>(`UPDATE listing_claim_verifications SET check_token=$3,
     check_locked_until=now()+interval '2 minutes',attempts=attempts+1,updated_at=now()
@@ -408,7 +421,12 @@ export async function completeClaimVerification(listingId: string, operatorId: s
         WHERE id=$1 AND check_token=$2 AND status='pending' AND check_locked_until>now() RETURNING id`,[v.id,lease]);
       if (!persisted.length) throw new OnboardingError("Verification changed; reload this page",409);
     }
-    const [claimed] = await query<{ claim_id: string }>("SELECT vakaygo_complete_claim($1,$2,$3) claim_id",[v.id,operatorId,lease]);
+    const [claimed] = await query<{ claim_id: string }>(`WITH trusted AS MATERIALIZED (
+      SELECT t.listing_id FROM listing_trusted_contacts t JOIN listing_claim_verifications proof
+        ON proof.listing_id=t.listing_id AND proof.target_phone=t.phone
+      WHERE proof.id=$1 AND proof.operator_id=$2 FOR SHARE OF t
+    ) SELECT vakaygo_complete_claim($1,$2,$3) claim_id FROM trusted`,[v.id,operatorId,lease]);
+    if (!claimed?.claim_id) throw new OnboardingError("The trusted business contact changed; reload this listing or contact support", 409);
     await revalidateListing(listingId);
     return { claim: { id: claimed.claim_id,status: "approved" },verification: { state: "verified" },onboardingUrl: "/operator/onboarding/" + listingId };
   } catch (error) {

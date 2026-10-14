@@ -389,6 +389,9 @@ export function ListingDetailClient({
                 </p>
               )}
 
+              {/* Traveler contact comes before business-owner actions. */}
+              <ContactInfo typeData={listing.typeData} listingId={listing.id} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
+
               {/* Operator / Claim Banner */}
               {!listing.claimVerified ? (
                 <div className="mt-8 p-6 bg-gradient-to-r from-gold-700 to-gold-800 rounded-2xl text-white">
@@ -432,9 +435,6 @@ export function ListingDetailClient({
                   </div>
                 </div>
               )}
-
-              {/* Contact Info */}
-              <ContactInfo typeData={listing.typeData} listingId={listing.id} />
 
               {/* Quick Info */}
               {listing.typeData && (
@@ -484,14 +484,6 @@ export function ListingDetailClient({
                       </span>
                     </div>
                   )}
-                  {td.hours && (
-                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                      <Clock size={16} className="text-gold-700" />
-                      <span className="text-sm font-medium text-navy-600">
-                        {td.hours as string}
-                      </span>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -508,7 +500,7 @@ export function ListingDetailClient({
                 <h2 className="text-xl font-bold text-navy-700">Useful information</h2>
                 <h3 className="mt-5 font-semibold text-navy-700">Where is {listing.title}?</h3>
                 <p className="mt-2 text-navy-500">{listing.address || [listing.parish, listing.islandName].filter(Boolean).join(", ")}</p>
-                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Bookings are currently unavailable for this listing. You can explore the information and record interest. Interest does not reserve anything or create a payment.</p></>}
+                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Bookings are currently unavailable for this listing. Use the contact details above, when available, to check with the business directly. You can also record interest on VakayGo. Interest does not reserve anything or create a payment.</p></>}
                 {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={claimStartHref(listing.id, Boolean(user))}>start a free listing claim</Link>.</p></>}
               </section>
 
@@ -649,6 +641,7 @@ export function ListingDetailClient({
                     operatorName={String(listing.operatorName || "Operator")}
                     listingId={listing.id}
                     listingTitle={listing.title}
+                    listingPath={`/${listing.islandSlug}/${listing.slug}`}
                   />
                 </div>
               )}

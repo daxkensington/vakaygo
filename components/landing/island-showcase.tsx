@@ -3,27 +3,27 @@ import Image from "next/image";
 import { ArrowRight, MapPin } from "lucide-react";
 
 const islands = [
-  { name: "Grenada", slug: "grenada", flag: "🇬🇩", listings: 503 },
-  { name: "Puerto Rico", slug: "puerto-rico", flag: "🇵🇷", listings: 426 },
-  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴", listings: 425 },
-  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲", listings: 412 },
-  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹", listings: 398 },
-  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸", listings: 389 },
-  { name: "Barbados", slug: "barbados", flag: "🇧🇧", listings: 376 },
-  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨", listings: 362 },
-  { name: "Aruba", slug: "aruba", flag: "🇦🇼", listings: 348 },
-  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬", listings: 341 },
-  { name: "Curaçao", slug: "curacao", flag: "🇨🇼", listings: 329 },
-  { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾", listings: 318 },
-  { name: "USVI", slug: "us-virgin-islands", flag: "🇻🇮", listings: 305 },
-  { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨", listings: 294 },
-  { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳", listings: 276 },
-  { name: "Dominica", slug: "dominica", flag: "🇩🇲", listings: 258 },
-  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨", listings: 241 },
-  { name: "Martinique", slug: "martinique", flag: "🇲🇶", listings: 227 },
-  { name: "Guadeloupe", slug: "guadeloupe", flag: "🇬🇵", listings: 214 },
-  { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬", listings: 198 },
-  { name: "Bonaire", slug: "bonaire", flag: "🏝️", listings: 182 },
+  { name: "Grenada", slug: "grenada", flag: "🇬🇩" },
+  { name: "Puerto Rico", slug: "puerto-rico", flag: "🇵🇷" },
+  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴" },
+  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲" },
+  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹" },
+  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸" },
+  { name: "Barbados", slug: "barbados", flag: "🇧🇧" },
+  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨" },
+  { name: "Aruba", slug: "aruba", flag: "🇦🇼" },
+  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬" },
+  { name: "Curaçao", slug: "curacao", flag: "🇨🇼" },
+  { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾" },
+  { name: "USVI", slug: "us-virgin-islands", flag: "🇻🇮" },
+  { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨" },
+  { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳" },
+  { name: "Dominica", slug: "dominica", flag: "🇩🇲" },
+  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨" },
+  { name: "Martinique", slug: "martinique", flag: "🇲🇶" },
+  { name: "Guadeloupe", slug: "guadeloupe", flag: "🇬🇵" },
+  { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬" },
+  { name: "Bonaire", slug: "bonaire", flag: "🏝️" },
 ];
 
 const islandImages: Record<string, string> = {
@@ -103,18 +103,16 @@ export function IslandShowcase() {
                       </h3>
                       <p className="text-white/60 text-sm flex items-center gap-1">
                         <MapPin size={12} />
-                        {island.listings.toLocaleString()} listings
+                        Discover local listings
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Count badge */}
+                {/* Island action */}
                 <div className="absolute top-5 right-5">
                   <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                    {island.listings > 0
-                      ? `${island.listings} listings`
-                      : "Coming soon"}
+                    Explore island
                   </span>
                 </div>
 
