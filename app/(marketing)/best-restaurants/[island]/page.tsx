@@ -50,12 +50,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: {
-      canonical: `https://vakaygo.com/best-restaurants-${slug}`,
+      canonical: `https://vakaygo.com/best-restaurants/${slug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://vakaygo.com/best-restaurants-${slug}`,
+      url: `https://vakaygo.com/best-restaurants/${slug}`,
       type: "website",
       images: [
         {
@@ -157,7 +157,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
     "@type": "ItemList",
     name: `Best Restaurants in ${island.name}`,
     description: `Top-rated restaurants and dining experiences in ${island.name}.`,
-    url: `https://vakaygo.com/best-restaurants-${slug}`,
+    url: `https://vakaygo.com/best-restaurants/${slug}`,
     numberOfItems: diningListings.length,
     itemListElement: diningListings.map((listing, idx) => ({
       "@type": "ListItem",
@@ -476,7 +476,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Link
-                href={`/things-to-do-in-${slug}`}
+                href={`/things-to-do-in/${slug}`}
                 className="bg-cream-50 rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <Compass size={24} className="text-teal-500 mb-3" />
@@ -488,7 +488,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                 </p>
               </Link>
               <Link
-                href={`/best-hotels-${slug}`}
+                href={`/best-hotels/${slug}`}
                 className="bg-cream-50 rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <Home size={24} className="text-gold-700 mb-3" />
@@ -567,7 +567,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                 Browse Restaurants <ArrowRight size={16} />
               </Link>
               <Link
-                href={`/things-to-do-in-${slug}`}
+                href={`/things-to-do-in/${slug}`}
                 className="bg-white/10 text-white border border-white/20 px-8 py-3.5 rounded-xl font-semibold hover:bg-white/20 transition-colors"
               >
                 All Things to Do
