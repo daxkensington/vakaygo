@@ -104,8 +104,13 @@ function getPropertyType(typeData: Record<string, unknown> | null): string {
 function getAmenities(typeData: Record<string, unknown> | null): string[] {
   if (!typeData) return [];
   const amenities = typeData.amenities || typeData.facilities;
-  if (Array.isArray(amenities)) return amenities as string[];
-  return [];
+  if (!Array.isArray(amenities)) return [];
+  return amenities
+    .filter(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0
+    )
+    .map((value) => value.trim());
 }
 
 function getPriceRange(priceAmount: string | null): string {
