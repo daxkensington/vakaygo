@@ -66,6 +66,9 @@ function BookingsContent() {
   const refreshSequence = useRef(0);
   const invalidatePendingRefresh = useCallback(() => { ++refreshSequence.current; }, []);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const hasLoadedBookings = useRef(false);
+  const fetchBookingsRef = useRef<(() => Promise<void>) | null>(null);
   const [reviewModal, setReviewModal] = useState<{
     bookingId: string;
     listingTitle: string;
@@ -80,8 +83,8 @@ function BookingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const paidBookingNumber = searchParams.get("paid");
-  const cancelledBookingNumber = searchParams.get("cancelled");
+  const [paidBookingNumber] = useState(() => searchParams.get("paid"));
+  const [cancelledBookingNumber] = useState(() => searchParams.get("cancelled"));
 
   const [showSuccessBanner, setShowSuccessBanner] = useState(!!paidBookingNumber);
   const [showCancelBanner, setShowCancelBanner] = useState(!!cancelledBookingNumber);
@@ -152,11 +155,21 @@ function BookingsContent() {
         const res = await fetch("/api/bookings?view=traveler", { cache: "no-store", signal: AbortSignal.timeout(10_000) });
         const data = await res.json();
         if (!res.ok) throw new Error("Booking status unavailable");
-        if (refreshSequence.current === request) setBookings(data.bookings || []);
+        if (refreshSequence.current === request) {
+          setBookings(data.bookings || []);
+          hasLoadedBookings.current = true;
+          setLoadError(false);
+        }
       } catch {
-        if (refreshSequence.current === request) setBookings(previous => previous.map(booking => ({ ...booking, paymentEligible: false })));
-      } finally { setLoading(false); }
+        if (refreshSequence.current === request) {
+          setBookings(previous => previous.map(booking => ({ ...booking, paymentEligible: false })));
+          if (!hasLoadedBookings.current) setLoadError(true);
+        }
+      } finally {
+        if (refreshSequence.current === request) setLoading(false);
+      }
     }
+    fetchBookingsRef.current = fetchBookings;
     const refresh = () => {
       ++refreshSequence.current;
       setBookings(previous => previous.map(booking => ({ ...booking, paymentEligible: false })));
@@ -168,8 +181,15 @@ function BookingsContent() {
     window.addEventListener("pageshow", refresh);
     document.addEventListener("visibilitychange", refresh);
     const interval = window.setInterval(() => { void fetchBookings(); }, 60_000);
-    return () => { invalidatePendingRefresh(); window.clearInterval(interval); window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh); document.removeEventListener("visibilitychange", refresh); };
+    return () => { fetchBookingsRef.current = null; invalidatePendingRefresh(); window.clearInterval(interval); window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [user, invalidatePendingRefresh]);
+
+  const retryLoad = useCallback(() => {
+    const fetchCurrent = fetchBookingsRef.current;
+    if (!fetchCurrent) return;
+    setLoading(true);
+    void fetchCurrent();
+  }, []);
 
   if (authLoading) {
     return (
@@ -262,6 +282,19 @@ function BookingsContent() {
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={32} className="animate-spin text-gold-700" />
+            </div>
+          ) : loadError && bookings.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center mt-8">
+              <p role="alert" className="text-navy-700 max-w-md mx-auto">
+                We couldn&apos;t load your bookings. Please check your connection and try again.
+              </p>
+              <button
+                type="button"
+                onClick={retryLoad}
+                className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-6"
+              >
+                Try again
+              </button>
             </div>
           ) : bookings.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center mt-8">
