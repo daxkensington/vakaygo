@@ -426,7 +426,7 @@ export default async function BestHotelsPage({ params }: Props) {
                               <span className="text-xs font-semibold text-navy-700">
                                 {rating.toFixed(1)}
                               </span>
-                              {listing.reviewCount &&
+                              {!!listing.reviewCount &&
                                 listing.reviewCount > 0 && (
                                   <span className="text-xs text-navy-300">
                                     ({listing.reviewCount})
