@@ -390,10 +390,13 @@ export default async function ThingsToDoPage({ params }: Props) {
                               <span className="font-bold text-navy-700">
                                 ${parseFloat(listing.priceAmount).toFixed(0)}
                               </span>
-                              <span className="text-navy-400 text-sm">
-                                {" "}
-                                / {listing.priceUnit}
-                              </span>
+                              {typeof listing.priceUnit === "string" &&
+                                listing.priceUnit.length > 0 && (
+                                  <span className="text-navy-400 text-sm">
+                                    {" "}
+                                    / {listing.priceUnit}
+                                  </span>
+                                )}
                             </p>
                           )}
                       </div>
