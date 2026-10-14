@@ -1,15 +1,23 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { awardBookingPoints, awardReviewPoints } from "@/server/loyalty";
 
 import { logger } from "@/lib/logger";
+
+function constantTimeEquals(a: string, b: string): boolean {
+  const ha = crypto.createHash("sha256").update(a).digest();
+  const hb = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(ha, hb) && a.length === b.length;
+}
+
 // POST: Internal endpoint to award points (called from server-side code)
 // Protected by internal secret — not for direct client use
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("x-internal-secret");
-    const internalSecret = process.env.AUTH_SECRET!;
+    const authHeader = request.headers.get("x-internal-secret")?.trim() ?? "";
+    const internalSecret = (process.env.INTERNAL_API_SECRET || process.env.AUTH_SECRET)?.trim() ?? "";
 
-    if (authHeader !== internalSecret) {
+    if (!internalSecret || !authHeader || !constantTimeEquals(authHeader, internalSecret)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
