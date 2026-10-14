@@ -11,10 +11,8 @@ import {
   Calendar,
   Users,
   Sparkles,
-  Loader2,
   ArrowLeft,
   ArrowRight,
-  ChevronRight,
   Sun,
   Cloud,
   Moon,
@@ -193,7 +191,7 @@ const PROGRESS_MESSAGES = [
   "Searching for the best stays...",
   "Finding top-rated restaurants...",
   "Discovering unique tours & excursions...",
-  "Checking availability for your dates...",
+  "Finding experiences for your dates...",
   "Matching activities to your interests...",
   "Optimizing your daily schedule...",
   "Balancing your budget across the trip...",
@@ -204,6 +202,11 @@ const PROGRESS_MESSAGES = [
 // ─── Component ─────────────────────────────────────────────────
 
 export default function NewTripPage() {
+  const { user } = useAuth();
+  return <TripPlanner key={user?.id || "guest"} />;
+}
+
+function TripPlanner() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -213,6 +216,9 @@ export default function NewTripPage() {
 
   // Step 1: Basics
   const [islandsData, setIslandsData] = useState<Island[]>([]);
+  const [islandsLoading, setIslandsLoading] = useState(true);
+  const [islandsError, setIslandsError] = useState("");
+  const [islandsRetry, setIslandsRetry] = useState(0);
   const [islandId, setIslandId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -237,20 +243,51 @@ export default function NewTripPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const generationRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setStep(1);
+    setTrip(null);
+    setItinerary(null);
+    setGenerating(false);
+    setError("");
+    setIslandId(null);
+    setStartDate("");
+    setEndDate("");
+    setGuestCount(2);
+    setBudget("Mid-Range");
+    setPace("moderate");
+    setInterests([]);
+    setSpecialRequests("");
+    return () => {
+      const pending = generationRequest.current;
+      generationRequest.current = null;
+      pending?.abort();
+    };
+  }, [user?.id]);
 
   // Fetch islands
   useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let current = true;
+    setIslandsLoading(true); setIslandsError("");
     (async () => {
       try {
-        const res = await fetch("/api/islands");
-        if (!res.ok) return;
-        const data = await res.json();
-        setIslandsData(data.islands || []);
+        const res = await fetch("/api/islands", { signal: controller.signal, cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (!current) return;
+        if (controller.signal.aborted || !res.ok || !Array.isArray(data?.islands) ||
+          !data.islands.every((island: Island) => island && Number.isInteger(island.id) && typeof island.name === "string" && typeof island.slug === "string")) throw new Error("Destinations could not be loaded.");
+        setIslandsData(data.islands);
       } catch {
-        /* silently fail */
+        if (current) setIslandsError("Trip destinations could not be loaded. Please try again.");
+      } finally {
+        clearTimeout(timeout);
+        if (current) setIslandsLoading(false);
       }
     })();
-  }, []);
+    return () => { current = false; clearTimeout(timeout); controller.abort(); };
+  }, [islandsRetry]);
 
   // Progress animation
   useEffect(() => {
@@ -300,7 +337,7 @@ export default function NewTripPage() {
   const selectedIsland = islandsData.find((i) => i.id === islandId);
 
   // Validation
-  const canProceedStep1 = islandId && startDate && endDate && days > 0 && new Date(endDate) > new Date(startDate);
+  const canProceedStep1 = !islandsLoading && !islandsError && selectedIsland && startDate && endDate && days > 0 && days <= 30 && new Date(endDate) > new Date(startDate);
   const canProceedStep2 = budget && pace;
 
   function handleNext() {
@@ -312,8 +349,9 @@ export default function NewTripPage() {
   }
 
   async function handleGenerate() {
-    if (!islandId || !startDate || !endDate) {
-      setError("Please select an island and your travel dates.");
+    if (generating || generationRequest.current) return;
+    if (!canProceedStep1) {
+      setError("Please select an island and dates up to 30 days apart.");
       return;
     }
 
@@ -321,6 +359,9 @@ export default function NewTripPage() {
     setGenerating(true);
     setItinerary(null);
     setTrip(null);
+    const controller = new AbortController();
+    generationRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     try {
       const res = await fetch("/api/trips/generate", {
@@ -336,22 +377,29 @@ export default function NewTripPage() {
           interests,
           specialRequests,
         }),
+        signal: controller.signal,
       });
 
+      const data = await res.json();
+      if (generationRequest.current !== controller) return;
       if (!res.ok) {
-        const data = await res.json();
         setError(data.error || "Failed to generate itinerary");
         return;
       }
 
-      const data = await res.json();
       setTrip(data.trip);
       setItinerary(data.itinerary);
       setStep(4); // Results step
     } catch {
-      setError("Something went wrong. Please try again.");
+      if (generationRequest.current === controller) setError(controller.signal.aborted
+        ? "Trip planning took too long. Your preferences are kept. Check My Trips before trying again in case your trip finished saving."
+        : "Trip planning is unavailable. Your preferences are kept so you can try again.");
     } finally {
-      setGenerating(false);
+      clearTimeout(timeout);
+      if (generationRequest.current === controller) {
+        generationRequest.current = null;
+        setGenerating(false);
+      }
     }
   }
 
@@ -405,7 +453,7 @@ export default function NewTripPage() {
                 Sign in to plan a trip
               </h2>
               <Link
-                href="/auth/signin"
+                href="/auth/signin?next=%2Ftrips%2Fnew"
                 className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
@@ -473,9 +521,11 @@ export default function NewTripPage() {
                       />
                       Where do you want to go?
                     </label>
+                    {islandsLoading ? <p role="status" className="mb-4 text-sm text-navy-500">Loading trip destinations…</p> : islandsError ? <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p>{islandsError}</p><button type="button" onClick={() => setIslandsRetry(value => value + 1)} className="mt-3 font-semibold underline">Try loading destinations again</button></div> : islandsData.length === 0 ? <div className="mb-4 rounded-xl bg-cream-50 p-4 text-sm text-navy-600"><p>No destinations are currently available for trip planning.</p><button type="button" onClick={() => setIslandsRetry(value => value + 1)} className="mt-3 font-semibold underline">Try loading destinations again</button></div> : null}
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {islandsData.map((island) => (
                         <button
+                          disabled={islandsLoading || !!islandsError}
                           key={island.id}
                           onClick={() => setIslandId(island.id)}
                           className={`relative p-4 rounded-xl text-left transition-all ${
@@ -516,9 +566,10 @@ export default function NewTripPage() {
                   </div>
 
                   {/* Dates */}
+                  <p className="text-sm text-navy-500">Plan up to 30 days at a time. Choose an end date after your start date.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-navy-600 mb-2">
+                      <label htmlFor="trip-start-date" className="block text-sm font-semibold text-navy-600 mb-2">
                         <Calendar
                           size={14}
                           className="inline mr-1.5 text-gold-700"
@@ -526,6 +577,7 @@ export default function NewTripPage() {
                         Start Date
                       </label>
                       <input
+                        id="trip-start-date"
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
@@ -534,7 +586,7 @@ export default function NewTripPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-navy-600 mb-2">
+                      <label htmlFor="trip-end-date" className="block text-sm font-semibold text-navy-600 mb-2">
                         <Calendar
                           size={14}
                           className="inline mr-1.5 text-gold-700"
@@ -542,6 +594,7 @@ export default function NewTripPage() {
                         End Date
                       </label>
                       <input
+                        id="trip-end-date"
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}

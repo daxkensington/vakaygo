@@ -20,9 +20,32 @@ export function claimStartHref(listingId: string, signedIn: boolean): string {
 }
 
 /** Inbox-proof link. A claim id is carried only as a return path, never as proof of ownership. */
-export function verificationUrl(token: string, claimListingId?: string | null): string {
+export function verificationUrl(token: string, claimListingId?: string | null, next?: string | null): string {
   const url = new URL("https://vakaygo.com/api/auth/verify-email/confirm");
   url.searchParams.set("token", token);
   if (claimListingPath(claimListingId)) url.searchParams.set("claim", claimListingId!);
+  else if (safeAuthNext(next)) url.searchParams.set("next", safeAuthNext(next)!);
   return url.toString();
 }
+
+/** One-time sign-in link. The claim id is a return path, not proof the inbox owns the business. */
+export function magicLinkUrl(token: string, claimListingId?: string | null, next?: string | null): string | null {
+  if (!/^[a-f0-9]{64}$/i.test(token)) return null;
+  const url = new URL("https://vakaygo.com/auth/continue");
+  url.searchParams.set("token", token);
+  if (claimListingPath(claimListingId)) url.searchParams.set("claim", claimListingId!);
+  else if (safeAuthNext(next)) url.searchParams.set("next", safeAuthNext(next)!);
+  return url.toString();
+}
+
+/** Sign-in URL that keeps a valid listing claim in `next`. Other values are omitted. */
+export function signInHref(claimListingId?: string | null, options?: { method?: "email"; error?: string; next?: string | null }): string {
+  const params: string[] = [];
+  if (options?.method === "email") params.push("method=email");
+  if (options?.error && /^[a-z0-9_]+$/i.test(options.error)) params.push(`error=${options.error}`);
+  const path = claimListingPath(claimListingId);
+  if (path) params.push(`next=${path}`);
+  else if (safeAuthNext(options?.next)) params.push(`next=${encodeURIComponent(safeAuthNext(options?.next)!)}`);
+  return params.length ? `/auth/signin?${params.join("&")}` : "/auth/signin";
+}
+import { safeAuthNext } from "@/lib/auth-return";

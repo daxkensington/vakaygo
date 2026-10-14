@@ -14,7 +14,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/components/ui/focus-trap";
 import { useAuth } from "@/lib/auth-context";
 
 const navItems = [
@@ -35,13 +36,31 @@ export default function OperatorLayout({
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  useFocusTrap(sidebarRef, sidebarOpen);
+  useEffect(() => {
+    const closeAtDesktop = () => { if (window.innerWidth >= 1024) setSidebarOpen(false); };
+    window.addEventListener("resize", closeAtDesktop);
+    return () => window.removeEventListener("resize", closeAtDesktop);
+  }, []);
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setSidebarOpen(false); menuTrigger.current?.focus(); } };
+    const originalOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";
+    sidebarRef.current?.querySelector<HTMLButtonElement>('[aria-label="Close business navigation"]')?.focus();
+    document.addEventListener("keydown", close);
+    return () => { document.body.style.overflow = originalOverflow; document.removeEventListener("keydown", close); };
+  }, [sidebarOpen]);
 
   return (
     <div className="min-h-screen bg-cream-50 flex">
       {/* Sidebar */}
       <aside
+        ref={sidebarRef}
+        id="business-navigation"
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 lg:translate-x-0 lg:static ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0 visible" : "-translate-x-full invisible lg:visible"
         }`}
       >
         <div className="h-full flex flex-col">
@@ -51,8 +70,10 @@ export default function OperatorLayout({
               Vakay<span className="text-gold-700">Go</span>
             </Link>
             <button
+              type="button"
+              aria-label="Close business navigation"
               className="lg:hidden text-navy-400"
-              onClick={() => setSidebarOpen(false)}
+              onClick={() => { setSidebarOpen(false); menuTrigger.current?.focus(); }}
             >
               <X size={20} />
             </button>
@@ -69,7 +90,7 @@ export default function OperatorLayout({
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 px-3 space-y-1">
+          <nav aria-label="Business navigation" className="flex-1 px-3 space-y-1">
             {navItems.map((item) => {
               const isActive =
                 item.href === "/operator"
@@ -78,6 +99,7 @@ export default function OperatorLayout({
               return (
                 <Link
                   key={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
@@ -110,7 +132,7 @@ export default function OperatorLayout({
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => { setSidebarOpen(false); menuTrigger.current?.focus(); }}
         />
       )}
 
@@ -119,6 +141,11 @@ export default function OperatorLayout({
         {/* Top bar */}
         <header className="bg-white shadow-sm sticky top-0 z-30 px-6 py-4 flex items-center justify-between lg:justify-end">
           <button
+            ref={menuTrigger}
+            type="button"
+            aria-label="Open business navigation"
+            aria-expanded={sidebarOpen}
+            aria-controls="business-navigation"
             className="lg:hidden text-navy-700"
             onClick={() => setSidebarOpen(true)}
           >

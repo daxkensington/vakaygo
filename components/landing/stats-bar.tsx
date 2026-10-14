@@ -1,8 +1,10 @@
+import { LISTING_TYPES } from "@/lib/listing-filters";
+
 const stats = [
   { value: "7,100+", label: "Listings", sublabel: "Across the Caribbean" },
   { value: "21", label: "Islands", sublabel: "And growing" },
-  { value: "9", label: "Categories", sublabel: "Stays, tours, dining & more" },
-  { value: "3-5%", label: "Operator Fee", sublabel: "Lowest in the industry" },
+  { value: String(LISTING_TYPES.length), label: "Categories", sublabel: "Stays, tours, dining & more" },
+  { value: "Local", label: "Businesses", sublabel: "Find contact details and plan your visit" },
 ];
 
 export function StatsBar() {

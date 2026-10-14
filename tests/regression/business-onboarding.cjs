@@ -148,6 +148,9 @@ test("claim start sends only the trusted stored phone, including voice option",a
     };}}})}}})});
   await h.api.startClaimVerification(id,operator,"call");
   assert.equal(sent.to,v.target_phone);assert.equal(sent.channel,"call");
+  assert.match(h.calls[0].text,/status IN \('sending','pending'\) AND expires_at<=now\(\)/);
+  assert.deepEqual(Array.from(h.calls[0].params),[id]);
+  assert.match(h.calls[1].text,/vakaygo_begin_claim/);
 });
 test("unconfigured verification fails before any database/provider side effects",async()=>{
   const h=load({env:{TWILIO_VERIFY_SERVICE_SID:""}});
@@ -163,6 +166,53 @@ test("wrong provider verification binding never transfers ownership",async()=>{
   })}})}}})});
   await assert.rejects(h.api.completeClaimVerification(id,operator,"123456"),/incorrect/);
   assert.equal(h.calls.some(c=>c.text.includes("vakaygo_complete_claim")),false);
+});
+
+function claimStatusRow() {
+  return {id,title:"Synthetic business",type:"tour",address:null,island_name:"Synthetic island",island_slug:"synthetic",slug:"synthetic-business",
+    operator_id:operator,claim_valid:true,unclaimed:false,phone:"+14735550123",verification_busy_until:null,
+    claim:{id:"claim",status:"approved"},verification:{id:"verified",status:"verified",claim_id:"claim",target_phone:"+14735550123",expires_at:new Date(Date.now()+600000).toISOString()}};
+}
+test("claim status requires current ownership and trusted proof instead of historical approval",async()=>{
+  assert.equal((await load({query:async()=>[claimStatusRow()]}).api.getClaimStatus(id,operator)).claimVerified,true);
+  for(const change of [row=>row.operator_id="33333333-3333-4333-8333-333333333333",row=>row.claim_valid=false,row=>row.claim.status="rejected"]) {
+    const row=claimStatusRow();change(row);
+    const status=await load({query:async()=>[row]}).api.getClaimStatus(id,operator);
+    assert.equal(status.claimVerified,false);assert.equal(status.verification.state,"revoked");
+  }
+});
+test("pending claims expose a competing phone lease and reject a changed trusted contact",async()=>{
+  const row=claimStatusRow();row.unclaimed=true;row.claim=null;row.claim_valid=false;row.verification=null;row.verification_busy_until=new Date(Date.now()+600000).toISOString();
+  const busy=await load({twilio:()=>({}),query:async()=>[row]}).api.getClaimStatus(id,operator);
+  assert.equal(busy.verification.available,true);assert.equal(busy.verification.canStart,false);assert.equal(busy.verification.busyUntil,row.verification_busy_until);
+  row.verification={...claimStatusRow().verification,status:"pending",target_phone:"+14735550999"};
+  const changed=await load({twilio:()=>({}),query:async()=>[row]}).api.getClaimStatus(id,operator);
+  assert.equal(changed.verification.state,"contact_changed");assert.equal(changed.verification.available,false);assert.equal(changed.verification.reason,"trusted_contact_changed");
+  row.verification.expires_at=new Date(Date.now()-1000).toISOString();row.verification_busy_until=null;
+  const expired=await load({twilio:()=>({}),query:async()=>[row]}).api.getClaimStatus(id,operator);
+  assert.equal(expired.verification.state,"expired");assert.equal(expired.verification.available,true);assert.equal(expired.verification.canStart,true);
+});
+test("already verified resumes only the same current owned proof without requiring a live verification provider",async()=>{
+  const ctx=readyContext(),previous={id:"verified",claim_id:"claim",status:"verified"};
+  const fixture=(context)=>load({env:{TWILIO_VERIFY_SERVICE_SID:""},query:async sql=>sql.includes("SELECT * FROM listing_claim_verifications")?[previous]:[context]});
+  assert.equal((await fixture(ctx).api.completeClaimVerification(id,operator,"123456")).claim.status,"approved");
+  for(const change of [context=>context.operator_id="33333333-3333-4333-8333-333333333333",context=>context.claim_valid=false,context=>context.onboarding.verified_claim_id="new-proof"]) {
+    const context=readyContext();change(context);const h=fixture(context);
+    await assert.rejects(h.api.completeClaimVerification(id,operator,"123456"));
+    assert.equal(h.calls.some(call=>call.text.includes("UPDATE")),false);assert.deepEqual(h.invalidated,[]);
+  }
+});
+test("provider-approved completion requires the current trusted contact and releases its lease on rejection",async()=>{
+  const proof={id,claim_id:"claim",status:"pending",target_phone:"+14735550123",service_sid:baseEnv.TWILIO_VERIFY_SERVICE_SID,
+    provider_account_id:baseEnv.TWILIO_ACCOUNT_SID,provider_verification_id:"VE"+"2".repeat(32),provider_approved_at:new Date().toISOString()};
+  for(const currentContact of [false,true]) {
+    const h=load({twilio:()=>({}),query:async sql=>sql.includes("WITH trusted AS MATERIALIZED")?(currentContact?[{claim_id:"claim"}]:[]):[proof]});
+    if(currentContact) { assert.equal((await h.api.completeClaimVerification(id,operator,"123456")).claim.status,"approved");assert.deepEqual(h.invalidated,[id]); }
+    else { await assert.rejects(h.api.completeClaimVerification(id,operator,"123456"),/trusted business contact changed/);assert.deepEqual(h.invalidated,[]);assert.equal(h.calls.some(call=>call.text.includes("SET check_token=NULL")),true); }
+    const completion=h.calls.find(call=>call.text.includes("WITH trusted AS MATERIALIZED"));
+    assert.match(completion.text,/proof\.target_phone=t\.phone/);assert.match(completion.text,/FOR SHARE OF t/);
+    assert.equal(completion.params[0],proof.id);assert.equal(completion.params[1],operator);
+  }
 });
 test("onboarding management requires current owner even for an admin-role session",async()=>{
   const h=load();

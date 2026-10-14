@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2, Map as MapIcon, ChevronRight } from "lucide-react";
 import type { MapListing } from "@/components/listings/caribbean-map";
+import { LISTING_TYPES } from "@/lib/listing-filters";
 
 const CaribbeanMap = dynamic(() => import("@/components/listings/caribbean-map"), {
   ssr: false,
@@ -40,12 +41,42 @@ const islands = [
   { slug: "british-virgin-islands", name: "BVI" },
 ];
 
+type MapLoad = { key: string; status: "loading" | "ready" | "error"; listings: MapListing[] };
+
+function isMapListing(value: unknown): value is MapListing {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  if (!["id", "title", "slug", "type", "islandSlug", "islandName"].every(key => typeof row[key] === "string" && row[key] !== "")) return false;
+  if (!(LISTING_TYPES as readonly string[]).includes(row.type as string)) return false;
+  if (!["priceAmount", "priceUnit", "avgRating", "parish", "image", "latitude", "longitude"].every(key => row[key] === null || typeof row[key] === "string")) return false;
+  return (row.reviewCount === null || (typeof row.reviewCount === "number" && Number.isSafeInteger(row.reviewCount) && row.reviewCount >= 0))
+    && (row.isFeatured === null || typeof row.isFeatured === "boolean");
+}
+
+function hasMapCoordinates(listing: MapListing): boolean {
+  if (!listing.latitude || !listing.longitude) return false;
+  const latitude = Number(listing.latitude), longitude = Number(listing.longitude);
+  return Number.isFinite(latitude) && Math.abs(latitude) <= 90 && Number.isFinite(longitude) && Math.abs(longitude) <= 180;
+}
+
 export default function MapPage() {
-  const [listings, setListings] = useState<MapListing[]>([]);
   const [activeIsland, setActiveIsland] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const loadKey = `${activeIsland}|${retryAttempt}`;
+  const [load, setLoad] = useState<MapLoad>({ key: loadKey, status: "loading", listings: [] });
+  const loading = load.key !== loadKey || load.status === "loading";
+  const failed = load.key === loadKey && load.status === "error";
+  const listings = load.key === loadKey && load.status === "ready" ? load.listings.filter(hasMapCoordinates) : [];
+  const islandName = islands.find(island => island.slug === activeIsland)?.name || "All Islands";
 
   useEffect(() => {
+    let current = true;
+    const controller = new AbortController();
+    setLoad({ key: loadKey, status: "loading", listings: [] });
+    const timeout = setTimeout(() => {
+      if (current) setLoad({ key: loadKey, status: "error", listings: [] });
+      controller.abort();
+    }, 20_000);
     async function loadListings() {
       try {
         // Initial paint loads 500. 2000 was a 1.5-2 MB JSON blob and
@@ -53,19 +84,23 @@ export default function MapPage() {
         // zoom). Refilter via the island chips to drill in further.
         const params = new URLSearchParams({ limit: "500" });
         if (activeIsland) params.set("island", activeIsland);
-        const res = await fetch(`/api/listings?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          setListings(data.listings || []);
-        }
-      } catch (e) {
-        console.error("Failed to load listings for map:", e);
+        const res = await fetch(`/api/listings?${params}`, { signal: controller.signal, cache: "no-store" });
+        if (!current || controller.signal.aborted) return;
+        if (!res.ok) throw new Error("Map listings unavailable");
+        const data: unknown = await res.json().catch(() => null);
+        if (!current || controller.signal.aborted) return;
+        if (!data || typeof data !== "object" || Array.isArray(data) || !("listings" in data)
+          || !Array.isArray(data.listings) || !data.listings.every(isMapListing)) throw new Error("Invalid map listings response");
+        setLoad({ key: loadKey, status: "ready", listings: data.listings });
+      } catch {
+        if (current) setLoad({ key: loadKey, status: "error", listings: [] });
       } finally {
-        setLoading(false);
+        clearTimeout(timeout);
       }
     }
     loadListings();
-  }, [activeIsland]);
+    return () => { current = false; clearTimeout(timeout); controller.abort(); };
+  }, [activeIsland, loadKey]);
 
   return (
     <main className="flex flex-col h-[calc(100vh-64px)]">
@@ -74,8 +109,8 @@ export default function MapPage() {
         <div className="flex items-center gap-2">
           <MapIcon size={18} className="text-gold-700" />
           <h1 className="text-sm font-semibold text-navy-700">Caribbean Map</h1>
-          <span className="text-xs text-navy-400">
-            {loading ? "Loading..." : `${listings.filter(l => l.latitude).length} listings`}
+          <span className="text-xs text-navy-400" aria-live="polite">
+            {loading ? "Loading..." : failed ? "Listings unavailable" : `${listings.length} mapped listings`}
           </span>
         </div>
 
@@ -84,6 +119,7 @@ export default function MapPage() {
           {islands.map((island) => (
             <button
               key={island.slug}
+              aria-pressed={activeIsland === island.slug}
               onClick={() => setActiveIsland(island.slug)}
               className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 activeIsland === island.slug
@@ -105,12 +141,15 @@ export default function MapPage() {
       </div>
 
       {/* Full-height map */}
-      <div className="flex-1">
-        <CaribbeanMap
+      <div className="flex-1 min-h-0" role="region" aria-label={`${islandName} listing map`} aria-busy={loading}>
+        {loading ? <div role="status" className="h-full flex items-center justify-center gap-3 bg-cream-50 text-navy-500"><Loader2 aria-hidden="true" className="animate-spin" size={24} />Loading map listings…</div>
+          : failed ? <div role="alert" className="h-full flex flex-col items-center justify-center gap-4 px-6 text-center bg-cream-50 text-navy-600"><p>Map listings could not be loaded. Please try again.</p><button type="button" onClick={() => setRetryAttempt(value => value + 1)} className="rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white hover:bg-gold-800">Try loading map listings again</button></div>
+          : listings.length === 0 ? <div role="status" className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center bg-cream-50 text-navy-600"><p>No map locations are available for {islandName === "All Islands" ? "these listings" : islandName}.</p><p className="text-sm text-navy-400">Choose another island or explore the listing directory.</p></div>
+          : <CaribbeanMap
           listings={listings}
           activeIsland={activeIsland}
           onIslandChange={setActiveIsland}
-        />
+        />}
       </div>
     </main>
   );

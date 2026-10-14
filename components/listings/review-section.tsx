@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Star, MessageCircle, PenLine, ThumbsUp, CheckCircle, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { ReviewModal } from "@/components/listings/review-modal";
+import Link from "next/link";
 import { ReviewPhotoGallery, type ReviewPhoto } from "@/components/reviews/review-photo-gallery";
 import { ReviewIntelligence } from "@/components/listings/review-intelligence";
 
@@ -117,45 +117,48 @@ function SubRatingBars({
   );
 }
 
-export function ReviewSection({
-  listingId,
-  listingTitle,
-  listingType = "tour",
-}: {
-  listingId: string;
-  listingTitle?: string;
-  listingType?: string;
-}) {
+type ReviewSectionProps = { listingId: string; listingTitle?: string; listingType?: string };
+
+export function ReviewSection(props: ReviewSectionProps) {
+  return <ListingReviews key={props.listingId} listingId={props.listingId} listingType={props.listingType} />;
+}
+
+function ListingReviews({ listingId, listingType = "tour" }: ReviewSectionProps) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const activeRead = useRef<AbortController | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [sortOpen, setSortOpen] = useState(false);
   const [votingIds, setVotingIds] = useState<Set<string>>(new Set());
 
   const fetchReviews = useCallback(async () => {
+    activeRead.current?.abort();
+    const controller = new AbortController();
+    activeRead.current = controller;
+    setLoading(true); setLoadError("");
     try {
-      const res = await fetch(`/api/reviews?listingId=${listingId}`);
-      if (!res.ok) return;
+      const res = await fetch(`/api/reviews?listingId=${encodeURIComponent(listingId)}`, { signal: controller.signal });
+      if (!res.ok) throw new Error("Reviews unavailable");
       const data = await res.json();
-      setReviews(
-        (data.reviews || []).map((r: Record<string, unknown>) => ({
-          ...r,
-          helpfulCount: r.helpfulCount ?? 0,
-          isVerifiedPurchase: r.isVerifiedPurchase ?? false,
-          subRatings: r.subRatings ?? [],
+      if (!Array.isArray(data.reviews)) throw new Error("Reviews unavailable");
+      if (!controller.signal.aborted) setReviews(
+        data.reviews.map((r: Record<string, unknown>) => ({
+          ...r, photos: r.photos ?? [], helpfulCount: r.helpfulCount ?? 0,
+          isVerifiedPurchase: r.isVerifiedPurchase ?? false, subRatings: r.subRatings ?? [],
         }))
       );
     } catch {
-      // silently fail
+      if (!controller.signal.aborted) setLoadError("Reviews could not be loaded. Please try again.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [listingId]);
 
   useEffect(() => {
-    fetchReviews();
+    void fetchReviews();
+    return () => activeRead.current?.abort();
   }, [fetchReviews]);
 
   // Sort reviews
@@ -207,7 +210,6 @@ export function ReviewSection({
     }
   }
 
-  if (loading) return null;
 
   // Calculate overall stats
   const totalReviews = reviews.length;
@@ -231,22 +233,23 @@ export function ReviewSection({
         >
           Reviews
         </h2>
-        {user && (
-          <button
-            onClick={() => setShowReviewModal(true)}
-            className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            <PenLine size={14} />
-            Write a Review
-          </button>
-        )}
+        <Link
+          href={user ? "/bookings" : "/auth/signin?next=%2Fbookings"}
+          className="flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+        >
+          <PenLine size={14} />
+          Review a completed booking
+        </Link>
       </div>
 
-      {totalReviews === 0 ? (
+      <p className="text-sm text-navy-500 mb-4">Reviews come from completed VakayGo bookings. Open My Bookings to choose a booking to review.</p>
+      {loading ? <p role="status" className="text-sm text-navy-500">Loading reviews...</p> : loadError ? (
+        <div role="alert" className="p-6 bg-white rounded-2xl text-sm text-navy-600"><p>{loadError}</p><button type="button" onClick={() => void fetchReviews()} className="mt-3 text-gold-700 font-semibold underline">Try loading reviews again</button></div>
+      ) : totalReviews === 0 ? (
         <div className="p-8 bg-white rounded-2xl shadow-[var(--shadow-card)] text-center">
           <MessageCircle size={32} className="text-navy-300 mx-auto mb-3" />
           <p className="text-navy-500">
-            No reviews yet. Be the first to share your experience.
+            No VakayGo reviews yet.
           </p>
         </div>
       ) : (
@@ -415,15 +418,6 @@ export function ReviewSection({
         </>
       )}
 
-      <ReviewModal
-        isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        bookingId=""
-        listingTitle={listingTitle || "This listing"}
-        onSubmitted={() => {
-          fetchReviews();
-        }}
-      />
     </div>
   );
 }

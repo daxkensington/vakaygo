@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, ChevronDown } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
+import { LISTING_TYPES } from "@/lib/listing-filters";
+import { parseAutocompleteResults, type AutocompleteResult } from "@/lib/autocomplete-results";
 
 const heroImages = [
   "/images/hero/caribbean-hero.jpg",
@@ -24,12 +26,8 @@ const TYPE_EMOJI: Record<string, string> = {
   transfer: "✈️",
   vip: "💎",
   guide: "🧭",
+  spa: "✨",
 };
-
-interface AutocompleteResult {
-  listings: { title: string; slug: string; island: string; islandSlug: string; type: string }[];
-  islands: { name: string; slug: string }[];
-}
 
 export function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
@@ -41,7 +39,37 @@ export function Hero() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const requestVersion = useRef(0);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const hasSuggestions = !!results && results.islands.length + results.listings.length > 0;
+  const dropdownOpen = showDropdown && hasSuggestions;
+
+  const dismissSuggestions = useCallback(() => {
+    requestVersion.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    requestRef.current?.abort();
+    setShowDropdown(false);
+    setSelectedIndex(-1);
+  }, []);
+
+  useEffect(() => () => {
+    requestVersion.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    requestRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!dropdownOpen || selectedIndex < 0) return;
+    const listbox = listboxRef.current;
+    const option = document.getElementById(`hero-option-${selectedIndex}`);
+    if (!listbox || !option) return;
+    const bounds = listbox.getBoundingClientRect();
+    const selected = option.getBoundingClientRect();
+    if (selected.bottom > bounds.bottom) listbox.scrollTop += selected.bottom - bounds.bottom;
+    else if (selected.top < bounds.top) listbox.scrollTop -= bounds.top - selected.top;
+  }, [dropdownOpen, selectedIndex]);
 
   useEffect(() => {
     // Crossfading full-viewport images every 6s from t=4s kept the page
@@ -65,26 +93,31 @@ export function Hero() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
+        dismissSuggestions();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [dismissSuggestions]);
 
   // Autocomplete fetch with debounce
   const fetchAutocomplete = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.length < 2) {
-      setResults(null);
-      setShowDropdown(false);
-      return;
-    }
+    requestRef.current?.abort();
+    const version = ++requestVersion.current;
+    setResults(null);
+    setShowDropdown(false);
+    setSelectedIndex(-1);
+    const search = q.trim();
+    if (search.length < 2) return;
     debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      requestRef.current = controller;
       try {
-        const res = await fetch(`/api/listings/autocomplete?q=${encodeURIComponent(q)}`);
-        if (res.ok) {
-          const data = await res.json();
+        const res = await fetch(`/api/listings/autocomplete?q=${encodeURIComponent(search)}`, { signal: controller.signal });
+        if (!res.ok) return;
+        const data = parseAutocompleteResults(await res.json());
+        if (!controller.signal.aborted && version === requestVersion.current && data) {
           setResults(data);
           setShowDropdown(true);
           setSelectedIndex(-1);
@@ -101,7 +134,12 @@ export function Hero() {
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showDropdown || !results) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      dismissSuggestions();
+      return;
+    }
+    if (!dropdownOpen || !results) return;
     const totalItems = (results.islands?.length || 0) + (results.listings?.length || 0);
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -119,23 +157,21 @@ export function Hero() {
         const listing = results.listings[selectedIndex - islandCount];
         router.push(`/${listing.islandSlug}/${listing.slug}`);
       }
-      setShowDropdown(false);
-    } else if (e.key === "Escape") {
-      setShowDropdown(false);
+      dismissSuggestions();
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setShowDropdown(false);
+    dismissSuggestions();
     const params = new URLSearchParams();
     if (destination) params.set("island", destination);
-    if (query) params.set("q", query);
-    window.location.href = `/explore?${params}`;
+    if (query.trim()) params.set("q", query.trim());
+    router.push(`/explore${params.size ? `?${params}` : ""}`);
   };
 
   return (
-    <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[max(700px,100svh)] flex items-center justify-center py-24">
       {/* Rotating background images — first is the LCP candidate; the
           rest are deferred until after LCP so they don't compete for
           bandwidth on slow networks. */}
@@ -164,8 +200,8 @@ export function Hero() {
       })}
 
       {/* Cinematic overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/40 to-navy-900/90" />
-      <div className="absolute inset-0 bg-gradient-to-r from-navy-900/30 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 via-navy-900/40 to-navy-900/90 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-900/30 to-transparent pointer-events-none" />
 
       {/* Content — intentionally not opacity-0 at first paint. The
           fade-in used to be opacity-0 until a client useEffect flipped
@@ -174,7 +210,7 @@ export function Hero() {
           no visual gain. Rendering at full opacity on SSR lets the
           giant "Your Entire Trip" headline count as LCP immediately. */}
       <div
-        className="relative z-10 mx-auto max-w-7xl px-6 text-center"
+        className="relative z-10 mx-auto w-full max-w-7xl px-6 text-center"
       >
         <div className="inline-flex items-center gap-2 bg-white/20 md:bg-white/10 md:backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
@@ -201,24 +237,26 @@ export function Hero() {
         {/* Search Bar */}
         <form
           className="mt-8 md:mt-12 mx-auto max-w-6xl"
+          action="/explore"
+          method="get"
           onSubmit={handleSubmit}
         >
           <div className="bg-navy-900/30 md:bg-white/[0.07] md:backdrop-blur-xl rounded-2xl p-2 shadow-[0_8px_60px_rgba(0,0,0,0.3)] border border-white/10">
             <div className="flex flex-col md:flex-row gap-2">
               {/* Destination */}
-              <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
+              <div className="flex-[1.2] min-w-0 flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm">
                 <MapPin size={20} className="text-gold-700 shrink-0" />
-                <div className="text-left w-full">
+                <div className="text-left w-full min-w-0">
                   <label htmlFor="hero-destination" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                     Destination
                   </label>
                   <select
                     id="hero-destination"
-                    name="destination"
+                    name="island"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     aria-label="Select destination island"
-                    className="w-full bg-transparent text-navy-700 outline-none text-sm font-medium mt-0.5 appearance-none cursor-pointer"
+                    className="w-full bg-transparent text-navy-700 text-sm font-medium mt-0.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-gold-700 rounded"
                   >
                     <option value="">All Caribbean Islands</option>
                     <option value="grenada">{getIslandFlag("grenada")} Grenada</option>
@@ -247,10 +285,12 @@ export function Hero() {
               </div>
 
               {/* Search with autocomplete */}
-              <div className="flex-[1.5] relative" ref={searchRef}>
+              <div className="flex-[1.5] min-w-0 relative" ref={searchRef} onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) dismissSuggestions();
+              }}>
                 <div className="flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm h-full">
                   <Search size={20} className="text-gold-700 shrink-0" />
-                  <div className="text-left w-full">
+                  <div className="text-left w-full min-w-0">
                     <label htmlFor="hero-search" className="text-[11px] font-semibold text-navy-400 uppercase tracking-wider block">
                       Search
                     </label>
@@ -261,30 +301,42 @@ export function Hero() {
                       value={query}
                       onChange={handleSearchChange}
                       onKeyDown={handleKeyDown}
-                      onFocus={() => results && setShowDropdown(true)}
+                      onFocus={() => results ? setShowDropdown(true) : fetchAutocomplete(query)}
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={dropdownOpen}
+                      aria-controls={dropdownOpen ? "hero-suggestions" : undefined}
+                      aria-activedescendant={dropdownOpen && selectedIndex >= 0 ? `hero-option-${selectedIndex}` : undefined}
                       aria-label="Search listings"
                       placeholder="Hotels, tours, restaurants..."
                       autoComplete="off"
-                      className="w-full bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm font-medium mt-0.5"
+                      className="w-full bg-transparent text-navy-700 placeholder:text-navy-400 text-sm font-medium mt-0.5 focus-visible:outline-2 focus-visible:outline-gold-700 rounded"
                     />
                   </div>
                 </div>
 
                 {/* Autocomplete dropdown */}
-                {showDropdown && results && (results.listings.length > 0 || results.islands.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-cream-200 overflow-hidden z-50 max-h-80 overflow-y-auto">
+                {dropdownOpen && results && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-cream-200 overflow-hidden z-50">
+                    <div id="hero-suggestions" role="listbox" aria-label="Search suggestions" ref={listboxRef} className="max-h-64 overflow-y-auto">
                     {/* Island results */}
                     {results.islands.length > 0 && (
-                      <div>
+                      <div role="group" aria-label="Islands">
                         <div className="px-4 pt-3 pb-1">
                           <span className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Islands</span>
                         </div>
                         {results.islands.map((island, i) => (
                           <button
+                            type="button"
+                            role="option"
+                            id={`hero-option-${i}`}
+                            aria-selected={selectedIndex === i}
+                            tabIndex={-1}
+                            onMouseDown={(event) => event.preventDefault()}
                             key={island.slug}
                             onClick={() => {
                               router.push(`/${island.slug}`);
-                              setShowDropdown(false);
+                              dismissSuggestions();
                             }}
                             className={`w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gold-50 transition-colors ${
                               selectedIndex === i ? "bg-gold-50" : ""
@@ -302,7 +354,7 @@ export function Hero() {
 
                     {/* Listing results */}
                     {results.listings.length > 0 && (
-                      <div>
+                      <div role="group" aria-label="Listings">
                         <div className="px-4 pt-3 pb-1 border-t border-cream-100">
                           <span className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Listings</span>
                         </div>
@@ -310,10 +362,16 @@ export function Hero() {
                           const idx = (results.islands?.length || 0) + i;
                           return (
                             <button
+                              type="button"
+                              role="option"
+                              id={`hero-option-${idx}`}
+                              aria-selected={selectedIndex === idx}
+                              tabIndex={-1}
+                              onMouseDown={(event) => event.preventDefault()}
                               key={`${listing.islandSlug}-${listing.slug}`}
                               onClick={() => {
                                 router.push(`/${listing.islandSlug}/${listing.slug}`);
-                                setShowDropdown(false);
+                                dismissSuggestions();
                               }}
                               className={`w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gold-50 transition-colors ${
                                 selectedIndex === idx ? "bg-gold-50" : ""
@@ -332,8 +390,10 @@ export function Hero() {
                       </div>
                     )}
 
+                    </div>
                     {/* View all results */}
                     <button
+                      type="button"
                       onClick={(event) => handleSubmit(event)}
                       className="w-full px-4 py-3 text-center text-sm font-medium text-gold-700 hover:bg-gold-50 border-t border-cream-100 transition-colors"
                     >
@@ -361,7 +421,7 @@ export function Hero() {
           {[
             { value: "7,100+", label: "Listings" },
             { value: "21", label: "Islands" },
-            { value: "10", label: "Categories" },
+            { value: String(LISTING_TYPES.length), label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl font-bold text-gold-400">{stat.value}</p>
@@ -382,7 +442,8 @@ export function Hero() {
         {heroImages.map((_, i) => (
           <button
             key={i}
-            onClick={() => setCurrentImage(i)}
+            onClick={() => { setMountRotation(true); setCurrentImage(i); }}
+            aria-pressed={currentImage === i}
             className="p-2 group"
             aria-label={`Show image ${i + 1}`}
           >

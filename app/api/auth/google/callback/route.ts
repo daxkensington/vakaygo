@@ -6,7 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { users, accounts } from "@/drizzle/schema";
 
 import { logger } from "@/lib/logger";
-import { claimListingPath } from "@/lib/claim-return";
+import { claimListingPath, signInHref } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { setSessionCookie } from "@/server/admin-auth";
 import { establishEmailIdentity } from "@/server/email-identity";
 
@@ -18,8 +19,22 @@ function getRedirectUri(requestUrl: string): string {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  let cookieStore: Awaited<ReturnType<typeof cookies>> | undefined;
+  let continuationClaim: string | undefined;
+  let returnPath: string | null = null;
+  let newAccountRole: "operator" | "traveler" = "traveler";
+  let clearAttempt = false;
+  const failure = (error: string) => {
+    const destination = new URL(signInHref(continuationClaim, { error, next: returnPath }), url.origin);
+    if (newAccountRole === "operator") destination.searchParams.set("role", "operator");
+    return NextResponse.redirect(destination);
+  };
 
   try {
+    cookieStore = await cookies();
+    const storedState = cookieStore.get("oauth_state")?.value;
+    // A delayed old callback must not invalidate a newer login in another tab.
+    clearAttempt = !storedState || storedState === url.searchParams.get("state");
     // Guard: check required env vars before doing anything
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -32,56 +47,53 @@ export async function GET(request: Request) {
       clientSecret === "REPLACE_WITH_YOUR_GOOGLE_CLIENT_SECRET"
     ) {
       logger.error("Google OAuth credentials are not configured");
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=oauth_not_configured", url.origin)
-      );
+      return failure("oauth_not_configured");
     }
 
     if (!databaseUrl) {
       logger.error("DATABASE_URL is not configured");
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=server_error", url.origin)
-      );
+      return failure("server_error");
     }
 
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const errorParam = url.searchParams.get("error");
 
-    if (errorParam) {
-      logger.error("Google OAuth error", errorParam);
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=google_denied", url.origin)
-      );
-    }
-
-    if (!code || !state) {
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=invalid_callback", url.origin)
-      );
+    if (!state || (!code && !errorParam)) {
+      return failure("invalid_callback");
     }
 
     // Verify CSRF state
-    const cookieStore = await cookies();
-    const storedState = cookieStore.get("oauth_state")?.value;
 
     if (!storedState || storedState !== state) {
       logger.error("OAuth state mismatch", {
         hasStoredState: !!storedState,
         statesMatch: storedState === state,
       });
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=invalid_state", url.origin)
-      );
+      return failure("invalid_state");
     }
 
-    // Clear the state cookie
-    cookieStore.delete("oauth_state");
+    // Only use continuation cookies after verifying the OAuth state.
+    try {
+      const roleChoice = JSON.parse(cookieStore.get("oauth_role")?.value || "null");
+      if (roleChoice?.state === state && roleChoice.role === "operator") newAccountRole = "operator";
+    } catch { /* A missing or invalid choice retains the traveler default. */ }
+    const claim = cookieStore.get("oauth_claim")?.value;
+    if (claimListingPath(claim)) continuationClaim = claim;
+    try {
+      const continuation = JSON.parse(cookieStore.get("oauth_next")?.value || "null");
+      if (continuation?.state === state) returnPath = safeAuthNext(continuation.next);
+    } catch { /* Invalid or stale continuation cookies are ignored. */ }
+
+    if (errorParam) {
+      logger.error("Google OAuth error", errorParam);
+      return failure("google_denied");
+    }
+    if (!code) return failure("invalid_callback");
 
     // Use the redirect URI from cookie (set during initial redirect) or derive it
     const storedRedirectUri = cookieStore.get("oauth_redirect_uri")?.value;
     const redirectUri = storedRedirectUri || getRedirectUri(request.url);
-    cookieStore.delete("oauth_redirect_uri");
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -99,9 +111,7 @@ export async function GET(request: Request) {
     if (!tokenRes.ok) {
       const errorBody = await tokenRes.text();
       logger.error("Google token exchange failed", errorBody);
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=token_exchange_failed", url.origin)
-      );
+      return failure("token_exchange_failed");
     }
 
     const tokens = await tokenRes.json();
@@ -116,18 +126,14 @@ export async function GET(request: Request) {
 
     if (!profileRes.ok) {
       logger.error("Google profile fetch failed", await profileRes.text());
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=profile_fetch_failed", url.origin)
-      );
+      return failure("profile_fetch_failed");
     }
 
     const profile = await profileRes.json();
 
     if (typeof profile.email !== "string" || profile.verified_email !== true || !profile.id) {
       logger.error("Google profile missing email", profile);
-      return NextResponse.redirect(
-        new URL("/auth/signin?error=unverified_google_email", url.origin)
-      );
+      return failure("unverified_google_email");
     }
 
     const googleEmail = (profile.email as string).toLowerCase();
@@ -149,13 +155,13 @@ export async function GET(request: Request) {
     let user: { id: string; email: string; name: string | null; role: string; sessionVersion: number };
 
     if (existingUser?.emailVerified && existingUser.totpEnabled) {
-      return NextResponse.redirect(new URL("/auth/signin?error=two_factor_required", url.origin));
+      return failure("two_factor_required");
     }
 
     if (existingUser) {
       const identity = await establishEmailIdentity(existingUser.id);
       if (!identity) throw new Error("Account no longer exists");
-      if (identity.requiresTwoFactor) return NextResponse.redirect(new URL("/auth/signin?error=two_factor_required", url.origin));
+      if (identity.requiresTwoFactor) return failure("two_factor_required");
       user = identity;
 
       // Update avatar if not set
@@ -215,7 +221,7 @@ export async function GET(request: Request) {
           email: googleEmail,
           name: googleName,
           avatarUrl: googleAvatar || null,
-          role: "traveler",
+          role: newAccountRole,
           emailVerified: true,
         })
         .returning({
@@ -253,14 +259,13 @@ export async function GET(request: Request) {
       sessionVersion: user.sessionVersion,
     });
 
-    const claimPath = claimListingPath(cookieStore.get("oauth_claim")?.value);
-    cookieStore.delete("oauth_claim");
-    const redirectPath = claimPath || (user.role === "operator" ? "/operator" : "/explore");
+    const redirectPath = claimListingPath(continuationClaim) || returnPath || (user.role === "operator" ? "/operator" : "/explore");
     return NextResponse.redirect(new URL(redirectPath, url.origin));
   } catch (error) {
     logger.error("Google OAuth callback error", error);
-    return NextResponse.redirect(
-      new URL("/auth/signin?error=callback_failed", url.origin)
-    );
+    return failure("callback_failed");
+  } finally {
+    // Clear a consumed matching attempt on every outcome; leave newer attempts intact.
+    if (clearAttempt) for (const name of ["oauth_state", "oauth_claim", "oauth_next", "oauth_role", "oauth_redirect_uri"]) cookieStore?.delete(name);
   }
 }

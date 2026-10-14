@@ -4,7 +4,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { ChevronDown, ArrowRight, Search } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 type FaqItem = { q: string; a: string };
 
@@ -12,89 +12,89 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
   "For Travelers": [
     {
       q: "How do I book an experience?",
-      a: "Browse listings on VakayGo, select the experience you want, choose your date and number of guests, then complete your booking with a secure payment. You'll receive an instant confirmation email with all the details.",
+      a: "VakayGo is currently a directory. Online bookings and payments are disabled. Browse listings and use the business's published website or phone to ask about availability. Recording interest or sending a message does not create a reservation.",
     },
     {
       q: "What is the cancellation policy?",
-      a: "Most experiences offer free cancellation up to 24 hours before the scheduled time. Some operators may have stricter policies for high-demand experiences, which will be clearly stated on the listing page before you book.",
+      a: "For arrangements made directly with a business, ask that business about its cancellation terms before agreeing. If you already have a VakayGo booking, review the policy recorded with that booking and contact support if you need help.",
     },
     {
       q: "How does trip protection work?",
-      a: "VakayGo offers optional trip protection at checkout that covers unforeseen cancellations, weather disruptions, and travel delays. If your experience is cancelled by the operator, you'll receive an automatic full refund regardless of protection status.",
+      a: "Trip protection is not currently available through VakayGo. A directory listing, traveler interest or message does not provide insurance or confirm a booking. Ask the business about any arrangements you make directly with it.",
     },
     {
       q: "Can I book as a guest without an account?",
-      a: "Yes! You can complete a booking as a guest using just your email address. However, creating a free account lets you track bookings, save favorites, leave reviews, and access exclusive deals.",
+      a: "Guests can browse the directory and use a business's published contact details. VakayGo bookings are currently unavailable. Sign in and verify your email to record interest or use available messaging features; neither action creates a booking.",
     },
     {
       q: "How do I contact an operator?",
-      a: "Each listing has a 'Message Operator' button that lets you ask questions before booking. After booking, you can communicate directly with your operator through the VakayGo messaging system in your dashboard.",
+      a: "Use the official website or phone shown on the listing where available. In-app messaging is available only for listings with current verified ownership and requires a signed-in, email-verified account. Unclaimed listings do not support in-app messaging. A message does not reserve a service.",
     },
   ],
   "For Operators": [
     {
       q: "How do I list my business?",
-      a: "Sign up as an operator on VakayGo, complete your business profile, and create your first listing. Our team will review it within 24-48 hours. Once approved, your experience goes live and travelers can start booking.",
+      a: "Start at For Businesses and search for your existing listing. Create a business account, verify your email and prove control of the trusted business phone where supported. Contact VakayGo if the listing or trusted contact needs review. A verified claim lets the owner manage the listing; it does not enable bookings or payments, and no review deadline is guaranteed.",
     },
     {
       q: "What are VakayGo's commission rates?",
-      a: "VakayGo charges just 3-5% per booking — significantly lower than other platforms that take 20-30%. We believe in fair pricing that keeps more money in local communities and with the businesses that deserve it.",
+      a: "Claiming an existing VakayGo listing is free. Online bookings and payments are currently disabled. Future booking fees and payment arrangements require final business and provider review before launch.",
     },
     {
       q: "How do payouts work?",
-      a: "Payouts are processed automatically after each completed experience. Funds are transferred to your linked bank account or payment method within 3-5 business days. You can track all earnings in your operator dashboard.",
+      a: "Listing claims and traveler interest do not create earnings or payouts. Payment services require separate business onboarding, approval for the actual company country and payout route, current provider verification and explicit activation. Directory launch does not establish payout availability or timing.",
     },
     {
       q: "Can I manage my availability?",
-      a: "Absolutely. Your operator dashboard has a full calendar where you can set available dates, block off time, adjust capacity per time slot, and set seasonal pricing. Changes take effect immediately.",
+      a: "Owners can manage their listing's dates, blocked days and capacity from the calendar in the operator dashboard. Calendar updates alone do not enable online bookings; ownership, onboarding, payment and launch checks must also be complete.",
     },
     {
       q: "How do I respond to reviews?",
-      a: "Navigate to the Reviews section in your operator dashboard. You can reply publicly to any review, which shows potential guests that you value feedback. We recommend responding within 48 hours for best engagement.",
+      a: "Use the Reviews section of your operator dashboard for reviews associated with your business account. If you cannot access a listing, contact VakayGo with its link so ownership can be reviewed.",
     },
   ],
   "Bookings & Payments": [
     {
       q: "When am I charged?",
-      a: "You're charged at the time of booking to secure your spot. For some experiences, a deposit may be taken upfront with the remainder due closer to the date — this will be clearly shown before you confirm.",
+      a: "Online bookings and payments are currently disabled. Browsing, recording interest or sending a message does not authorize a payment. If you arrange a service directly with a business, confirm its prices and payment terms with that business.",
     },
     {
       q: "What payment methods are accepted?",
-      a: "VakayGo accepts all major credit and debit cards (Visa, Mastercard, American Express), as well as digital wallets. We're continually adding more payment options to serve travelers worldwide.",
+      a: "VakayGo is not accepting new booking payments during the directory launch. Ask the business which methods it accepts for a service you arrange directly. Future VakayGo payment methods depend on the approved provider and company country.",
     },
     {
       q: "How do refunds work?",
-      a: "If you cancel within the free cancellation window, you'll receive a full refund to your original payment method within 5-10 business days. Operator-cancelled bookings are always fully refunded automatically.",
+      a: "For a service arranged directly with a business, contact that business about refunds. For an existing VakayGo booking, use its recorded cancellation policy and refund status and contact support if needed. A pending refund is not evidence that money has reached your account.",
     },
     {
       q: "What currency are prices shown in?",
-      a: "Prices are displayed in USD by default, but you can change your preferred currency in your account settings. The final charge will be converted to your card's currency by your bank at their current exchange rate.",
+      a: "Prices use USD by default. Displayed currency conversions are estimates; check current prices, currency and any additional costs directly with the business. A directory price is not a payment quote or a confirmed reservation.",
     },
     {
       q: "Is my payment information secure?",
-      a: "Yes. VakayGo uses industry-standard encryption and never stores your full card details on our servers. All transactions are processed through PCI-compliant payment providers to ensure your financial data is protected.",
+      a: "Online payment setup is currently unavailable during the directory launch. Do not put card or bank details in a listing message or contact form. Any future payment setup must use the approved provider's secure flow.",
     },
   ],
   "Account & Safety": [
     {
       q: "How do I create an account?",
-      a: "Click 'Sign Up' on the VakayGo homepage, enter your name, email, and create a password — or sign up instantly with Google. It takes less than 30 seconds and gives you access to bookings, saved favorites, and more.",
+      a: "Choose Sign Up and use your email or Google sign-in where available. Confirm your inbox before recording traveler interest or claiming a business. Creating an account does not verify a business or enable bookings.",
     },
     {
       q: "How do I reset my password?",
-      a: "Click 'Sign In', then 'Forgot Password'. Enter your email address and we'll send a secure reset link. The link expires after 1 hour for security. If you signed up with Google, use Google sign-in instead.",
+      a: "On Sign In, choose Email me a sign-in link to recover access through your inbox. If your account requires its password or two-factor method, use that secure sign-in method or contact support for help. Google accounts can use Google sign-in where available. Never send your password or verification codes to support.",
     },
     {
       q: "How does VakayGo verify operators?",
-      a: "Every operator goes through a verification process that includes identity confirmation, business license checks where applicable, and an initial quality review. We also monitor ongoing reviews and ratings to maintain standards.",
+      a: "An unclaimed directory listing does not mean the business has partnered with VakayGo. Business claims require a verified account and proof through an independently trusted business contact. A verified claim shows ownership proof; it is not a guarantee of service quality or booking eligibility.",
     },
     {
       q: "How can I delete my account?",
-      a: "Go to Settings in your dashboard and select 'Delete Account'. Any active bookings must be completed or cancelled first. Your data will be permanently removed within 30 days per our privacy policy.",
+      a: "Review the account options in your profile settings or contact VakayGo for help with your account and data. See the Privacy Policy for the applicable process. Keep the details of any existing bookings when asking for support.",
     },
     {
       q: "What data does VakayGo collect?",
-      a: "We collect only what's needed to provide our service: your profile information, booking history, and usage analytics. We never sell your data to third parties. Full details are available in our Privacy Policy.",
+      a: "See the Privacy Policy for how account information, saved items, traveler interest and messages are handled. The listing-interest feature counts interest privately and may share totals with the business; it does not share your name or contact details through that feature.",
     },
   ],
 };
@@ -102,9 +102,13 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
 const TABS = Object.keys(FAQ_DATA);
 
 function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: boolean; onToggle: () => void }) {
+  const id = useId();
   return (
     <div className="border-b border-navy-100 last:border-0">
       <button
+        id={`${id}-question`}
+        aria-expanded={isOpen}
+        aria-controls={id}
         onClick={onToggle}
         className="w-full flex items-center justify-between py-5 text-left group"
       >
@@ -119,6 +123,10 @@ function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: bool
         />
       </button>
       <div
+        id={id}
+        role="region"
+        aria-labelledby={`${id}-question`}
+        hidden={!isOpen}
         className={`grid transition-all duration-300 ease-in-out ${
           isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
@@ -153,14 +161,15 @@ export default function FaqPage() {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const searchTerm = search.trim().toLowerCase();
 
-  const filteredItems = search.trim()
+  const filteredItems = searchTerm
     ? Object.values(FAQ_DATA)
         .flat()
         .filter(
           (item) =>
-            item.q.toLowerCase().includes(search.toLowerCase()) ||
-            item.a.toLowerCase().includes(search.toLowerCase())
+            item.q.toLowerCase().includes(searchTerm) ||
+            item.a.toLowerCase().includes(searchTerm)
         )
     : FAQ_DATA[activeTab];
 
@@ -184,7 +193,7 @@ export default function FaqPage() {
               <span className="text-gold-400">Questions</span>
             </h1>
             <p className="mt-6 text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
-              Find answers to common questions about booking experiences,
+              Find answers to common questions about the directory, business claims,
               managing your account, and using VakayGo.
             </p>
 
@@ -195,6 +204,7 @@ export default function FaqPage() {
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-300"
               />
               <input
+                aria-label="Search frequently asked questions"
                 type="text"
                 value={search}
                 onChange={(e) => {
@@ -216,6 +226,7 @@ export default function FaqPage() {
               <div className="flex flex-wrap gap-2 mb-10 justify-center">
                 {TABS.map((tab) => (
                   <button
+                    aria-pressed={activeTab === tab}
                     key={tab}
                     onClick={() => {
                       setActiveTab(tab);

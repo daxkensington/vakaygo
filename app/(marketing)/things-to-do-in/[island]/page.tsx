@@ -53,12 +53,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: {
-      canonical: `https://vakaygo.com/things-to-do-in-${slug}`,
+      canonical: `https://vakaygo.com/things-to-do-in/${slug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://vakaygo.com/things-to-do-in-${slug}`,
+      url: `https://vakaygo.com/things-to-do-in/${slug}`,
       type: "website",
       images: [
         {
@@ -171,7 +171,7 @@ export default async function ThingsToDoPage({ params }: Props) {
     "@type": "ItemList",
     name: `Things to Do in ${island.name}`,
     description: `Top activities, tours, restaurants, and experiences in ${island.name}.`,
-    url: `https://vakaygo.com/things-to-do-in-${slug}`,
+    url: `https://vakaygo.com/things-to-do-in/${slug}`,
     numberOfItems: stats.totalListings,
     itemListElement: activeSections.flatMap((section, sIdx) =>
       section.listings.map((listing, lIdx) => ({
@@ -372,7 +372,7 @@ export default async function ThingsToDoPage({ params }: Props) {
                               <span className="text-xs font-semibold text-navy-700">
                                 {rating.toFixed(1)}
                               </span>
-                              {listing.reviewCount &&
+                              {!!listing.reviewCount &&
                                 listing.reviewCount > 0 && (
                                   <span className="text-xs text-navy-300">
                                     ({listing.reviewCount})
@@ -416,7 +416,7 @@ export default async function ThingsToDoPage({ params }: Props) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Link
-                href={`/best-restaurants-${slug}`}
+                href={`/best-restaurants/${slug}`}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <UtensilsCrossed
@@ -431,7 +431,7 @@ export default async function ThingsToDoPage({ params }: Props) {
                 </p>
               </Link>
               <Link
-                href={`/best-hotels-${slug}`}
+                href={`/best-hotels/${slug}`}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all duration-300 group"
               >
                 <Home size={24} className="text-gold-700 mb-3" />

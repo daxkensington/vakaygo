@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { setSessionCookie } from "@/server/admin-auth";
 import { consumeEmailIdentityToken, validNewPassword } from "@/server/email-identity";
 import { claimListingPath } from "@/lib/claim-return";
+import { safeAuthNext } from "@/lib/auth-return";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -13,6 +14,10 @@ export async function GET(request: NextRequest) {
   else destination.searchParams.set("error", "invalid_token");
   const claim = source.searchParams.get("claim");
   if (claimListingPath(claim)) destination.searchParams.set("claim", claim!);
+  else {
+    const next = safeAuthNext(source.searchParams.get("next"));
+    if (next) destination.searchParams.set("next", next);
+  }
   return NextResponse.redirect(destination);
 }
 export async function POST(request: Request) {

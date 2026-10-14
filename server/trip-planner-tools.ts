@@ -135,7 +135,7 @@ export async function getListingDetails(listingId: string): Promise<ListingResul
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(eq(listings.id, listingId))
+    .where(and(eq(listings.id, listingId), eq(listings.status, "active")))
     .limit(1);
 
   if (!result) return null;

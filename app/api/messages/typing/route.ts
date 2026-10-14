@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireUser } from "@/server/admin-auth";
+import { isMessageId } from "@/lib/message-input";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Volatile in-memory typing state: key = "senderId:receiverId", value = expiry timestamp
 const typingState = new Map<string, number>();
@@ -22,22 +21,19 @@ function cleanExpired() {
  */
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const senderId = payload.id as string;
-
-    const { receiverId } = await request.json();
-    if (!receiverId) {
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    if (!auth.emailVerified) return NextResponse.json({ error: "Verify your email before messaging." }, { status: 403 });
+    const senderId = auth.userId;
+    const { receiverId } = await request.json().catch(() => ({}));
+    if (!isMessageId(receiverId) || receiverId === senderId) {
       return NextResponse.json({ error: "receiverId required" }, { status: 400 });
     }
 
     // Store typing state with 5-second expiry
     const key = `${senderId}:${receiverId}`;
+    cleanExpired();
+    if (typingState.size >= 5000 && !typingState.has(key)) return NextResponse.json({ error: "Typing is temporarily unavailable." }, { status: 503 });
     typingState.set(key, Date.now() + 5000);
 
     // Lazy cleanup
@@ -56,19 +52,14 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const receiverId = payload.id as string;
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const receiverId = auth.userId;
 
     const { searchParams } = new URL(request.url);
-    const senderId = searchParams.get("senderId");
+    const senderId = searchParams.get("senderId") || searchParams.get("conversationWith");
 
-    if (!senderId) {
+    if (!isMessageId(senderId) || senderId === receiverId) {
       return NextResponse.json({ error: "senderId required" }, { status: 400 });
     }
 

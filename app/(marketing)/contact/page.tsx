@@ -4,7 +4,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { Mail, Clock, MessageCircle, Send, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const CATEGORIES = [
   "General",
@@ -26,6 +26,12 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const requestController = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    requestController.current?.abort();
+    requestController.current = null;
+  }, []);
 
   useEffect(() => {
     const listing = new URLSearchParams(window.location.search).get("listing");
@@ -40,6 +46,11 @@ export default function ContactPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (requestController.current) return;
+    const controller = new AbortController();
+    requestController.current = controller;
+    let timedOut = false;
+    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 20_000);
     setError("");
     setLoading(true);
 
@@ -48,19 +59,28 @@ export default function ContactPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
+        signal: controller.signal,
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (requestController.current !== controller) return;
+      if (controller.signal.aborted) throw new Error("Submission could not be confirmed.");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Something went wrong");
+      if (!res.ok || data?.success !== true) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Your message could not be submitted. Please try again.");
       }
 
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      if (requestController.current === controller) setError(timedOut
+        ? "We could not confirm whether your message was submitted. Your draft is kept below. Try again later or use the email link."
+        : err instanceof Error ? err.message : "Your message could not be submitted. Please try again.");
     } finally {
-      setLoading(false);
+      window.clearTimeout(timeout);
+      if (requestController.current === controller) {
+        requestController.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -102,11 +122,11 @@ export default function ContactPage() {
                         className="text-2xl font-bold text-navy-700 mb-3"
                         style={{ fontFamily: "var(--font-display)" }}
                       >
-                        Message Sent!
+                        Message submitted
                       </h2>
                       <p className="text-navy-400 max-w-md mx-auto mb-8 leading-relaxed">
-                        Thanks for reaching out. We&apos;ve sent a confirmation to your
-                        email and our team will respond within 24 hours.
+                        Your message was submitted to VakayGo. Replies use the
+                        email address you provided.
                       </p>
                       <button
                         onClick={() => {
@@ -128,20 +148,24 @@ export default function ContactPage() {
                       </h2>
 
                       {error && (
-                        <div className="bg-red-50 text-red-600 rounded-xl px-4 py-3 mb-6 text-sm">
+                        <div role="alert" className="bg-red-50 text-red-600 rounded-xl px-4 py-3 mb-6 text-sm">
                           {error}
                         </div>
                       )}
 
                       <form onSubmit={handleSubmit} className="space-y-5">
+                        <fieldset disabled={loading} className="min-w-0 space-y-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                           <div>
-                            <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                            <label htmlFor="contact-name" className="block text-sm font-medium text-navy-600 mb-1.5">
                               Your Name
                             </label>
                             <input
+                              id="contact-name"
                               type="text"
                               required
+                              autoComplete="name"
+                              maxLength={120}
                               value={form.name}
                               onChange={(e) => setForm({ ...form, name: e.target.value })}
                               placeholder="John Doe"
@@ -149,12 +173,15 @@ export default function ContactPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                            <label htmlFor="contact-email" className="block text-sm font-medium text-navy-600 mb-1.5">
                               Email Address
                             </label>
                             <input
+                              id="contact-email"
                               type="email"
                               required
+                              autoComplete="email"
+                              maxLength={320}
                               value={form.email}
                               onChange={(e) => setForm({ ...form, email: e.target.value })}
                               placeholder="john@example.com"
@@ -164,10 +191,11 @@ export default function ContactPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                          <label htmlFor="contact-category" className="block text-sm font-medium text-navy-600 mb-1.5">
                             Category
                           </label>
                           <select
+                            id="contact-category"
                             required
                             aria-label="Category"
                             value={form.category}
@@ -186,12 +214,14 @@ export default function ContactPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                          <label htmlFor="contact-subject" className="block text-sm font-medium text-navy-600 mb-1.5">
                             Subject
                           </label>
                           <input
+                            id="contact-subject"
                             type="text"
                             required
+                            maxLength={200}
                             value={form.subject}
                             onChange={(e) => setForm({ ...form, subject: e.target.value })}
                             placeholder="Brief description of your inquiry"
@@ -200,11 +230,13 @@ export default function ContactPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                          <label htmlFor="contact-message" className="block text-sm font-medium text-navy-600 mb-1.5">
                             Message
                           </label>
                           <textarea
+                            id="contact-message"
                             required
+                            maxLength={5000}
                             rows={5}
                             value={form.message}
                             onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -230,6 +262,7 @@ export default function ContactPage() {
                             </>
                           )}
                         </button>
+                        </fieldset>
                       </form>
                     </>
                   )}
@@ -258,12 +291,12 @@ export default function ContactPage() {
                   <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center mb-4">
                     <Clock size={20} className="text-teal-500" />
                   </div>
-                  <h3 className="font-bold text-navy-700 mb-1">Response Time</h3>
+                  <h3 className="font-bold text-navy-700 mb-1">Replies by email</h3>
                   <p className="text-navy-400 text-sm mb-3">
-                    We aim to reply quickly
+                    Keep an eye on the address you provide
                   </p>
                   <p className="text-teal-600 font-semibold text-sm">
-                    Within 24 hours
+                    Check your inbox and spam folder
                   </p>
                 </div>
 

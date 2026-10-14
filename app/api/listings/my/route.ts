@@ -3,21 +3,14 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, islands } from "@/drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireOperator } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, SECRET);
+    const auth = await requireOperator();
+    if (!auth.ok) return auth.error;
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
     const results = await db
@@ -37,10 +30,10 @@ export async function GET() {
       })
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))
-      .where(eq(listings.operatorId, payload.id as string))
+      .where(eq(listings.operatorId, auth.userId))
       .orderBy(listings.createdAt);
 
-    return NextResponse.json({ listings: results });
+    return NextResponse.json({ listings: results }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     logger.error("My listings error", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
