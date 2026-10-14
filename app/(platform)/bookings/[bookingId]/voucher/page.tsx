@@ -57,7 +57,7 @@ function formatTime(iso: string) {
 function getGoogleCalendarUrl(data: VoucherData) {
   const start = new Date(data.date);
   const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
-  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
+  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: data.listingTitle,
