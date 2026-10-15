@@ -33,7 +33,9 @@ export async function sendEmail(params: Parameters<Resend["emails"]["send"]>[0])
   if (typeof payload.html === "string" && !payload.text) {
     payload.text = htmlToPlainText(payload.html);
   }
-  const result = await getMailClient().emails.send(payload as Parameters<Resend["emails"]["send"]>[0]);
+  const result = await getMailClient().emails.send(
+    payload as unknown as Parameters<Resend["emails"]["send"]>[0]
+  );
   if (result.error) throw new Error(result.error.message);
   return result;
 }
