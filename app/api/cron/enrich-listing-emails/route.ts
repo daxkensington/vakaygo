@@ -435,7 +435,7 @@ export async function GET(request: NextRequest) {
          AND (l.type_data->>'emailCheckedAt') IS NULL
          AND coalesce(o.status, 'new') <> 'do_not_contact'
        ORDER BY (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0)) DESC,
-                l.rating_average DESC NULLS LAST,
+                l.avg_rating DESC NULLS LAST,
                 l.review_count DESC NULLS LAST
        LIMIT $1`,
       [limit]

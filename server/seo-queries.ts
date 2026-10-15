@@ -87,6 +87,8 @@ export type ListingSeoMeta = {
   type: string;
   headline: string | null;
   description: string | null;
+  parish: string | null;
+  primaryImage: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
   islandSlug: string;
@@ -114,6 +116,13 @@ export const getListingForSeo = cache(
         type: listings.type,
         headline: listings.headline,
         description: listings.description,
+        parish: listings.parish,
+        primaryImage: sql<string | null>`(
+          SELECT m.url FROM media m
+          WHERE m.listing_id = ${listings.id}
+          ORDER BY m.is_primary DESC, m.sort_order ASC
+          LIMIT 1
+        )`,
         metaTitle: listings.metaTitle,
         metaDescription: listings.metaDescription,
         islandSlug: islands.slug,

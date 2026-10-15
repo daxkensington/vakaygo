@@ -11,10 +11,12 @@ export function MeetingPointMap({
   lat,
   lng,
   note,
+  title = "Meeting Point",
 }: {
   lat: number;
   lng: number;
   note?: string;
+  title?: string;
 }) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -63,7 +65,7 @@ export function MeetingPointMap({
         className="text-xl font-bold text-navy-700 mb-4"
         style={{ fontFamily: "var(--font-display)" }}
       >
-        Meeting Point
+        {title}
       </h2>
       <div
         ref={mapContainer}

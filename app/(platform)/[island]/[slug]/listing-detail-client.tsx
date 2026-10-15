@@ -66,6 +66,8 @@ export type ListingDetail = {
   headline: string | null;
   description: string | null;
   address: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
   parish: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
@@ -293,7 +295,10 @@ export function ListingDetailClient({
                   <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-navy-400">
                     <div className="flex items-center gap-1">
                       <MapPin size={14} className="text-gold-700" />
-                      {listing.parish}, {getIslandFlag(listing.islandSlug)} {listing.islandName}
+                      {listing.parish && listing.parish.trim().toLowerCase() !== listing.islandName.trim().toLowerCase()
+                        ? `${listing.parish}, `
+                        : ""}
+                      {getIslandFlag(listing.islandSlug)} {listing.islandName}
                     </div>
                     {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
                       <div className="flex items-center gap-1">
@@ -484,6 +489,22 @@ export function ListingDetailClient({
                       </span>
                     </div>
                   )}
+                  {!td.cuisineType &&
+                    typeof td.category === "string" &&
+                    !/establishment|point_of_interest|point of interest|store|premise/i.test(td.category) && (
+                      <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
+                        <span className="text-sm font-medium text-navy-600 capitalize">
+                          {td.category.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                    )}
+                  {typeof td.priceLevel === "string" && td.priceLevel.trim() && (
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
+                      <span className="text-sm font-medium text-navy-600">
+                        Price range: {td.priceLevel}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -494,6 +515,24 @@ export function ListingDetailClient({
                   {listing.description}
                 </p>
               </div>
+
+              {/* Service & Dining Highlights (td.serves) */}
+              {Array.isArray(td.serves) && td.serves.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-xl font-bold text-navy-700 mb-4">Highlights &amp; Offerings</h2>
+                  <div className="flex flex-wrap gap-2.5">
+                    {(td.serves as string[]).map((item) => (
+                      <span
+                        key={item}
+                        className="inline-flex items-center gap-2 bg-white border border-cream-200 text-navy-600 px-3.5 py-2 rounded-xl text-sm font-medium shadow-sm"
+                      >
+                        <Check size={14} className="text-teal-500 shrink-0" />
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Tour Itinerary (tour/excursion types) */}
               <section className="mt-8 rounded-2xl border border-cream-200 bg-white p-6">
@@ -516,16 +555,21 @@ export function ListingDetailClient({
               {/* What's Included / Excluded (tour types) */}
               <WhatsIncluded typeData={listing.typeData} listingType={listing.type} />
 
-              {/* Meeting Point Map (for tour/excursion/transfer types) */}
-              {["tour", "excursion", "transfer"].includes(listing.type) &&
-                listing.meetingPointLat &&
-                listing.meetingPointLng && (
-                  <MeetingPointMap
-                    lat={parseFloat(listing.meetingPointLat)}
-                    lng={parseFloat(listing.meetingPointLng)}
-                    note={listing.meetingPointNote || undefined}
-                  />
-                )}
+              {/* Interactive Location / Meeting Point Map */}
+              {((listing.meetingPointLat && listing.meetingPointLng) ||
+                (listing.latitude && listing.longitude)) && (
+                <MeetingPointMap
+                  lat={parseFloat((listing.meetingPointLat || listing.latitude)!)}
+                  lng={parseFloat((listing.meetingPointLng || listing.longitude)!)}
+                  title={listing.meetingPointLat && listing.meetingPointLng ? "Meeting Point" : "Location"}
+                  note={
+                    listing.meetingPointNote ||
+                    listing.address ||
+                    [listing.parish, listing.islandName].filter(Boolean).join(", ") ||
+                    undefined
+                  }
+                />
+              )}
 
               {/* Legacy: What's Included (simple list from td.includes) */}
               {td.includes && !td.included && (
@@ -753,7 +797,7 @@ export function ListingDetailClient({
                       />
                     </div>
                     <div className="p-4">
-                      <p className="text-xs text-navy-400">{item.parish}</p>
+                      <p className="text-xs text-navy-400">{item.parish || listing.islandName}</p>
                       <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
                         {item.title}
                       </h3>

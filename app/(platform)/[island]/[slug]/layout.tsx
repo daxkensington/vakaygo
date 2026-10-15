@@ -26,17 +26,29 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   if (!listing) return { title: "Not Found" };
 
   const typeLabel = typeLabels[listing.type] || "Listing";
+  const locationLabel =
+    listing.parish && listing.parish.trim().toLowerCase() !== listing.islandName.trim().toLowerCase()
+      ? `${listing.parish}, ${listing.islandName}`
+      : listing.islandName;
   // title.absolute bypasses the parent template chain so the title is
   // identical regardless of nesting depth.
   const title =
     listing.metaTitle ||
-    `${listing.title} — ${typeLabel} in ${listing.islandName} | VakayGo`;
+    `${listing.title} — ${typeLabel} in ${locationLabel} | VakayGo`;
   const description =
     listing.metaDescription ||
-    listing.headline ||
     listing.description?.slice(0, 160) ||
-    `${listing.title} — explore information about this ${typeLabel.toLowerCase()} in ${listing.islandName} in the VakayGo directory.`;
+    listing.headline ||
+    `${listing.title} — explore information about this ${typeLabel.toLowerCase()} in ${locationLabel} in the VakayGo directory.`;
   const url = `https://vakaygo.com/${island}/${slug}`;
+  const ogCardUrl = `https://vakaygo.com/api/og?title=${encodeURIComponent(listing.title)}&subtitle=${encodeURIComponent(`${typeLabel} in ${locationLabel}`)}`;
+  const ogImages =
+    listing.primaryImage && listing.primaryImage.startsWith("https://")
+      ? [
+          { url: listing.primaryImage, alt: listing.title },
+          { url: ogCardUrl, width: 1200, height: 630, alt: listing.title },
+        ]
+      : [{ url: ogCardUrl, width: 1200, height: 630, alt: listing.title }];
 
   return {
     title: { absolute: title },
@@ -48,19 +60,13 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
       url,
       type: "website",
       siteName: "VakayGo",
-      images: [
-        {
-          url: `https://vakaygo.com/api/og?title=${encodeURIComponent(listing.title)}&subtitle=${encodeURIComponent(`${typeLabel} in ${listing.islandName}`)}`,
-          width: 1200,
-          height: 630,
-          alt: listing.title,
-        },
-      ],
+      images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: ogImages.map((img) => img.url),
     },
   };
 }
