@@ -25,7 +25,8 @@ function isAuthorizedCron(request: NextRequest): boolean {
   return auth === `Bearer ${secret}`;
 }
 
-async function runOperatorBootstrap(db: ReturnType<typeof neon>) {
+async function runOperatorBootstrap() {
+  const db = neon(process.env.DATABASE_URL!);
   const actions: string[] = [];
 
   // 1. Configure booking_provider_config & feature_flags
@@ -195,7 +196,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = neon(process.env.DATABASE_URL!);
-    const bootstrapActions = bootstrapOperators ? await runOperatorBootstrap(db) : [];
+    const bootstrapActions = bootstrapOperators ? await runOperatorBootstrap() : [];
 
     // Seed verified directory emails for high-demand listings where email is still missing
     for (const item of VERIFIED_DIRECTORY_EMAILS) {
