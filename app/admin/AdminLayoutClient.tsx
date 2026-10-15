@@ -32,6 +32,7 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/admin/revenue", label: "Revenue", icon: DollarSign },
+  { href: "/admin/payout-profiles", label: "Payout Profiles", icon: DollarSign },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/promos", label: "Promo Codes", icon: Tag },
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle },

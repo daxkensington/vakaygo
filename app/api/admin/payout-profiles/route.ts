@@ -146,7 +146,12 @@ export async function PATCH(request: Request) {
               SET activated_at = coalesce(activated_at, now()),
                   updated_at = now()
             WHERE listing_id = $1
-              AND vakaygo_onboarding_complete($1)`,
+              AND suspended_at IS NULL
+              AND authority_accepted_at IS NOT NULL
+              AND terms_accepted_at IS NOT NULL
+              AND length(trim(coalesce(business_legal_name, ''))) >= 2
+              AND vakaygo_listing_claim_verified($1)
+              AND vakaygo_listing_setup_valid($1)`,
           [listingId]
         );
       }
