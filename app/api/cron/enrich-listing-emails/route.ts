@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         // Mark emailCheckedAt so we don't re-crawl websites without emails on every cron run
         await db.query(
           `UPDATE listings
-           SET type_data = jsonb_set(coalesce(type_data, '{}'::jsonb), '{emailCheckedAt}', to_jsonb(now()::text), true)
+           SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{emailCheckedAt}', to_jsonb(now()::text), true)::json
            WHERE id = $1`,
           [row.id]
         );

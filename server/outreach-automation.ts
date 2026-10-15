@@ -287,9 +287,9 @@ export async function enrichListingContactEmail(listingId: string): Promise<{
   await db.query(
     `UPDATE listings
      SET type_data = jsonb_set(
-       jsonb_set(coalesce(type_data, '{}'::jsonb), '{email}', to_jsonb($2::text), true),
+       jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{email}', to_jsonb($2::text), true),
        '{emailSource}', '"website_auto"'::jsonb, true
-     ),
+     )::json,
      updated_at = now()
      WHERE id = $1`,
     [listingId, bestEmail]
@@ -364,7 +364,7 @@ export async function sendBusinessInterestOutreachEmail(
     targetEmail = options.recipientOverride.trim().toLowerCase();
     await db.query(
       `UPDATE listings
-       SET type_data = jsonb_set(coalesce(type_data, '{}'::jsonb), '{email}', to_jsonb($2::text), true),
+       SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{email}', to_jsonb($2::text), true)::json,
            updated_at = now()
        WHERE id = $1`,
       [listingId, targetEmail]
