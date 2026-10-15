@@ -58,7 +58,7 @@ async function ensureApprovedOperatorOnboarding(listingId: string) {
       listingId
     );
     await rawSql.query(
-      `UPDATE users SET email_verified = true, role = CASE WHEN role = 'admin' THEN 'admin' ELSE 'operator' END WHERE id = $1`,
+      `UPDATE users SET email_verified = true, role = CASE WHEN role = 'admin' THEN 'admin'::user_role ELSE 'operator'::user_role END WHERE id = $1`,
       [operatorId]
     );
     await rawSql.query(

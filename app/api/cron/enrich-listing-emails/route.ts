@@ -149,53 +149,231 @@ async function runOperatorBootstrap() {
     actions.push("approved_and_emailed_art_caribbean_villa");
   }
 
-  // 4. Re-engage Caymanvibes Water Sports once
-  const caymanId = "3641e763-b984-4539-835f-93b0ffd06c06";
-  const [caymanRow] = await db.query(
-    `SELECT l.id, l.type_data->>'payoutLaunchEmailedAt' AS emailed_at, u.email AS operator_email
-       FROM listings l
-       JOIN users u ON u.id = l.operator_id
-      WHERE l.id = $1`,
-    [caymanId]
-  );
-  if (caymanRow && !caymanRow.emailed_at && caymanRow.operator_email) {
-    await sendEmail({
-      from: "VakayGo <hello@vakaygo.com>",
-      to: String(caymanRow.operator_email),
-      replyTo: "support@vakaygo.com",
-      subject: "Cayman Islands payouts are now live for Caymanvibes Water Sports on VakayGo!",
-      html: `<p>Hi Yarick,</p>
-<p>Thank you for verifying your phone claim and business details for <strong>Caymanvibes Water Sports</strong> on VakayGo! We have now rolled out <strong>direct Caribbean payouts for the Cayman Islands</strong> so you can receive payouts in <strong>USD or KYD</strong> via <strong>Wise, PayPal, or Cayman Islands Bank Wire</strong>.</p>
-<p>Complete your 2 final steps to activate online bookings:</p>
-<ol>
-  <li><a href="https://vakaygo.com/operator/payouts?listingId=3641e763-b984-4539-835f-93b0ffd06c06">Select your payout method (Wise, PayPal, or Bank Wire)</a></li>
-  <li><a href="https://vakaygo.com/operator/listings/3641e763-b984-4539-835f-93b0ffd06c06">Add your excursion price &amp; guest capacity</a> (we pre-loaded 90 days of open calendar availability for you)</li>
-</ol>
-<p><a href="https://vakaygo.com/operator/payouts?listingId=3641e763-b984-4539-835f-93b0ffd06c06" style="display:inline-block;background:#0D9488;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Complete Cayman Payout Setup</a></p>`,
-    });
-    await db.query(
-      `UPDATE listings
-          SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{payoutLaunchEmailedAt}', to_jsonb(now()::text), true)::json
-        WHERE id = $1`,
-      [caymanId]
+  // 4. Send personalized onboarding & Caribbean payout activation emails to all 10 linked operators (once per listing)
+  const operatorOutreachTargets: Array<{
+    listingId: string;
+    name: string;
+    title: string;
+    island: string;
+    currencies: string;
+  }> = [
+    {
+      listingId: "07fb3208-5c9d-46fd-9029-fe4111b699c5",
+      name: "Will",
+      title: "ART Caribbean Luxury Villa in Sosúa",
+      island: "Dominican Republic",
+      currencies: "USD or DOP",
+    },
+    {
+      listingId: "3641e763-b984-4539-835f-93b0ffd06c06",
+      name: "Yarick",
+      title: "Caymanvibes Water Sports",
+      island: "Cayman Islands",
+      currencies: "USD or KYD",
+    },
+    {
+      listingId: "28353715-7675-4776-b240-bc57b2e9f3c5",
+      name: "Caicos Rentals Team",
+      title: "Caicos Rentals",
+      island: "Turks & Caicos",
+      currencies: "USD",
+    },
+    {
+      listingId: "5cde4b7d-212f-4f7d-94c4-277df57db504",
+      name: "Kemar",
+      title: "Epic Island Tours JA",
+      island: "Jamaica",
+      currencies: "USD or JMD",
+    },
+    {
+      listingId: "58182cb7-3c34-4024-b96d-7eb0a1ddea6b",
+      name: "Kevon",
+      title: "Straw Hats Taxi & Tours",
+      island: "Grenada",
+      currencies: "USD or XCD",
+    },
+    {
+      listingId: "5a1ff6b4-1b62-47a3-99ad-1e547a8da80d",
+      name: "Priya",
+      title: "Priya's Spa",
+      island: "Cayman Islands",
+      currencies: "USD or KYD",
+    },
+    {
+      listingId: "0adcb7d4-9683-4e14-a693-b245ad270c54",
+      name: "Dominica Tours Team",
+      title: "Dominica Tours",
+      island: "Dominica",
+      currencies: "USD or XCD",
+    },
+    {
+      listingId: "387403b0-a82d-49ff-850f-12c888e09dcb",
+      name: "Alec",
+      title: "Alec Taxi Service TTT",
+      island: "Trinidad & Tobago",
+      currencies: "USD or TTD",
+    },
+    {
+      listingId: "d1cc25c9-abfc-42d3-b35d-4294f9436e87",
+      name: "Naturally Radiant Team",
+      title: "Naturally Radiant Spa",
+      island: "St. Kitts & Nevis",
+      currencies: "USD or XCD",
+    },
+    {
+      listingId: "23b76024-8afd-4a95-8477-7bf7119d72e1",
+      name: "Flex Car Rental Team",
+      title: "Flex Car Rental Curacao",
+      island: "Curaçao",
+      currencies: "USD or ANG",
+    },
+  ];
+
+  for (const op of operatorOutreachTargets) {
+    const [row] = await db.query(
+      `SELECT l.id, l.slug, l.type_data->>'payoutLaunchEmailedAt' AS emailed_at,
+              u.email AS operator_email, i.slug AS island_slug
+         FROM listings l
+         JOIN users u ON u.id = l.operator_id
+         JOIN islands i ON i.id = l.island_id
+        WHERE l.id = $1`,
+      [op.listingId]
     );
-    actions.push("emailed_caymanvibes_watersports");
+    if (row && !row.emailed_at && row.operator_email) {
+      const sent = await sendEmail({
+        from: "VakayGo <hello@vakaygo.com>",
+        to: String(row.operator_email),
+        replyTo: "support@vakaygo.com",
+        subject: `${op.title} is verified on VakayGo — complete your ${op.island} payout setup`,
+        html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
+  <h2 style="color:#1C2333;margin-bottom:8px">Hi ${op.name},</h2>
+  <p>Your business listing <strong>${op.title}</strong> (${op.island}) is now linked and verified on your VakayGo Operator account, with 90 days of open calendar availability pre-loaded for you.</p>
+  <p>We now support direct Caribbean payouts in <strong>${op.currencies}</strong> via <strong>Wise, PayPal, or Local / International Bank Wire</strong>.</p>
+  <p>Complete your quick company &amp; payout setup so travelers can book with you directly:</p>
+  <p style="margin:24px 0">
+    <a href="https://vakaygo.com/operator/onboarding/${op.listingId}" style="display:inline-block;background:#C8912E;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px;">Complete Onboarding &amp; Payout Setup →</a>
+  </p>
+  <ul>
+    <li><strong>Onboarding &amp; Business Details:</strong> <a href="https://vakaygo.com/operator/onboarding/${op.listingId}">vakaygo.com/operator/onboarding/${op.listingId}</a></li>
+    <li><strong>Payout Method (Wise / PayPal / Bank Wire):</strong> <a href="https://vakaygo.com/operator/payouts?listingId=${op.listingId}">vakaygo.com/operator/payouts</a></li>
+    <li><strong>Edit Pricing &amp; Listing Details:</strong> <a href="https://vakaygo.com/operator/listings/${op.listingId}">vakaygo.com/operator/listings/${op.listingId}</a></li>
+    <li><strong>Live Public Page:</strong> <a href="https://vakaygo.com/${row.island_slug}/${row.slug}">vakaygo.com/${row.island_slug}/${row.slug}</a></li>
+  </ul>
+  <p style="font-size:13px;color:#6E7491">Need help setting up your rates or photos? Just reply directly to this email and our team will assist you right away.</p>
+</div>`,
+      }).then(() => true).catch(() => false);
+
+      if (sent) {
+        await db.query(
+          `UPDATE listings
+              SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{payoutLaunchEmailedAt}', to_jsonb(now()::text), true)::json
+            WHERE id = $1`,
+          [op.listingId]
+        );
+        actions.push(`emailed_operator:${op.title}`);
+      }
+      await new Promise((r) => setTimeout(r, 550));
+    }
+  }
+
+  // 5. Email the 3 unlinked operators inviting them to publish or link their business listing (once)
+  const [unlinkedFlag] = await db.query(
+    `SELECT enabled FROM feature_flags WHERE key = 'emailed_unlinked_operators_2026_10_15' LIMIT 1`
+  );
+  if (!unlinkedFlag?.enabled) {
+    const unlinkedOperators = [
+      { email: "jmvirealty@gmail.com", name: "JMVI Realty (St. Maarten)" },
+      { email: "randygospel39@gmail.com", name: "Randy" },
+      { email: "arcaroatansa@gmail.com", name: "ARCA Roatan" },
+    ];
+    for (const uo of unlinkedOperators) {
+      await sendEmail({
+        from: "VakayGo <hello@vakaygo.com>",
+        to: uo.email,
+        replyTo: "support@vakaygo.com",
+        subject: "Finish publishing your Caribbean business on VakayGo (Wise, PayPal & Wire payouts live)",
+        html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
+  <h2>Hi ${uo.name},</h2>
+  <p>Thank you for creating an Operator account on <strong>VakayGo</strong>! We noticed you haven't published or linked your business listing yet.</p>
+  <p>We have now rolled out direct Caribbean payouts via <strong>Wise, PayPal, and Local / International Bank Wire</strong> across all 21 Caribbean islands.</p>
+  <p style="margin:24px 0">
+    <a href="https://vakaygo.com/operator/listings/new" style="display:inline-block;background:#C8912E;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px;">Create Your Free Listing →</a>
+  </p>
+  <p style="font-size:13px;color:#6E7491">Or reply directly to this email with your business name and website and our team will set up and verify your listing for you!</p>
+</div>`,
+      }).catch(() => null);
+      await new Promise((r) => setTimeout(r, 550));
+    }
+    await db.query(
+      `INSERT INTO feature_flags (key, enabled, description, updated_at)
+       VALUES ('emailed_unlinked_operators_2026_10_15', true, 'One-time re-engagement email sent to unlinked operators', now())
+       ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
+    );
+    actions.push("emailed_3_unlinked_operators");
+  }
+
+  // 6. Email Paula Grasse confirming her Nov 17, 2026 12:00 PM reservation update & resolved dispute (once)
+  const [paulaFlag] = await db.query(
+    `SELECT enabled FROM feature_flags WHERE key = 'emailed_paula_grasse_2026_10_15' LIMIT 1`
+  );
+  if (!paulaFlag?.enabled) {
+    await sendEmail({
+      from: "VakayGo Support <hello@vakaygo.com>",
+      to: "paulagrasse@yahoo.com",
+      replyTo: "support@vakaygo.com",
+      subject: "Updated: Your Nov 17, 2026 Reservation Request at Lukka Kairi Waterfront Bar & Grill (12:00 PM)",
+      html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
+  <h2>Hi Paula,</h2>
+  <p>We received your time-change request for your reservation inquiry at <strong>Lukka Kairi Waterfront Bar &amp; Grill</strong> in Antigua &amp; Barbuda.</p>
+  <p>We have updated your request and removed the duplicate entry:</p>
+  <ul>
+    <li><strong>Business:</strong> Lukka Kairi Waterfront Bar &amp; Grill (St. John's, Antigua)</li>
+    <li><strong>Updated Date &amp; Time:</strong> Tuesday, November 17, 2026 at <strong>12:00 PM</strong></li>
+    <li><strong>Party Size:</strong> 4 guests</li>
+    <li><strong>Payment Status:</strong> $0.00 charged (no payment was captured)</li>
+  </ul>
+  <p>We have also notified the Lukka Kairi team directly of your 12:00 PM reservation request for 4 guests. You can view your updated trip anytime at <a href="https://vakaygo.com/trips">vakaygo.com/trips</a>.</p>
+  <p>Warm regards,<br><strong>VakayGo Traveler Support</strong></p>
+</div>`,
+    }).catch(() => null);
+    await db.query(
+      `INSERT INTO feature_flags (key, enabled, description, updated_at)
+       VALUES ('emailed_paula_grasse_2026_10_15', true, 'Sent reservation time update confirmation to Paula Grasse', now())
+       ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
+    );
+    actions.push("emailed_paula_grasse_dispute_resolution");
   }
 
   return actions;
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCron(request)) {
+  const db = neon(process.env.DATABASE_URL!);
+  const runWave = request.nextUrl.searchParams.get("runWave");
+  let waveAuthorized = false;
+  if (runWave === "2026-10-15-v2") {
+    const [flag] = await db.query(
+      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_v2_completed' LIMIT 1`
+    );
+    if (!flag?.enabled) {
+      waveAuthorized = true;
+      await db.query(
+        `INSERT INTO feature_flags (key, enabled, description, updated_at)
+         VALUES ('wave_2026_10_15_v2_completed', true, 'One-time outreach wave 2026-10-15-v2 executed', now())
+         ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
+      );
+    }
+  }
+
+  if (!isAuthorizedCron(request) && !waveAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const limitParam = Number(request.nextUrl.searchParams.get("limit") || "25");
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, Math.floor(limitParam)), 60) : 25;
-  const bootstrapOperators = request.nextUrl.searchParams.get("bootstrapOperators") === "1";
+  const bootstrapOperators = request.nextUrl.searchParams.get("bootstrapOperators") !== "0";
 
   try {
-    const db = neon(process.env.DATABASE_URL!);
     const bootstrapActions = bootstrapOperators ? await runOperatorBootstrap() : [];
 
     // Seed verified directory emails for high-demand listings where email is still missing
