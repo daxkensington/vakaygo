@@ -140,6 +140,15 @@ export async function PATCH(request: Request) {
           [listingId]
         );
         await expireListingPendingCheckouts(listingId);
+      } else {
+        await sql.query(
+          `UPDATE listing_onboarding
+              SET activated_at = coalesce(activated_at, now()),
+                  updated_at = now()
+            WHERE listing_id = $1
+              AND vakaygo_onboarding_complete($1)`,
+          [listingId]
+        );
       }
       await revalidateListing(listingId);
 
@@ -148,6 +157,35 @@ export async function PATCH(request: Request) {
          VALUES ($1, $2, 'payout_profile', $3, $4::json)`,
         [auth.userId, `payout_profile_${decision}`, profileId, JSON.stringify({ listingId, decision, adminNotes })]
       );
+
+      if (decision === "verified") {
+        const [opInfo] = await sql.query(
+          `SELECT u.email, u.name, l.title, vakaygo_listing_bookable(l.id) AS bookable
+             FROM listings l
+             JOIN users u ON u.id = l.operator_id
+            WHERE l.id = $1`,
+          [listingId]
+        );
+        if (opInfo?.email && String(opInfo.email).toLowerCase() !== "unclaimed@vakaygo.com") {
+          import("@/server/mail-client")
+            .then(({ sendEmail }) =>
+              sendEmail({
+                from: "VakayGo <hello@vakaygo.com>",
+                to: String(opInfo.email),
+                replyTo: "support@vakaygo.com",
+                subject: `Your VakayGo payout profile for "${opInfo.title}" is verified!`,
+                html: `<p>Hi ${opInfo.name || "there"},</p>
+<p>Your payout profile for <strong>${opInfo.title}</strong> has been verified by our compliance team.</p>
+<p>${
+                  opInfo.bookable
+                    ? "Your listing is now <strong>active and accepting online bookings</strong> on VakayGo!"
+                    : `Finish any remaining listing details at <a href="https://vakaygo.com/operator/onboarding/${listingId}">your onboarding page</a> to go live for online bookings.`
+                }</p>`,
+              })
+            )
+            .catch(() => {});
+        }
+      }
 
       return NextResponse.json({ success: true, profile: updated });
     }

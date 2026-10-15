@@ -120,6 +120,17 @@ export async function POST(request: Request) {
       })
       .returning({ id: listings.id, slug: listings.slug });
 
+    // Seed 90 days of default future availability so the listing satisfies vakaygo_listing_setup_valid once approved
+    const defaultSpots = Math.max(1, Number(maxGuests) || (type === "stay" || type === "car" ? 1 : 10));
+    sql
+      .query(
+        `INSERT INTO availability (listing_id, date, spots, spots_remaining, is_blocked)
+         SELECT $1::uuid, (current_date + offs * interval '1 day')::timestamp, $2::int, $2::int, false
+         FROM generate_series(0, 89) AS offs`,
+        [listing.id, defaultSpots]
+      )
+      .catch((err) => logger.error("Seed default availability error", err));
+
     return NextResponse.json({ listing });
   } catch (error) {
     logger.error("Create listing error", error);

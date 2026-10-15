@@ -12,6 +12,10 @@ const BLOCKED_EMAIL_DOMAINS = new Set([
   "example.com",
   "example.org",
   "example.net",
+  "domain.com",
+  "yoursite.com",
+  "company.com",
+  "email.com",
   "sentry.io",
   "sentry.wixpress.com",
   "wixpress.com",
@@ -322,7 +326,7 @@ export async function sendBusinessInterestOutreachEmail(
             l.type_data->>'website' AS website,
             i.slug AS "islandSlug", i.name AS "islandName", i.is_active AS "islandActive",
             o.status AS "outreachStatus", o.notes AS "outreachNotes", o.contacted_at AS "contactedAt",
-            coalesce(d.interested_customers, 0)::int AS "interestedCustomers",
+            (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0))::int AS "interestedCustomers",
             vakaygo_listing_claim_verified(l.id) AS "claimVerified"
      FROM listings l
      JOIN islands i ON i.id = l.island_id
@@ -337,6 +341,11 @@ export async function sendBusinessInterestOutreachEmail(
          AND u.role <> 'admin'
          AND u.id <> l.operator_id
      ) d ON true
+     LEFT JOIN LATERAL (
+       SELECT count(*)::int AS booking_count
+       FROM bookings b
+       WHERE b.listing_id = l.id
+     ) bk ON true
      WHERE l.id = $1
      LIMIT 1`,
     [listingId]

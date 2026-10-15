@@ -396,9 +396,46 @@ export async function upsertOperatorPayoutProfile(operatorId: string, rawInput: 
     ]
   );
 
+  // Ensure the listing has future availability rows so the operator does not get blocked on setup validation
+  await query(
+    `INSERT INTO availability (listing_id, date, spots, spots_remaining, is_blocked)
+     SELECT l.id, (current_date + offs * interval '1 day')::timestamp,
+            GREATEST(1, coalesce(l.max_guests, CASE WHEN l.type IN ('stay','car') THEN 1 ELSE 10 END)),
+            GREATEST(1, coalesce(l.max_guests, CASE WHEN l.type IN ('stay','car') THEN 1 ELSE 10 END)),
+            false
+       FROM listings l
+       CROSS JOIN generate_series(0, 89) AS offs
+      WHERE l.id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM availability a
+           WHERE a.listing_id = l.id AND a.date >= current_date AND a.is_blocked = false AND a.spots > 0
+        )`,
+    [input.listingId]
+  ).catch(() => {});
+
   await expireListingPendingCheckouts(input.listingId);
   await revalidateListing(input.listingId);
 
   const listings = await getOperatorPayoutListings(operatorId);
-  return listings.find((item) => item.listingId === input.listingId) || null;
+  const matched = listings.find((item) => item.listingId === input.listingId) || null;
+
+  if (matched) {
+    import("@/server/mail-client")
+      .then(({ sendEmail }) =>
+        sendEmail({
+          from: "VakayGo <hello@vakaygo.com>",
+          to: "support@vakaygo.com",
+          subject: `[Payout Profile Review] ${matched.listingTitle} (${input.payoutMethod.toUpperCase()} · ${input.payoutCurrency})`,
+          html: `<p>Operator submitted a payout profile for <strong>${matched.listingTitle}</strong> (${matched.islandName}).</p>
+<ul>
+  <li><strong>Method:</strong> ${input.payoutMethod.toUpperCase()} (${input.payoutCurrency})</li>
+  <li><strong>W-8BEN Owner:</strong> ${input.w8benBeneficialOwner} (${input.w8benCountry})</li>
+</ul>
+<p><a href="https://vakaygo.com/admin/payout-profiles">Review &amp; Verify in Admin Dashboard</a></p>`,
+        })
+      )
+      .catch(() => {});
+  }
+
+  return matched;
 }

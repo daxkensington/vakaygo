@@ -152,6 +152,7 @@ describe("Automated Business Outreach & Website Email Enrichment", () => {
     expect(emails).not.toContain("support@example.com");
     expect(isValidBusinessEmail("admin@caicosrentals.com")).toBe(true);
     expect(isValidBusinessEmail("visitor@example.invalid")).toBe(false);
+    expect(isValidBusinessEmail("user@domain.com")).toBe(false);
 
     const listingId = "20000000-0000-4000-8000-000000000009";
     const token = createOutreachUnsubscribeToken(listingId);
