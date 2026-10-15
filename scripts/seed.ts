@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import { eq } from "drizzle-orm";
 import { islands, categories, listings, media, users } from "../drizzle/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
@@ -29,7 +30,19 @@ async function seed() {
     .onConflictDoNothing({ target: islands.slug })
     .returning({ id: islands.id });
 
-  const islandId = grenada?.id || 1;
+  // Insert returns nothing when Grenada already exists, so look it up
+  let islandId = grenada?.id;
+  if (islandId === undefined) {
+    const [existing] = await db
+      .select({ id: islands.id })
+      .from(islands)
+      .where(eq(islands.slug, "grenada"))
+      .limit(1);
+    islandId = existing?.id;
+  }
+  if (islandId === undefined) {
+    throw new Error("Could not resolve Grenada island id (slug 'grenada') after insert; aborting seed.");
+  }
   console.log("Island seeded:", islandId);
 
   // 2. Seed categories
@@ -374,4 +387,7 @@ async function seed() {
   console.log("\nDone! Seeded Grenada with listings.");
 }
 
-seed().catch(console.error);
+seed().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

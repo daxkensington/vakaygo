@@ -62,7 +62,8 @@ export function GuidesContent() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (signal: AbortSignal) => {
+    if (signal.aborted) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -71,20 +72,24 @@ export function GuidesContent() {
       if (category) params.set("category", category);
       if (search) params.set("q", search);
 
-      const res = await fetch(`/api/blog?${params}`);
+      const res = await fetch(`/api/blog?${params}`, { signal });
       const data = await res.json();
+      if (signal.aborted) return;
       setPosts(data.posts || []);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
     } catch {
+      if (signal.aborted) return;
       setPosts([]);
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, [page, category, search]);
 
   useEffect(() => {
-    fetchPosts();
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
+    return () => controller.abort();
   }, [fetchPosts]);
 
   const handleSearch = (e: React.FormEvent) => {

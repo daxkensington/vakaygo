@@ -3,9 +3,8 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings } from "@/drizzle/schema";
 import { inArray, sql } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { logAdminAction } from "@/server/audit";
+import { requireAdmin } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 const VALID_ACTIONS = ["approve", "reject", "pause", "delete"] as const;
@@ -17,29 +16,11 @@ const STATUS_MAP: Record<Exclude<BulkAction, "delete">, string> = {
   pause: "paused",
 };
 
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function verifyAdmin(_request: NextRequest): Promise<{ ok: boolean; adminId?: string }> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) return { ok: false };
-
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return { ok: false };
-    return { ok: true, adminId: payload.id as string };
-  } catch {
-    return { ok: false };
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin auth
-    const { ok: isAdmin, adminId } = await verifyAdmin(request);
-    if (!isAdmin || !adminId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
+    const adminId = auth.userId;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const body = await request.json();

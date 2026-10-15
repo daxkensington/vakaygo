@@ -54,6 +54,9 @@ export async function GET(
     }
 
     const now = new Date();
+    const startOfTodayUtc = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
 
     // Fetch confirmed/completed bookings (future and recent)
     const bookingRows = await db
@@ -86,7 +89,7 @@ export async function GET(
         and(
           eq(availability.listingId, listingId),
           eq(availability.isBlocked, true),
-          gte(availability.date, now)
+          gte(availability.date, startOfTodayUtc)
         )
       );
 

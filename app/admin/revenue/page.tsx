@@ -31,14 +31,33 @@ function formatMoneyFull(n: number) {
 export default function AdminRevenuePage() {
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
-    fetch("/api/admin/revenue")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true;
+    setLoading(true);
+    setData(null);
+
+    async function loadRevenue() {
+      try {
+        const response = await fetch("/api/admin/revenue");
+        if (!response.ok) {
+          throw new Error("Failed to load revenue data.");
+        }
+        const revenue: RevenueData = await response.json();
+        if (active) setData(revenue);
+      } catch {
+        if (active) setData(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadRevenue();
+    return () => {
+      active = false;
+    };
+  }, [retryAttempt]);
 
   if (loading) {
     return (
@@ -50,8 +69,20 @@ export default function AdminRevenuePage() {
 
   if (!data) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center gap-3">
         <p className="text-navy-400">Failed to load revenue data.</p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => {
+            if (loading) return;
+            setLoading(true);
+            setRetryAttempt((attempt) => attempt + 1);
+          }}
+          className="rounded-lg border border-navy-400 px-4 py-2 font-medium text-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }

@@ -26,17 +26,98 @@ function slugify(text: string): string {
     .substring(0, 200);
 }
 
-function parseCsv(content: string): Record<string, string>[] {
-  const lines = content.trim().split("\n");
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  return lines.slice(1).map((line) => {
-    const values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let value = "";
+  let inQuotes = false;
+  let quoted = false;
+  let closed = false;
+
+  const finishField = () => {
+    fields.push(quoted ? value : value.trim());
+    value = "";
+    quoted = false;
+    closed = false;
+  };
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          value += '"';
+          i++;
+        } else {
+          inQuotes = false;
+          closed = true;
+        }
+      } else {
+        value += char;
+      }
+    } else if (char === ",") {
+      finishField();
+    } else if (closed) {
+      if (char.trim() !== "") {
+        throw new Error("Unexpected character after closing quote");
+      }
+    } else if (char === '"') {
+      if (value.trim() !== "") {
+        throw new Error("Unexpected quote in unquoted field");
+      }
+      value = "";
+      quoted = true;
+      inQuotes = true;
+    } else {
+      value += char;
+    }
+  }
+
+  if (inQuotes) {
+    throw new Error("Unterminated quoted field (quoted newlines are unsupported)");
+  }
+  finishField();
+  return fields;
+}
+
+function parseCsv(content: string): { rows: Record<string, string>[]; rejected: number } {
+  const lines = content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").split("\n");
+  const headerIndex = lines.findIndex((line) => line.trim() !== "");
+  const rows: Record<string, string>[] = [];
+  let rejected = 0;
+
+  if (headerIndex === -1) {
+    return { rows, rejected };
+  }
+
+  const headers = parseCsvLine(lines[headerIndex]).map((h) => h.trim().toLowerCase());
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === "") {
+      continue;
+    }
+
+    let values: string[];
+    try {
+      values = parseCsvLine(line);
+    } catch (err) {
+      rejected++;
+      console.warn(`Rejected CSV line ${i + 1}: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
+    }
+
+    if (values.length !== headers.length) {
+      rejected++;
+      console.warn(`Rejected CSV line ${i + 1}: expected ${headers.length} columns, got ${values.length}`);
+      continue;
+    }
+
     const row: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      row[h] = values[i] || "";
+    headers.forEach((h, index) => {
+      row[h] = values[index] || "";
     });
-    return row;
-  });
+    rows.push(row);
+  }
+  return { rows, rejected };
 }
 
 async function main() {
@@ -48,7 +129,7 @@ async function main() {
   }
 
   const content = readFileSync(csvPath, "utf-8");
-  const rows = parseCsv(content);
+  const { rows, rejected } = parseCsv(content);
   console.log(`Found ${rows.length} businesses in CSV`);
 
   const sql = neon(DATABASE_URL);
@@ -145,6 +226,7 @@ async function main() {
   console.log(`\n=== Import Complete ===`);
   console.log(`Imported: ${imported}`);
   console.log(`Skipped: ${skipped}`);
+  console.log(`Rejected (malformed): ${rejected}`);
 }
 
 main().catch(console.error);

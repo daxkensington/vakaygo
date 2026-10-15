@@ -8,15 +8,22 @@ import { BookingWidget } from "@/components/listings/booking-widget";
 type Listing = ComponentProps<typeof BookingWidget>["listing"] & { title: string; typeData?: { unclaimed?: boolean } };
 export default function BookingPage() {
   const { island, slug } = useParams<{island:string;slug:string}>();
-  const [listing,setListing] = useState<Listing | null>(null);
+  const [state, setState] = useState<{ slug: string; listing: Listing | null; error: string }>({
+    slug: "",
+    listing: null,
+    error: "",
+  });
+  const listing = state.slug === slug ? state.listing : null;
+  const error = state.slug === slug ? state.error : "";
   const current = useCurrentBookingEligibility(listing?.id);
-  const [error,setError] = useState("");
   useEffect(() => {
     const abort = new AbortController();
     fetch("/api/listings/"+encodeURIComponent(slug),{signal:abort.signal, cache:"no-store"})
       .then(async r => { if(!r.ok) throw new Error("This listing is unavailable"); return r.json(); })
-      .then(data => setListing(data.listing))
-      .catch(e => {if(e.name !== "AbortError")setError("This listing is unavailable");});
+      .then(data => {
+        setState({ slug, listing: data.listing, error: "" });
+      })
+      .catch(e => {if(e.name !== "AbortError")setState({ slug, listing: null, error: "This listing is unavailable" });});
     return () => abort.abort();
   },[slug]);
   return <><Header /><main className="min-h-screen bg-cream-50 px-6 pt-24 pb-12"><div className="max-w-xl mx-auto">

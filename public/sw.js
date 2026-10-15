@@ -14,7 +14,7 @@
 //   - Bump CACHE_VERSION on every release that changes cached behavior; the
 //     activate handler purges any cache whose key doesn't match the current
 //     version prefix.
-const CACHE_VERSION = "vakaygo-v3";
+const CACHE_VERSION = "vakaygo-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const FAVORITES_CACHE = `${CACHE_VERSION}-favorites`;
@@ -93,14 +93,16 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() =>
-          caches.match(request).then(
-            (cached) =>
-              cached ||
-              caches.open(FAVORITES_CACHE).then((cache) => cache.match(request)) ||
-              caches.match("/offline")
-          )
-        )
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+
+          const favoritesCache = await caches.open(FAVORITES_CACHE);
+          const favorite = await favoritesCache.match(request);
+          if (favorite) return favorite;
+
+          return caches.match("/offline");
+        })
     );
     return;
   }

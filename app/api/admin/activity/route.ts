@@ -161,6 +161,6 @@ export async function GET() {
     });
   } catch (err) {
     logger.error("Activity feed error", err);
-    return NextResponse.json({ events: [], today: { users: 0, bookings: 0, listings: 0, reviews: 0 } });
+    return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });
   }
 }

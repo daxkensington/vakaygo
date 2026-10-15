@@ -54,10 +54,20 @@ function formatTime(iso: string) {
   });
 }
 
+function escapeICSText(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n/g, "\\n");
+}
+
 function getGoogleCalendarUrl(data: VoucherData) {
   const start = new Date(data.date);
   const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
-  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  // Booking timestamps are wall-clock values stored in UTC digits; omit trailing Z
+  // so Google Calendar treats them as floating local island time.
+  const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: data.listingTitle,
@@ -71,18 +81,25 @@ function getGoogleCalendarUrl(data: VoucherData) {
 function getICSContent(data: VoucherData) {
   const start = new Date(data.date);
   const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
-  const formatICS = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//VakayGo//Booking//EN
-BEGIN:VEVENT
-DTSTART:${formatICS(start)}
-DTEND:${formatICS(end)}
-SUMMARY:${data.listingTitle}
-DESCRIPTION:Booking #${data.bookingNumber}\\nGuests: ${data.guestCount}\\nOperator: ${data.operatorName}
-LOCATION:${data.listingAddress || ""}
-END:VEVENT
-END:VCALENDAR`;
+  const formatICS = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
+  const description = [
+    `Booking #${escapeICSText(data.bookingNumber)}`,
+    `Guests: ${escapeICSText(String(data.guestCount))}`,
+    `Operator: ${escapeICSText(data.operatorName)}`,
+  ].join("\\n");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//VakayGo//Booking//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${formatICS(start)}`,
+    `DTEND:${formatICS(end)}`,
+    `SUMMARY:${escapeICSText(data.listingTitle)}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${escapeICSText(data.listingAddress || "")}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
 }
 
 function downloadICS(data: VoucherData) {

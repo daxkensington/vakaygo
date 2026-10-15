@@ -221,8 +221,31 @@ export async function PATCH(
 
     if (!updated) {
       if (isCompleting) {
-        // Lost the race (already completed) — idempotent success, no re-award.
-        return NextResponse.json({ booking: { id: bookingId, status: "completed" } });
+        // The guarded UPDATE matched nothing. Re-read the row so a booking that
+        // was cancelled (or has a cancellation pending) is never reported as
+        // completed.
+        const [current] = await db
+          .select({ status: bookings.status, cancellationRequestedAt: bookings.cancellationRequestedAt })
+          .from(bookings)
+          .where(eq(bookings.id, bookingId))
+          .limit(1);
+        if (!current) {
+          return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+        }
+        if (current.status === "completed") {
+          // Lost the race (already completed) — idempotent success, no re-award.
+          return NextResponse.json({ booking: { id: bookingId, status: "completed" } });
+        }
+        const cancellationPending = !!current.cancellationRequestedAt;
+        return NextResponse.json(
+          {
+            error: cancellationPending
+              ? "This booking has a cancellation pending and cannot be completed"
+              : `This booking is ${current.status} and cannot be completed`,
+            booking: { id: bookingId, status: current.status, cancellationPending },
+          },
+          { status: 409 }
+        );
       }
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }

@@ -36,6 +36,7 @@ const statusConfig: Record<string, { bg: string; color: string; icon: typeof Clo
 export default function VerificationsPage() {
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -49,11 +50,26 @@ export default function VerificationsPage() {
 
   useEffect(() => {
     fetch("/api/admin/verifications")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.error) setVerifications(data.verifications || data);
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        const list = Array.isArray(data?.verifications)
+          ? data.verifications
+          : Array.isArray(data)
+            ? data
+            : null;
+        if (!r.ok || !list) {
+          setLoadFailed(true);
+          setError(
+            (data && typeof data.error === "string" && data.error) || "Failed to load verifications"
+          );
+          return;
+        }
+        setVerifications(list);
       })
-      .catch(() => setError("Failed to load verifications"))
+      .catch(() => {
+        setLoadFailed(true);
+        setError("Failed to load verifications");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -167,12 +183,12 @@ export default function VerificationsPage() {
           <Clock size={18} className="text-amber-500" />
           Pending ({pending.length})
         </h2>
-        {pending.length === 0 ? (
+        {pending.length === 0 && !loadFailed ? (
           <div className="bg-white rounded-2xl p-8 shadow-[var(--shadow-card)] text-center">
             <ShieldCheck className="w-12 h-12 text-green-300 mx-auto mb-4" />
             <p className="text-navy-500 font-medium">All caught up! No pending verifications.</p>
           </div>
-        ) : (
+        ) : pending.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {pending.map((v) => (
               <div key={v.id} className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)]">
@@ -263,7 +279,7 @@ export default function VerificationsPage() {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Reviewed Verifications */}

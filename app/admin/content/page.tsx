@@ -20,6 +20,23 @@ type SettingEntry = {
 
 type Settings = Record<string, SettingEntry>;
 
+async function readError(res: Response, fallback: string) {
+  try {
+    const data: unknown = await res.json();
+    if (typeof data === "object" && data !== null) {
+      if ("error" in data && typeof data.error === "string" && data.error.trim()) {
+        return data.error;
+      }
+      if ("message" in data && typeof data.message === "string" && data.message.trim()) {
+        return data.message;
+      }
+    }
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
 function Toggle({
   checked,
   onChange,
@@ -67,8 +84,11 @@ export default function ContentManagement() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{ section: string; message: string } | null>(null);
 
   // Local form state
   const [promoBannerText, setPromoBannerText] = useState("");
@@ -81,6 +101,10 @@ export default function ContentManagement() {
   const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/platform");
+      if (!res.ok) {
+        setLoadError(await readError(res, `Failed to load settings (${res.status})`));
+        return;
+      }
       const data: Settings = await res.json();
       setSettings(data);
 
@@ -90,8 +114,10 @@ export default function ContentManagement() {
       setAnnouncementText(data.announcement_text?.value ?? "");
       setAnnouncementEnabled(data.announcement_enabled?.value === "true");
       setMaintenanceMode(data.maintenance_mode?.value === "true");
+      setLoadError(null);
+      setHasLoaded(true);
     } catch {
-      // silent
+      setLoadError("Could not reach the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -102,19 +128,31 @@ export default function ContentManagement() {
   }, [fetchSettings]);
 
   async function saveSection(section: string, kvPairs: Record<string, string>) {
+    if (!hasLoaded) return;
     setSaving(section);
     setSaved(null);
+    setSaveError(null);
     try {
-      await fetch("/api/admin/platform", {
+      const res = await fetch("/api/admin/platform", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settings: kvPairs, adminId: user?.id }),
       });
+      if (!res.ok) {
+        setSaveError({
+          section,
+          message: await readError(res, `Save failed (${res.status})`),
+        });
+        return;
+      }
       setSaved(section);
       setTimeout(() => setSaved(null), 3000);
       await fetchSettings();
     } catch {
-      // silent
+      setSaveError({
+        section,
+        message: "Could not reach the server. Check your connection and try again.",
+      });
     } finally {
       setSaving(null);
     }
@@ -139,6 +177,26 @@ export default function ContentManagement() {
       <p className="mb-8 text-navy-400">
         Manage promotional banners, announcements, and maintenance mode.
       </p>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          <p>{loadError}</p>
+          {!hasLoaded && <p>Saving is disabled until settings load.</p>}
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              fetchSettings();
+            }}
+            className="mt-2 font-semibold underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* ── Promo Banner ── */}
@@ -207,6 +265,11 @@ export default function ContentManagement() {
                     <TimeAgo date={settings.promo_banner_text.updatedAt} />
                   </span>
                 )}
+                {saveError?.section === "promo" && (
+                  <p role="alert" className="text-xs text-red-600">
+                    {saveError.message}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() =>
@@ -216,7 +279,7 @@ export default function ContentManagement() {
                     promo_banner_enabled: String(promoBannerEnabled),
                   })
                 }
-                disabled={saving === "promo"}
+                disabled={saving === "promo" || !hasLoaded}
                 className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-800 disabled:opacity-60"
               >
                 {saving === "promo" ? (
@@ -282,6 +345,11 @@ export default function ContentManagement() {
                     <TimeAgo date={settings.announcement_text.updatedAt} />
                   </span>
                 )}
+                {saveError?.section === "announcement" && (
+                  <p role="alert" className="text-xs text-red-600">
+                    {saveError.message}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() =>
@@ -290,7 +358,7 @@ export default function ContentManagement() {
                     announcement_enabled: String(announcementEnabled),
                   })
                 }
-                disabled={saving === "announcement"}
+                disabled={saving === "announcement" || !hasLoaded}
                 className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-600 disabled:opacity-60"
               >
                 {saving === "announcement" ? (
@@ -338,6 +406,11 @@ export default function ContentManagement() {
                   <TimeAgo date={settings.maintenance_mode.updatedAt} />
                 </span>
               )}
+              {saveError?.section === "maintenance" && (
+                <p role="alert" className="text-xs text-red-600">
+                  {saveError.message}
+                </p>
+              )}
             </div>
             <button
               onClick={() =>
@@ -345,7 +418,7 @@ export default function ContentManagement() {
                   maintenance_mode: String(maintenanceMode),
                 })
               }
-              disabled={saving === "maintenance"}
+              disabled={saving === "maintenance" || !hasLoaded}
               className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
             >
               {saving === "maintenance" ? (

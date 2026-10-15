@@ -8,46 +8,75 @@ type PushStatus = "unsupported" | "default" | "granted" | "denied" | "loading";
 export function PushPermission() {
   const { user } = useAuth();
   const [status, setStatus] = useState<PushStatus>("loading");
+  const [subscribed, setSubscribed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
-    if (!("Notification" in window) || !("PushManager" in window)) {
+    if (!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) {
       setStatus("unsupported");
       return;
     }
-    setStatus(Notification.permission as PushStatus);
+
+    const permission = Notification.permission;
+    if (permission === "denied") {
+      setStatus(permission);
+      return;
+    }
+
+    let cancelled = false;
+    const checkSubscription = async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!cancelled) setSubscribed(Boolean(subscription));
+      } catch {
+        if (!cancelled) setSubscribed(false);
+      } finally {
+        if (!cancelled) setStatus(Notification.permission);
+      }
+    };
+    void checkSubscription();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const subscribe = useCallback(async () => {
     if (!user) return;
     setSubscribing(true);
+    setError(null);
+    setSubscribed(false);
+    let subscription: PushSubscription | null = null;
 
     try {
       const permission = await Notification.requestPermission();
-      setStatus(permission as PushStatus);
+      setStatus(permission);
 
       if (permission !== "granted") {
-        setSubscribing(false);
+        if (permission === "default") {
+          setError("Push notification permission was dismissed.");
+        }
         return;
       }
-
-      const registration = await navigator.serviceWorker.ready;
 
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
         console.error("VAPID public key not configured");
-        setSubscribing(false);
+        setError("Could not enable notifications. Please try again.");
         return;
       }
 
-      const subscription = await registration.pushManager.subscribe({
+      const registration = await navigator.serviceWorker.ready;
+      subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
 
       const subJson = subscription.toJSON();
 
-      await fetch("/api/push/subscribe", {
+      const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -58,8 +87,21 @@ export function PushPermission() {
           },
         }),
       });
+      if (!res.ok) {
+        throw new Error("Push subscription registration failed");
+      }
+      setSubscribed(true);
     } catch (error) {
       console.error("Push subscription failed:", error);
+      setSubscribed(false);
+      setError("Could not enable notifications. Please try again.");
+      if (subscription) {
+        try {
+          await subscription.unsubscribe();
+        } catch (cleanupError) {
+          console.error("Push subscription cleanup failed:", cleanupError);
+        }
+      }
     } finally {
       setSubscribing(false);
     }
@@ -67,22 +109,30 @@ export function PushPermission() {
 
   const unsubscribe = useCallback(async () => {
     setSubscribing(true);
+    setError(null);
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
-        await fetch("/api/push/subscribe", {
+        const res = await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: subscription.endpoint }),
         });
-        await subscription.unsubscribe();
+        if (!res.ok) {
+          throw new Error("Push subscription removal failed");
+        }
+        const removed = await subscription.unsubscribe();
+        if (!removed) {
+          throw new Error("Browser push subscription removal failed");
+        }
       }
 
-      setStatus("default");
+      setSubscribed(false);
     } catch (error) {
       console.error("Push unsubscribe failed:", error);
+      setError("Could not disable notifications. Please try again.");
     } finally {
       setSubscribing(false);
     }
@@ -99,29 +149,35 @@ export function PushPermission() {
     );
   }
 
-  if (status === "granted") {
+  if (subscribed) {
     return (
-      <button
-        onClick={unsubscribe}
-        disabled={subscribing}
-        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-50"
-      >
-        <BellIcon className="text-teal-400" />
-        <span>{subscribing ? "Updating..." : "Push notifications enabled"}</span>
-        <span className="ml-auto text-xs text-slate-500">Disable</span>
-      </button>
+      <>
+        <button
+          onClick={unsubscribe}
+          disabled={subscribing}
+          className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-50"
+        >
+          <BellIcon className="text-teal-400" />
+          <span>{subscribing ? "Updating..." : "Push notifications enabled"}</span>
+          <span className="ml-auto text-xs text-slate-500">Disable</span>
+        </button>
+        {error && <p role="alert" className="px-4 py-2 text-xs text-slate-400">{error}</p>}
+      </>
     );
   }
 
   return (
-    <button
-      onClick={subscribe}
-      disabled={subscribing}
-      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-    >
-      <BellIcon className="text-slate-400" />
-      <span>{subscribing ? "Enabling..." : "Enable push notifications"}</span>
-    </button>
+    <>
+      <button
+        onClick={subscribe}
+        disabled={subscribing}
+        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+      >
+        <BellIcon className="text-slate-400" />
+        <span>{subscribing ? "Enabling..." : "Enable push notifications"}</span>
+      </button>
+      {error && <p role="alert" className="px-4 py-2 text-xs text-slate-400">{error}</p>}
+    </>
   );
 }
 

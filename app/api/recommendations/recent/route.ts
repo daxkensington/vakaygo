@@ -26,7 +26,7 @@ export async function GET() {
 
     const db = getDb();
 
-    // Get last 4 distinct recently viewed listings
+    // Get the latest view for each distinct active listing
     const recent = await db
       .selectDistinctOn([listingViews.listingId], {
         id: listings.id,
@@ -59,8 +59,7 @@ export async function GET() {
           eq(listings.status, "active")
         )
       )
-      .orderBy(listingViews.listingId, desc(listingViews.createdAt))
-      .limit(4);
+      .orderBy(listingViews.listingId, desc(listingViews.createdAt));
 
     // Sort by most recently viewed
     recent.sort((a, b) => {
@@ -69,7 +68,7 @@ export async function GET() {
       return bTime - aTime;
     });
 
-    return NextResponse.json({ listings: recent });
+    return NextResponse.json({ listings: recent.slice(0, 4) });
   } catch (error) {
     logger.error("Recent views error", error);
     return NextResponse.json({ listings: [] });

@@ -42,7 +42,7 @@ export async function searchListings(params: SearchListingsParams): Promise<List
 
   if (params.type && params.type !== "all") {
     conditions.push(
-      eq(listings.type, params.type as "stay" | "tour" | "dining" | "event" | "transport" | "guide" | "excursion" | "transfer" | "vip")
+      eq(listings.type, params.type as "stay" | "tour" | "dining" | "event" | "transport" | "guide" | "excursion" | "transfer" | "vip" | "spa")
     );
   }
 
@@ -52,9 +52,8 @@ export async function searchListings(params: SearchListingsParams): Promise<List
       .from(islands)
       .where(eq(islands.slug, params.island))
       .limit(1);
-    if (islandRow) {
-      conditions.push(eq(listings.islandId, islandRow.id));
-    }
+    if (!islandRow) return [];
+    conditions.push(eq(listings.islandId, islandRow.id));
   }
 
   if (params.q) {

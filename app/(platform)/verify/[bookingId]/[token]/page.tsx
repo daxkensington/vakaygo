@@ -58,6 +58,7 @@ export default function VerifyPage({
   const [data, setData] = useState<VerifyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [checkInError, setCheckInError] = useState("");
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function VerifyPage({
 
   const handleCheckIn = useCallback(async () => {
     if (!data) return;
+    setCheckInError("");
     setCheckingIn(true);
     try {
       const res = await fetch(`/api/bookings/${bookingId}/verify`, {
@@ -97,14 +99,19 @@ export default function VerifyPage({
         body: JSON.stringify({ token }),
       });
       const result = await res.json();
-      if (result.success) {
+      const isObject = result !== null && typeof result === "object" && !Array.isArray(result);
+      if (res.ok && isObject && result.success === true) {
         setCheckedIn(true);
         setCheckInTime(result.checkedInAt);
       } else {
-        setError(result.error || "Failed to check in");
+        setCheckInError(
+          isObject && typeof result.error === "string" && result.error.trim()
+            ? result.error
+            : "Failed to check in"
+        );
       }
     } catch {
-      setError("Failed to check in");
+      setCheckInError("Failed to check in");
     } finally {
       setCheckingIn(false);
     }
@@ -267,10 +274,14 @@ export default function VerifyPage({
             <button
               onClick={handleCheckIn}
               disabled={checkingIn}
+              aria-describedby={checkInError ? "check-in-error" : undefined}
               className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-[0_4px_20px_rgba(26,107,106,0.4)] flex items-center justify-center gap-2"
             >
               {checkingIn ? (
-                <Loader2 size={20} className="animate-spin" />
+                <>
+                  <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+                  Checking in...
+                </>
               ) : (
                 <>
                   <UserCheck size={20} />
@@ -278,6 +289,11 @@ export default function VerifyPage({
                 </>
               )}
             </button>
+            {checkInError && (
+              <p id="check-in-error" role="alert" className="mt-3 text-sm text-red-600">
+                {checkInError}
+              </p>
+            )}
           </div>
         )}
 

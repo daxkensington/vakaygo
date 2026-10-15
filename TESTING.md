@@ -17,21 +17,21 @@ npm run test:e2e
 
 `playwright.config.ts` boots `npm run dev` and points tests at `http://localhost:3000`. Set `BASE_URL` to point at a deployed preview instead.
 
-E2E tests need a real database. We use a dedicated Neon branch:
+E2E tests need a real database. Locally, use the Neon `vercel-preview` branch — the same copy-on-write branch Vercel previews and local builds use (see `CLAUDE.md`):
 
-- **Branch name:** `ci-test`
-- **Branch ID:** `br-purple-glade-ams5jrv3`
+- **Branch name:** `vercel-preview`
+- **Branch ID:** `br-broad-lake-am17nibq`
 - **Project:** `vakaygo` (`flat-sun-10960001`)
 
-To rotate or refresh the branch (e.g., to pick up new prod data), recreate it from `main` in the Neon dashboard or via the Neon MCP / CLI — keep the same name so existing local `.env.local` and the GitHub `DATABASE_URL_PREVIEW` secret continue to work.
+The old `ci-test` branch (`br-purple-glade-ams5jrv3`) is archived. Do not recreate it or point anything at it.
 
 ### Local setup
 
-Copy the connection string for `ci-test` from the Neon dashboard into `.env.local` as `DATABASE_URL`. **Do not commit it.**
+Copy the connection string for `vercel-preview` from the Neon dashboard into `.env.local` as `DATABASE_URL`. **Do not commit it.**
 
 ### CI setup
 
-The `e2e` and `lighthouse` jobs in `.github/workflows/ci.yml` read `secrets.DATABASE_URL_PREVIEW`. Add it as a GitHub repo secret with the `ci-test` branch URL.
+CI pipelines use their own throwaway Postgres and must not target the archived `ci-test` branch. The earlier advice to keep `ci-test` alive so `DATABASE_URL_PREVIEW` continues to work no longer applies — do not set `DATABASE_URL_PREVIEW` (or any other secret) to a `ci-test` URL.
 
 ## Lighthouse CI
 
