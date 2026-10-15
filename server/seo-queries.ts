@@ -204,10 +204,15 @@ export async function getTopListingsByType(
       and(
         eq(listings.islandId, islandId),
         eq(listings.type, type as any),
-        eq(listings.status, "active")
+        eq(listings.status, "active"),
+        sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`
       )
     )
-    .orderBy(desc(listings.avgRating), desc(listings.reviewCount))
+    .orderBy(
+      sql`${listings.isFeatured} DESC NULLS LAST`,
+      sql`${listings.avgRating} DESC NULLS LAST`,
+      sql`${listings.reviewCount} DESC NULLS LAST`
+    )
     .limit(limit);
 
   return results;
@@ -244,9 +249,17 @@ export async function getTopListingsForIsland(
       and(eq(media.listingId, listings.id), eq(media.isPrimary, true))
     )
     .where(
-      and(eq(listings.islandId, islandId), eq(listings.status, "active"))
+      and(
+        eq(listings.islandId, islandId),
+        eq(listings.status, "active"),
+        sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`
+      )
     )
-    .orderBy(desc(listings.avgRating), desc(listings.reviewCount))
+    .orderBy(
+      sql`${listings.isFeatured} DESC NULLS LAST`,
+      sql`${listings.avgRating} DESC NULLS LAST`,
+      sql`${listings.reviewCount} DESC NULLS LAST`
+    )
     .limit(limit);
 }
 

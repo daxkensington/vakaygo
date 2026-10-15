@@ -79,10 +79,7 @@ export default function MapPage() {
     }, 20_000);
     async function loadListings() {
       try {
-        // Initial paint loads 500. 2000 was a 1.5-2 MB JSON blob and
-        // ~1.3s TBT for no visible benefit (most pins overlap at default
-        // zoom). Refilter via the island chips to drill in further.
-        const params = new URLSearchParams({ limit: "500" });
+        const params = new URLSearchParams({ limit: "1500" });
         if (activeIsland) params.set("island", activeIsland);
         const res = await fetch(`/api/listings?${params}`, { signal: controller.signal, cache: "no-store" });
         if (!current || controller.signal.aborted) return;

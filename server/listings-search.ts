@@ -112,16 +112,20 @@ function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean): { wher
 }
 
 function orderFor(f: ListingFilters, relevance: SQL | null): SQL[] {
-  const primary =
-    f.sort === "price-asc" ? asc(listings.priceAmount)
-    : f.sort === "price-desc" ? desc(listings.priceAmount)
-    : f.sort === "rating" ? desc(listings.avgRating)
-    : f.sort === "newest" ? desc(listings.createdAt)
-    : f.sort === "most-reviews" ? desc(listings.reviewCount)
-    : desc(listings.isFeatured);
+  const primary: SQL[] =
+    f.sort === "price-asc" ? [sql`${listings.priceAmount} ASC NULLS LAST`]
+    : f.sort === "price-desc" ? [sql`${listings.priceAmount} DESC NULLS LAST`]
+    : f.sort === "rating" ? [sql`${listings.avgRating} DESC NULLS LAST`, sql`${listings.reviewCount} DESC NULLS LAST`]
+    : f.sort === "newest" ? [sql`${listings.createdAt} DESC NULLS LAST`]
+    : f.sort === "most-reviews" ? [sql`${listings.reviewCount} DESC NULLS LAST`, sql`${listings.avgRating} DESC NULLS LAST`]
+    : [
+        sql`${listings.isFeatured} DESC NULLS LAST`,
+        sql`${listings.reviewCount} DESC NULLS LAST`,
+        sql`${listings.avgRating} DESC NULLS LAST`,
+      ];
   const order: SQL[] = relevance && f.sort === "recommended"
-    ? [relevance, primary, desc(listings.reviewCount)]
-    : [primary];
+    ? [relevance, ...primary]
+    : [...primary];
   // Deterministic paging: identical sort keys would otherwise let a row
   // appear on two pages (or on neither).
   order.push(asc(listings.id));

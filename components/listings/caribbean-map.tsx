@@ -504,16 +504,12 @@ export default function CaribbeanMap({
           essential: true,
         });
       } else {
-        // Auto dark mode check on initial load
+        // Record destination day/night indicator while keeping vibrant 3D Satellite view as default
         const centerLng = activeIslandRef.current && islandCoords[activeIslandRef.current]
           ? islandCoords[activeIslandRef.current].center[0]
           : CARIBBEAN_CENTER[0];
         const night = isNighttimeAtLng(centerLng);
         setIsNighttime(night);
-        if (night && !autoDarkApplied) {
-          setAutoDarkApplied(true);
-          setMapStyle("dark");
-        }
 
         setTimeout(() => {
           if (!activeIslandRef.current) {
@@ -592,7 +588,7 @@ export default function CaribbeanMap({
 
     const html = `
       <div style="width:260px;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;border-radius:12px;">
-        ${safeImage ? `<div role="img" aria-label="${safeTitle}" style="height:130px;background:url('${safeImage}') center/cover;"></div>` : ""}
+        ${safeImage ? `<div style="height:130px;background:${cfg.color}22;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:32px;"><span>${cfg.emoji}</span><img src="${safeImage}" alt="${safeTitle}" onerror="this.style.display='none'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" /></div>` : ""}
         <div style="padding:12px;">
           <div style="margin-bottom:6px;">
             <span style="background:${cfg.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${cfg.emoji} ${cfg.label}</span>
@@ -1321,7 +1317,10 @@ export default function CaribbeanMap({
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2">
           {/* Listing card or overview label */}
           {flyoverListing ? (
-            <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden flex w-[380px] max-w-[90vw]">
+            <Link
+              href={`/${flyoverListing.islandSlug}/${flyoverListing.slug}`}
+              className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden flex w-[380px] max-w-[90vw] hover:scale-[1.01] transition-transform"
+            >
               {flyoverListing.image && (
                 <div
                   className="w-32 bg-cover bg-center flex-shrink-0"
@@ -1360,7 +1359,7 @@ export default function CaribbeanMap({
                   {flyoverListing.parish ? `${flyoverListing.parish}, ` : ""}{flyoverListing.islandName}
                 </p>
               </div>
-            </div>
+            </Link>
           ) : (
             <div className="bg-black/70 backdrop-blur-md text-white px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl">
               {flyoverLabel}
