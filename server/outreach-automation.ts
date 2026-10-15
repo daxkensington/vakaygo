@@ -360,12 +360,26 @@ export async function sendBusinessInterestOutreachEmail(
   if (!options?.force && row.interestedCustomers < 1) {
     return { sent: false, reason: "no_active_interest" };
   }
-  if (
-    !options?.force &&
-    row.contactedAt &&
-    Date.now() - new Date(row.contactedAt).getTime() < 7 * 24 * 60 * 60 * 1000
-  ) {
-    return { sent: false, reason: "cooldown_active" };
+  // Never auto-email an unclaimed business more than once unless explicitly forced by an admin
+  if (!options?.force && row.contactedAt) {
+    return { sent: false, reason: "already_contacted" };
+  }
+
+  // Enforce strict global hourly (max 2/hr) and daily (max 6/24h) outreach caps to protect domain reputation
+  if (!options?.force) {
+    const [rateRow] = await db.query(
+      `SELECT
+         count(*) FILTER (WHERE contacted_at > now() - interval '1 hour')::int AS last_hour,
+         count(*) FILTER (WHERE contacted_at > now() - interval '24 hours')::int AS last_day
+       FROM business_outreach
+       WHERE contacted_at IS NOT NULL`
+    );
+    if ((rateRow?.last_hour ?? 0) >= 2) {
+      return { sent: false, reason: "hourly_outreach_cap_reached" };
+    }
+    if ((rateRow?.last_day ?? 0) >= 6) {
+      return { sent: false, reason: "daily_outreach_cap_reached" };
+    }
   }
 
   let targetEmail: string | null = null;
@@ -405,58 +419,46 @@ export async function sendBusinessInterestOutreachEmail(
   const eTitle = escapeHtml(row.title);
   const eIsland = escapeHtml(row.islandName);
 
-  const html = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif;color:#1C2333">
-<div style="max-width:580px;margin:0 auto;padding:36px 20px">
-  <div style="text-align:center;margin-bottom:24px">
-    <span style="font-size:26px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
-    <p style="margin:4px 0 0;font-size:12px;color:#6E7491;letter-spacing:0.08em;text-transform:uppercase">Caribbean Travel Directory &amp; Marketplace</p>
-  </div>
-  <div style="background:#1C2333;border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:24px">
-    <p style="color:#E8B84B;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin:0 0 8px">Traveler Interest Alert · ${eIsland}</p>
-    <h1 style="color:#FFFFFF;font-size:22px;line-height:1.35;margin:0">${eTitle}</h1>
-  </div>
-  <div style="background:#FFFFFF;border-radius:16px;padding:28px 24px;border:1px solid #EDE5D5;box-shadow:0 2px 12px rgba(28,35,51,0.06)">
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2D334A">Hello <strong>${eTitle}</strong> team,</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2D334A">
-      <strong>${countLabel}</strong> recorded interest in your business listing in <strong>${eIsland}</strong> on VakayGo.
-      <span style="color:#6E7491;font-size:13px">(These are traveler interest signals on our directory, not reservations or payment obligations.)</span>
-    </p>
-    <div style="background:#FAF5E8;border-left:4px solid #C8912E;border-radius:10px;padding:16px;margin:20px 0">
-      <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#1C2333">Why claim your free listing on VakayGo?</p>
-      <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.65;color:#4A4F73">
-        <li><strong>100% Free to Claim:</strong> Verify ownership in 2 minutes and control your description, photos, hours, and contact info.</li>
-        <li><strong>Direct Traveler Connection:</strong> Respond to traveler inquiries and showcase your experiences across 21 Caribbean islands.</li>
-        <li><strong>Flexible Caribbean Payouts:</strong> When you choose to enable online bookings, receive payouts via <strong>Wise, PayPal, Local/International Bank Wire, or Stripe</strong>.</li>
-      </ul>
-    </div>
-    <div style="text-align:center;margin:26px 0 18px">
-      <a href="${claimUrl}" style="display:inline-block;background:#C8912E;color:#FFFFFF;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px">
-        ${row.claimVerified ? "Open Your Business Dashboard" : "Claim Your Listing for Free →"}
-      </a>
-    </div>
-    <p style="margin:0;text-align:center;font-size:13px;color:#6E7491">
-      View your public directory page: <a href="${listingUrl}" style="color:#C8912E;text-decoration:underline">${listingUrl}</a>
-    </p>
-  </div>
-  <div style="text-align:center;margin-top:24px;font-size:12px;color:#8C90A4;line-height:1.6">
-    <p style="margin:0">Questions? Reply directly to this email or contact <a href="mailto:support@vakaygo.com" style="color:#C8912E">support@vakaygo.com</a>.</p>
-    <p style="margin:6px 0 0">
-      VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#8C90A4">vakaygo.com</a><br>
-      If you do not want further business interest notifications from VakayGo, <a href="${unsubUrl}" style="color:#8C90A4;text-decoration:underline">click here to opt out</a> or reply "unsubscribe".
-    </p>
-  </div>
-</div>
-</body></html>`.trim();
+  const text = [
+    `Hello ${row.title} team,`,
+    ``,
+    `${countLabel} expressed interest in your listing in ${row.islandName} on VakayGo (${listingUrl}).`,
+    ``,
+    `If you would like to manage your listing details, respond to traveler inquiries, or enable direct bookings (with payouts via Wise, PayPal, or bank transfer), you can verify ownership of your page here:`,
+    `${claimUrl}`,
+    ``,
+    `If you have any questions or would like us to update your business information for you, simply reply to this email.`,
+    ``,
+    `Best regards,`,
+    `VakayGo Partner Support`,
+    `support@vakaygo.com`,
+    ``,
+    `---`,
+    `To opt out of future listing notifications for ${row.title}, visit: ${unsubUrl}`,
+  ].join("\n");
+
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;color:#1C2333;font-size:15px;line-height:1.6">
+  <p>Hello <strong>${eTitle}</strong> team,</p>
+  <p>${countLabel} expressed interest in your business listing in <strong>${eIsland}</strong> on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>).</p>
+  <p>If you would like to manage your page details, respond to traveler inquiries, or accept direct bookings (with payouts supported via Wise, PayPal, or local/international bank wire), you can verify ownership of your listing here:</p>
+  <p><a href="${claimUrl}" style="color:#0D9488;font-weight:600">${claimUrl}</a></p>
+  <p>If you have any questions or would like our team to update any information on your page, just reply to this email.</p>
+  <p>Best regards,<br>VakayGo Partner Support</p>
+  <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0">
+  <p style="font-size:12px;color:#6B7280">If you prefer not to receive traveler inquiry notifications for ${eTitle}, <a href="${unsubUrl}" style="color:#6B7280">unsubscribe here</a> or reply &ldquo;unsubscribe&rdquo;.</p>
+</div>`;
 
   await sendEmail({
     from: FROM,
     to: targetEmail,
     replyTo: REPLY_TO,
-    subject: `Traveler interest in ${row.title} on VakayGo (${row.islandName})`,
+    subject: `Traveler inquiry for ${row.title} (${row.islandName})`,
+    text,
     html,
+    headers: {
+      "List-Unsubscribe": `<${unsubUrl}>, <mailto:support@vakaygo.com?subject=unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
   });
 
   const stamp = new Date().toISOString().slice(0, 10);

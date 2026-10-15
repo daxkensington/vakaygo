@@ -229,7 +229,9 @@ async function runOperatorBootstrap() {
     },
   ];
 
+  let operatorEmailsSent = 0;
   for (const op of operatorOutreachTargets) {
+    if (operatorEmailsSent >= 2) break; // Drip max 2 operator emails per 4-hour cron run
     const [row] = await db.query(
       `SELECT l.id, l.slug, l.type_data->>'payoutLaunchEmailedAt' AS emailed_at,
               u.email AS operator_email, i.slug AS island_slug
@@ -240,30 +242,39 @@ async function runOperatorBootstrap() {
       [op.listingId]
     );
     if (row && !row.emailed_at && row.operator_email) {
+      const onboardingUrl = `https://vakaygo.com/operator/onboarding/${op.listingId}`;
+      const text = [
+        `Hi ${op.name},`,
+        ``,
+        `Your listing "${op.title}" (${op.island}) is verified and linked to your VakayGo operator account.`,
+        ``,
+        `You can now configure your preferred payout method (${op.currencies} via Wise, PayPal, or bank transfer) and review your listing details here:`,
+        `${onboardingUrl}`,
+        ``,
+        `If you need any help updating your rates or calendar, just reply to this email.`,
+        ``,
+        `Best regards,`,
+        `VakayGo Partner Support`,
+      ].join("\n");
+
       const sent = await sendEmail({
-        from: "VakayGo <hello@vakaygo.com>",
+        from: "VakayGo Partner Support <hello@vakaygo.com>",
         to: String(row.operator_email),
         replyTo: "support@vakaygo.com",
-        subject: `${op.title} is verified on VakayGo — complete your ${op.island} payout setup`,
-        html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
-  <h2 style="color:#1C2333;margin-bottom:8px">Hi ${op.name},</h2>
-  <p>Your business listing <strong>${op.title}</strong> (${op.island}) is now linked and verified on your VakayGo Operator account, with 90 days of open calendar availability pre-loaded for you.</p>
-  <p>We now support direct Caribbean payouts in <strong>${op.currencies}</strong> via <strong>Wise, PayPal, or Local / International Bank Wire</strong>.</p>
-  <p>Complete your quick company &amp; payout setup so travelers can book with you directly:</p>
-  <p style="margin:24px 0">
-    <a href="https://vakaygo.com/operator/onboarding/${op.listingId}" style="display:inline-block;background:#C8912E;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px;">Complete Onboarding &amp; Payout Setup →</a>
-  </p>
-  <ul>
-    <li><strong>Onboarding &amp; Business Details:</strong> <a href="https://vakaygo.com/operator/onboarding/${op.listingId}">vakaygo.com/operator/onboarding/${op.listingId}</a></li>
-    <li><strong>Payout Method (Wise / PayPal / Bank Wire):</strong> <a href="https://vakaygo.com/operator/payouts?listingId=${op.listingId}">vakaygo.com/operator/payouts</a></li>
-    <li><strong>Edit Pricing &amp; Listing Details:</strong> <a href="https://vakaygo.com/operator/listings/${op.listingId}">vakaygo.com/operator/listings/${op.listingId}</a></li>
-    <li><strong>Live Public Page:</strong> <a href="https://vakaygo.com/${row.island_slug}/${row.slug}">vakaygo.com/${row.island_slug}/${row.slug}</a></li>
-  </ul>
-  <p style="font-size:13px;color:#6E7491">Need help setting up your rates or photos? Just reply directly to this email and our team will assist you right away.</p>
+        subject: `Payout setup for ${op.title} on VakayGo`,
+        text,
+        html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;color:#1C2333;font-size:15px;line-height:1.6">
+  <p>Hi ${op.name},</p>
+  <p>Your business listing <strong>${op.title}</strong> (${op.island}) is verified and linked to your VakayGo operator account.</p>
+  <p>You can now select your preferred payout method (${op.currencies} via Wise, PayPal, or bank transfer) and review your listing settings here:</p>
+  <p><a href="${onboardingUrl}" style="color:#0D9488;font-weight:600">${onboardingUrl}</a></p>
+  <p>If you need any help updating your rates or calendar, just reply to this email.</p>
+  <p>Best regards,<br>VakayGo Partner Support</p>
 </div>`,
       }).then(() => true).catch(() => false);
 
       if (sent) {
+        operatorEmailsSent++;
         await db.query(
           `UPDATE listings
               SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{payoutLaunchEmailedAt}', to_jsonb(now()::text), true)::json
@@ -271,48 +282,12 @@ async function runOperatorBootstrap() {
           [op.listingId]
         );
         actions.push(`emailed_operator:${op.title}`);
+        await new Promise((r) => setTimeout(r, 2000));
       }
-      await new Promise((r) => setTimeout(r, 550));
     }
   }
 
-  // 5. Email the 3 unlinked operators inviting them to publish or link their business listing (once)
-  const [unlinkedFlag] = await db.query(
-    `SELECT enabled FROM feature_flags WHERE key = 'emailed_unlinked_operators_2026_10_15' LIMIT 1`
-  );
-  if (!unlinkedFlag?.enabled) {
-    const unlinkedOperators = [
-      { email: "jmvirealty@gmail.com", name: "JMVI Realty (St. Maarten)" },
-      { email: "randygospel39@gmail.com", name: "Randy" },
-      { email: "arcaroatansa@gmail.com", name: "ARCA Roatan" },
-    ];
-    for (const uo of unlinkedOperators) {
-      await sendEmail({
-        from: "VakayGo <hello@vakaygo.com>",
-        to: uo.email,
-        replyTo: "support@vakaygo.com",
-        subject: "Finish publishing your Caribbean business on VakayGo (Wise, PayPal & Wire payouts live)",
-        html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
-  <h2>Hi ${uo.name},</h2>
-  <p>Thank you for creating an Operator account on <strong>VakayGo</strong>! We noticed you haven't published or linked your business listing yet.</p>
-  <p>We have now rolled out direct Caribbean payouts via <strong>Wise, PayPal, and Local / International Bank Wire</strong> across all 21 Caribbean islands.</p>
-  <p style="margin:24px 0">
-    <a href="https://vakaygo.com/operator/listings/new" style="display:inline-block;background:#C8912E;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px;">Create Your Free Listing →</a>
-  </p>
-  <p style="font-size:13px;color:#6E7491">Or reply directly to this email with your business name and website and our team will set up and verify your listing for you!</p>
-</div>`,
-      }).catch(() => null);
-      await new Promise((r) => setTimeout(r, 550));
-    }
-    await db.query(
-      `INSERT INTO feature_flags (key, enabled, description, updated_at)
-       VALUES ('emailed_unlinked_operators_2026_10_15', true, 'One-time re-engagement email sent to unlinked operators', now())
-       ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
-    );
-    actions.push("emailed_3_unlinked_operators");
-  }
-
-  // 6. Email Paula Grasse confirming her Nov 17, 2026 12:00 PM reservation update & resolved dispute (once)
+  // 5. Email Paula Grasse confirming her Nov 17, 2026 12:00 PM reservation update & resolved dispute (once)
   const [paulaFlag] = await db.query(
     `SELECT enabled FROM feature_flags WHERE key = 'emailed_paula_grasse_2026_10_15' LIMIT 1`
   );
@@ -321,19 +296,13 @@ async function runOperatorBootstrap() {
       from: "VakayGo Support <hello@vakaygo.com>",
       to: "paulagrasse@yahoo.com",
       replyTo: "support@vakaygo.com",
-      subject: "Updated: Your Nov 17, 2026 Reservation Request at Lukka Kairi Waterfront Bar & Grill (12:00 PM)",
-      html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:580px;margin:0 auto;color:#1C2333;line-height:1.6">
-  <h2>Hi Paula,</h2>
-  <p>We received your time-change request for your reservation inquiry at <strong>Lukka Kairi Waterfront Bar &amp; Grill</strong> in Antigua &amp; Barbuda.</p>
-  <p>We have updated your request and removed the duplicate entry:</p>
-  <ul>
-    <li><strong>Business:</strong> Lukka Kairi Waterfront Bar &amp; Grill (St. John's, Antigua)</li>
-    <li><strong>Updated Date &amp; Time:</strong> Tuesday, November 17, 2026 at <strong>12:00 PM</strong></li>
-    <li><strong>Party Size:</strong> 4 guests</li>
-    <li><strong>Payment Status:</strong> $0.00 charged (no payment was captured)</li>
-  </ul>
-  <p>We have also notified the Lukka Kairi team directly of your 12:00 PM reservation request for 4 guests. You can view your updated trip anytime at <a href="https://vakaygo.com/trips">vakaygo.com/trips</a>.</p>
-  <p>Warm regards,<br><strong>VakayGo Traveler Support</strong></p>
+      subject: "Your Nov 17, 2026 reservation request at Lukka Kairi Waterfront Bar & Grill",
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;color:#1C2333;font-size:15px;line-height:1.6">
+  <p>Hi Paula,</p>
+  <p>We received your note regarding your reservation inquiry at <strong>Lukka Kairi Waterfront Bar &amp; Grill</strong> in Antigua &amp; Barbuda.</p>
+  <p>We have updated your request time to <strong>Tuesday, November 17, 2026 at 12:00 PM</strong> for 4 guests (and removed the duplicate entry). No payment was charged ($0.00).</p>
+  <p>We have also shared your updated 12:00 PM request with the Lukka Kairi team. You can view your trip details at <a href="https://vakaygo.com/trips" style="color:#0D9488">vakaygo.com/trips</a>.</p>
+  <p>Warm regards,<br>VakayGo Traveler Support</p>
 </div>`,
     }).catch(() => null);
     await db.query(
@@ -351,15 +320,15 @@ export async function GET(request: NextRequest) {
   const db = neon(process.env.DATABASE_URL!);
   const runWave = request.nextUrl.searchParams.get("runWave");
   let waveAuthorized = false;
-  if (runWave === "2026-10-15-v2") {
+  if (runWave === "2026-10-15-drip") {
     const [flag] = await db.query(
-      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_v2_completed' LIMIT 1`
+      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_drip_started' LIMIT 1`
     );
     if (!flag?.enabled) {
       waveAuthorized = true;
       await db.query(
         `INSERT INTO feature_flags (key, enabled, description, updated_at)
-         VALUES ('wave_2026_10_15_v2_completed', true, 'One-time outreach wave 2026-10-15-v2 executed', now())
+         VALUES ('wave_2026_10_15_drip_started', true, 'Initial drip wave started', now())
          ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
       );
     }
@@ -369,8 +338,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limitParam = Number(request.nextUrl.searchParams.get("limit") || "25");
-  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, Math.floor(limitParam)), 60) : 25;
+  const limitParam = Number(request.nextUrl.searchParams.get("limit") || "15");
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, Math.floor(limitParam)), 30) : 15;
   const bootstrapOperators = request.nextUrl.searchParams.get("bootstrapOperators") !== "0";
 
   try {
@@ -446,16 +415,7 @@ export async function GET(request: NextRequest) {
       const res = await enrichListingContactEmail(row.id);
       if (res.email) {
         enrichedCount++;
-        let emailed = false;
-        if (row.interested_customers > 0 && !row.contacted_at) {
-          const mailRes = await sendBusinessInterestOutreachEmail(row.id, {
-            triggeredBy: "cron",
-            markStatusContacted: true,
-          }).catch(() => ({ sent: false }));
-          emailed = mailRes.sent;
-          if (emailed) emailedCount++;
-        }
-        results.push({ id: row.id, email: res.email, emailed });
+        results.push({ id: row.id, email: res.email, emailed: false });
       } else {
         // Mark emailCheckedAt so we don't re-crawl websites without emails on every cron run
         await db.query(
@@ -468,7 +428,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Also send outreach emails to any uncontacted demand listings that already have an email on file
+    // Drip-send at most 2 outreach emails per 4-hour cron run (also guarded by 2/hr & 6/day global cap in sendBusinessInterestOutreachEmail)
     const readyToEmail = await db.query(
       `SELECT l.id, l.type_data->>'email' AS email
        FROM business_outreach o
@@ -478,7 +438,12 @@ export async function GET(request: NextRequest) {
          AND o.status IN ('new', 'reviewing')
          AND o.contacted_at IS NULL
          AND (l.type_data->>'email') IS NOT NULL
-       LIMIT 25`
+         AND (
+           EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
+           OR EXISTS (SELECT 1 FROM listing_interest li WHERE li.listing_id = l.id AND li.active = true)
+         )
+       ORDER BY o.created_at ASC
+       LIMIT 2`
     );
 
     for (const item of readyToEmail) {
@@ -490,7 +455,7 @@ export async function GET(request: NextRequest) {
         emailedCount++;
         results.push({ id: item.id, email: item.email, emailed: true });
       }
-      await new Promise((r) => setTimeout(r, 550));
+      await new Promise((r) => setTimeout(r, 2000));
     }
 
     return NextResponse.json({
