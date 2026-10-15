@@ -320,15 +320,15 @@ export async function GET(request: NextRequest) {
   const db = neon(process.env.DATABASE_URL!);
   const runWave = request.nextUrl.searchParams.get("runWave");
   let waveAuthorized = false;
-  if (runWave === "2026-10-15-drip") {
+  if (runWave === "2026-10-15-drip-2") {
     const [flag] = await db.query(
-      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_drip_started' LIMIT 1`
+      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_drip_2_started' LIMIT 1`
     );
     if (!flag?.enabled) {
       waveAuthorized = true;
       await db.query(
         `INSERT INTO feature_flags (key, enabled, description, updated_at)
-         VALUES ('wave_2026_10_15_drip_started', true, 'Initial drip wave started', now())
+         VALUES ('wave_2026_10_15_drip_2_started', true, 'Initial outreach drip started', now())
          ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
       );
     }
@@ -338,8 +338,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limitParam = Number(request.nextUrl.searchParams.get("limit") || "15");
-  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, Math.floor(limitParam)), 30) : 15;
+  const limitParam = Number(request.nextUrl.searchParams.get("limit") || "4");
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, Math.floor(limitParam)), 15) : 4;
   const bootstrapOperators = request.nextUrl.searchParams.get("bootstrapOperators") !== "0";
 
   try {
@@ -370,8 +370,42 @@ export async function GET(request: NextRequest) {
       ON CONFLICT (listing_id) DO NOTHING
     `);
 
-    // Prioritize listings that have active traveler interest or historical booking requests first,
-    // then high-rated unclaimed listings with websites that haven't been checked yet.
+    let enrichedCount = 0;
+    let emailedCount = 0;
+    const results: Array<{ id: string; email: string | null; emailed: boolean }> = [];
+
+    // 1. Drip-send at most 2 outreach emails per 4-hour cron run FIRST (before slow external website crawls)
+    // Also guarded by 2/hr & 6/day global cap in sendBusinessInterestOutreachEmail
+    const readyToEmail = await db.query(
+      `SELECT l.id, l.type_data->>'email' AS email
+       FROM business_outreach o
+       JOIN listings l ON l.id = o.listing_id
+       JOIN islands i ON i.id = l.island_id AND i.is_active = true
+       WHERE l.status = 'active'
+         AND o.status IN ('new', 'reviewing')
+         AND o.contacted_at IS NULL
+         AND (l.type_data->>'email') IS NOT NULL
+         AND (
+           EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
+           OR EXISTS (SELECT 1 FROM listing_interest li WHERE li.listing_id = l.id AND li.active = true)
+         )
+       ORDER BY o.created_at ASC
+       LIMIT 2`
+    );
+
+    for (const item of readyToEmail) {
+      const mailRes = await sendBusinessInterestOutreachEmail(item.id, {
+        triggeredBy: "cron",
+        markStatusContacted: true,
+      }).catch(() => ({ sent: false }));
+      if (mailRes.sent) {
+        emailedCount++;
+        results.push({ id: item.id, email: item.email, emailed: true });
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+
+    // 2. Enrich a small batch of unclaimed listing websites per run
     const candidates = await db.query(
       `SELECT l.id,
               (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0))::int AS interested_customers,
@@ -407,17 +441,12 @@ export async function GET(request: NextRequest) {
       [limit]
     );
 
-    let enrichedCount = 0;
-    let emailedCount = 0;
-    const results: Array<{ id: string; email: string | null; emailed: boolean }> = [];
-
     for (const row of candidates) {
       const res = await enrichListingContactEmail(row.id);
       if (res.email) {
         enrichedCount++;
         results.push({ id: row.id, email: res.email, emailed: false });
       } else {
-        // Mark emailCheckedAt so we don't re-crawl websites without emails on every cron run
         await db.query(
           `UPDATE listings
            SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{emailCheckedAt}', to_jsonb(now()::text), true)::json
@@ -426,36 +455,6 @@ export async function GET(request: NextRequest) {
         );
         results.push({ id: row.id, email: null, emailed: false });
       }
-    }
-
-    // Drip-send at most 2 outreach emails per 4-hour cron run (also guarded by 2/hr & 6/day global cap in sendBusinessInterestOutreachEmail)
-    const readyToEmail = await db.query(
-      `SELECT l.id, l.type_data->>'email' AS email
-       FROM business_outreach o
-       JOIN listings l ON l.id = o.listing_id
-       JOIN islands i ON i.id = l.island_id AND i.is_active = true
-       WHERE l.status = 'active'
-         AND o.status IN ('new', 'reviewing')
-         AND o.contacted_at IS NULL
-         AND (l.type_data->>'email') IS NOT NULL
-         AND (
-           EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
-           OR EXISTS (SELECT 1 FROM listing_interest li WHERE li.listing_id = l.id AND li.active = true)
-         )
-       ORDER BY o.created_at ASC
-       LIMIT 2`
-    );
-
-    for (const item of readyToEmail) {
-      const mailRes = await sendBusinessInterestOutreachEmail(item.id, {
-        triggeredBy: "cron",
-        markStatusContacted: true,
-      }).catch(() => ({ sent: false }));
-      if (mailRes.sent) {
-        emailedCount++;
-        results.push({ id: item.id, email: item.email, emailed: true });
-      }
-      await new Promise((r) => setTimeout(r, 2000));
     }
 
     return NextResponse.json({
