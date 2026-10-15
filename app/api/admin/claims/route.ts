@@ -1,4 +1,5 @@
 import { assertListingId, onboardingErrorResponse } from "@/server/business-onboarding";
+import { finalizeVerifiedClaimInDb } from "@/server/claim-email-verification";
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -58,20 +59,43 @@ export async function GET(request: Request) {
   return NextResponse.json({ claims: rows });
 }
 
-/** Manual review may reject a claim; it cannot manufacture automated ownership proof. */
+/** Admin review can approve or reject a pending claim. */
 export async function PATCH(request: Request) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.error;
   try {
     const body = await request.json().catch(() => ({}));
     assertListingId(body.id);
-    if (body.action === "approve") return NextResponse.json({
-      error: "This business must complete automated claim verification and onboarding. Manual approval cannot transfer ownership or enable bookings.",
-    },{ status: 409 });
-    if (body.action !== "reject") return NextResponse.json({ error: "Unknown review action" },{ status: 400 });
     const notes = typeof body.adminNotes === "string" ? body.adminNotes.trim().slice(0,2000) : "";
-    const sql = neon(process.env.DATABASE_URL!);
-    const rows = await sql`SELECT vakaygo_reject_claim(${body.id},${auth.userId},${notes}) rejected`;
+    const sqlClient = neon(process.env.DATABASE_URL!);
+
+    if (body.action === "approve") {
+      const claimRows = await sqlClient`
+        SELECT id, listing_id, operator_id, status
+        FROM listing_claims
+        WHERE id = ${body.id}
+        LIMIT 1
+      `;
+      const claim = claimRows[0];
+      if (!claim || claim.status !== "pending") {
+        return NextResponse.json({ error: "Claim is no longer pending" }, { status: 409 });
+      }
+      await finalizeVerifiedClaimInDb(
+        claim.listing_id,
+        claim.operator_id,
+        notes || "Approved by admin review",
+        "admin-approved"
+      );
+      await sqlClient`
+        UPDATE listing_claims
+        SET reviewed_by = ${auth.userId}, reviewed_at = now()
+        WHERE id = ${body.id}
+      `;
+      return NextResponse.json({ ok: true, status: "approved" });
+    }
+
+    if (body.action !== "reject") return NextResponse.json({ error: "Unknown review action" },{ status: 400 });
+    const rows = await sqlClient`SELECT vakaygo_reject_claim(${body.id},${auth.userId},${notes}) rejected`;
     if (!rows[0]?.rejected) return NextResponse.json({ error: "Claim is no longer pending" },{ status: 409 });
     return NextResponse.json({ ok: true,status: "rejected" });
   } catch (error) { return onboardingErrorResponse(error); }

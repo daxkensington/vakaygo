@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 type ClaimSummary = {
-  listing: { id: string; title: string; address: string | null; islandName: string; url: string; unclaimed: boolean; phoneHint: string | null };
+  listing: { id: string; title: string; address: string | null; islandName: string; url: string; unclaimed: boolean; phoneHint: string | null; emailHint?: string | null; instantEligible?: boolean; matchedDomain?: string | null };
   claim: { id: string; status: string } | null;
   claimVerified?: boolean;
-  verification?: { state: string; phoneHint?: string | null; available: boolean; canStart?: boolean; busyUntil?: string | null; reason?: string; channels?: ("sms" | "call")[] };
+  verification?: { state: string; phoneHint?: string | null; emailHint?: string | null; instantEligible?: boolean; available: boolean; canStart?: boolean; busyUntil?: string | null; reason?: string; channels?: ("sms" | "call" | "email")[] };
 };
 
 export default function ClaimListingPage({ params }: { params: Promise<{ listingId: string }> }) {
@@ -20,9 +20,10 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState<"email" | "role" | null>(null);
   const [error, setError] = useState("");
-  const [channel, setChannel] = useState<"sms" | "call">("sms");
+  const [channel, setChannel] = useState<"sms" | "call" | "email">("sms");
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const requestSequence = useRef(0);
   const requestController = useRef<AbortController | null>(null);
@@ -47,6 +48,8 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
       if (!response.ok) throw new Error(data.error || "Could not load this listing.");
       if (data.listing?.id !== listingId) throw new Error("Could not load this listing.");
       setSummary(data);
+      const chans: string[] = Array.isArray(data.verification?.channels) ? data.verification.channels : [];
+      if (chans.includes("email") && !chans.includes("sms")) setChannel("email");
       setBlocked(null); setError("");
       setCodeSent(data.verification?.state === "pending");
     } catch (cause) { if (request === requestSequence.current && !controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not load this listing."); }
@@ -57,20 +60,21 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
     return () => { requestController.current?.abort(); };
   }, [load]);
 
-  async function verify(action: "start" | "verify") {
+  async function verify(action: "start" | "verify" | "instant_claim" | "request_review") {
     if (busy || refreshing) return;
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/listings/claim", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId, action, ...(action === "verify" ? { code } : { channel }) }),
+        body: JSON.stringify({ listingId, action, ...(action === "verify" ? { code } : action === "start" ? { channel } : {}) }),
       });
       const data = await response.json();
       if (response.status === 401) { router.replace(`/auth/signin?next=/operator/claim/${listingId}`); return; }
       if (response.status === 403 && ["email_unverified", "role_required"].includes(data.code)) { setSummary(null); setBlocked(data.code === "email_unverified" ? "email" : "role"); return; }
       if (!response.ok) throw new Error(data.error || "Verification could not be completed.");
-      if (action === "verify" && data.claim?.status === "approved") { router.push(`/operator/onboarding/${listingId}`); return; }
+      if ((action === "verify" || action === "instant_claim") && data.claim?.status === "approved") { router.push(`/operator/onboarding/${listingId}`); return; }
       if (action === "start") { setCodeSent(true); setCode(""); }
+      if (action === "request_review") { setReviewSubmitted(true); }
       await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Verification could not be completed."); }
     finally { setBusy(false); }
@@ -116,11 +120,19 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
       {verified ? <div className="mt-6">
         <p className="font-semibold text-navy-700">Business claim verified</p>
         <Link href={`/operator/onboarding/${listingId}`} className="mt-4 inline-flex rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white">Continue business onboarding</Link>
-      </div> : !listing.unclaimed ? <p className="mt-6 text-navy-500">This listing has already been claimed. Your account cannot start another claim.</p> : summary?.verification?.available === true ? <div className="mt-6">
-        <h3 className="font-semibold text-navy-700">Verify the published business phone</h3>
-        <p className="mt-2 text-sm leading-relaxed text-navy-500">A verification code will be sent to {summary.verification.phoneHint || listing.phoneHint || "the business phone already recorded for this listing"}. You cannot substitute a different number during verification.</p>
-        {summary.verification.channels?.includes("call") && <label className="mt-3 block text-sm text-navy-700">Delivery method<select value={channel} onChange={event => setChannel(event.target.value as "sms" | "call")} className="ml-3 rounded-lg border border-cream-300 p-2"><option value="sms">Text message</option><option value="call">Automated phone call</option></select></label>}
-        {(pending || sending || anotherAttempt) && <p role="status" className="mt-4 text-sm text-navy-600">{pending ? "A code has already been sent to the published business phone. Enter that code below. If it expires, refresh the claim status before requesting another." : sending ? "A verification request is being sent. Refresh the claim status to continue." : "A verification for this business phone is already in progress. Wait for it to expire, then refresh the claim status. No new code will be sent while it is active."}</p>}
+      </div> : !listing.unclaimed ? <p className="mt-6 text-navy-500">This listing has already been claimed. Your account cannot start another claim.</p> : <>
+      {summary?.verification?.instantEligible && (
+        <div className="mt-6 rounded-xl border border-teal-200 bg-teal-50/70 p-4">
+          <h3 className="font-semibold text-navy-700">Instant Business Domain Verification</h3>
+          <p className="mt-1 text-sm text-navy-600">Your verified account email matches {listing.matchedDomain || "this business"}. You can claim this listing immediately in one click.</p>
+          <button type="button" disabled={busy || refreshing} onClick={() => void verify("instant_claim")} className="mt-3 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gold-800 disabled:opacity-50">{busy ? "Claiming…" : "Claim Business Instantly"}</button>
+        </div>
+      )}
+      {summary?.verification?.available === true ? <div className="mt-6">
+        <h3 className="font-semibold text-navy-700">{channel === "email" ? "Verify the published business email" : "Verify the published business phone"}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-navy-500">A verification code will be sent to {channel === "email" ? (summary.verification.emailHint || listing.emailHint || "the business email recorded for this listing") : (summary.verification.phoneHint || listing.phoneHint || "the business phone already recorded for this listing")}. You cannot substitute a different {channel === "email" ? "email" : "number"} during verification.</p>
+        {(summary.verification.channels?.includes("call") || summary.verification.channels?.includes("email")) && <label className="mt-3 block text-sm text-navy-700">Delivery method<select value={channel} onChange={event => setChannel(event.target.value as "sms" | "call" | "email")} className="ml-3 rounded-lg border border-cream-300 p-2">{summary.verification.channels?.includes("sms") && <option value="sms">Text message</option>}{summary.verification.channels?.includes("call") && <option value="call">Automated phone call</option>}{summary.verification.channels?.includes("email") && <option value="email">Business email ({summary.verification.emailHint || "on file"})</option>}</select></label>}
+        {(pending || sending || anotherAttempt) && <p role="status" className="mt-4 text-sm text-navy-600">{pending ? `A code has already been sent to the published business ${channel === "email" ? "email" : "phone"}. Enter that code below. If it expires, refresh the claim status before requesting another.` : sending ? "A verification request is being sent. Refresh the claim status to continue." : "A verification for this business phone is already in progress. Wait for it to expire, then refresh the claim status. No new code will be sent while it is active."}</p>}
         <button type="button" disabled={busy || refreshing || pending || sending || anotherAttempt || summary.verification.canStart === false} onClick={() => void verify("start")} className="mt-4 rounded-xl border border-gold-700 px-5 py-3 font-semibold text-gold-700 disabled:opacity-50">{busy ? "Please wait…" : "Send verification code"}</button>
         {pending && <form className="mt-5 space-y-3" onSubmit={event => { event.preventDefault(); void verify("verify"); }}>
           <label className="block text-sm font-semibold text-navy-700" htmlFor="business-code">Verification code</label>
@@ -136,8 +148,15 @@ export default function ClaimListingPage({ params }: { params: Promise<{ listing
             ? "Text and voice verification is temporarily unavailable. Contact VakayGo with this listing and we will review it with you."
             : "Automatic verification is currently unavailable for this listing. It will remain information only until a trusted business contact can be verified."}</p>
         <p className="mt-3">Include this listing: <span className="font-semibold">{listing.url}</span></p>
-        <Link href={supportHref} className="mt-3 inline-flex font-semibold text-gold-700 underline">Contact VakayGo</Link>
-      </div>}
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          {summary?.claim?.status === "pending" || reviewSubmitted ? (
+            <span className="rounded-xl bg-teal-50 px-4 py-2 text-xs font-semibold text-teal-700">Claim request submitted — our team is reviewing your ownership</span>
+          ) : (
+            <button type="button" disabled={busy || refreshing} onClick={() => void verify("request_review")} className="rounded-xl bg-gold-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gold-800 disabled:opacity-50">{busy ? "Submitting…" : "Submit Claim for Team Review"}</button>
+          )}
+          <Link href={supportHref} className="inline-flex font-semibold text-gold-700 underline">Contact VakayGo</Link>
+        </div>
+      </div>}</>}
     </section>}
   </main>;
 }

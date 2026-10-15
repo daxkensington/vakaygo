@@ -59,8 +59,9 @@ export default function AdminClaimsPage() {
     load();
   }, [load]);
 
-  async function review(id: string, action: "reject") {
+  async function review(id: string, action: "approve" | "reject") {
     if (action === "reject" && !window.confirm("Reject this claim?")) return;
+    if (action === "approve" && !window.confirm("Approve this claim and assign business ownership?")) return;
     setBusy(id);
     setError("");
     try {
@@ -88,7 +89,7 @@ export default function AdminClaimsPage() {
         </h1>
       </div>
       <p className="text-navy-400 text-sm mb-6">
-        Claims require automated proof through the trusted business contact. Administrators cannot bypass verification or activate bookings by approving a claim.
+        Review business ownership claims submitted via domain/email verification, phone verification, or manual operator review.
       </p>
 
       <div className="flex gap-2 mb-6">
@@ -186,7 +187,13 @@ export default function AdminClaimsPage() {
                       rows={3}
                       className="w-full border border-cream-300 rounded-xl p-3 text-sm outline-none focus:border-gold-500"
                     />
-                    <p className="rounded-xl bg-cream-50 p-3 text-sm text-navy-500">Awaiting automated business verification. The listing remains information only.</p>
+                    <button
+                      onClick={() => review(c.id, "approve")}
+                      disabled={busy === c.id}
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                    >
+                      <BadgeCheck size={16} /> Approve Claim
+                    </button>
                     <button
                       onClick={() => review(c.id, "reject")}
                       disabled={busy === c.id}
