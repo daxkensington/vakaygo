@@ -61,3 +61,21 @@ it("returns a retryable failure without raw provider details or a false success"
   expect(await response.json()).toEqual({ error: "Failed to send message. Please try again." });
   expect(logger.error).toHaveBeenCalledOnce(); expect(sendEmail).toHaveBeenCalledOnce();
 });
+
+it("sends a static business onboarding auto-reply to real domains without echoing untrusted message text", async () => {
+  const response = await POST(request({
+    name: "Caicos Rentals",
+    email: "admin@caicosrentals.com",
+    category: "Partnership",
+    subject: "Claim Business Listing",
+    message: "We would like to add our business (Caicos Rentals) to your site. UNTRUSTED_PAYLOAD_MARKER",
+  }));
+  expect(response.status).toBe(200);
+  expect(sendEmail).toHaveBeenCalledTimes(2);
+  const autoReply = sendEmail.mock.calls[1][0] as { to: string; subject: string; html: string };
+  expect(autoReply.to).toBe("admin@caicosrentals.com");
+  expect(autoReply.subject).toContain("Claiming or Adding Your Business");
+  expect(autoReply.html).toContain("vakaygo.com/for-businesses");
+  expect(autoReply.html).toContain("vakaygo.com/operator/listings/new");
+  expect(autoReply.html).not.toContain("UNTRUSTED_PAYLOAD_MARKER");
+});

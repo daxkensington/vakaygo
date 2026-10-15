@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Home,
   Compass,
@@ -105,11 +105,16 @@ const listingTypes = [
 export default function NewListingPage() {
   const [step, setStep] = useState(1);
   const [type, setType] = useState("");
+  const [islandId, setIslandId] = useState<number>(1);
+  const [islandsList, setIslandsList] = useState<Array<{ id: number; name: string; slug: string }>>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [priceUnit, setPriceUnit] = useState("night");
   const [address, setAddress] = useState("");
+  const [website, setWebsite] = useState("");
+  const [phone, setPhone] = useState("");
+  const [businessEmail, setBusinessEmail] = useState("");
   const [cancellationPolicy, setCancellationPolicy] = useState("moderate");
   const [maxGuests, setMaxGuests] = useState("");
   const [advanceNotice, setAdvanceNotice] = useState("");
@@ -122,6 +127,18 @@ export default function NewListingPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [createdListingId, setCreatedListingId] = useState("");
+
+  useEffect(() => {
+    fetch("/api/islands")
+      .then((r) => (r.ok ? r.json() : { islands: [] }))
+      .then((d) => {
+        if (Array.isArray(d.islands) && d.islands.length > 0) {
+          const sorted = [...d.islands].sort((a, b) => a.name.localeCompare(b.name));
+          setIslandsList(sorted);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const isTourType = ["tour", "excursion", "vip", "guide"].includes(type);
   const totalSteps = 5;
@@ -149,11 +166,22 @@ export default function NewListingPage() {
         return;
       }
 
+      const extraTypeData: Record<string, unknown> = {};
+      if (website.trim()) extraTypeData.website = website.trim();
+      if (phone.trim()) extraTypeData.phone = phone.trim();
+      if (businessEmail.trim()) extraTypeData.email = businessEmail.trim().toLowerCase();
+      if (isTourType) {
+        if (includedItems.length > 0) extraTypeData.included = includedItems;
+        if (excludedItems.length > 0) extraTypeData.excluded = excludedItems;
+        if (meetingPoint) extraTypeData.meetingPoint = meetingPoint;
+      }
+
       const createRes = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operatorId: session.user.id,
+          islandId,
           type,
           title,
           description,
@@ -165,11 +193,7 @@ export default function NewListingPage() {
           minStay: minStay ? parseInt(minStay) : null,
           maxGuests: maxGuests ? parseInt(maxGuests) : null,
           advanceNotice: advanceNotice ? parseInt(advanceNotice) : null,
-          typeData: isTourType ? {
-            included: includedItems.length > 0 ? includedItems : undefined,
-            excluded: excludedItems.length > 0 ? excludedItems : undefined,
-            meetingPoint: meetingPoint || undefined,
-          } : undefined,
+          typeData: Object.keys(extraTypeData).length > 0 ? extraTypeData : undefined,
         }),
       });
 
@@ -290,6 +314,26 @@ export default function NewListingPage() {
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                  Caribbean Island / Destination
+                </label>
+                <select
+                  value={islandId}
+                  onChange={(e) => setIslandId(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
+                >
+                  {islandsList.length > 0 ? (
+                    islandsList.map((isl) => (
+                      <option key={isl.id} value={isl.id}>
+                        {isl.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={1}>Grenada</option>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-600 mb-1.5">
                   Title
                 </label>
                 <input
@@ -331,8 +375,46 @@ export default function NewListingPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50"
-                  placeholder="Address or area in Grenada"
+                  placeholder="Street address, marina, or area"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    Business Website (optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    Business Phone (optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="+1 (242) ..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    Business Email (optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={businessEmail}
+                    onChange={(e) => setBusinessEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="bookings@..."
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -12,6 +12,7 @@ export function ClaimFinder() {
   const [busy, setBusy] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
+  const addBusinessHref = user ? "/operator/listings/new" : "/auth/signup?role=operator&next=/operator/listings/new";
   async function search(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setSearched(false); setResults([]);
     try {
@@ -30,12 +31,33 @@ export function ClaimFinder() {
     </form>
     <div aria-live="polite" aria-busy={busy}>
       {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
-      {searched && results.length === 0 && <p className="mt-5 text-navy-600">No matching listing found. Try a shorter name, or <Link className="font-semibold underline" href="/contact">contact us to add or locate your business</Link>.</p>}
+      {searched && results.length === 0 && (
+        <div className="mt-5 rounded-2xl border border-cream-200 bg-cream-50 p-4 text-navy-700">
+          <p className="font-semibold text-navy-800">No matching listing found for &ldquo;{query.trim()}&rdquo;.</p>
+          <p className="mt-1 text-sm text-navy-600">
+            New to VakayGo? You can add your business directly for free, or{" "}
+            <Link className="font-semibold underline" href="/contact">contact us to locate your business</Link>.
+          </p>
+          <Link
+            href={addBusinessHref}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gold-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gold-800"
+          >
+            Add your business for free
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
       {results.length > 0 && <p className="mt-5 text-sm text-navy-500">Showing up to 12 matches. Refine the name if needed.</p>}
       <ul className="mt-3 divide-y divide-cream-200">{results.map(item => <li key={item.id} className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div><Link className="font-semibold text-navy-800 hover:underline" href={"/" + item.islandSlug + "/" + item.slug}>{item.title}</Link><p className="mt-1 flex items-start gap-1 text-sm text-navy-500"><MapPin size={15} className="mt-0.5 shrink-0" />{item.address || item.islandName}</p><p className="text-xs text-navy-400 mt-1">{item.islandName}{item.claimVerified ? " · Ownership verified" : ""}</p></div>
         <Link className="inline-flex shrink-0 items-center gap-2 font-semibold text-gold-700 hover:underline" href={item.claimVerified ? "/contact" : claimStartHref(item.id, Boolean(user))}>{item.claimVerified ? "Need access?" : "Claim this listing"}<ArrowRight size={16} /></Link>
       </li>)}</ul>
+    </div>
+    <div className="mt-6 border-t border-cream-200 pt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-navy-500">
+      <span>Don&apos;t see your business in our directory yet?</span>
+      <Link href={addBusinessHref} className="font-semibold text-gold-700 hover:underline inline-flex items-center gap-1">
+        Create a new business listing <ArrowRight size={13} />
+      </Link>
     </div>
   </div>;
 }

@@ -75,11 +75,12 @@ Grenada, Trinidad & Tobago, Barbados, St. Lucia, Jamaica, Bahamas, Antigua, Arub
 - Do not infer eligibility for one listing from another, or promise automatic activation after claiming or returning from payment onboarding.
 - Only an explicitly eligible listing may direct the traveler to its current booking controls. A booking is confirmed only after the application reports confirmation; never claim to have created a reservation or accepted payment yourself.
 
-### Customer Support Facts:
-- Human support is available by email at hello@vakaygo.com or the contact form at /contact. For a support/contact question, give that email and link directly in 1-2 sentences.
-- This chat widget is an AI travel concierge. It cannot transfer a conversation to a human, open a support ticket, or contact the support team for the visitor. Never claim a human live-chat handoff or say you have notified anyone.
-- Do not invent a /help page, a phone number, office hours, or a response-time promise. /messages is for conversations with listing operators; it is not VakayGo customer support.
-- A support answer does not need travel recommendations, a list of unrelated platform features, or a repeated follow-up question.
+### Customer Support & Business Onboarding:
+- Human support is available by email at hello@vakaygo.com or the contact form at /contact.
+- If a visitor or business owner wants to open a support ticket, get help with a claim, or add their business to VakayGo right here in chat, ask for their email address and details (if not already provided) and call the \`submit_support_or_business_inquiry\` tool to send their ticket to the VakayGo team and email them an instant confirmation with their reference number.
+- For business owners: Existing listings can be claimed free at /for-businesses. Brand-new businesses not yet in the directory can be added free at /auth/signup?role=operator&next=/operator/listings/new. VakayGo supports Caribbean payouts via Wise, PayPal, Local/International Bank Wire, and Stripe Connect.
+- Never claim a live real-time human agent has taken over the chat window; explain that \`submit_support_or_business_inquiry\` sends an email ticket to the VakayGo team with an instant email confirmation.
+- Do not invent a /help page, a phone number, or office hours. /messages is for conversations with listing operators; it is not VakayGo customer support.
 
 ### Important Rules:
 - ALWAYS use your search tools to find real listings — never make up listing names, prices, or details.
@@ -320,7 +321,125 @@ const TOOLS = [
       required: ["slugs", "island"],
     },
   },
+  {
+    name: "submit_support_or_business_inquiry",
+    description: "Submit a customer support ticket or a Caribbean business claim/onboarding request directly to the VakayGo team on behalf of the visitor, and send an instant confirmation email to the visitor. Use this when a visitor or business owner provides their email address and wants to add/claim their business, get help with a booking or account issue, or have the VakayGo team follow up by email.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Visitor or business contact name" },
+        email: { type: "string", description: "Visitor or business email address for reply" },
+        category: {
+          type: "string",
+          enum: ["General", "Booking Help", "Operator Support", "Technical Issue", "Partnership"],
+          description: "Inquiry category",
+        },
+        subject: { type: "string", description: "Short summary of the request or business name" },
+        message: { type: "string", description: "Detailed message, question, or business details (island, website, phone, offering)" },
+      },
+      required: ["email", "category", "subject", "message"],
+    },
+  },
 ];
+
+function escapeChatHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function submitSupportOrBusinessInquiry(input: {
+  name?: string;
+  email?: string;
+  category?: string;
+  subject?: string;
+  message?: string;
+}) {
+  const email = typeof input?.email === "string" ? input.email.trim() : "";
+  const name = typeof input?.name === "string" && input.name.trim() ? input.name.trim().slice(0, 120) : "VakayGo Visitor";
+  const category = typeof input?.category === "string" && input.category.trim() ? input.category.trim().slice(0, 80) : "General";
+  const subject = typeof input?.subject === "string" && input.subject.trim() ? input.subject.trim().slice(0, 200) : "Chat Concierge Inquiry";
+  const message = typeof input?.message === "string" ? input.message.trim().slice(0, 5000) : "";
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { submitted: false, error: "Please provide a valid email address so our team can reply." };
+  }
+  if (!message) {
+    return { submitted: false, error: "Please include the details of your question or business." };
+  }
+
+  const refId = `VG-CHAT-${Date.now().toString(36).toUpperCase()}`;
+  const eName = escapeChatHtml(name);
+  const eEmail = escapeChatHtml(email);
+  const eCategory = escapeChatHtml(category);
+  const eSubject = escapeChatHtml(subject);
+  const eMessage = escapeChatHtml(message);
+
+  try {
+    const { sendEmail } = await import("@/server/mail-client");
+    await sendEmail({
+      from: "VakayGo <hello@vakaygo.com>",
+      to: "bookings@vakaygo.com",
+      replyTo: email,
+      subject: `[Chat ${eCategory}] ${eSubject} (${refId})`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
+        <h2 style="margin:0 0 12px">[Chat Concierge · ${eCategory}] ${eSubject}</h2>
+        <p style="margin:0 0 8px"><strong>Reference:</strong> ${refId}</p>
+        <p style="margin:0 0 8px"><strong>From:</strong> ${eName} (${eEmail})</p>
+        <div style="background:#FAF5E8;padding:16px;border-radius:10px;white-space:pre-wrap;margin-top:12px">${eMessage}</div>
+      </div>`,
+    });
+
+    const lower = email.toLowerCase();
+    if (!lower.endsWith(".invalid") && !lower.endsWith(".example")) {
+      const isBusiness =
+        category === "Partnership" ||
+        category === "Operator Support" ||
+        /\b(claim|listing|business|operator|partner|charter|tour|hotel|villa|restaurant|rental)\b/i.test(`${subject} ${message}`);
+      await sendEmail({
+        from: "VakayGo <hello@vakaygo.com>",
+        to: email,
+        replyTo: "support@vakaygo.com",
+        subject: `We received your VakayGo inquiry (${refId})`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
+          <h2 style="margin:0 0 12px">Your VakayGo request is logged (${refId})</h2>
+          <p style="line-height:1.6">Hi ${eName},</p>
+          <p style="line-height:1.6">Our team has received your ${eCategory.toLowerCase()} inquiry via the VakayGo AI Concierge and will follow up by email shortly.</p>
+          ${
+            isBusiness
+              ? `<div style="background:#FAF5E8;padding:16px;border-radius:10px;margin:16px 0">
+                  <p style="margin:0 0 8px;font-weight:bold">Get started right away (100% Free):</p>
+                  <ul style="margin:0;padding-left:18px;line-height:1.6">
+                    <li>Claim an existing listing: <a href="https://vakaygo.com/for-businesses">vakaygo.com/for-businesses</a></li>
+                    <li>Add a brand-new business listing: <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new">vakaygo.com/operator/listings/new</a></li>
+                  </ul>
+                </div>`
+              : ""
+          }
+          <p style="font-size:13px;color:#6E7491">Need to add anything? Just reply to this email.</p>
+        </div>`,
+      }).catch(() => {});
+    }
+
+    return {
+      submitted: true,
+      referenceId: refId,
+      selfServiceLinks: {
+        claimExistingBusiness: "https://vakaygo.com/for-businesses",
+        addNewBusiness: "https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new",
+      },
+    };
+  } catch (err) {
+    logger.error("Chat inquiry submission failed", err);
+    return {
+      submitted: false,
+      error: "Could not send the ticket right now. Please email hello@vakaygo.com or use /contact.",
+    };
+  }
+}
 
 // ─── Tool Executor ──────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -336,6 +455,8 @@ async function executeTool(name: string, input: any, userId: string | null): Pro
       return getIslandInfo(input);
     case "compare_listings":
       return compareListings(input);
+    case "submit_support_or_business_inquiry":
+      return submitSupportOrBusinessInquiry(input);
     case "save_memory":
       if (!userId) return { saved: false, reason: "User not logged in" };
       return saveMemory(userId, input.category, input.fact, input.source);

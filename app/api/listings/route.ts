@@ -74,10 +74,25 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    const baseSlug =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "business-listing";
+
+    const sql = neon(process.env.DATABASE_URL!);
+    let slug = baseSlug;
+    const existing = await sql.query("SELECT slug FROM listings WHERE slug = $1 OR slug LIKE $2", [
+      baseSlug,
+      `${baseSlug}-%`,
+    ]);
+    if (existing.length > 0) {
+      const taken = new Set(existing.map((r) => String(r.slug)));
+      let suffix = 2;
+      while (taken.has(slug)) {
+        slug = `${baseSlug}-${suffix++}`;
+      }
+    }
 
     const [listing] = await db
       .insert(listings)

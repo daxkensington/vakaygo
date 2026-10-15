@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { requireUser } from "@/server/admin-auth";
 import { interestResponse, sameOriginMutation } from "@/server/interest-http";
 import { INTEREST_NOTICE_VERSION, isListingId } from "@/lib/listing-interest";
+import { sendBusinessInterestOutreachEmail } from "@/server/outreach-automation";
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -27,6 +28,12 @@ export async function POST(request: NextRequest) {
   try {
     const db = neon(process.env.DATABASE_URL!);
     const [row] = await db.query("SELECT vakaygo_record_listing_interest($1,$2,$3,$4) interested", [body.listingId, auth.userId, auth.sessionVersion, body.interested]);
+    if (body.interested && row?.interested === true && process.env.RESEND_API_KEY) {
+      // Automatically notify the listing owner (with 7-day cooldown and website email enrichment)
+      await sendBusinessInterestOutreachEmail(body.listingId, {
+        triggeredBy: "traveler_interest",
+      }).catch(() => {});
+    }
     return interestResponse({ interested: row.interested === true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

@@ -74,10 +74,6 @@ export async function POST(request: Request) {
     const eSubject = escapeHtml(subject);
     const eMessage = escapeHtml(message);
 
-    // Send the support notification to VakayGo only. We deliberately do NOT
-    // send a "confirmation" email back to the submitter: this endpoint is
-    // unauthenticated, so doing so would turn it into an open email relay
-    // (spam amplification) to any attacker-chosen address.
     await sendEmail({
       from: FROM,
       to: "bookings@vakaygo.com",
@@ -110,6 +106,94 @@ export async function POST(request: Request) {
 </div>
 </body></html>`.trim(),
     });
+
+    // Send a safe, static category-aware auto-reply to real domains (never echoing
+    // untrusted subject/message text so it cannot be abused for spam content relay).
+    const lowerEmail = email.toLowerCase();
+    const isSyntheticTestAddress = lowerEmail.endsWith(".invalid") || lowerEmail.endsWith(".example");
+    if (!isSyntheticTestAddress) {
+      const isBusinessInquiry =
+        category === "Partnership" ||
+        category === "Operator Support" ||
+        /\b(claim|listing|business|operator|partner|charter|tour|hotel|villa|restaurant|rental|add our|get listed)\b/i.test(
+          `${subject} ${message}`
+        );
+
+      const autoReplyHtml = isBusinessInquiry
+        ? `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif;color:#1C2333">
+<div style="max-width:560px;margin:0 auto;padding:36px 22px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#1C2333;border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:24px">
+    <p style="color:#E8B84B;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Caribbean Business Onboarding</p>
+    <h1 style="color:#FFFFFF;font-size:21px;margin:0">We received your business inquiry</h1>
+  </div>
+  <div style="background:#FFFFFF;border-radius:16px;padding:26px 24px;border:1px solid #EDE5D5">
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6">Hi there,</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3A405A">
+      Thank you for reaching out to VakayGo! Our partner team has received your message and will follow up shortly.
+      In the meantime, you can claim an existing directory page or create a brand-new business listing right away:
+    </p>
+    <div style="background:#FAF5E8;border-radius:12px;padding:18px;margin:18px 0">
+      <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#1C2333">Fastest ways to get started (100% free):</p>
+      <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#3A405A">
+        <li><strong>Already in our directory?</strong> Search and claim your listing at <a href="https://vakaygo.com/for-businesses" style="color:#C8912E;font-weight:600">vakaygo.com/for-businesses</a>.</li>
+        <li><strong>New business not listed yet?</strong> Create your free operator account and add your listing directly at <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new" style="color:#C8912E;font-weight:600">vakaygo.com/operator/listings/new</a>.</li>
+        <li><strong>Caribbean Payouts Supported:</strong> Once verified, you can configure payouts via <strong>Wise, PayPal, Local/International Bank Wire, or Stripe Connect</strong>.</li>
+      </ol>
+    </div>
+    <p style="margin:16px 0 0;font-size:13.5px;line-height:1.6;color:#6E7491">
+      Need help verifying ownership or updating a phone number on file? Just reply to this email with your business name, island, and official website, and our team will take care of it for you.
+    </p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:22px">VakayGo Partner Support · <a href="https://vakaygo.com/for-businesses" style="color:#C8912E">vakaygo.com/for-businesses</a></p>
+</div>
+</body></html>`
+        : `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FEFCF7;font-family:'Helvetica Neue',Arial,sans-serif;color:#1C2333">
+<div style="max-width:560px;margin:0 auto;padding:36px 22px">
+  <div style="text-align:center;margin-bottom:24px">
+    <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
+  </div>
+  <div style="background:#1C2333;border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:24px">
+    <p style="color:#E8B84B;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Support Confirmation</p>
+    <h1 style="color:#FFFFFF;font-size:21px;margin:0">We received your message</h1>
+  </div>
+  <div style="background:#FFFFFF;border-radius:16px;padding:26px 24px;border:1px solid #EDE5D5">
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6">Hi there,</p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3A405A">
+      Thanks for contacting VakayGo (${eCategory}). Our team has received your inquiry and will reply by email as soon as possible.
+    </p>
+    <div style="background:#FAF5E8;border-radius:12px;padding:16px;margin:18px 0;font-size:13.5px;line-height:1.65;color:#3A405A">
+      <strong>Helpful quick links:</strong>
+      <ul style="margin:8px 0 0;padding-left:18px">
+        <li>Explore 21 Caribbean islands: <a href="https://vakaygo.com/explore" style="color:#C8912E">vakaygo.com/explore</a></li>
+        <li>Manage your trips &amp; bookings: <a href="https://vakaygo.com/bookings" style="color:#C8912E">vakaygo.com/bookings</a></li>
+        <li>Claim or add a business listing: <a href="https://vakaygo.com/for-businesses" style="color:#C8912E">vakaygo.com/for-businesses</a></li>
+      </ul>
+    </div>
+    <p style="margin:0;font-size:13px;color:#6E7491">If you have any additional details to share, simply reply to this email.</p>
+  </div>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:22px">VakayGo Support · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+</div>
+</body></html>`;
+
+      await sendEmail({
+        from: FROM,
+        to: email,
+        replyTo: "support@vakaygo.com",
+        subject: isBusinessInquiry
+          ? "Claiming or Adding Your Business on VakayGo — Next Steps"
+          : "We received your message — VakayGo Support",
+        html: autoReplyHtml,
+      }).catch((autoErr) => {
+        logger.error("Contact auto-reply failed", autoErr);
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

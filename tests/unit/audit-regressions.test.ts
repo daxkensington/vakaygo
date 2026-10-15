@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
 import { generateGoogleCalendarUrl, generateICSFile, escapeICSText } from "@/lib/calendar";
+import { validatePayoutProfileInput, maskAccountNumber } from "@/server/payout-profiles";
+import {
+  extractBusinessEmailsFromHtml,
+  isValidBusinessEmail,
+  createOutreachUnsubscribeToken,
+  verifyOutreachUnsubscribeToken,
+} from "@/server/outreach-automation";
 
 describe("Island SEO canonicals and cross-links match next.config.ts rewrites", () => {
   const root = process.cwd();
@@ -76,9 +83,7 @@ describe("Wall-clock calendar exports (no UTC 'Z' shift)", () => {
 });
 
 describe("Caribbean Multi-Rail Payout & Form W-8BEN Validation", () => {
-  it("validates PayPal, Wise, and Bank Wire payout rails and W-8BEN certification", async () => {
-    const { validatePayoutProfileInput, maskAccountNumber } = await import("@/server/payout-profiles");
-
+  it("validates PayPal, Wise, and Bank Wire payout rails and W-8BEN certification", () => {
     expect(maskAccountNumber("GD1234567890")).toBe("•••• 7890");
 
     const validWise = validatePayoutProfileInput({
@@ -123,6 +128,35 @@ describe("Caribbean Multi-Rail Payout & Form W-8BEN Validation", () => {
         w8benSignedName: "Kerry Joseph",
       })
     ).toThrow(/SWIFT/);
+  });
+});
+
+describe("Automated Business Outreach & Website Email Enrichment", () => {
+  it("extracts and ranks official business emails from HTML while rejecting junk/tracker addresses", () => {
+    const html = `
+      <html>
+        <body>
+          <img src="banner@2x.png" />
+          <a href="mailto:noreply@wixpress.com">Ignore</a>
+          <p>Contact us at support@example.com or 605a7baede844d278b89dc95ae0a9123@sentry.io</p>
+          <p>General: hello@gmail.com</p>
+          <a href="mailto:bookings@jcocharters.com?subject=Charter">Book Now</a>
+        </body>
+      </html>
+    `;
+
+    const emails = extractBusinessEmailsFromHtml(html, "https://jcocharters.com");
+    expect(emails[0]).toBe("bookings@jcocharters.com");
+    expect(emails).toContain("hello@gmail.com");
+    expect(emails).not.toContain("noreply@wixpress.com");
+    expect(emails).not.toContain("support@example.com");
+    expect(isValidBusinessEmail("admin@caicosrentals.com")).toBe(true);
+    expect(isValidBusinessEmail("visitor@example.invalid")).toBe(false);
+
+    const listingId = "20000000-0000-4000-8000-000000000009";
+    const token = createOutreachUnsubscribeToken(listingId);
+    expect(verifyOutreachUnsubscribeToken(listingId, token)).toBe(true);
+    expect(verifyOutreachUnsubscribeToken(listingId, "0".repeat(64))).toBe(false);
   });
 });
 

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/server/admin-auth";
 import { interestResponse, sameOriginMutation } from "@/server/interest-http";
 import { isListingId, isOutreachStatus, outreachDraft } from "@/lib/listing-interest";
 import { safeWebUrl } from "@/lib/listing-structured-data";
+import { enrichListingContactEmail, sendBusinessInterestOutreachEmail } from "@/server/outreach-automation";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin();
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const db = neon(process.env.DATABASE_URL!);
     const rows = await db.query(`SELECT l.id,l.title,l.slug,i.slug "islandSlug",i.name "islandName",l.address,
-      l.status "listingStatus",i.is_active "islandActive",l.type_data->>'website' website,tc.phone,
+      l.status "listingStatus",i.is_active "islandActive",l.type_data->>'website' website,l.type_data->>'email' email,tc.phone,
       tc.source "contactSource",tc.source_reference "contactSourceReference",
       o.status,o.notes,o.updated_at::text "updatedAt",o.contacted_at "contactedAt",
       coalesce(d.interested_customers,0)::int "interestedCustomers",d.last_interest "lastInterest",
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
         AND ($1 NOT IN ('new','reviewing') OR (d.interested_customers>0 AND l.status='active' AND i.is_active=true))
       ORDER BY d.interested_customers DESC NULLS LAST,d.last_interest DESC NULLS LAST,l.id LIMIT 51 OFFSET $2`, [status, page * 50]);
     const items = rows.slice(0, 50).map(row => {
-      const item = { ...row, website: safeWebUrl(row.website) || null };
+      const item = { ...row, website: safeWebUrl(row.website) || null, email: row.email || null };
       const draft = row.status !== "do_not_contact" && row.interestedCustomers > 0 && row.listingStatus === "active" && row.islandActive
         ? outreachDraft(row as Parameters<typeof outreachDraft>[0]) : null;
       return { ...item, draft };
@@ -58,4 +59,36 @@ export async function PATCH(request: NextRequest) {
     if (!rows.length) return interestResponse({ error: "This record changed or is suppressed. Refresh before editing. Suppressed businesses cannot be reopened here." }, 409);
     return interestResponse({ saved: true });
   } catch { return interestResponse({ error: "Could not save the outreach update." }, 503); }
+}
+
+export async function POST(request: NextRequest) {
+  if (!sameOriginMutation(request)) return interestResponse({ error: "Invalid request origin or content type." }, 403);
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.error;
+  let body;
+  try { body = await request.json(); } catch { return interestResponse({ error: "Invalid request." }, 400); }
+  if (!body || !isListingId(body.listingId) || !["enrich", "send_email"].includes(body.action)) {
+    return interestResponse({ error: "Invalid outreach action." }, 400);
+  }
+  try {
+    if (body.action === "enrich") {
+      const result = await enrichListingContactEmail(body.listingId);
+      if (!result.email) {
+        return interestResponse({ error: "No public business email was found on the listing website." }, 404);
+      }
+      return interestResponse({ ok: true, email: result.email, enriched: result.enriched });
+    }
+    const result = await sendBusinessInterestOutreachEmail(body.listingId, {
+      force: true,
+      triggeredBy: "admin",
+      recipientOverride: typeof body.email === "string" && body.email.trim() ? body.email.trim() : undefined,
+      markStatusContacted: true,
+    });
+    if (!result.sent) {
+      return interestResponse({ error: `Could not send outreach email (${result.reason || "unknown"}).` }, 400);
+    }
+    return interestResponse({ ok: true, sent: true, email: result.email });
+  } catch {
+    return interestResponse({ error: "Outreach action failed." }, 503);
+  }
 }
