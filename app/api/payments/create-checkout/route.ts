@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       if (booking.checkoutSessionId) await expireBookingCheckout(booking.id, booking.checkoutSessionId);
       return NextResponse.json({ error: "This business is not accepting bookings on VakayGo yet.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
     }
+    const expectedPaymentMode = eligibility.paymentMode === "platform" ? "platform" : "destination";
     if (!await isBookingCalendarAvailable(booking.id)) {
       if (booking.checkoutSessionId) await expireBookingCheckout(booking.id, booking.checkoutSessionId);
       return NextResponse.json({ error: "The business has not made these dates available.", code: "BOOKING_UNAVAILABLE" }, { status: 409 });
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
 
     if (booking.checkoutSessionId) {
       const existingSession = await retrieveCheckoutSession(booking.checkoutSessionId);
-      if (booking.paymentMode !== "destination" || booking.checkoutStripeAccountId !== eligibility.stripeAccountId || existingSession.metadata?.bookingId !== booking.id) {
+      if (booking.paymentMode !== expectedPaymentMode || booking.checkoutStripeAccountId !== eligibility.stripeAccountId || existingSession.metadata?.bookingId !== booking.id) {
         await expireBookingCheckout(booking.id, booking.checkoutSessionId);
         return NextResponse.json({ error: "This checkout is no longer available." }, { status: 409 });
       }
@@ -135,6 +136,7 @@ export async function POST(request: Request) {
       currency: booking.currency || "usd",
       platformFee: platformFeeCents,
       operatorStripeAccountId: operatorStripeId,
+      ...(expectedPaymentMode === "platform" ? { paymentMode: "platform" as const } : {}),
       bookingId: booking.id,
       listingTitle: listing?.title || "VakayGo Booking",
       travelerEmail: traveler?.email || "",
@@ -150,7 +152,7 @@ export async function POST(request: Request) {
     const [saved] = await db.update(bookings).set({
       checkoutSessionId: session.id, checkoutExpiresAt: new Date(session.expires_at * 1000),
       checkoutStripeAccountId: operatorStripeId,
-      operatorEarningsCents, paymentMode: "destination", updatedAt: new Date(),
+      operatorEarningsCents, paymentMode: expectedPaymentMode, updatedAt: new Date(),
     }).where(and(eq(bookings.id,booking.id), eq(bookings.status,"pending"), isNull(bookings.cancellationRequestedAt), sql`vakaygo_listing_bookable(${bookings.listingId})`)).returning({id:bookings.id});
     if (!saved) {
       await expireBookingCheckout(booking.id, session.id);

@@ -8,10 +8,18 @@ import { COUNTRIES } from "@/lib/countries";
 
 type Business = { legalName: string; country: string; address: string; representativeName: string };
 type Step = "claim" | "business" | "representative" | "terms" | "listing" | "payments" | "activation";
+type PayoutProfileSummary = {
+  method: "paypal" | "wise" | "bank_wire";
+  currency: string;
+  status: "pending_review" | "verified" | "rejected";
+  w8benCertified: boolean;
+  revoked: boolean;
+};
 type Onboarding = {
   listingId: string; state: string; eligible: boolean; reason: string; bookingsEnabled: boolean; canManage: boolean;
   listing: { title: string; slug: string; islandSlug: string }; requirements: Record<Step, boolean>;
-  business: Business; termsVersion: string; allowedPaymentCountries: string[]; stripe: { connected: boolean }; activatedAt: string | null;
+  business: Business; termsVersion: string; allowedPaymentCountries: string[]; stripe: { connected: boolean };
+  payoutProfile?: PayoutProfileSummary; activatedAt: string | null;
 };
 const steps: { key: Step; label: string }[] = [
   { key: "claim", label: "Business claim verified" }, { key: "business", label: "Legal business details" },
@@ -137,6 +145,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href={`/operator/listings/${listingId}`} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700">Review listing details</Link>
           <button disabled={busy || !canConnect} aria-describedby="payment-country-status" onClick={() => void perform("connect")} className={buttonClass}>{status.stripe.connected ? "Continue secure payment setup" : "Start secure payment setup"}</button>
+          <Link href={`/operator/payouts?listingId=${encodeURIComponent(listingId)}`} className="rounded-xl border border-gold-300 bg-gold-50 px-5 py-3 font-semibold text-gold-800">Caribbean &amp; direct payout setup (PayPal / Wise / Wire)</Link>
           <button disabled={busy || refreshing} onClick={() => void load(true).then(fresh => { if (fresh) setMessage("Verification status refreshed."); })} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700 disabled:opacity-50">Refresh verification status</button>
         </div>
         <p id="payment-country-status" className="mt-4 text-sm text-navy-500" aria-live="polite">{!selectedCountryName
@@ -146,6 +155,16 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
             : detailsChanged
               ? "Save your company details before continuing to secure payment setup."
               : "Payment setup is available for your saved country of registration. Stripe must still verify your company, identity and payout account before bookings can be enabled."}</p>
+        {status.payoutProfile && (
+          <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm text-navy-700">
+            <span className="font-semibold">Direct Payout Profile ({status.payoutProfile.method.toUpperCase()} · {status.payoutProfile.currency}):</span>{" "}
+            {status.payoutProfile.status === "verified" && !status.payoutProfile.revoked
+              ? "Verified for platform-escrow bookings (Form W-8BEN on file)."
+              : status.payoutProfile.status === "pending_review"
+                ? "Submitted and awaiting compliance verification."
+                : "Requires updates in Payout Settings."}
+          </div>
+        )}
       </section>
       <section className="mt-6 rounded-2xl border border-cream-200 bg-white p-6">
         <h2 className="text-xl font-bold text-navy-700">Finalize onboarding</h2>

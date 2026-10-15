@@ -30,8 +30,9 @@ export async function POST(request: Request) {
       if (!booking) throw new Error("Paid checkout references a missing booking");
       if (booking.paymentId === paymentId && booking.paidAt) return NextResponse.json({received:true});
       const eligibility = await getListingBookingEligibility(booking.listingId, { refreshProvider: true });
+      const expectedPaymentMode = eligibility.paymentMode === "platform" ? "platform" : "destination";
       const eligible = eligibility.eligible && eligibility.operatorId === booking.operatorId &&
-        eligibility.stripeAccountId === booking.checkoutStripeAccountId && booking.paymentMode === "destination" &&
+        eligibility.stripeAccountId === booking.checkoutStripeAccountId && booking.paymentMode === expectedPaymentMode &&
         await isBookingCalendarAvailable(booking.id);
       if (!booking.checkoutSessionId && booking.status === "pending" && eligibility.eligible) throw new Error("Checkout persistence pending");
       if (eligible && booking.status === "pending" && !booking.cancellationRequestedAt && checkoutMatchesBooking(session,booking)) {

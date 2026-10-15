@@ -74,3 +74,55 @@ describe("Wall-clock calendar exports (no UTC 'Z' shift)", () => {
     expect(escapeICSText("A, B; C\\D\nE")).toBe("A\\, B\\; C\\\\D\\nE");
   });
 });
+
+describe("Caribbean Multi-Rail Payout & Form W-8BEN Validation", () => {
+  it("validates PayPal, Wise, and Bank Wire payout rails and W-8BEN certification", async () => {
+    const { validatePayoutProfileInput, maskAccountNumber } = await import("@/server/payout-profiles");
+
+    expect(maskAccountNumber("GD1234567890")).toBe("•••• 7890");
+
+    const validWise = validatePayoutProfileInput({
+      listingId: "11111111-2222-3333-4444-555555555555",
+      payoutMethod: "wise",
+      payoutCurrency: "USD",
+      wiseRecipientEmail: "payouts@spiceisle.gd",
+      w8benCertified: true,
+      w8benBeneficialOwner: "Spice Isle Charters Ltd",
+      w8benCountry: "GD",
+      w8benSignedName: "Kerry Joseph",
+    });
+    expect(validWise.payoutMethod).toBe("wise");
+    expect(validWise.w8benCountry).toBe("GD");
+
+    expect(() =>
+      validatePayoutProfileInput({
+        listingId: "11111111-2222-3333-4444-555555555555",
+        payoutMethod: "paypal",
+        payoutCurrency: "USD",
+        paypalEmail: "payouts@spiceisle.gd",
+        w8benCertified: false,
+        w8benBeneficialOwner: "Spice Isle Charters Ltd",
+        w8benCountry: "GD",
+        w8benSignedName: "Kerry Joseph",
+      })
+    ).toThrow(/W-8BEN/);
+
+    expect(() =>
+      validatePayoutProfileInput({
+        listingId: "11111111-2222-3333-4444-555555555555",
+        payoutMethod: "bank_wire",
+        payoutCurrency: "USD",
+        bankName: "Republic Bank Grenada",
+        bankCountry: "GD",
+        bankAccountHolder: "Spice Isle Charters Ltd",
+        bankAccountNumber: "12345678",
+        bankSwiftBic: "BAD",
+        w8benCertified: true,
+        w8benBeneficialOwner: "Spice Isle Charters Ltd",
+        w8benCountry: "GD",
+        w8benSignedName: "Kerry Joseph",
+      })
+    ).toThrow(/SWIFT/);
+  });
+});
+

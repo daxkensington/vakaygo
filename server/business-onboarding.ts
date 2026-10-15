@@ -64,14 +64,20 @@ type Onboarding = {
   provider_version: number; provider_revoked_at: string | null; connect_attempt_id: string;
   activated_at: string | null; suspended_at: string | null;
 };
+type PayoutProfile = {
+  id: string; listing_id: string; operator_id: string;
+  payout_method: "paypal" | "wise" | "bank_wire"; payout_currency: string;
+  w8ben_certified: boolean; w8ben_signed_at: string | null;
+  status: "pending_review" | "verified" | "rejected"; revoked_at: string | null;
+};
 type Context = {
   listing_id: string; operator_id: string; title: string; slug: string; island_slug: string; listing_status: string;
-  onboarding: Onboarding | null; claim_valid: boolean; listing_valid: boolean; db_bookable: boolean; launch_enabled: boolean;
+  onboarding: Onboarding | null; payout_profile?: PayoutProfile | null; claim_valid: boolean; listing_valid: boolean; db_bookable: boolean; launch_enabled: boolean;
   config_environment: string | null; config_platform: string | null; config_countries: string[];
 };
 async function context(listingId: string): Promise<Context | undefined> {
   const [row] = await query<Context>(`SELECT l.id listing_id,l.operator_id,l.title,l.slug,i.slug island_slug,l.status listing_status,
-   row_to_json(n) onboarding,
+   row_to_json(n) onboarding,row_to_json(p) payout_profile,
    EXISTS(SELECT 1 FROM listing_claim_verifications v
      JOIN listing_claims cl ON cl.id=v.claim_id AND cl.listing_id=l.id AND cl.operator_id=l.operator_id AND cl.status='approved'
      JOIN listing_trusted_contacts tc ON tc.listing_id=l.id AND tc.phone=v.target_phone
@@ -82,6 +88,7 @@ async function context(listingId: string): Promise<Context | undefined> {
    coalesce((SELECT enabled FROM feature_flags WHERE key='booking_launch_enabled'),false) launch_enabled,
    c.environment config_environment,c.platform_account_id config_platform,c.allowed_countries config_countries
    FROM listings l JOIN islands i ON i.id=l.island_id LEFT JOIN listing_onboarding n ON n.listing_id=l.id
+   LEFT JOIN operator_payout_profiles p ON p.listing_id=l.id AND p.operator_id=l.operator_id
    LEFT JOIN booking_provider_config c ON c.id=true WHERE l.id=$1`, [listingId]);
   return row;
 }
@@ -110,12 +117,25 @@ function providerMatches(ctx: Context) {
     && Array.isArray(ctx.config_countries) && ctx.config_countries.includes(n.business_country)
     && n.provider_country === n.business_country && !n.provider_revoked_at;
 }
-function paymentReady(ctx: Context) {
+function payoutProfileReady(ctx: Context) {
+  const n = ctx.onboarding;
+  const p = ctx.payout_profile;
+  return deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries)
+    && !!n && !n.stripe_account_id && !n.provider_revoked_at
+    && isCountryCode(n.business_country)
+    && !!p && p.listing_id === ctx.listing_id && p.operator_id === ctx.operator_id
+    && p.status === "verified" && !p.revoked_at
+    && p.w8ben_certified === true && !!p.w8ben_signed_at;
+}
+function stripePaymentReady(ctx: Context) {
   const n = ctx.onboarding;
   return !!n && providerMatches(ctx) && !!n.stripe_account_id && n.charges_enabled && n.payouts_enabled
     && n.details_submitted && n.card_payments_active && n.transfers_active
     && !!n.provider_checked_at && Date.parse(n.provider_checked_at) <= Date.now()
     && Date.now() - Date.parse(n.provider_checked_at) < PROVIDER_READINESS_TTL_MS;
+}
+function paymentReady(ctx: Context) {
+  return stripePaymentReady(ctx) || payoutProfileReady(ctx);
 }
 function requirements(ctx: Context) {
   const n = ctx.onboarding;
@@ -152,7 +172,7 @@ export async function bookingLaunchEnabled(): Promise<boolean> {
   } catch { return false; }
 }
 export async function getListingBookingEligibility(listingId: string, options: { refreshProvider?: boolean } = {}): Promise<{
-  eligible: boolean; reason: string; operatorId: string | null; stripeAccountId: string | null;
+  eligible: boolean; reason: string; operatorId: string | null; stripeAccountId: string | null; paymentMode?: "destination" | "platform";
 }> {
   const closed = { eligible: false, reason: "bookings_disabled", operatorId: null, stripeAccountId: null };
   if (!UUID.test(listingId)) return { ...closed, reason: "not_found" };
@@ -161,7 +181,14 @@ export async function getListingBookingEligibility(listingId: string, options: {
     const ctx = await context(listingId);
     if (!ctx) return { ...closed, reason: "not_found" };
     const reason = reasonFor(ctx);
-    return { eligible: reason === "ready", reason, operatorId: ctx.operator_id, stripeAccountId: ctx.onboarding?.stripe_account_id || null };
+    const usePlatformEscrow = !ctx.onboarding?.stripe_account_id && payoutProfileReady(ctx);
+    return {
+      eligible: reason === "ready",
+      reason,
+      operatorId: ctx.operator_id,
+      stripeAccountId: ctx.onboarding?.stripe_account_id || (usePlatformEscrow ? ctx.config_platform : null),
+      ...(usePlatformEscrow ? { paymentMode: "platform" as const } : {}),
+    };
   } catch { return closed; }
 }
 async function ownedContext(listingId: string, operatorId: string) {
@@ -190,6 +217,15 @@ export async function getOnboardingStatus(listingId: string, operatorId: string,
     stripe: { connected: !!n?.stripe_account_id, chargesEnabled: n?.charges_enabled || false, payoutsEnabled: n?.payouts_enabled || false,
       detailsSubmitted: n?.details_submitted || false, cardPaymentsActive: n?.card_payments_active || false, transfersActive: n?.transfers_active || false,
       checkedAt: n?.provider_checked_at || null },
+    ...(ctx.payout_profile ? {
+      payoutProfile: {
+        method: ctx.payout_profile.payout_method,
+        currency: ctx.payout_profile.payout_currency,
+        status: ctx.payout_profile.status,
+        w8benCertified: ctx.payout_profile.w8ben_certified,
+        revoked: !!ctx.payout_profile.revoked_at,
+      },
+    } : {}),
     activatedAt: n?.activated_at || null,
   };
 }

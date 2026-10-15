@@ -35,9 +35,10 @@ export async function GET(request: Request) {
         result.checked++;
         try {
           const eligibility = await getListingBookingEligibility(booking.listing_id);
+          const expectedPaymentMode = eligibility.paymentMode === "platform" ? "platform" : "destination";
           const eligible = booking.status === "pending" && !booking.cancellation_requested_at && eligibility.eligible
             && eligibility.operatorId === booking.operator_id && !!eligibility.stripeAccountId
-            && eligibility.stripeAccountId === booking.checkout_stripe_account_id && booking.payment_mode === "destination"
+            && eligibility.stripeAccountId === booking.checkout_stripe_account_id && booking.payment_mode === expectedPaymentMode
             && await isBookingCalendarAvailable(booking.id);
           if (eligible) { result.eligible++; return; }
           const outcome = await expireBookingCheckout(booking.id, booking.checkout_session_id);

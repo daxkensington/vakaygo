@@ -150,6 +150,7 @@ export async function createCheckoutSession(params: {
   currency: string;
   platformFee: number;
   operatorStripeAccountId: string;
+  paymentMode?: "destination" | "platform";
   bookingId: string;
   listingTitle: string;
   travelerEmail: string;
@@ -159,11 +160,16 @@ export async function createCheckoutSession(params: {
   idempotencyKey?: string;
 }) {
   if (!params.operatorStripeAccountId) throw new Error("An onboarded payment account is required");
+  const isPlatformEscrow = params.paymentMode === "platform";
   const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData = {
-    metadata: { bookingId: params.bookingId },
+    metadata: { bookingId: params.bookingId, ...(isPlatformEscrow ? { paymentMode: "platform" } : {}) },
     statement_descriptor_suffix: "VAKAYGO",
-    application_fee_amount: params.platformFee,
-    transfer_data: { destination: params.operatorStripeAccountId },
+    ...(isPlatformEscrow
+      ? {}
+      : {
+          application_fee_amount: params.platformFee,
+          transfer_data: { destination: params.operatorStripeAccountId },
+        }),
   };
 
   return getStripe().checkout.sessions.create({

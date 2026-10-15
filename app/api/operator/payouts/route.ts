@@ -7,6 +7,7 @@ import { eq, and, sql, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireOperator } from "@/server/admin-auth";
 import { CATEGORY_RATES } from "@/lib/pricing";
+import { getOperatorPayoutListings } from "@/server/payout-profiles";
 export async function GET() {
   try {
     const __auth = await requireOperator();
@@ -96,10 +97,18 @@ export async function GET() {
       .orderBy(desc(bookings.updatedAt))
       .limit(10);
 
+    let operatorListings: Awaited<ReturnType<typeof getOperatorPayoutListings>> = [];
+    try {
+      operatorListings = await getOperatorPayoutListings(userId);
+    } catch {
+      operatorListings = [];
+    }
+
     return NextResponse.json({
       availableBalance,
       totalEarned,
       pendingAmount,
+      listings: operatorListings,
       payouts: payoutHistory.map((p) => ({
         ...p,
         amount: parseFloat(p.amount),

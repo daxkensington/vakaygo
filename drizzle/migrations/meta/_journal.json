@@ -71,6 +71,13 @@
       "when": 1788700000003,
       "tag": "0009_listing_interest_outreach",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788700000004,
+      "tag": "0010_caribbean_payout_profiles",
+      "breakpoints": true
     }
   ]
 }

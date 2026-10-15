@@ -1091,3 +1091,41 @@ export const listingOnboarding = pgTable("listing_onboarding", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, t => [index("listing_onboarding_stripe_account_idx").on(t.stripeAccountId)]);
+
+export const operatorPayoutProfiles = pgTable("operator_payout_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().unique().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  payoutMethod: varchar("payout_method", { length: 24 }).notNull(), // paypal, wise, bank_wire
+  payoutCurrency: varchar("payout_currency", { length: 8 }).default("USD").notNull(),
+  paypalEmail: varchar("paypal_email", { length: 320 }),
+  wiseRecipientEmail: varchar("wise_recipient_email", { length: 320 }),
+  wiseAccountId: varchar("wise_account_id", { length: 128 }),
+  bankName: varchar("bank_name", { length: 256 }),
+  bankCountry: varchar("bank_country", { length: 2 }),
+  bankAccountHolder: varchar("bank_account_holder", { length: 256 }),
+  bankAccountNumber: varchar("bank_account_number", { length: 128 }),
+  bankSwiftBic: varchar("bank_swift_bic", { length: 32 }),
+  bankRoutingOrBranch: varchar("bank_routing_or_branch", { length: 128 }),
+  intermediaryBankSwift: varchar("intermediary_bank_swift", { length: 32 }),
+  minimumPayoutUsd: decimal("minimum_payout_usd", { precision: 10, scale: 2 }).default("50.00").notNull(),
+  w8benCertified: boolean("w8ben_certified").default(false).notNull(),
+  w8benBeneficialOwner: varchar("w8ben_beneficial_owner", { length: 256 }),
+  w8benCountry: varchar("w8ben_country", { length: 2 }),
+  w8benTaxId: varchar("w8ben_tax_id", { length: 128 }),
+  w8benSignedName: varchar("w8ben_signed_name", { length: 256 }),
+  w8benSignedAt: timestamp("w8ben_signed_at", { withTimezone: true }),
+  status: varchar("status", { length: 24 }).default("pending_review").notNull(), // pending_review, verified, rejected
+  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index("operator_payout_profiles_operator_idx").on(t.operatorId),
+  index("operator_payout_profiles_status_idx").on(t.status),
+  check("operator_payout_profiles_method_check", sql.raw("payout_method in ('paypal','wise','bank_wire')")),
+  check("operator_payout_profiles_status_check", sql.raw("status in ('pending_review','verified','rejected')")),
+]);
+
