@@ -217,11 +217,21 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
       } else {
         if (data.trip.isPublic !== true) throw new Error("Sharing could not be confirmed.");
         setTrip(prev => prev ? { ...prev, isPublic: true } : prev);
+        let onCopyAbort = () => {};
         try {
-          await navigator.clipboard.writeText(new URL(`/trips/${id}`, window.location.origin).href);
+          const aborted = new Promise<never>((_resolve, reject) => {
+            onCopyAbort = () => reject(new Error("Copy was interrupted."));
+            controller.signal.addEventListener("abort", onCopyAbort, { once: true });
+          });
+          controller.signal.throwIfAborted();
+          // A clipboard permission prompt does not consume the request signal.
+          // Keep the shared action deadline effective while that promise waits.
+          await Promise.race([navigator.clipboard.writeText(new URL(`/trips/${id}`, window.location.origin).href), aborted]);
         } catch {
           if (actionRequest.current === controller && contextRef.current === `${user.id}:${id}`) setActionError("This trip is shared, but its link could not be copied. Copy the trip address from your browser.");
           return;
+        } finally {
+          controller.signal.removeEventListener("abort", onCopyAbort);
         }
         if (actionRequest.current !== controller || contextRef.current !== `${user.id}:${id}` || controller.signal.aborted) return;
         setShared(true);
