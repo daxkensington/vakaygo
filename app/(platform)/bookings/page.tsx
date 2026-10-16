@@ -52,6 +52,16 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   refunded: { label: "Refunded", color: "text-navy-600", bg: "bg-navy-50" },
 };
 
+function formatAmount(amount: string, currency: string) {
+  const value = parseFloat(amount);
+  if (currency === "XCD") return `EC$${value.toFixed(2)}`;
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
+  } catch {
+    return `$${value.toFixed(2)}`;
+  }
+}
+
 export default function TravelerBookingsPage() {
   return (
     <Suspense fallback={<><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-700" /></div></>}>
@@ -352,7 +362,7 @@ function BookingsContent() {
                         ) : (
                           <>
                             <p className="text-xl font-bold text-navy-700">
-                              ${parseFloat(booking.totalAmount).toFixed(2)}
+                              {formatAmount(booking.totalAmount, booking.currency)}
                             </p>
                             <p className="text-xs text-navy-400">
                               {booking.paidAt ? "total paid" : "total due"}
