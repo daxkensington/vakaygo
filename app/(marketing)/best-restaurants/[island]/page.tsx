@@ -124,8 +124,15 @@ function getPriceRange(priceAmount: string | null): string {
 function getCuisineTypes(typeData: Record<string, unknown> | null): string[] {
   if (!typeData) return [];
   const cuisine = typeData.cuisine || typeData.cuisineType || typeData.cuisines;
-  if (Array.isArray(cuisine)) return cuisine as string[];
-  if (typeof cuisine === "string") return [cuisine];
+  if (Array.isArray(cuisine)) {
+    return cuisine
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim());
+  }
+  if (typeof cuisine === "string") {
+    const trimmed = cuisine.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
   return [];
 }
 
