@@ -136,6 +136,43 @@ const defaultEssentials = {
   driving: "Local permit / Check side",
 };
 
+const islandGuideSlugs: Record<string, string> = {
+  grenada: "ultimate-guide-to-grenada-the-spice-isle",
+  barbados: "best-beaches-in-barbados-a-locals-guide",
+  "trinidad-and-tobago": "trinidad-carnival-2026-everything-you-need-to-know",
+  "st-lucia": "island-hopping-in-the-eastern-caribbean-a-7-day-itinerary",
+  jamaica: "jamaica-travel-guide-montego-bay-negril-ocho-rios",
+  bahamas: "bahamas-travel-guide-nassau-exumas-harbour-island",
+  aruba: "aruba-travel-guide-eagle-beach-palm-beach-catamaran-cruises",
+  curacao: "curacao-travel-guide-willemstad-shore-diving-hidden-coves",
+  "dominican-republic": "dominican-republic-travel-guide-punta-cana-samana-santo-domingo",
+  antigua: "antigua-travel-guide-365-beaches-english-harbour-sailing",
+  "st-vincent": "st-vincent-and-the-grenadines-travel-guide-bequia-mustique-tobago-cays",
+  dominica: "dominica-travel-guide-the-nature-island-boiling-lake-whale-watching",
+  "turks-and-caicos": "turks-and-caicos-travel-guide-grace-bay-chalk-sound-private-charters",
+  "cayman-islands": "cayman-islands-travel-guide-seven-mile-beach-stingray-city-diving",
+  bonaire: "bonaire-travel-guide-shore-diving-capital-kralendijk-klein-bonaire",
+  "st-kitts": "st-kitts-and-nevis-travel-guide-brimstone-hill-pinneys-beach",
+  martinique: "martinique-travel-guide-french-caribbean-rum-mount-pelee-beaches",
+  guadeloupe: "guadeloupe-travel-guide-grande-terre-basse-terre-cousteau-reserve",
+  "us-virgin-islands": "us-virgin-islands-travel-guide-st-thomas-st-john-trunk-bay",
+  "british-virgin-islands": "british-virgin-islands-travel-guide-tortola-virgin-gorda-sailing",
+  "puerto-rico": "puerto-rico-travel-guide-old-san-juan-el-yunque-bioluminescent-bays",
+  cartagena: "cartagena-travel-guide-walled-city-rosario-islands-rooftop-dining",
+  medellin: "medellin-travel-guide-el-poblado-guatape-eternal-spring",
+  "cancun-riviera-maya": "cancun-and-riviera-maya-travel-guide-tulum-cenotes-isla-mujeres",
+  "los-cabos": "los-cabos-travel-guide-el-arco-whale-watching-baja-dining",
+  guanacaste: "guanacaste-costa-rica-travel-guide-tamarindo-papagayo-surf-eco-luxury",
+  "ambergris-caye": "ambergris-caye-belize-travel-guide-hol-chan-great-blue-hole-san-pedro",
+  santorini: "santorini-travel-guide-oia-caldera-sunsets-catamaran-cruises",
+  mykonos: "mykonos-travel-guide-beach-clubs-little-venice-delos-yachts",
+  crete: "crete-travel-guide-chania-elafonisi-balos-lagoon-minoan-palaces",
+  ibiza: "ibiza-travel-guide-dalt-vila-formentera-yachts-hidden-calas",
+  mallorca: "mallorca-travel-guide-palma-tramuntana-deia-private-boat-charters",
+  "amalfi-coast-capri": "amalfi-coast-and-capri-travel-guide-positano-ravello-private-gozzo-boats",
+  "hvar-split": "hvar-and-split-travel-guide-dalmatian-coast-pakleni-islands-blue-cave",
+};
+
 type Props = { params: Promise<{ island: string }> };
 
 export default async function IslandPage({ params }: Props) {
@@ -153,6 +190,7 @@ export default async function IslandPage({ params }: Props) {
 
   const heroImg = heroImages[islandSlug] || defaultHero;
   const essentials = islandEssentials[islandSlug] || defaultEssentials;
+  const guideSlug = islandGuideSlugs[islandSlug];
 
   return (
     <>
@@ -163,7 +201,7 @@ export default async function IslandPage({ params }: Props) {
           <Breadcrumbs
             items={[
               { label: "Home", href: "/" },
-              { label: "Islands", href: "/explore" },
+              { label: "Destinations", href: "/islands" },
               { label: `${getIslandFlag(islandSlug)} ${island.name}` },
             ]}
           />
@@ -195,7 +233,7 @@ export default async function IslandPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/80">
               <span className="flex items-center gap-1">
                 <MapPin size={14} />
-                Caribbean
+                {island.country || "Sun & Sea"}
               </span>
               <span>{stats.totalListings} verified places</span>
               <Link
@@ -263,6 +301,62 @@ export default async function IslandPage({ params }: Props) {
                 <p className="text-sm font-semibold text-navy-700 mt-0.5">🚗 {essentials.driving}</p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Curated Destination Guides & Top Lists (SEO Internal Link Silo) */}
+        <section className="mx-auto max-w-7xl px-6 pt-6 pb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {guideSlug && (
+              <Link
+                href={`/guides/${guideSlug}`}
+                className="group bg-white rounded-2xl border border-cream-200 p-4 hover:border-gold-400 hover:shadow-md transition-all flex items-center justify-between gap-3"
+              >
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gold-700">Editorial Guide</span>
+                  <p className="text-sm font-bold text-navy-700 group-hover:text-gold-700 transition-colors mt-0.5">
+                    {island.name} Travel Guide
+                  </p>
+                </div>
+                <ArrowRight size={16} className="text-navy-300 group-hover:text-gold-600 shrink-0" />
+              </Link>
+            )}
+            <Link
+              href={`/things-to-do-in-${islandSlug}`}
+              className="group bg-white rounded-2xl border border-cream-200 p-4 hover:border-teal-400 hover:shadow-md transition-all flex items-center justify-between gap-3"
+            >
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600">Tours & Activities</span>
+                <p className="text-sm font-bold text-navy-700 group-hover:text-teal-600 transition-colors mt-0.5">
+                  Best Things to Do in {island.name}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-navy-300 group-hover:text-teal-600 shrink-0" />
+            </Link>
+            <Link
+              href={`/best-hotels-${islandSlug}`}
+              className="group bg-white rounded-2xl border border-cream-200 p-4 hover:border-gold-400 hover:shadow-md transition-all flex items-center justify-between gap-3"
+            >
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gold-700">Boutique Stays & Resorts</span>
+                <p className="text-sm font-bold text-navy-700 group-hover:text-gold-700 transition-colors mt-0.5">
+                  Best Hotels in {island.name}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-navy-300 group-hover:text-gold-600 shrink-0" />
+            </Link>
+            <Link
+              href={`/best-restaurants-${islandSlug}`}
+              className="group bg-white rounded-2xl border border-cream-200 p-4 hover:border-teal-400 hover:shadow-md transition-all flex items-center justify-between gap-3"
+            >
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600">Local Dining & Beach Bars</span>
+                <p className="text-sm font-bold text-navy-700 group-hover:text-teal-600 transition-colors mt-0.5">
+                  Best Restaurants in {island.name}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-navy-300 group-hover:text-teal-600 shrink-0" />
+            </Link>
           </div>
         </section>
 

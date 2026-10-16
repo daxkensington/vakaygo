@@ -190,7 +190,7 @@ export function Header() {
               scrolled || !isLanding ? "text-navy-500" : "text-white/80"
             }`}
           >
-            Islands
+            Destinations
           </Link>
           <Link
             href="/map"

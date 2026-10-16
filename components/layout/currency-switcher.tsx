@@ -5,6 +5,7 @@ import {
   useCurrency,
   POPULAR_CURRENCIES,
   CARIBBEAN_CURRENCIES,
+  LATAM_CURRENCIES,
   CURRENCY_NAMES,
   CURRENCY_SYMBOLS,
   CURRENCY_FLAGS,
@@ -41,7 +42,7 @@ export function CurrencySwitcher() {
 
   function renderCurrencyOption(code: string) {
     const rate = rates[code] || 1;
-    const preview = (previewAmount * rate).toFixed(2);
+    const preview = rate >= 100 ? Math.round(previewAmount * rate).toLocaleString() : (previewAmount * rate).toFixed(2);
 
     return (
       <button
@@ -50,14 +51,14 @@ export function CurrencySwitcher() {
           setCurrency(code);
           setOpen(false);
         }}
-        className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-cream-50 transition-colors ${
+        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 hover:bg-cream-50 transition-colors ${
           currency === code
             ? "text-gold-700 font-semibold bg-gold-50"
             : "text-navy-600"
         }`}
       >
         <span className="text-base leading-none">{CURRENCY_FLAGS[code]}</span>
-        <span className="font-semibold w-10">{CURRENCY_SYMBOLS[code]}</span>
+        <span className="font-semibold w-12">{CURRENCY_SYMBOLS[code]}</span>
         <span className="font-medium">{code}</span>
         <span className="text-navy-300 text-xs ml-auto">
           {CURRENCY_SYMBOLS[code]}{preview}
@@ -92,7 +93,7 @@ export function CurrencySwitcher() {
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-10 z-50 bg-white rounded-xl shadow-[var(--shadow-elevated)] py-2 min-w-[280px] border border-cream-200">
+          <div className="absolute right-0 top-10 z-50 bg-white rounded-xl shadow-[var(--shadow-elevated)] py-2 min-w-[290px] max-h-[80vh] overflow-y-auto border border-cream-200">
             {/* Rates status */}
             {ratesUpdatedAt && (
               <div className="px-4 py-1.5 text-[10px] text-navy-300">
@@ -104,7 +105,7 @@ export function CurrencySwitcher() {
             {/* Popular currencies */}
             <div className="px-4 pt-1 pb-1">
               <span className="text-[10px] font-semibold text-navy-300 uppercase tracking-wider">
-                Popular
+                Popular (Global &amp; Med)
               </span>
             </div>
             {POPULAR_CURRENCIES.map(renderCurrencyOption)}
@@ -119,6 +120,17 @@ export function CurrencySwitcher() {
               </span>
             </div>
             {CARIBBEAN_CURRENCIES.map(renderCurrencyOption)}
+
+            {/* Divider */}
+            <div className="my-1 border-t border-cream-100" />
+
+            {/* Latin America currencies */}
+            <div className="px-4 pt-1 pb-1">
+              <span className="text-[10px] font-semibold text-navy-300 uppercase tracking-wider">
+                Latin America
+              </span>
+            </div>
+            {LATAM_CURRENCIES.map(renderCurrencyOption)}
           </div>
         </>
       )}

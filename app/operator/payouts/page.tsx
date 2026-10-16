@@ -286,7 +286,7 @@ export default function OperatorPayoutsPage() {
             Payouts
           </h1>
           <p className="text-navy-400 mt-1">
-            Track your earnings, payout history, and Caribbean multi-rail settlement setup
+            Track your earnings, payout history, and global multi-rail settlement setup
           </p>
         </div>
         <button
@@ -336,16 +336,16 @@ export default function OperatorPayoutsPage() {
         </div>
       </div>
 
-      {/* Payout Method & Caribbean Multi-Rail Settlement Setup */}
+      {/* Payout Method & Global Sun & Sea Multi-Rail Settlement Setup */}
       <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="font-bold text-navy-700 flex items-center gap-2">
               <Globe size={18} className="text-teal-600" />
-              Caribbean &amp; International Payout Setup
+              Global Sun &amp; Sea Multi-Rail Payout Setup
             </h2>
             <p className="text-sm text-navy-400 mt-1">
-              Operators across all 21 Caribbean islands can receive 48h post-trip escrow payouts in USD via Wise, PayPal, or Bank Wire (SWIFT / ACH) when Stripe Connect is unavailable locally.
+              Operators across all 34 Caribbean, Latin American, and Mediterranean destinations can receive 48h post-trip escrow payouts in USD, EUR, or local currency via Wise, PayPal, or Bank Wire (SWIFT / IBAN / ACH).
             </p>
           </div>
           <Link
@@ -411,9 +411,9 @@ export default function OperatorPayoutsPage() {
                   onChange={(e) => setPayoutMethod(e.target.value as "paypal" | "wise" | "bank_wire")}
                   className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm text-navy-700"
                 >
-                  <option value="wise">Wise (USD / Multi-Currency Account)</option>
+                  <option value="wise">Wise (USD / EUR / Multi-Currency Account)</option>
                   <option value="paypal">PayPal (USD Mass Payout)</option>
-                  <option value="bank_wire">Bank Wire (SWIFT / Local Bank)</option>
+                  <option value="bank_wire">Bank Wire (SWIFT / IBAN / Local Bank)</option>
                 </select>
               </div>
 
@@ -427,6 +427,13 @@ export default function OperatorPayoutsPage() {
                   className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm text-navy-700"
                 >
                   <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro (Mediterranean &amp; French Caribbean)</option>
+                  <option value="GBP">GBP — British Pound</option>
+                  <option value="CAD">CAD — Canadian Dollar</option>
+                  <option value="MXN">MXN — Mexican Peso</option>
+                  <option value="COP">COP — Colombian Peso</option>
+                  <option value="CRC">CRC — Costa Rican Colón</option>
+                  <option value="BZD">BZD — Belize Dollar</option>
                   <option value="XCD">XCD — Eastern Caribbean Dollar</option>
                   <option value="BBD">BBD — Barbadian Dollar</option>
                   <option value="JMD">JMD — Jamaican Dollar</option>
@@ -434,7 +441,6 @@ export default function OperatorPayoutsPage() {
                   <option value="TTD">TTD — Trinidad &amp; Tobago Dollar</option>
                   <option value="DOP">DOP — Dominican Peso</option>
                   <option value="BSD">BSD — Bahamian Dollar</option>
-                  <option value="EUR">EUR — Euro</option>
                 </select>
               </div>
             </div>
@@ -480,7 +486,7 @@ export default function OperatorPayoutsPage() {
                     required={payoutMethod === "bank_wire"}
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    placeholder="Republic Bank / CIBC Caribbean"
+                    placeholder="Republic Bank / BBVA / Eurobank"
                     className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm text-navy-700"
                   />
                 </div>
@@ -527,7 +533,7 @@ export default function OperatorPayoutsPage() {
             <div className="rounded-xl bg-cream-50 p-4 border border-cream-200 space-y-3">
               <div className="flex items-center gap-2 text-navy-700 font-semibold text-sm">
                 <ShieldCheck size={18} className="text-teal-600" />
-                Form W-8BEN / W-8BEN-E Foreign Status Certification (Non-US Caribbean Operators)
+                Form W-8BEN / W-8BEN-E Foreign Status Certification (Non-US International Operators)
               </div>
               <p className="text-xs text-navy-500">
                 Under IRC § 862(a)(3), hospitality, charter, and tour services performed outside the United States by a non-US operator are foreign-source income subject to 0% US federal tax withholding.
@@ -535,7 +541,7 @@ export default function OperatorPayoutsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-navy-500 mb-1">
-                    Country of Tax Residence (ISO 2-Letter Code, e.g. GD, JM, BB, KY)
+                    Country of Tax Residence (ISO 2-Letter Code, e.g. GD, MX, CO, GR, ES, IT, HR)
                   </label>
                   <input
                     required

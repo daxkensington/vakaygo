@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { sendEmail } from "@/server/mail-client";
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
+import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import { logger } from "@/lib/logger";
 
 const FROM = "VakayGo <hello@vakaygo.com>";
@@ -121,6 +122,7 @@ export function isValidBusinessEmail(raw: unknown): raw is string {
   const [local, domain] = email.split("@");
   if (!local || !domain) return false;
   if (domain.endsWith(".invalid") || domain.endsWith(".local") || domain.endsWith(".test")) return false;
+  if (/^(?:badmail|honeypot|spamtrap)\./i.test(domain)) return false;
   if (/\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|eot|mp4|pdf|zip)$/i.test(domain)) return false;
   if (BLOCKED_EMAIL_DOMAINS.has(domain)) return false;
   for (const blocked of BLOCKED_EMAIL_DOMAINS) {
@@ -343,6 +345,7 @@ export async function sendBusinessInterestOutreachEmail(
   listingId: string,
   options?: {
     force?: boolean;
+    bypassQuietHours?: boolean;
     triggeredBy?: "traveler_interest" | "admin" | "cron";
     recipientOverride?: string;
     markStatusContacted?: boolean;
@@ -351,6 +354,8 @@ export async function sendBusinessInterestOutreachEmail(
   sent: boolean;
   email?: string;
   reason?: string;
+  timeZone?: string;
+  localTime?: string;
 }> {
   if (!isListingId(listingId) || !process.env.DATABASE_URL) {
     return { sent: false, reason: "invalid_listing" };
@@ -361,7 +366,7 @@ export async function sendBusinessInterestOutreachEmail(
     `SELECT l.id, l.title, l.slug, l.status AS "listingStatus",
             l.type_data->>'email' AS email,
             l.type_data->>'website' AS website,
-            i.slug AS "islandSlug", i.name AS "islandName", i.is_active AS "islandActive",
+            i.slug AS "islandSlug", i.name AS "islandName", i.country AS "islandCountry", i.is_active AS "islandActive",
             o.status AS "outreachStatus", o.notes AS "outreachNotes", o.contacted_at AS "contactedAt",
             (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0))::int AS "interestedCustomers",
             vakaygo_listing_claim_verified(l.id) AS "claimVerified"
@@ -440,6 +445,24 @@ export async function sendBusinessInterestOutreachEmail(
     return { sent: false, reason: "no_email_on_file" };
   }
 
+  // Enforce recipient local timezone business-hours rule (08:30–19:30 local time)
+  if (!options?.bypassQuietHours) {
+    const windowCheck = checkRecipientSendingWindow({
+      islandSlug: row.islandSlug,
+      country: row.islandCountry,
+      email: targetEmail,
+    });
+    if (!windowCheck.allowed) {
+      return {
+        sent: false,
+        email: targetEmail,
+        reason: `outside_local_business_hours (${windowCheck.localTimeFormatted} in ${windowCheck.timeZone}; allowed ${windowCheck.allowedWindow})`,
+        timeZone: windowCheck.timeZone,
+        localTime: windowCheck.localTimeFormatted,
+      };
+    }
+  }
+
   if (!process.env.RESEND_API_KEY) {
     return { sent: false, email: targetEmail, reason: "mail_unconfigured" };
   }
@@ -478,7 +501,7 @@ export async function sendBusinessInterestOutreachEmail(
     `- Update your photos, pricing, WhatsApp/phone contact, and availability`,
     `- Respond directly to traveler inquiries and booking requests`,
     `- Keep 85%-90% on direct bookings with a 0% guest booking fee (saving up to 50% compared to legacy 20%-30% OTA commissions)`,
-    `- Receive payouts via Wise, PayPal, or local/international bank wire`,
+    `- Receive payouts in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire`,
     ``,
     `Verify ownership of your page in 60 seconds here:`,
     `${claimUrl}`,
@@ -500,7 +523,7 @@ export async function sendBusinessInterestOutreachEmail(
   <ul style="padding-left:20px;margin:12px 0">
     <li><strong>0% Guest Booking Fee:</strong> Travelers pay zero platform markup.</li>
     <li><strong>Keep 85%&ndash;90% of Every Booking:</strong> Save up to 50% vs. traditional 20%&ndash;30% OTA commissions.</li>
-    <li><strong>Fast Regional Payouts:</strong> Get paid via Wise, PayPal, or local/international bank wire.</li>
+    <li><strong>Fast Multi-Currency Payouts:</strong> Get paid in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire.</li>
     <li><strong>Direct Inquiries:</strong> Update your photos, rates, and respond directly to travelers.</li>
   </ul>
   <p>Verify ownership of your listing in 60 seconds here:</p>

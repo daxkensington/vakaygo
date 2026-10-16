@@ -15,7 +15,7 @@ const categories = [
     icon: Compass,
     name: "Excursions",
     slug: "excursion",
-    description: "Boat trips, island hopping & adventure days",
+    description: "Boat charters, coast hopping & adventure days",
     image: "/images/categories/excursion.jpg",
   },
   {
@@ -68,7 +68,7 @@ const categories = [
     icon: Users,
     name: "Guides",
     slug: "guide",
-    description: "Expert locals who show you the real island",
+    description: "Expert locals who show you the real destination",
     image:
       "/images/sections/guides.jpg",
   },

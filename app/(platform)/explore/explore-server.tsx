@@ -64,8 +64,8 @@ export function describe(f: ListingFilters, islandName: string | null) {
     spa: "spas, massage and wellness",
   };
   const description = f.type
-    ? `Compare ${nouns[f.type]} ${where ? `in ${where}` : "across 21 Caribbean islands"} on VakayGo. Browse business details, photos and location information.`
-    : `Explore stays, tours, dining, events and local guides ${where ? `in ${where}` : "across 21 Caribbean islands"}. Browse listing information by destination and category on VakayGo.`;
+    ? `Compare ${nouns[f.type]} ${where ? `in ${where}` : "across 34 Caribbean, Latin American, and Mediterranean destinations"} on VakayGo. Browse business details, photos and location information.`
+    : `Explore stays, tours, dining, events and local guides ${where ? `in ${where}` : "across 34 Caribbean, Latin American, and Mediterranean destinations"}. Browse listing information by destination and category on VakayGo.`;
   return { title, description };
 }
 

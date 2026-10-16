@@ -11,9 +11,9 @@ import { parseAutocompleteResults, type AutocompleteResult } from "@/lib/autocom
 const heroImages = [
   "/images/hero/caribbean-hero.jpg",
   "/images/islands/grenada.jpg",
+  "/images/islands/santorini.jpg",
+  "/images/islands/cartagena.jpg",
   "/images/islands/st-lucia.jpg",
-  "/images/islands/jamaica.jpg",
-  "/images/islands/barbados.jpg",
 ];
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -472,8 +472,8 @@ export function Hero() {
         {/* Stats */}
         <div className="mt-10 flex flex-wrap justify-center gap-12 text-sm">
           {[
-            { value: "7,100+", label: "Listings" },
-            { value: "21", label: "Islands" },
+            { value: "8,000+", label: "Listings" },
+            { value: "34", label: "Destinations" },
             { value: String(LISTING_TYPES.length), label: "Categories" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">

@@ -12,6 +12,10 @@ const FALLBACK_RATES: Record<string, number> = {
   TTD: 6.78,
   JMD: 155.0,
   BBD: 2.00,
+  DOP: 60.5,
+  MXN: 20.1,
+  COP: 4150.0,
+  CRC: 512.0,
 };
 
 export const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -23,6 +27,10 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   TTD: "TT$",
   JMD: "J$",
   BBD: "Bds$",
+  DOP: "RD$",
+  MXN: "MX$",
+  COP: "COL$",
+  CRC: "\u20A1",
 };
 
 export const CURRENCY_FLAGS: Record<string, string> = {
@@ -34,6 +42,10 @@ export const CURRENCY_FLAGS: Record<string, string> = {
   TTD: "\uD83C\uDDF9\uD83C\uDDF9",
   JMD: "\uD83C\uDDEF\uD83C\uDDF2",
   BBD: "\uD83C\uDDE7\uD83C\uDDE7",
+  DOP: "\uD83C\uDDE9\uD83C\uDDF4",
+  MXN: "\uD83C\uDDF2\uD83C\uDDFD",
+  COP: "\uD83C\uDDE8\uD83C\uDDF4",
+  CRC: "\uD83C\uDDE8\uD83C\uDDF7",
 };
 
 export const CURRENCY_NAMES: Record<string, string> = {
@@ -45,11 +57,16 @@ export const CURRENCY_NAMES: Record<string, string> = {
   TTD: "Trinidad & Tobago Dollar",
   JMD: "Jamaican Dollar",
   BBD: "Barbadian Dollar",
+  DOP: "Dominican Peso",
+  MXN: "Mexican Peso",
+  COP: "Colombian Peso",
+  CRC: "Costa Rican Colón",
 };
 
 export const POPULAR_CURRENCIES = ["USD", "EUR", "GBP", "CAD"];
-export const CARIBBEAN_CURRENCIES = ["XCD", "BBD", "JMD", "TTD"];
-export const CURRENCIES = [...POPULAR_CURRENCIES, ...CARIBBEAN_CURRENCIES];
+export const CARIBBEAN_CURRENCIES = ["XCD", "BBD", "JMD", "TTD", "DOP"];
+export const LATAM_CURRENCIES = ["MXN", "COP", "CRC"];
+export const CURRENCIES = [...POPULAR_CURRENCIES, ...CARIBBEAN_CURRENCIES, ...LATAM_CURRENCIES];
 
 const LOCALSTORAGE_RATES_KEY = "vakaygo_exchange_rates";
 const LOCALSTORAGE_CURRENCY_KEY = "vakaygo_currency";

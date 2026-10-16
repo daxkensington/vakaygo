@@ -30,13 +30,12 @@ export default function ServicesPage() {
               className="text-4xl md:text-6xl font-bold text-white leading-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Discover the Caribbean.
+              Sun &amp; Sea Services.
               <br />
-              <span className="text-gold-400">Full-service Caribbean.</span>
+              <span className="text-gold-400">Across 34 Destinations.</span>
             </h1>
             <p className="mt-6 text-lg text-white/70 max-w-2xl mx-auto">
-              Excursions, airport transfers, and VIP services — everything you need
-              for a seamless Caribbean experience, all in one platform.
+              Excursions, private boat charters, airport transfers, and VIP concierge services across the Caribbean, Latin America, and the Mediterranean — all in one platform.
             </p>
           </div>
         </section>
@@ -59,17 +58,14 @@ export default function ServicesPage() {
                   <span className="text-teal-500">Explore local experiences.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  From catamaran cruises to waterfall hikes, island hopping to
-                  underwater sculpture parks — the Caribbean&apos;s best excursions
-                  are on VakayGo. Browse directory information and learn about
-                  local experiences. Online booking is currently unavailable.
+                  From catamaran cruises in St. Lucia and Santorini to cenote dives in the Riviera Maya, Gozzo yacht charters on the Amalfi Coast, and waterfall hikes in Dominica — discover verified local excursions across 34 sun &amp; sea destinations.
                 </p>
                 <div className="grid grid-cols-2 gap-4 mt-8">
                   {[
                     { icon: Anchor, label: "Sailing & Boat Trips" },
                     { icon: Waves, label: "Snorkeling & Diving" },
                     { icon: Mountain, label: "Hiking & Waterfalls" },
-                    { icon: Compass, label: "Island Hopping" },
+                    { icon: Compass, label: "Island & Coast Hopping" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center">
@@ -128,9 +124,7 @@ export default function ServicesPage() {
                   <span className="text-gold-700">before you travel.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  Browse local airport transfer companies and compare their published
-                  information. Confirm current service details directly with the business.
-                  VakayGo is not accepting transfer bookings or payments.
+                  Browse local airport and port transfer companies across 34 coastal and island hubs and compare their published information. Confirm current service details directly with the business.
                 </p>
                 <ul className="mt-8 space-y-3">
                   {[
@@ -177,9 +171,7 @@ export default function ServicesPage() {
                   <span className="text-gold-400">a VIP.</span>
                 </h2>
                 <p className="mt-6 text-white/70 leading-relaxed">
-                  For travelers who want the premium experience. Personal security,
-                  luxury transfers, private concierge, and executive protection
-                  throughout your Caribbean stay. Discreet, professional, world-class.
+                  For travelers who want the bespoke experience. Private yacht charters, luxury transfers, villa chefs, and VIP concierge services across the Caribbean, Latin America, and the Mediterranean. Discreet, professional, world-class.
                 </p>
                 <div className="grid grid-cols-2 gap-4 mt-8">
                   {[
@@ -188,7 +180,7 @@ export default function ServicesPage() {
                     { icon: Star, label: "VIP Concierge" },
                     { icon: Users, label: "Executive Protection" },
                     { icon: Clock, label: "24/7 Availability" },
-                    { icon: MapPin, label: "Island-Wide Coverage" },
+                    { icon: MapPin, label: "34-Destination Coverage" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
@@ -229,14 +221,13 @@ export default function ServicesPage() {
               List your service on VakayGo
             </h2>
             <p className="mt-4 text-white/80 max-w-xl mx-auto">
-              Offer excursions, transfers, or VIP services? List for free, pay just
-              3-5% commission. The lowest in the industry.
+              Offer excursions, charters, transfers, or VIP services? Claim or list your business for free and keep 85%–90% of every verified booking with 0% guest booking fees.
             </p>
             <Link
-              href="/auth/signup"
+              href="/for-businesses"
               className="inline-flex items-center gap-2 bg-white text-gold-700 px-8 py-4 rounded-xl font-semibold hover:bg-cream-100 transition-colors mt-8"
             >
-              List Your Service — Free <ArrowRight size={16} />
+              Claim or List Your Business — Free <ArrowRight size={16} />
             </Link>
           </div>
         </section>
