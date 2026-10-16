@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { sendEmail } from "@/server/mail-client";
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
+import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import { logger } from "@/lib/logger";
 
 const FROM = "VakayGo <hello@vakaygo.com>";
@@ -344,6 +345,7 @@ export async function sendBusinessInterestOutreachEmail(
   listingId: string,
   options?: {
     force?: boolean;
+    bypassQuietHours?: boolean;
     triggeredBy?: "traveler_interest" | "admin" | "cron";
     recipientOverride?: string;
     markStatusContacted?: boolean;
@@ -352,6 +354,8 @@ export async function sendBusinessInterestOutreachEmail(
   sent: boolean;
   email?: string;
   reason?: string;
+  timeZone?: string;
+  localTime?: string;
 }> {
   if (!isListingId(listingId) || !process.env.DATABASE_URL) {
     return { sent: false, reason: "invalid_listing" };
@@ -362,7 +366,7 @@ export async function sendBusinessInterestOutreachEmail(
     `SELECT l.id, l.title, l.slug, l.status AS "listingStatus",
             l.type_data->>'email' AS email,
             l.type_data->>'website' AS website,
-            i.slug AS "islandSlug", i.name AS "islandName", i.is_active AS "islandActive",
+            i.slug AS "islandSlug", i.name AS "islandName", i.country AS "islandCountry", i.is_active AS "islandActive",
             o.status AS "outreachStatus", o.notes AS "outreachNotes", o.contacted_at AS "contactedAt",
             (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0))::int AS "interestedCustomers",
             vakaygo_listing_claim_verified(l.id) AS "claimVerified"
@@ -439,6 +443,24 @@ export async function sendBusinessInterestOutreachEmail(
 
   if (!targetEmail) {
     return { sent: false, reason: "no_email_on_file" };
+  }
+
+  // Enforce recipient local timezone business-hours rule (08:30–19:30 local time)
+  if (!options?.bypassQuietHours) {
+    const windowCheck = checkRecipientSendingWindow({
+      islandSlug: row.islandSlug,
+      country: row.islandCountry,
+      email: targetEmail,
+    });
+    if (!windowCheck.allowed) {
+      return {
+        sent: false,
+        email: targetEmail,
+        reason: `outside_local_business_hours (${windowCheck.localTimeFormatted} in ${windowCheck.timeZone}; allowed ${windowCheck.allowedWindow})`,
+        timeZone: windowCheck.timeZone,
+        localTime: windowCheck.localTimeFormatted,
+      };
+    }
   }
 
   if (!process.env.RESEND_API_KEY) {

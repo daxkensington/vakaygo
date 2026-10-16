@@ -6,6 +6,7 @@ import { eq, and, isNull, ne, sql } from "drizzle-orm";
 import { sendAbandonedBookingRecovery } from "@/server/email";
 import { createNotification } from "@/server/notifications";
 import { classifyPendingBooking, expiryReason } from "@/lib/abandoned-bookings";
+import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import { isUnclaimedOperatorEmail } from "@/lib/booking-request";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
@@ -87,6 +88,15 @@ export async function GET(request: Request) {
       const listingUrl = `https://vakaygo.com/${b.islandSlug}/${b.listingSlug}`;
 
       if (verdict === "recover") {
+        // Respect recipient local daytime business hours (08:30–19:30) before sending recovery nudge
+        const windowCheck = checkRecipientSendingWindow({
+          islandSlug: b.islandSlug,
+          email: b.travelerEmail,
+        }, now);
+        if (!windowCheck.allowed) {
+          result.waiting++;
+          continue;
+        }
         const eligibility = await getListingBookingEligibility(b.listingId, { refreshProvider: true });
         if (!eligibility.eligible || eligibility.operatorId !== b.operatorId) {
           result.ignored++;
