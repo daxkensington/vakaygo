@@ -1,20 +1,15 @@
-import { and, asc, eq, gt, gte, lte, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { islands, listings, media } from "@/drizzle/schema";
 import { createDb } from "@/server/db";
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 import { MAP_PAGE_SIZE, type MapListingPage } from "@/lib/map-listings";
+import { publicMapLocations } from "@/server/map-listing-eligibility";
 
 /** Keyset pages keep reads bounded and do not silently omit the 7,501st listing. */
 export async function getMapListingPage(island: string | null, cursor: string | null): Promise<MapListingPage> {
   const db = createDb();
-  const publicLocations = and(
-    eq(listings.status, "active"), eq(islands.isActive, true),
-    ne(listings.operatorId, "197d8586-7fd3-4999-91de-a50ad7d70e23"),
-    gte(listings.latitude, "-90"), lte(listings.latitude, "90"),
-    gte(listings.longitude, "-180"), lte(listings.longitude, "180"),
-    island ? eq(islands.slug, island) : undefined,
-  );
+  const publicLocations = publicMapLocations(island);
   const enabled = await bookingLaunchEnabled();
   const [rows, countRows] = await Promise.all([
     db.select({
