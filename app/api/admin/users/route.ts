@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { users, listings, bookings } from "@/drizzle/schema";
+import { users, listings, bookings, userRoleEnum } from "@/drizzle/schema";
 import { eq, sql, desc, and, or, ilike } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -41,7 +41,11 @@ export async function GET(request: NextRequest) {
 
     // Build conditions
     const conditions = [];
-    if (role) conditions.push(eq(users.role, role as any));
+    if (role) {
+      const validRole = userRoleEnum.enumValues.find(value => value === role);
+      if (!validRole) return NextResponse.json({ error: "Invalid user role" }, { status: 400 });
+      conditions.push(eq(users.role, validRole));
+    }
     if (q) {
       conditions.push(
         or(

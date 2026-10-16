@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import {
   listings,
   listingViews,
@@ -11,51 +9,29 @@ import {
   islands,
   media,
 } from "@/drizzle/schema";
-import { eq, and, sql, desc, notInArray, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, notInArray } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+import { verifySession } from "@/server/admin-auth";
+import { sameSessionIdentity } from "@/lib/session-identity";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
+const headers = { "Cache-Control": "private, no-store" };
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
 }
 
-type ListingRow = {
-  id: string;
-  title: string;
-  slug: string;
-  type: string;
-  headline: string | null;
-  priceAmount: string | null;
-  priceCurrency: string | null;
-  priceUnit: string | null;
-  avgRating: string | null;
-  reviewCount: number | null;
-  parish: string | null;
-  isFeatured: boolean | null;
-  islandId: number;
-  islandSlug: string;
-  islandName: string;
-  image: string | null;
-};
-
 export async function GET() {
   try {
     const db = getDb();
 
-    // Try to get authenticated user
-    let userId: string | null = null;
-    try {
-      const cookieStore = await cookies();
-      const token = cookieStore.get("session")?.value;
-      if (token) {
-        const { payload } = await jwtVerify(token, SECRET);
-        userId = payload.id as string;
-      }
-    } catch {
-      // anonymous user
-    }
+    const actor = await verifySession();
+    const userId = actor?.userId;
+    const bookingsEnabled = await bookingLaunchEnabled();
+    const bookingEligible = bookingsEnabled ? currentListingBookable() : sql<boolean>`false`;
 
     // Anonymous users: return top-rated/featured listings
     if (!userId) {
@@ -67,6 +43,7 @@ export async function GET() {
           type: listings.type,
           headline: listings.headline,
           priceAmount: listings.priceAmount,
+          bookingEligible,
           priceCurrency: listings.priceCurrency,
           priceUnit: listings.priceUnit,
           avgRating: listings.avgRating,
@@ -84,16 +61,17 @@ export async function GET() {
           media,
           and(eq(media.listingId, listings.id), eq(media.isPrimary, true))
         )
-        .where(eq(listings.status, "active"))
+        .where(publicDirectoryListings())
         .orderBy(desc(listings.isFeatured), desc(listings.avgRating))
         .limit(12);
 
-      const withImages = popular.map((p) => ({ ...p, image: getImageUrl(p.image) || null }));
+      const withImages = popular.map((p) => ({ ...p, bookingEligible: p.bookingEligible === true,
+        priceAmount: p.bookingEligible === true ? p.priceAmount : null, image: getImageUrl(p.image) || null }));
       return NextResponse.json({
         recommended: withImages.slice(0, 6),
         popular: withImages.slice(6, 12),
         isPersonalized: false,
-      });
+      }, { headers });
     }
 
     // Authenticated user: get preferences from history
@@ -166,6 +144,7 @@ export async function GET() {
         type: listings.type,
         headline: listings.headline,
         priceAmount: listings.priceAmount,
+        bookingEligible,
         priceCurrency: listings.priceCurrency,
         priceUnit: listings.priceUnit,
         avgRating: listings.avgRating,
@@ -186,15 +165,19 @@ export async function GET() {
       .where(
         excludeIds.length > 0
           ? and(
-              eq(listings.status, "active"),
+              publicDirectoryListings(),
               notInArray(listings.id, excludeIds)
             )
-          : eq(listings.status, "active")
+          : publicDirectoryListings()
       )
       .limit(50);
 
     // Fix image URLs through proxy
-    const candidatesWithImages = candidates.map((c) => ({ ...c, image: getImageUrl(c.image) || null }));
+    if (!actor || !sameSessionIdentity(actor, await verifySession())) {
+      return NextResponse.json({ error: "Your session changed. Please reload." }, { status: 401, headers });
+    }
+    const candidatesWithImages = candidates.map((c) => ({ ...c, bookingEligible: c.bookingEligible === true,
+      priceAmount: c.bookingEligible === true ? c.priceAmount : null, image: getImageUrl(c.image) || null }));
 
     // Score candidates
     const scored = candidatesWithImages.map((listing) => {
@@ -234,12 +217,12 @@ export async function GET() {
       recommended,
       popular,
       isPersonalized: hasPersonalData,
-    });
+    }, { headers });
   } catch (error) {
     logger.error("Recommendations error", error);
     return NextResponse.json(
       { error: "Failed to get recommendations" },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }

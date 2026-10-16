@@ -6,12 +6,11 @@ import { sendNewReviewNotification } from "@/server/email";
 import { createNotification } from "@/server/notifications";
 import { awardReviewPoints } from "@/server/loyalty";
 import { eq, and, sql, inArray } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(request: Request) {
   try {
@@ -112,7 +111,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const travelerId = payload.id as string;
 
     // listingId is intentionally NOT taken from the client — it is derived

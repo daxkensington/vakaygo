@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { useParams } from "next/navigation";
 import { BlogEditor } from "@/components/blog/blog-editor";
 import { Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ export default function EditBlogPostPage() {
   const params = useParams();
   const id = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [postData, setPostData] = useState<any>(null);
+  const [postData, setPostData] = useState<ComponentProps<typeof BlogEditor>["initialData"]>();
   const [error, setError] = useState("");
 
   useEffect(() => {

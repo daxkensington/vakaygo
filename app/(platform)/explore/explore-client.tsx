@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { analytics } from "@/lib/analytics";
+import { useSearchHistory } from "@/lib/use-search-history";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { RecentlyViewed } from "@/components/listings/recently-viewed";
@@ -184,7 +185,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   const [selectedDuration, setSelectedDuration] = useState(f.duration ?? "");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [cuisineType, setCuisineType] = useState(f.cuisine ?? "");
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const { searchHistory, saveSearchHistory, clearSearchHistory } = useSearchHistory();
   const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [aiSearchActive, setAiSearchActive] = useState(false);
@@ -248,40 +249,6 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
-
-  // Fetch search history on mount
-  useEffect(() => {
-    fetch("/api/search-history")
-      .then((r) => r.json())
-      .then((d) => setSearchHistory(d.history || []))
-      .catch(() => {});
-  }, []);
-
-  async function saveSearchHistory(query: string) {
-    if (!query.trim()) return;
-    try {
-      await fetch("/api/search-history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
-      });
-      setSearchHistory((prev) => {
-        const filtered = prev.filter((h) => h !== query.trim());
-        return [query.trim(), ...filtered].slice(0, 10);
-      });
-    } catch {
-      // silently fail
-    }
-  }
-
-  async function clearSearchHistory() {
-    try {
-      await fetch("/api/search-history", { method: "DELETE" });
-      setSearchHistory([]);
-    } catch {
-      // silently fail
-    }
-  }
 
   function isNaturalLanguageQuery(q: string): boolean {
     if (q.length > 20) return true;

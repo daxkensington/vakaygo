@@ -123,6 +123,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: [
+    // API route parameters can end in image extensions; they still need auth
+    // revocation, role checks and rate limiting before the handler runs.
+    "/api/:path*",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

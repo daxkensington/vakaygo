@@ -100,22 +100,37 @@ it("progressively displays the first page while later pages load and preserves i
   expect(container.textContent).not.toContain("250 mapped listings");
 });
 
-it("loads all8038 locations across34 destinations in bounded pages without the former7500 cutoff", async () => {
+it("loads all8038 locations across34 destinations in nine bounded directory pages", async () => {
   const all = Array.from({ length: 8038 }, (_, index) => pin(index + 1));
   fetchMock.mockImplementation(async (url: string) => {
     const params = new URL(url, "https://vakaygo.test").searchParams;
     const cursor = params.get("cursor");
     const start = cursor ? parseInt(cursor.slice(-12), 16) : 0;
-    const rows = all.slice(start, start + 250);
+    const rows = all.slice(start, start + (cursor ? 1000 : 250));
     return response(rows, start + rows.length < all.length ? rows.at(-1)!.id : null, cursor ? null : all.length);
   });
   await render();
-  expect(fetchMock).toHaveBeenCalledTimes(33);
+  expect(fetchMock).toHaveBeenCalledTimes(9);
   expect(fetchMock.mock.calls.every(([url]) => url.startsWith("/api/map/listings?") && !url.includes("limit="))).toBe(true);
+  expect(fetchMock.mock.calls.every(([url]) => new URL(url, "https://vakaygo.test").searchParams.get("v") === "2")).toBe(true);
   expect(container.querySelectorAll("[data-map] p")).toHaveLength(8038);
   expect(container.textContent).toContain("8038 mapped listings");
   expect(container.querySelector('[role="region"]')?.getAttribute("aria-busy")).toBe("false");
   expect(new Set(all.map(row => row.islandSlug)).size).toBe(34);
+});
+
+it("loads all locations when an older server ignores v2 and retains250-row continuations", async () => {
+  const all = Array.from({ length: 8038 }, (_, index) => pin(index + 1));
+  fetchMock.mockImplementation(async (url: string) => {
+    const params = new URL(url, "https://vakaygo.test").searchParams;
+    expect(params.get("v")).toBe("2");
+    const cursor = params.get("cursor"), start = cursor ? parseInt(cursor.slice(-12), 16) : 0;
+    const rows = all.slice(start, start + 250);
+    return response(rows, start + rows.length < all.length ? rows.at(-1)!.id : null, cursor ? null : all.length);
+  });
+  await render();
+  expect(fetchMock).toHaveBeenCalledTimes(33); expect(container.querySelectorAll("[data-map] p")).toHaveLength(8038);
+  expect(container.textContent).toContain("8038 mapped listings"); expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
 it("rejects a repeated paging cursor instead of reporting a truncated map as complete", async () => {

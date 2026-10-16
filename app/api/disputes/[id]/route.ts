@@ -4,12 +4,11 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { disputes, bookings, users, listings } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { createNotification } from "@/server/notifications";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import { sendEmail } from "@/server/mail-client";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Key comes only from the environment — never hardcode secrets in source.
 
@@ -31,7 +30,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
 
@@ -126,7 +127,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
 

@@ -6,14 +6,13 @@ import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { shouldRequestBooking } from "@/lib/booking-request";
 import { toWallClockDate } from "@/lib/booking-time";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { bookingInputError, isDemoListing, localBookingNow } from "@/lib/booking-validation";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { bookingPaymentEligible } from "@/lib/booking-payment-eligibility";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -35,7 +34,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please sign in to book" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const travelerId = payload.id as string;
 
     const body = await request.json();
@@ -303,7 +304,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
 

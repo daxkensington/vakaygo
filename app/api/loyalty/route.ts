@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import {
   getUserLoyaltyData,
   getLoyaltyTransactions,
-  redeemPoints,
-  POINTS_PER_DOLLAR_CREDIT,
   MIN_REDEMPTION_POINTS,
 } from "@/server/loyalty";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 async function getAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
+    const currentSession = await verifyCurrentSessionToken(token);
+    return currentSession?.userId ?? null;
   } catch {
     return null;
   }
@@ -59,7 +56,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Redeem points
+// POST: Redemption stays closed until booking credits are implemented.
 export async function POST(request: Request) {
   try {
     const userId = await getAuthUserId();
@@ -67,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { points, bookingId } = await request.json();
+    const { points } = await request.json();
 
     if (!points || typeof points !== "number" || points < MIN_REDEMPTION_POINTS) {
       return NextResponse.json(
@@ -76,20 +73,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const creditAmount = points / POINTS_PER_DOLLAR_CREDIT;
-    const result = await redeemPoints({
-      userId,
-      points,
-      description: `Redeemed ${points} points for $${creditAmount.toFixed(2)} credit`,
-      bookingId,
-    });
-
-    return NextResponse.json({
-      success: true,
-      creditAmount: result.creditAmount,
-      newBalance: result.newTotal,
-      newTier: result.newTier,
-    });
+    return NextResponse.json(
+      { error: "Rewards redemption is currently unavailable.", code: "REWARDS_UNAVAILABLE" },
+      { status: 409, headers: { "Cache-Control": "private, no-store" } }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to redeem points";
     return NextResponse.json({ error: message }, { status: 400 });

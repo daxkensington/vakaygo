@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Home,
@@ -225,12 +226,12 @@ export default function NewListingPage() {
           Your listing is being reviewed and will be live within 24 hours.
           We&apos;ll notify you by email when it&apos;s published.
         </p>
-        <a
+        <Link prefetch={false}
           href="/operator/listings"
           className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors mt-8"
         >
           View My Listings
-        </a>
+        </Link>
         {createdListingId && (
           <div className="mt-8 max-w-2xl mx-auto text-left">
             <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">

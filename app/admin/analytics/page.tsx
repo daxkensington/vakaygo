@@ -54,9 +54,9 @@ type TopOperator = {
 
 type PlatformHealth = {
   activeListingsPercent: number;
-  avgResponseTime: number;
-  reviewRate: number;
-  repeatBookingRate: number;
+  avgResponseTime: number | null;
+  reviewRate: number | null;
+  repeatBookingRate: number | null;
 };
 
 type RecentActivity = {
@@ -83,14 +83,14 @@ function CircularProgress({
   suffix = "%",
   color = "var(--color-gold-500)",
 }: {
-  value: number;
+  value: number | null;
   label: string;
   suffix?: string;
   color?: string;
 }) {
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
-  const capped = Math.min(Math.max(value, 0), 100);
+  const capped = Math.min(Math.max(value ?? 0, 0), 100);
   const offset = circumference - (capped / 100) * circumference;
 
   return (
@@ -126,8 +126,7 @@ function CircularProgress({
           fill="var(--color-navy-800)"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          {value.toFixed(1)}
-          {suffix}
+          {value == null ? "N/A" : `${value.toFixed(1)}${suffix}`}
         </text>
       </svg>
       <span className="text-xs font-medium text-navy-500 text-center leading-tight">
@@ -270,6 +269,11 @@ export default function AnalyticsPage() {
         <p className="mt-1 text-navy-400">
           Platform performance and growth metrics
         </p>
+        <p className="mt-2 text-sm text-navy-500">
+          Paid booking values show gross amounts recorded in USD, before refunds and fees.
+          Other currencies are excluded. Repeat bookings count travelers with more than one completed booking.
+          N/A means there is no completed-booking data.
+        </p>
       </div>
 
       {/* ── 1. Recent Activity Cards ────────────────────────────── */}
@@ -409,7 +413,7 @@ export default function AnalyticsPage() {
             Booking Funnel
           </h2>
           <span className="ml-auto rounded-lg bg-gold-50 px-2 py-0.5 text-xs font-medium text-gold-700">
-            {(bookingFunnel.conversionRate * 100).toFixed(1)}% conversion
+            {(bookingFunnel.conversionRate * 100).toFixed(1)}% completed
           </span>
         </div>
 
@@ -589,13 +593,13 @@ export default function AnalyticsPage() {
             color="var(--color-gold-500)"
           />
           <CircularProgress
-            value={Math.min(platformHealth.reviewRate, 100)}
+            value={platformHealth.reviewRate == null ? null : Math.min(platformHealth.reviewRate, 100)}
             label="Review Rate"
             color="#10b981"
           />
           <CircularProgress
             value={bookingFunnel.conversionRate * 100}
-            label="Conversion Rate"
+            label="Completion Rate"
             color="#6366f1"
           />
           <CircularProgress
@@ -627,7 +631,7 @@ export default function AnalyticsPage() {
                   <th className="pb-3 pr-4">Island</th>
                   <th className="pb-3 pr-4 text-right">Listings</th>
                   <th className="pb-3 pr-4 text-right">Bookings</th>
-                  <th className="pb-3 text-right">Revenue</th>
+                  <th className="pb-3 text-right">Paid value (USD)</th>
                 </tr>
               </thead>
               <tbody>

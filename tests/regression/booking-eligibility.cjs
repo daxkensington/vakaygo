@@ -14,7 +14,8 @@ module.exports = async function eligibilityRegressions({load,dbFor,mocksFor,requ
     await check('No operator acceptance while '+reason, async()=>{
       const db=dbFor({bookings:[{...pending(),status:'requested',checkoutSessionId:null}]});
       const h=load('app/api/bookings/[bookingId]/route.ts',mocksFor(db,{
-        '@/server/business-onboarding':unavailable(reason),jose:{jwtVerify:async()=>({payload:{id:'operator',role:'operator'}})}
+        '@/server/business-onboarding':unavailable(reason),
+        '@/server/session-validation':{verifyCurrentSessionToken:async()=>({userId:'operator',role:'operator',email:'operator@example.invalid',sessionVersion:1,emailVerified:true})}
       }));
       const r=await h.PATCH(request({status:'confirmed'},'PATCH'),{params:Promise.resolve({bookingId})});
       assert.equal(r.status,409);assert.equal(db.writes.length,0);

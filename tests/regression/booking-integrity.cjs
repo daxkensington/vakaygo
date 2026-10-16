@@ -23,7 +23,9 @@ function load(rel, mocks={}) {
     '@neondatabase/serverless':{neon:()=>({})},
     'drizzle-orm':{eq:(a,b)=>({op:'eq',a,b}),ne:(a,b)=>({op:'ne',a,b}),isNull:a=>({op:'null',a}),and:(...args)=>({op:'and',args}),or:(...args)=>({op:'or',args}),sql:(parts,...args)=>({op:'sql',text:parts.join('?'),args})},
     'next/headers':{cookies:async()=>({get:()=>({value:'synthetic-session'}),delete:()=>{}})},
-    jose:{jwtVerify:async()=>({payload:{id:'traveler',role:'traveler'}})},
+    // Financial scenarios receive an already current actor; cryptographic and
+    // revoked-session behavior is covered by active-route-session.test.ts.
+    '@/server/session-validation':{verifyCurrentSessionToken:async()=>({userId:'traveler',role:'traveler',email:'traveler@example.invalid',sessionVersion:1,emailVerified:true})},
   };
   const requireMock=(id)=>{
     if(id in mocks) return mocks[id];
@@ -116,7 +118,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  });
  await check("Priced legacy requests can be confirmed without a fabricated payment",async()=>{
    const rows={bookings:[{...pending(),status:"requested",checkoutSessionId:null}]};const db=dbFor(rows);
-   const h=load("app/api/bookings/[bookingId]/route.ts",mocksFor(db,{jose:{jwtVerify:async()=>({payload:{id:"operator",role:"operator"}})}}));
+   const h=load("app/api/bookings/[bookingId]/route.ts",mocksFor(db,{"@/server/session-validation":{verifyCurrentSessionToken:async()=>({userId:"operator",role:"operator",email:"operator@example.invalid",sessionVersion:1,emailVerified:true})}}));
    assert.equal((await h.PATCH(request({status:"confirmed"},"PATCH"),{params:Promise.resolve({bookingId})})).status,200);
    assert.equal(rows.bookings[0].totalAmount,"0.00");assert.equal(rows.bookings[0].paymentMethod,"none");
  });

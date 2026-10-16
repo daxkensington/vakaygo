@@ -284,7 +284,7 @@ export async function getLoyaltyTransactions(
   const db = getDb();
   const { limit = 20, offset = 0, filter } = options;
 
-  let query = db
+  const query = db
     .select()
     .from(loyaltyTransactions)
     .where(

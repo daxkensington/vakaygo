@@ -4,6 +4,9 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { users, listings, islands, media, reviews } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 import { logger } from "@/lib/logger";
 export async function GET(
@@ -11,8 +14,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const db = drizzle(neon(process.env.DATABASE_URL!));
     const { id } = await params;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return NextResponse.json({ error: "A valid operator ID is required" }, { status: 400 });
+    }
+    const db = drizzle(neon(process.env.DATABASE_URL!));
 
     // Fetch operator (only if role is 'operator')
     const [operator] = await db
@@ -34,7 +40,8 @@ export async function GET(
       );
     }
 
-    // Fetch active listings with primary image and island info
+    const bookingsEnabled = await bookingLaunchEnabled();
+    // Fetch public listings with current booking eligibility and island info.
     const operatorListings = await db
       .select({
         id: listings.id,
@@ -42,7 +49,9 @@ export async function GET(
         slug: listings.slug,
         type: listings.type,
         priceAmount: listings.priceAmount,
+        priceCurrency: listings.priceCurrency,
         priceUnit: listings.priceUnit,
+        bookingEligible: bookingsEnabled ? currentListingBookable() : sql<boolean>`false`,
         avgRating: listings.avgRating,
         reviewCount: listings.reviewCount,
         parish: listings.parish,
@@ -60,7 +69,7 @@ export async function GET(
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))
       .where(
-        and(eq(listings.operatorId, id), eq(listings.status, "active"))
+        and(eq(listings.operatorId, id), publicDirectoryListings())
       )
       .orderBy(desc(listings.isFeatured), desc(listings.createdAt));
 
@@ -83,6 +92,8 @@ export async function GET(
 
     const transformedListings = operatorListings.map((l) => ({
       ...l,
+      bookingEligible: l.bookingEligible === true,
+      priceAmount: l.bookingEligible === true ? l.priceAmount : null,
       image: getImageUrl(l.image) || null,
     }));
 

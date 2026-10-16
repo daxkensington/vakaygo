@@ -57,6 +57,19 @@ describe("parseListingFilters", () => {
     expect(parseListingFilters(new URLSearchParams("date=2026-12-25")).date).toBe("2026-12-25");
     expect(parseListingFilters(new URLSearchParams("date=tomorrow")).date).toBeNull();
     expect(parseListingFilters(new URLSearchParams("date=2026-13-45")).date).toBeNull();
+    for (const date of ["2027-02-29", "2026-02-31", "2026-04-31", "0000-01-01"]) {
+      expect(parseListingFilters(new URLSearchParams({ date })).date).toBeNull();
+    }
+    expect(parseListingFilters(new URLSearchParams("date=2028-02-29")).date).toBe("2028-02-29");
+  });
+
+  it("rejects partial numeric strings and fractional integer filters", () => {
+    const f = parseListingFilters(new URLSearchParams("guests=3people&limit=2.5&offset=1.5&minPrice=20usd&minRating=4stars"));
+    expect(f.guests).toBeNull();
+    expect(f.limit).toBe(EXPLORE_PAGE_SIZE);
+    expect(f.offset).toBe(0);
+    expect(f.minPrice).toBeNull();
+    expect(f.minRating).toBeNull();
   });
 
   it("cleans the amenities list", () => {

@@ -1,6 +1,8 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
+const auth = vi.hoisted(() => ({ user: null as { id: string } | null, loading: false }));
+vi.mock("@/lib/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("next/dynamic", () => ({ default: () => () => <div>Map</div> }));
 vi.mock("@/components/layout/header", () => ({ Header: () => null }));
 vi.mock("@/components/ui/breadcrumbs", () => ({ Breadcrumbs: () => null }));
@@ -29,9 +31,10 @@ async function change(input: HTMLInputElement | HTMLSelectElement, value: string
   });
 }
 beforeEach(() => {
+  auth.user = null; auth.loading = false;
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   vi.stubGlobal("React", React); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  fetchMock = vi.fn(async (url: string) => url.startsWith("/api/search-history") ? response({ history: ["boat"] }) : url.startsWith("/api/listings/count") ? response({ count: 1 }) : response({ listings: [listing(30)] }));
+  fetchMock = vi.fn(async (url: string) => url.startsWith("/api/search-history") ? response(auth.user ? { userId: auth.user.id, searches: [{ id: 1, userId: auth.user.id, query: "boat", filters: null }] } : { searches: [] }) : url.startsWith("/api/listings/count") ? response({ count: 1 }) : response({ listings: [listing(30)] }));
   vi.stubGlobal("fetch", fetchMock);
   window.history.replaceState(null, "", "/explore");
   container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
@@ -64,7 +67,7 @@ it("keeps the server-rendered first page without refetching or offering an extra
 
 it("blocks duplicate pagination and retries the same failed page while preserving visible cards", async () => {
   let resolvePage!: (value: Response) => void;
-  fetchMock.mockImplementation((url: string) => url.startsWith("/api/search-history") ? Promise.resolve(response({ history: [] })) : new Promise<Response>((resolve) => { resolvePage = resolve; }));
+  fetchMock.mockImplementation((url: string) => url.startsWith("/api/search-history") ? Promise.resolve(response({ searches: [] })) : new Promise<Response>((resolve) => { resolvePage = resolve; }));
   await render(); await click("Load More"); await tick();
   expect(button("Loading...").disabled).toBe(true);
   expect(fetchMock.mock.calls.filter(([url]) => url.startsWith("/api/listings?"))).toHaveLength(1);
@@ -81,7 +84,7 @@ it("blocks duplicate pagination and retries the same failed page while preservin
 
 it("restores the initial filter after another filter's pending requests without treating cleared data as loaded", async () => {
   const pending: Array<(value: Response) => void> = [];
-  fetchMock.mockImplementation((url: string) => url.startsWith("/api/search-history") ? Promise.resolve(response({ history: [] })) : new Promise<Response>((resolve) => pending.push(resolve)));
+  fetchMock.mockImplementation((url: string) => url.startsWith("/api/search-history") ? Promise.resolve(response({ searches: [] })) : new Promise<Response>((resolve) => pending.push(resolve)));
   await render(); await click("Tours"); await tick();
   await click("All"); await tick();
   const requests = fetchMock.mock.calls.filter(([url]) => url.startsWith("/api/listings?"));
@@ -96,7 +99,7 @@ it("restores the initial filter after another filter's pending requests without 
 });
 
 it("reports failed lists and unknown counts as errors and recovers with the same query", async () => {
-  fetchMock.mockImplementation(async (url: string) => url.startsWith("/api/search-history") ? response({ history: [] }) : response({ error: "unavailable" }, 500));
+  fetchMock.mockImplementation(async (url: string) => url.startsWith("/api/search-history") ? response({ searches: [] }) : response({ error: "unavailable" }, 500));
   await render(initial({ loaded: false, listings: [], totalCount: 0 })); await tick();
   expect(container.textContent).toContain("Listings couldn't load");
   expect(container.textContent).toContain("an unavailable total");
@@ -120,8 +123,11 @@ it("updates headings and clears hidden cuisine when changing categories while pr
 });
 
 it("lets native keyboard click activate recent searches", async () => {
+  auth.user = { id: "search-history-traveler" };
   await render(); const search = container.querySelector<HTMLInputElement>('[aria-label="Search"]')!;
   await act(async () => { search.focus(); });
+  expect(fetchMock.mock.calls.some(([url]) => url === "/api/search-history?expectedUserId=search-history-traveler")).toBe(true);
+  expect(button("boat").type).toBe("button");
   await click("boat"); await tick();
   expect(search.value).toBe("boat");
   expect(fetchMock.mock.calls.some(([url]) => url.includes("q=boat"))).toBe(true);
@@ -129,7 +135,7 @@ it("lets native keyboard click activate recent searches", async () => {
 
 it("rejects late smart-search filters after the visitor changes the query", async () => {
   let resolveAi!: (value: Response) => void;
-  fetchMock.mockImplementation((url: string) => url === "/api/ai/smart-search" ? new Promise<Response>((resolve) => { resolveAi = resolve; }) : Promise.resolve(url.startsWith("/api/search-history") ? response({ history: [] }) : url.startsWith("/api/listings/count") ? response({ count: 1 }) : response({ listings: [listing(30)] })));
+  fetchMock.mockImplementation((url: string) => url === "/api/ai/smart-search" ? new Promise<Response>((resolve) => { resolveAi = resolve; }) : Promise.resolve(url.startsWith("/api/search-history") ? response({ searches: [] }) : url.startsWith("/api/listings/count") ? response({ count: 1 }) : response({ listings: [listing(30)] })));
   await render(); const search = container.querySelector<HTMLInputElement>('[aria-label="Search"]')!;
   await change(search, "romantic dinner");
   await act(async () => { search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });

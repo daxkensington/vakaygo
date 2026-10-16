@@ -17,33 +17,38 @@ const insightIcons = [
   <Eye key="eye" size={16} className="text-teal-500" />,
 ];
 
+async function fetchInsights(force = false, signal?: AbortSignal): Promise<string[] | null> {
+    try {
+      const url = force
+        ? "/api/ai/operator-insights?refresh=1"
+        : "/api/ai/operator-insights";
+      const res = await fetch(url, { signal });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data.insights) && data.insights.every((item: unknown) => typeof item === "string") ? data.insights : null;
+    } catch {
+      return null;
+    }
+}
+
 export function AiInsights() {
   const [insights, setInsights] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function fetchInsights(force = false) {
-    try {
-      const url = force
-        ? "/api/ai/operator-insights?refresh=1"
-        : "/api/ai/operator-insights";
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.insights) setInsights(data.insights);
-    } catch {
-      // silently fail
-    }
-  }
-
   useEffect(() => {
-    setLoading(true);
-    fetchInsights().finally(() => setLoading(false));
+    let current = true;
+    const controller = new AbortController();
+    fetchInsights(false, controller.signal).then(result => {
+      if (current && result) setInsights(result);
+    }).finally(() => { if (current) setLoading(false); });
+    return () => { current = false; controller.abort(); };
   }, []);
 
   async function handleRefresh() {
     setRefreshing(true);
-    await fetchInsights(true);
+    const result = await fetchInsights(true);
+    if (result) setInsights(result);
     setRefreshing(false);
   }
 

@@ -3,12 +3,11 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { media, listings } from "@/drizzle/schema";
 import { eq, desc } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import { put } from "@vercel/blob";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const ALLOWED_TYPES = [
   "image/jpeg",
@@ -26,7 +25,9 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
 

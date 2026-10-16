@@ -3,26 +3,13 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { blogPosts, users, islands } from "@/drizzle/schema";
 import { eq, and, ne, desc } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireAdmin, verifySession } from "@/server/admin-auth";
+import { sameSessionIdentity } from "@/lib/session-identity";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-async function getUser() {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload as { sub: string; role: string };
-  } catch {
-    return null;
-  }
 }
 
 export async function GET(
@@ -32,7 +19,7 @@ export async function GET(
   try {
     const { slug } = await params;
     const db = getDb();
-    const user = await getUser();
+    const user = await verifySession();
     const isAdmin = user?.role === "admin";
 
     const conditions = [eq(blogPosts.slug, slug)];
@@ -95,7 +82,11 @@ export async function GET(
       .orderBy(desc(blogPosts.publishedAt))
       .limit(3);
 
-    return NextResponse.json({ post, related });
+    const headers = { "Cache-Control": "private, no-store" };
+    if (isAdmin && user && !sameSessionIdentity(user, await verifySession())) {
+      return NextResponse.json({ error: "Your session changed. Please reload." }, { status: 401, headers });
+    }
+    return NextResponse.json({ post, related }, { headers });
   } catch (error) {
     logger.error("Blog slug GET error", error);
     return NextResponse.json({ error: "Failed to fetch post" }, { status: 500 });
@@ -107,10 +98,8 @@ export async function PUT(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const user = await getUser();
-    if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     const { slug } = await params;
     const db = getDb();
@@ -158,9 +147,9 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ post: updated });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Blog PUT error", error);
-    if (error?.message?.includes("unique")) {
+    if (error instanceof Error && error.message.includes("unique")) {
       return NextResponse.json({ error: "A post with this slug already exists" }, { status: 409 });
     }
     return NextResponse.json({ error: "Failed to update post" }, { status: 500 });
@@ -172,10 +161,8 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const user = await getUser();
-    if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     const { slug } = await params;
     const db = getDb();

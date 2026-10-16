@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import {
   listings,
   bookings,
@@ -13,7 +13,6 @@ import {
 import { eq, and, sql, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Cache per operator
 const insightsCache = new Map<
@@ -31,7 +30,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
 
     if (payload.role !== "operator" && payload.role !== "admin") {

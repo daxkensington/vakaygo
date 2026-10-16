@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Globe, Mail, MessageCircle } from "lucide-react";
 
 export function Footer() {
@@ -30,21 +31,21 @@ export function Footer() {
           <div>
             <h3 className="font-semibold text-white mb-4">Platform</h3>
             <ul className="text-base text-cream-300">
-              <li><a href="/explore" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Explore</a></li>
-              <li><a href="/islands" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Destinations</a></li>
-              <li><a href="/guides" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Guides</a></li>
-              <li><a href="/services" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Services</a></li>
-              <li><a href="/for-businesses" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Businesses</a></li>
-              <li><a href="/for-restaurants" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Restaurants</a></li>
+              <li><Link prefetch={false} href="/explore" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Explore</Link></li>
+              <li><Link prefetch={false} href="/islands" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Destinations</Link></li>
+              <li><Link prefetch={false} href="/guides" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Guides</Link></li>
+              <li><Link prefetch={false} href="/services" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Services</Link></li>
+              <li><Link prefetch={false} href="/for-businesses" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Businesses</Link></li>
+              <li><Link prefetch={false} href="/for-restaurants" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Restaurants</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold text-white mb-4">Company</h3>
             <ul className="text-base text-cream-300">
-              <li><a href="/about" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">About</a></li>
-              <li><a href="/privacy" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Privacy Policy</a></li>
-              <li><a href="/terms" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Terms of Service</a></li>
+              <li><Link prefetch={false} href="/about" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">About</Link></li>
+              <li><Link prefetch={false} href="/privacy" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Privacy Policy</Link></li>
+              <li><Link prefetch={false} href="/terms" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Terms of Service</Link></li>
               <li><a href="mailto:hello@vakaygo.com" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Contact</a></li>
             </ul>
           </div>
@@ -54,24 +55,24 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-navy-600">
           <h3 className="font-semibold text-white mb-4">Popular Destinations Across the Caribbean, Latin America &amp; Mediterranean</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 text-base text-cream-300">
-            <a href="/things-to-do-in-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Grenada</a>
-            <a href="/things-to-do-in-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Barbados</a>
-            <a href="/things-to-do-in-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Jamaica</a>
-            <a href="/things-to-do-in-st-lucia" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in St. Lucia</a>
-            <a href="/things-to-do-in-bahamas" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Bahamas</a>
-            <a href="/things-to-do-in-aruba" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Aruba</a>
-            <a href="/things-to-do-in-cancun-riviera-maya" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cancún &amp; Tulum</a>
-            <a href="/things-to-do-in-los-cabos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Los Cabos</a>
-            <a href="/things-to-do-in-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cartagena</a>
-            <a href="/things-to-do-in-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Santorini</a>
-            <a href="/things-to-do-in-mykonos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mykonos</a>
-            <a href="/things-to-do-in-ibiza" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Ibiza</a>
-            <a href="/things-to-do-in-amalfi-coast-capri" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Amalfi &amp; Capri</a>
-            <a href="/things-to-do-in-mallorca" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mallorca</a>
-            <a href="/things-to-do-in-hvar-split" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Hvar &amp; Split</a>
-            <a href="/best-hotels-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Grenada</a>
-            <a href="/best-hotels-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Santorini</a>
-            <a href="/best-restaurants-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Cartagena</a>
+            <Link prefetch={false} href="/things-to-do-in-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Grenada</Link>
+            <Link prefetch={false} href="/things-to-do-in-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Barbados</Link>
+            <Link prefetch={false} href="/things-to-do-in-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Jamaica</Link>
+            <Link prefetch={false} href="/things-to-do-in-st-lucia" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in St. Lucia</Link>
+            <Link prefetch={false} href="/things-to-do-in-bahamas" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Bahamas</Link>
+            <Link prefetch={false} href="/things-to-do-in-aruba" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Aruba</Link>
+            <Link prefetch={false} href="/things-to-do-in-cancun-riviera-maya" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cancún &amp; Tulum</Link>
+            <Link prefetch={false} href="/things-to-do-in-los-cabos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Los Cabos</Link>
+            <Link prefetch={false} href="/things-to-do-in-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cartagena</Link>
+            <Link prefetch={false} href="/things-to-do-in-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Santorini</Link>
+            <Link prefetch={false} href="/things-to-do-in-mykonos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mykonos</Link>
+            <Link prefetch={false} href="/things-to-do-in-ibiza" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Ibiza</Link>
+            <Link prefetch={false} href="/things-to-do-in-amalfi-coast-capri" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Amalfi &amp; Capri</Link>
+            <Link prefetch={false} href="/things-to-do-in-mallorca" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mallorca</Link>
+            <Link prefetch={false} href="/things-to-do-in-hvar-split" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Hvar &amp; Split</Link>
+            <Link prefetch={false} href="/best-hotels-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Grenada</Link>
+            <Link prefetch={false} href="/best-hotels-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Santorini</Link>
+            <Link prefetch={false} href="/best-restaurants-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Cartagena</Link>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, blogPosts } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
 
 const BASE_URL = "https://vakaygo.com";
 
@@ -46,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Island pages
   const allIslands = await db
     .select({ slug: islands.slug, isActive: islands.isActive })
-    .from(islands);
+    .from(islands).where(publicDestinations());
 
   const islandPages: MetadataRoute.Sitemap = allIslands.filter(island => island.isActive).map((island) => ({
     url: `${BASE_URL}/${island.slug}`,
@@ -74,7 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       and(
         eq(islands.isActive, true),
         eq(listings.type, "dining"),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -94,7 +95,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       and(
         eq(islands.isActive, true),
         eq(listings.type, "stay"),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -114,7 +115,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(and(eq(listings.status, "active"), eq(islands.isActive, true), sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`));
+    .where(publicDirectoryListings());
 
   const listingPages: MetadataRoute.Sitemap = allListings.map((listing) => ({
     url: `${BASE_URL}/${listing.islandSlug}/${listing.slug}`,
@@ -152,7 +153,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select({ slug: islands.slug, type: listings.type, n: sql<number>`count(*)::int` })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(and(eq(islands.isActive, true), eq(listings.status, "active")))
+    .where(publicDirectoryListings())
     .groupBy(islands.slug, listings.type);
   const facetIslands = Array.from(new Set(facetCounts.map((r) => r.slug)));
   const explorePages: MetadataRoute.Sitemap = [

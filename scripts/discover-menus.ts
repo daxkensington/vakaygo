@@ -20,6 +20,8 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { recordValue, textValue } from "../lib/value-guards";
+import { parseJsonLdMenuObj, type MenuItem, type MenuSection } from "../lib/menu-jsonld";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
@@ -33,14 +35,15 @@ const limit = parseInt(getArg("limit") || "500");
 const dryRun = args.includes("--dry-run");
 const concurrency = parseInt(getArg("concurrency") || "3");
 
-type MenuItem = { name: string; description?: string; price?: string };
-type MenuSection = { section: string; items: MenuItem[] };
+type MenuListing = { id: string; title: string; typeData: unknown; island: string };
+
 
 interface MenuResult {
   menu: MenuSection[];
   menuPdfUrl?: string;
   cuisineType?: string;
   source: string;
+  servesInfo?: string[];
 }
 
 async function fetchPage(url: string): Promise<string | null> {
@@ -223,62 +226,6 @@ function extractJsonLdMenu(html: string): MenuResult | null {
   return null;
 }
 
-function parseJsonLdMenuObj(obj: any): MenuSection[] {
-  if (!obj || typeof obj === "string") return [];
-
-  const sections: MenuSection[] = [];
-  const sectionArray = obj.hasMenuSection || obj.menuSection || [];
-  const sArr = Array.isArray(sectionArray) ? sectionArray : [sectionArray];
-
-  for (const s of sArr) {
-    const items: MenuItem[] = [];
-    const iArr = s.hasMenuItem || s.menuItem || s.itemListElement || [];
-    const itemArr = Array.isArray(iArr) ? iArr : [iArr];
-
-    for (const item of itemArr) {
-      if (item.name) {
-        items.push({
-          name: item.name,
-          description: item.description || undefined,
-          price: item.offers?.price
-            ? `$${item.offers.price}`
-            : item.price
-              ? `$${item.price}`
-              : undefined,
-        });
-      }
-    }
-    if (items.length > 0) {
-      sections.push({ section: s.name || "Menu", items });
-    }
-  }
-
-  // Items directly on menu object
-  if (sections.length === 0) {
-    const items: MenuItem[] = [];
-    const dArr = obj.hasMenuItem || obj.menuItem || obj.itemListElement || [];
-    const directArr = Array.isArray(dArr) ? dArr : [dArr];
-    for (const item of directArr) {
-      if (item.name) {
-        items.push({
-          name: item.name,
-          description: item.description || undefined,
-          price: item.offers?.price
-            ? `$${item.offers.price}`
-            : item.price
-              ? `$${item.price}`
-              : undefined,
-        });
-      }
-    }
-    if (items.length > 0) sections.push({ section: "Menu", items });
-  }
-
-  return sections;
-}
-
-// ── Strategy 4: Parse menu items from page text ───────────────────────
-
 function extractMenuFromText(html: string): MenuSection[] {
   const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -310,7 +257,7 @@ function extractMenuFromText(html: string): MenuSection[] {
   const seen = new Set<string>();
 
   for (const match of text.matchAll(itemPattern)) {
-    let name = match[1].trim().replace(/\s+/g, " ");
+    const name = match[1].trim().replace(/\s+/g, " ");
     const price = `$${match[2].replace(",", ".")}`;
 
     if (name.length < 3 || name.length > 80) continue;
@@ -446,11 +393,11 @@ function extractCuisineType(html: string): string | undefined {
 // ── Main orchestrator ─────────────────────────────────────────────────
 
 async function discoverMenu(
-  listing: any
+  listing: MenuListing
 ): Promise<MenuResult | null> {
-  const td = listing.typeData || {};
-  const website = td.website;
-  const placeId = td.googlePlaceId;
+  const td = recordValue(listing.typeData);
+  const website = textValue(td.website);
+  const placeId = textValue(td.googlePlaceId);
   let bestResult: MenuResult | null = null;
 
   if (website) {
@@ -556,7 +503,7 @@ async function discoverMenu(
       if (!bestResult) {
         bestResult = { menu: [], source: "google-serves" };
       }
-      (bestResult as any).servesInfo = googleData.servesInfo;
+      bestResult.servesInfo = googleData.servesInfo;
     }
   }
 
@@ -568,7 +515,7 @@ async function discoverMenu(
 async function main() {
   const db = drizzle(neon(DATABASE_URL));
 
-  const result = await db.execute(sql`
+  const result = await db.execute<MenuListing>(sql`
     SELECT l.id, l.title, l.type_data as "typeData",
       i.name as island
     FROM listings l
@@ -580,7 +527,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Found ${listings.length} dining listings without menus\n`);
   if (dryRun) console.log("=== DRY RUN ===\n");
 
@@ -592,7 +539,7 @@ async function main() {
     const batch = listings.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
+      batch.map(async (listing) => {
         const result = await discoverMenu(listing);
 
         if (!result) {
@@ -603,7 +550,7 @@ async function main() {
 
         stats[result.source] = (stats[result.source] || 0) + 1;
 
-        const td = listing.typeData || {};
+        const td = recordValue(listing.typeData);
         const newTd = { ...td };
 
         if (result.menu.length > 0) {
@@ -618,8 +565,8 @@ async function main() {
         if (result.cuisineType) {
           newTd.cuisineType = result.cuisineType;
         }
-        if ((result as any).servesInfo) {
-          newTd.serves = (result as any).servesInfo;
+        if (result.servesInfo) {
+          newTd.serves = result.servesInfo;
         }
 
         if (dryRun) {
@@ -630,7 +577,7 @@ async function main() {
           }
           if (result.menuPdfUrl) parts.push("PDF");
           if (result.cuisineType) parts.push(`[${result.cuisineType}]`);
-          if ((result as any).servesInfo) parts.push(`serves: ${(result as any).servesInfo.join(", ")}`);
+          if (result.servesInfo) parts.push(`serves: ${result.servesInfo.join(", ")}`);
 
           console.log(`  [${result.source}] ${listing.title}: ${parts.join(" | ")}`);
           if (result.menu.length > 0) {

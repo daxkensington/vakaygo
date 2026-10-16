@@ -5,9 +5,15 @@ type GtagEvent = {
   value?: number;
 };
 
+declare global {
+  interface Window {
+    gtag?: (command: "event", action: string, params: { event_category: string; event_label?: string; value?: number }) => void;
+  }
+}
+
 export function trackEvent({ action, category, label, value }: GtagEvent) {
-  if (typeof window !== "undefined" && (window as any).gtag) {
-    (window as any).gtag("event", action, {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", action, {
       event_category: category,
       event_label: label,
       value: value,

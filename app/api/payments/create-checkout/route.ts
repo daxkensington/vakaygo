@@ -5,13 +5,12 @@ import { bookings, listings, users } from "@/drizzle/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { createCheckoutSession, retrieveCheckoutSession } from "@/server/stripe";
 import { CATEGORY_RATES } from "@/lib/pricing";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { expireBookingCheckout, isBookingCalendarAvailable } from "@/server/booking-checkout-safety";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string): string {
   let origin = "https://vakaygo.com";
@@ -36,7 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please sign in" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const { bookingId } = await request.json();
 
     if (!bookingId) {

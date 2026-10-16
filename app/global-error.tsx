@@ -99,21 +99,25 @@ export default function GlobalError({
             >
               Try Again
             </button>
-            <a
-              href="/"
+            <form action="/" method="get" style={{ margin: 0 }}>
+            <button
+              type="submit"
               style={{
                 borderRadius: "0.75rem",
                 backgroundColor: "#fff",
                 padding: "0.75rem 2rem",
                 fontWeight: 600,
                 color: "#1B2A4A",
+                border: "none",
+                cursor: "pointer",
                 textDecoration: "none",
                 fontSize: "1rem",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
               }}
             >
               Go Home
-            </a>
+            </button>
+            </form>
           </div>
 
           {/* Branding */}

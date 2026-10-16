@@ -212,7 +212,7 @@ function BookingsContent() {
             Sign in to view your bookings
           </h1>
           <p className="text-navy-400 mt-2">Keep track of all your trips in one place.</p>
-          <Link href="/auth/signin" className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+          <Link href="/auth/signin?next=%2Fbookings" className="mt-6 bg-gold-700 hover:bg-gold-800 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
             Sign In
           </Link>
         </div>

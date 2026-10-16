@@ -30,7 +30,9 @@ type Listing = {
   slug: string;
   type: string;
   priceAmount: string | null;
+  priceCurrency: string | null;
   priceUnit: string | null;
+  bookingEligible: boolean;
   avgRating: string | null;
   reviewCount: number | null;
   parish: string | null;
@@ -96,6 +98,10 @@ function AvatarInitial({
 
 export default function OperatorProfilePage() {
   const { id } = useParams<{ id: string }>();
+  return <OperatorProfile key={id} id={id} />;
+}
+
+function OperatorProfile({ id }: { id: string }) {
   const [operator, setOperator] = useState<Operator | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -104,8 +110,9 @@ export default function OperatorProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    fetch(`/api/operators/${id}`)
+    let current = true;
+    const controller = new AbortController();
+    fetch(`/api/operators/${encodeURIComponent(id)}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -114,12 +121,14 @@ export default function OperatorProfilePage() {
         return res.json();
       })
       .then((data) => {
+        if (!current) return;
         setOperator(data.operator);
         setListings(data.listings);
         setStats(data.stats);
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => { if (current) setError(err instanceof Error ? err.message : "Operator not found"); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; controller.abort(); };
   }, [id]);
 
   const memberYear = operator

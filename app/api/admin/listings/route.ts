@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, users, islands } from "@/drizzle/schema";
+import { listings, users, islands, listingStatusEnum, listingTypeEnum } from "@/drizzle/schema";
 import { eq, sql, desc, and, ilike } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -43,8 +43,16 @@ export async function GET(request: NextRequest) {
 
     // Build conditions
     const conditions = [];
-    if (status) conditions.push(eq(listings.status, status as any));
-    if (type) conditions.push(eq(listings.type, type as any));
+    if (status) {
+      const validStatus = listingStatusEnum.enumValues.find(value => value === status);
+      if (!validStatus) return NextResponse.json({ error: "Invalid listing status" }, { status: 400 });
+      conditions.push(eq(listings.status, validStatus));
+    }
+    if (type) {
+      const validType = listingTypeEnum.enumValues.find(value => value === type);
+      if (!validType) return NextResponse.json({ error: "Invalid listing type" }, { status: 400 });
+      conditions.push(eq(listings.type, validType));
+    }
     if (island) conditions.push(eq(islands.slug, island));
     if (q) conditions.push(ilike(listings.title, `%${q}%`));
 

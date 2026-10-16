@@ -3,6 +3,8 @@ import { listings, islands, media, reviews, users } from "@/drizzle/schema";
 import { eq, and, sql, gte, lte, ilike, desc, asc } from "drizzle-orm";
 import { bookingLaunchEnabled, getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { publicListingTypeData } from "@/lib/listing-public-data";
 
 // ─── Types ──────────────────────────────────────────────────────
 type SearchParams = {
@@ -39,7 +41,7 @@ export async function searchListings(params: SearchParams) {
   const db = createDb();
   const limit = Math.min(params.limit || 5, 10);
 
-  const conditions = [eq(listings.status, "active")];
+  const conditions = [publicDirectoryListings()];
 
   if (params.type) {
     conditions.push(eq(listings.type, params.type as typeof listings.type.enumValues[number]));
@@ -194,7 +196,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
       and(
         eq(listings.slug, params.slug),
         eq(islands.slug, params.island),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     )
     .limit(1);
@@ -247,7 +249,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     isInstantBook: listing.bookingEligible === true && listing.isInstantBook === true,
     cancellationPolicy: listing.cancellationPolicy,
     maxGuests: listing.maxGuests,
-    typeData: listing.typeData,
+    typeData: publicListingTypeData(listing.typeData),
     images: images.map((i) => getImageUrl(i.url)).filter(Boolean),
     url: `/${listing.islandSlug}/${listing.slug}`,
     recentReviews: recentReviews.map((r) => ({
@@ -290,7 +292,8 @@ export async function getIslandInfo(params: IslandInfoParams) {
       timezone: islands.timezone,
     })
     .from(islands)
-    .where(eq(islands.slug, params.island))
+    .where(and(eq(islands.slug, params.island), eq(islands.isActive, true),
+      sql`${islands.name} ~ '[^[:space:]]'`, sql`${islands.slug} ~ '[^[:space:]]'`))
     .limit(1);
 
   if (islandResults.length === 0) {
@@ -306,8 +309,9 @@ export async function getIslandInfo(params: IslandInfoParams) {
       count: sql<number>`count(*)::int`,
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
-      and(eq(listings.islandId, island.id), eq(listings.status, "active"))
+      and(eq(listings.islandId, island.id), publicDirectoryListings())
     )
     .groupBy(listings.type);
 
@@ -321,13 +325,15 @@ export async function getIslandInfo(params: IslandInfoParams) {
       reviewCount: listings.reviewCount,
       bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
+      priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
       and(
         eq(listings.islandId, island.id),
-        eq(listings.status, "active"),
+        publicDirectoryListings(),
         gte(listings.reviewCount, 1)
       )
     )
@@ -356,6 +362,7 @@ export async function getIslandInfo(params: IslandInfoParams) {
       reviewCount: l.reviewCount || 0,
       bookingEligible: l.bookingEligible === true,
       price: l.bookingEligible === true && l.priceAmount ? parseFloat(l.priceAmount) : null,
+      currency: l.priceCurrency,
       priceUnit: l.priceUnit,
       url: `/${island.slug}/${l.slug}`,
     })),
@@ -395,7 +402,7 @@ export async function compareListings(params: CompareParams) {
       and(
         sql`${listings.slug} IN ${slugList}`,
         eq(islands.slug, params.island),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -417,7 +424,7 @@ export async function compareListings(params: CompareParams) {
     isInstantBook: r.bookingEligible === true && r.isInstantBook === true,
     cancellationPolicy: r.cancellationPolicy,
     maxGuests: r.maxGuests,
-    typeData: r.typeData,
+    typeData: publicListingTypeData(r.typeData),
     url: `/${r.islandSlug}/${r.slug}`,
   }));
 }
