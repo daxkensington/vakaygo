@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { use } from "react";
 import {
   CheckCircle2,
@@ -55,6 +55,24 @@ export default function VerifyPage({
   params: Promise<{ bookingId: string; token: string }>;
 }) {
   const { bookingId, token } = use(params);
+  // Keying by the route pair discards all verification and check-in state
+  // the moment either parameter changes.
+  return (
+    <VerifyBooking
+      key={`${bookingId}/${token}`}
+      bookingId={bookingId}
+      token={token}
+    />
+  );
+}
+
+function VerifyBooking({
+  bookingId,
+  token,
+}: {
+  bookingId: string;
+  token: string;
+}) {
   const [data, setData] = useState<VerifyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,34 +80,57 @@ export default function VerifyPage({
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const mountedRef = useRef(false);
+  const checkInInFlightRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
     async function verify() {
       try {
         const res = await fetch(
-          `/api/bookings/${bookingId}/verify?token=${encodeURIComponent(token)}`
+          `/api/bookings/${bookingId}/verify?token=${encodeURIComponent(token)}`,
+          { signal: controller.signal }
         );
+        if (!active) return;
         if (!res.ok) {
           setError("Booking not found or invalid");
           return;
         }
         const result = await res.json();
+        if (!active) return;
 
         // The server validates the token; an invalid one yields a 404 above.
         setData(result);
         setCheckedIn(result.checkedIn || false);
         setCheckInTime(result.checkedInAt);
       } catch {
+        if (!active) return;
         setError("Failed to verify booking");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
     verify();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [bookingId, token]);
 
   const handleCheckIn = useCallback(async () => {
-    if (!data) return;
+    if (!data || data.status !== "confirmed" || checkedIn) return;
+    if (checkInInFlightRef.current) return;
+    checkInInFlightRef.current = true;
     setCheckInError("");
     setCheckingIn(true);
     try {
@@ -99,6 +140,7 @@ export default function VerifyPage({
         body: JSON.stringify({ token }),
       });
       const result = await res.json();
+      if (!mountedRef.current) return;
       const isObject = result !== null && typeof result === "object" && !Array.isArray(result);
       if (res.ok && isObject && result.success === true) {
         setCheckedIn(true);
@@ -111,11 +153,13 @@ export default function VerifyPage({
         );
       }
     } catch {
+      if (!mountedRef.current) return;
       setCheckInError("Failed to check in");
     } finally {
-      setCheckingIn(false);
+      checkInInFlightRef.current = false;
+      if (mountedRef.current) setCheckingIn(false);
     }
-  }, [data, bookingId, token]);
+  }, [data, checkedIn, bookingId, token]);
 
   if (loading) {
     return (
