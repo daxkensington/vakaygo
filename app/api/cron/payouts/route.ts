@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     ), groups AS MATERIALIZED (
       SELECT gen_random_uuid() id,operator_id,currency,payment_mode,sum(operator_earnings_cents)/100.0 amount,count(*) booking_count
       FROM eligible GROUP BY operator_id,currency,payment_mode
+      HAVING payment_mode='destination' OR sum(operator_earnings_cents) >= 10000
     ), inserted AS (
       INSERT INTO payouts(id,operator_id,amount,currency,status,period_start,period_end,booking_count,payment_reference)
       SELECT id,operator_id,amount,currency,'pending',now()-interval '7 days',now(),booking_count,

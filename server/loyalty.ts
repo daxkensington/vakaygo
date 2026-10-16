@@ -12,12 +12,12 @@ import { LOYALTY_TIERS, type LoyaltyTier } from "@/lib/loyalty-tiers";
 export { LOYALTY_TIERS, type LoyaltyTier };
 
 // ─── POINTS CONSTANTS ──────────────────────────────────────────
-export const POINTS_PER_DOLLAR = 10;
+export const POINTS_PER_DOLLAR = 2; // 2 points per $1 spent → 2% VakayCash cashback (100 points = $1 credit)
 export const REVIEW_POINTS = 100;
 export const REFERRAL_POINTS = 500;
 export const FIRST_BOOKING_BONUS = 200;
 export const BIRTHDAY_BONUS = 100; // TODO: implement birthday bonus
-export const POINTS_PER_DOLLAR_CREDIT = 100; // 1000 points = $10 → 100 points = $1
+export const POINTS_PER_DOLLAR_CREDIT = 100; // 100 points = $1 credit
 export const MIN_REDEMPTION_POINTS = 500;
 export const POINTS_EXPIRY_MONTHS = 12;
 

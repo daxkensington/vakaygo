@@ -54,15 +54,16 @@ describe("calculateBookingPrice", () => {
     expect(withIns.platformRevenue).toBeGreaterThan(noIns.platformRevenue);
   });
 
-  it("dining has zero booking fees", () => {
+  it("dining applies 4% guest + 8% operator fee on pre-paid culinary experiences", () => {
     const r = calculateBookingPrice({
       pricePerUnit: 80,
       quantity: 4,
       listingType: "dining",
     });
-    expect(r.serviceFee).toBe(0);
-    expect(r.operatorCommission).toBe(0);
-    expect(r.total).toBe(r.subtotal);
+    expect(r.serviceFee).toBe(12.8);
+    expect(r.operatorCommission).toBe(25.6);
+    expect(r.total).toBe(332.8);
+    expect(r.operatorEarnings).toBe(294.4);
   });
 });
 

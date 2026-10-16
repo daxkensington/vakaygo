@@ -4,16 +4,16 @@ const travelerBenefits = [
   "Explore 6,900+ places on our 3D satellite map with aerial flyovers",
   "Generate custom day-by-day island itineraries with our AI Concierge",
   "Compare prices live in USD, EUR, GBP, CAD, XCD, BBD, JMD & TTD",
-  "Message verified operators safely in-app before booking",
-  "Book with Stripe or PayPal protection & instant QR voucher unlock",
+  "Low 4%–5% guest fee + earn 2% VakayCash rewards on every booking",
+  "Protected in-app messaging & instant QR voucher unlock",
 ];
 
 const businessBenefits = [
   "Claim your existing Caribbean business listing in 60 seconds for free",
-  "Receive direct traveler inquiries & Notify-Me demand alerts",
+  "Receive guarded in-app traveler inquiries & Notify-Me demand alerts",
   "Accept online bookings via Stripe, PayPal, or local Caribbean bank settlement",
   "Sync calendars via iCal and manage seasonal pricing & availability",
-  "Keep 92% of every booking—less than a third of traditional OTA fees",
+  "Keep 90%–92% of every booking—only 8%–10% commission vs Viator's 25%–30%",
 ];
 
 export function AudienceSplit() {

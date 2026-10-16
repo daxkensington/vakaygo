@@ -82,7 +82,7 @@ const typeIcons: Record<string, { icon: string; color: string }> = {
 };
 
 const tiers = [
-  { key: "explorer", name: "Explorer", points: "0-999", emoji: "\uD83C\uDF0D", benefits: ["Base level", "Earn 10 points per $1 spent", "Track your rewards progress"] },
+  { key: "explorer", name: "Explorer", points: "0-999", emoji: "\uD83C\uDF0D", benefits: ["Base level — 2% VakayCash back", "Earn 2 points per $1 spent (100 pts = $1)", "Track your rewards progress"] },
   { key: "adventurer", name: "Adventurer", points: "1,000-4,999", emoji: "\uD83C\uDFD4\uFE0F", benefits: ["2% discount on service fees", "All Explorer benefits", "Exclusive member deals"] },
   { key: "voyager", name: "Voyager", points: "5,000-14,999", emoji: "\u26F5", benefits: ["5% discount on service fees", "Priority support badge", "All Adventurer benefits"] },
   { key: "captain", name: "Captain", points: "15,000+", emoji: "\uD83D\uDC51", benefits: ["10% discount on service fees", "Priority support", "Early access to new listings", "All Voyager benefits"] },
