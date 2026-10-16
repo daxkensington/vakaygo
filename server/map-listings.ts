@@ -8,12 +8,13 @@ import { publicMapLocations } from "@/server/map-listing-eligibility";
 import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 /** Keyset pages keep reads bounded and do not silently omit the 7,501st listing. */
-export async function getMapListingPage(island: string | null, cursor: string | null): Promise<MapListingPage> {
+export async function getMapListingPage(island: string | null, cursor: string | null, largePages = false): Promise<MapListingPage> {
   const db = createDb();
   const publicLocations = publicMapLocations(island);
   const enabled = await bookingLaunchEnabled();
-  // Keep first paint small, then amortize round trips with bounded pages.
-  const pageSize = cursor ? MAP_PAGE_SIZE : MAP_INITIAL_PAGE_SIZE;
+  // Larger continuations require an explicit protocol opt-in: open older tabs
+  // retain their original 250-row parser limit throughout a deployment.
+  const pageSize = cursor && largePages ? MAP_PAGE_SIZE : MAP_INITIAL_PAGE_SIZE;
   const [rows, countRows] = await Promise.all([
     db.select({
       id: listings.id, title: listings.title, slug: listings.slug, type: listings.type,

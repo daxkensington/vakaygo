@@ -79,6 +79,7 @@ export default function MapPage() {
       try {
         do {
           const params = new URLSearchParams();
+          params.set("v", "2");
           if (activeIsland) params.set("island", activeIsland);
           if (cursor) params.set("cursor", cursor);
           timeout = setTimeout(() => {

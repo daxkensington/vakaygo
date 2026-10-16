@@ -1,7 +1,7 @@
 import { LISTING_TYPES } from "@/lib/listing-filters";
 import type { MapListing } from "@/components/listings/caribbean-map";
 
-/** Keep the first paint small; only directory continuations use the larger bound. */
+/** Keep the first paint small; only v2 continuations opt into the larger bound. */
 export const MAP_INITIAL_PAGE_SIZE = 250;
 export const MAP_PAGE_SIZE = 1000;
 export const MAP_PAGE_BYTE_LIMIT = 768 * 1024;
