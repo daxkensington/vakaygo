@@ -71,6 +71,7 @@
     {
       "file": "OFL-DMSans.txt",
       "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dmsans/OFL.txt",
+      "formatting": "Trailing whitespace removed; license wording unchanged.",
       "copyright": "Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)",
       "license": "SIL Open Font License 1.1"
     },
