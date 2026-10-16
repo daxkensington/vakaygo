@@ -335,6 +335,7 @@ export default function CaribbeanMap({
   const [isNighttime, setIsNighttime] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sortBy, setSortBy] = useState<"top" | "reviews" | "price">("top");
+  const [quickFilter, setQuickFilter] = useState<"all" | "iconic" | "top_rated" | "bookable">("all");
   const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -905,12 +906,83 @@ export default function CaribbeanMap({
     // Pointer cursors for clusters
     map.on("mouseenter", "clusters", () => { map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", "clusters", () => { map.getCanvas().style.cursor = ""; });
+
+    // Highlighted / Selected pin target ring source & layers
+    if (!map.getSource("highlighted-pin")) {
+      map.addSource("highlighted-pin", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "selected-point-ring",
+        type: "circle",
+        source: "highlighted-pin",
+        paint: {
+          "circle-radius": 22,
+          "circle-color": "rgba(212, 160, 23, 0.22)",
+          "circle-stroke-width": 3,
+          "circle-stroke-color": "#F59E0B",
+        },
+      });
+      map.addLayer({
+        id: "selected-point-dot",
+        type: "circle",
+        source: "highlighted-pin",
+        paint: {
+          "circle-radius": 13,
+          "circle-color": "#D4A017",
+          "circle-stroke-width": 3,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+    }
   }, [mapReady]);
 
+  // Sync highlighted pin ring on map when a card is hovered or a pin is selected
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const src = map.getSource("highlighted-pin") as mapboxgl.GeoJSONSource | undefined;
+    if (!src) return;
+    const target = (hoveredId ? listingsMapRef.current.get(hoveredId) : null) || selected;
+    if (!target || !target.latitude || !target.longitude) {
+      src.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    src.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [parseFloat(target.longitude), parseFloat(target.latitude)],
+          },
+          properties: { id: target.id, type: target.type },
+        },
+      ],
+    });
+  }, [hoveredId, selected, mapReady]);
+
   const filtered = useMemo(() => {
-    const mappable = listings.filter(
-      (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !isNaN(parseFloat(l.longitude!)) && activeCategories.has(l.type)
-    );
+    const mappable = listings.filter((l) => {
+      if (!l.latitude || !l.longitude || isNaN(parseFloat(l.latitude!)) || isNaN(parseFloat(l.longitude!))) return false;
+      if (!activeCategories.has(l.type)) return false;
+      if (quickFilter === "top_rated") {
+        return Boolean(l.avgRating && parseFloat(l.avgRating) >= 4.8);
+      }
+      if (quickFilter === "bookable") {
+        return Boolean(l.priceAmount && parseFloat(l.priceAmount) > 0);
+      }
+      if (quickFilter === "iconic") {
+        if (BUSINESS_PATTERNS.test(l.title)) return false;
+        const iconicList = ICONIC_ATTRACTIONS[l.islandSlug] || [];
+        const isNamedIconic = iconicList.some((kw) => l.title.toLowerCase().includes(kw));
+        const isNaturalWonder = ATTRACTION_KEYWORDS.test(l.title) && (!l.avgRating || parseFloat(l.avgRating) >= 4.3);
+        return isNamedIconic || isNaturalWonder || Boolean(l.isFeatured);
+      }
+      return true;
+    });
 
     return searchQuery
       ? mappable.filter((l) =>
@@ -919,7 +991,7 @@ export default function CaribbeanMap({
           (l.parish && l.parish.toLowerCase().includes(searchQuery.toLowerCase()))
         )
       : mappable;
-  }, [listings, activeCategories, searchQuery]);
+  }, [listings, activeCategories, quickFilter, searchQuery]);
 
   const inViewListings = useMemo(() => {
     let base = filtered;
@@ -1503,21 +1575,45 @@ export default function CaribbeanMap({
               </div>
             </div>
 
+            {/* Quick-filter modes: Iconic Landmarks / 4.8+ / Bookable */}
+            <div className="flex items-center gap-1 mt-2 overflow-x-auto scrollbar-none">
+              {([
+                { id: "all", label: "Everything" },
+                { id: "iconic", label: "🔥 Iconic Landmarks" },
+                { id: "top_rated", label: "⭐ 4.8+ Rated" },
+                { id: "bookable", label: "⚡ Bookable" },
+              ] as const).map((qf) => (
+                <button
+                  key={qf.id}
+                  type="button"
+                  onClick={() => setQuickFilter(qf.id)}
+                  className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
+                    quickFilter === qf.id
+                      ? "bg-gold-700 text-white shadow-sm"
+                      : "bg-cream-100 text-navy-600 hover:bg-cream-200"
+                  }`}
+                >
+                  {qf.label}
+                </button>
+              ))}
+            </div>
+
             {/* Sort pills */}
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className="text-[10px] text-navy-400 mr-1">Sort:</span>
               {([
                 { id: "top", label: "Top Rated" },
                 { id: "reviews", label: "Most Reviewed" },
-                { id: "price", label: "Bookable Price" },
+                { id: "price", label: "Lowest Price" },
               ] as const).map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setSortBy(tab.id)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
                     sortBy === tab.id
                       ? "bg-navy-700 text-white"
-                      : "bg-cream-100 text-navy-600 hover:bg-cream-200"
+                      : "bg-cream-50 text-navy-500 hover:bg-cream-100"
                   }`}
                 >
                   {tab.label}
@@ -1624,6 +1720,113 @@ export default function CaribbeanMap({
             })}
           </div>
         </aside>
+      )}
+
+      {/* Mobile Swipeable Bottom Card Strip (shown on <768px when sidebarOpen is true) */}
+      {sidebarOpen && !isFlyover && inViewListings.length > 0 && (
+        <div
+          aria-label="Mobile places carousel"
+          className="md:hidden absolute bottom-14 left-3 right-3 z-10 flex flex-col gap-1.5"
+        >
+          {/* Mobile quick-filter strip */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+            {([
+              { id: "all", label: "Everything" },
+              { id: "iconic", label: "🔥 Iconic" },
+              { id: "top_rated", label: "⭐ 4.8+" },
+              { id: "bookable", label: "⚡ Bookable" },
+            ] as const).map((qf) => (
+              <button
+                key={qf.id}
+                type="button"
+                onClick={() => setQuickFilter(qf.id)}
+                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold shadow-md transition-colors ${
+                  quickFilter === qf.id
+                    ? "bg-gold-700 text-white"
+                    : "bg-white/90 backdrop-blur-md text-navy-700"
+                }`}
+              >
+                {qf.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Horizontal snap card strip */}
+          <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-1">
+            {inViewListings.slice(0, 20).map((l) => {
+              const cfg = categoryConfig[l.type] || categoryConfig.stay;
+              const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? `$${parseFloat(l.priceAmount).toFixed(0)}` : null;
+              return (
+                <div
+                  key={l.id}
+                  onClick={() => {
+                    setSelected(l);
+                    mapRef.current?.flyTo({
+                      center: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
+                      zoom: Math.max(mapRef.current?.getZoom() || 12, 15),
+                      pitch: 52,
+                      duration: 1000,
+                    });
+                  }}
+                  className="snap-center flex-shrink-0 w-[265px] bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-white/70 p-2 flex gap-2.5 cursor-pointer"
+                >
+                  <div
+                    className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center text-xl"
+                    style={{ backgroundColor: `${cfg.color}22` }}
+                  >
+                    <span>{cfg.emoji}</span>
+                    {l.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={l.image}
+                        alt={l.title}
+                        loading="lazy"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white"
+                          style={{ background: cfg.color }}
+                        >
+                          {cfg.emoji} {cfg.label}
+                        </span>
+                        {rating > 0 && (
+                          <span className="text-[10px] font-bold text-navy-700">
+                            ⭐ {rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xs font-semibold text-navy-800 truncate mt-0.5">
+                        {l.title}
+                      </h3>
+                      <p className="text-[10px] text-navy-400 truncate">
+                        {l.islandName}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-navy-700">
+                        {price || "Fly to pin"}
+                      </span>
+                      <Link
+                        href={`/${l.islandSlug}/${l.slug}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[10px] font-semibold text-gold-700 flex items-center"
+                      >
+                        Details <ChevronRight size={10} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Flyover HUD */}

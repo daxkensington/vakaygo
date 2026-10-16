@@ -79,7 +79,7 @@ export default function MapPage() {
     }, 20_000);
     async function loadListings() {
       try {
-        const params = new URLSearchParams({ limit: "2000" });
+        const params = new URLSearchParams({ limit: "7500" });
         if (activeIsland) params.set("island", activeIsland);
         const res = await fetch(`/api/listings?${params}`, { signal: controller.signal, cache: "no-store" });
         if (!current || controller.signal.aborted) return;
