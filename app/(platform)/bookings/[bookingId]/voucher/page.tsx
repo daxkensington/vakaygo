@@ -45,6 +45,16 @@ type VoucherData = {
   checkedIn: boolean;
 };
 
+function formatAmount(amount: string, currency: string) {
+  const value = parseFloat(amount);
+  if (currency === "XCD") return `EC$${value.toFixed(2)}`;
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
+  } catch {
+    return `$${value.toFixed(2)}`;
+  }
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC",
     weekday: "long",
@@ -132,22 +142,41 @@ export default function VoucherPage({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setLoading(true);
+    setData(null);
+    setError("");
+    const controller = new AbortController();
+
     async function fetchVoucher() {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}/voucher`);
+        const res = await fetch(`/api/bookings/${bookingId}/voucher`, {
+          signal: controller.signal,
+        });
         if (!res.ok) {
           const err = await res.json();
-          setError(err.error || "Failed to load voucher");
+          if (!controller.signal.aborted) {
+            setError(err?.error || "Failed to load voucher");
+          }
           return;
         }
-        setData(await res.json());
-      } catch {
-        setError("Failed to load voucher");
+        const voucher = await res.json();
+        if (!controller.signal.aborted) {
+          setData(voucher);
+          setError("");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        if (!controller.signal.aborted) {
+          setError("Failed to load voucher");
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
     fetchVoucher();
+    return () => controller.abort();
   }, [bookingId]);
 
   if (loading) {
@@ -180,8 +209,8 @@ export default function VoucherPage({
     );
   }
 
-  const currencySymbol = data.currency === "XCD" ? "EC$" : "$";
   const isConfirmed = data.status === "confirmed" || data.status === "completed";
+  const isPaid = isConfirmed && data.paymentStatus === "paid";
 
   return (
     <>
@@ -316,26 +345,34 @@ export default function VoucherPage({
               {data.discountAmount && parseFloat(data.discountAmount) > 0 && (
                 <DetailRow
                   label="Discount"
-                  value={`-${currencySymbol}${parseFloat(data.discountAmount).toFixed(2)}`}
+                  value={`-${formatAmount(data.discountAmount, data.currency)}`}
                   highlight="green"
                 />
               )}
               <div className="flex justify-between items-center py-3 border-t border-cream-200">
                 <span className="text-sm font-semibold text-navy-700 uppercase tracking-wider">
-                  Total Paid
+                  {isPaid ? "Total Paid" : "Total Due"}
                 </span>
                 <span className="text-2xl font-bold text-gold-700">
-                  {currencySymbol}{parseFloat(data.totalAmount).toFixed(2)}
+                  {formatAmount(data.totalAmount, data.currency)}
                 </span>
               </div>
             </div>
 
             {/* Instruction */}
-            <div className="bg-teal-50 text-center px-8 py-4">
-              <p className="text-sm font-semibold text-teal-700">
-                Show this voucher to your operator upon arrival
-              </p>
-            </div>
+            {isPaid ? (
+              <div className="bg-teal-50 text-center px-8 py-4">
+                <p className="text-sm font-semibold text-teal-700">
+                  Show this voucher to your operator upon arrival
+                </p>
+              </div>
+            ) : (
+              <div className="bg-cream-50 text-center px-8 py-4">
+                <p className="text-sm font-semibold text-navy-500">
+                  This booking is not yet confirmed and paid. This voucher is not valid for check-in yet.
+                </p>
+              </div>
+            )}
 
             {/* Calendar Links - hidden when printing */}
             <div className="print:hidden px-8 py-5 border-t border-cream-100">
