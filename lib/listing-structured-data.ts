@@ -22,8 +22,6 @@ export function listingStructuredData(listing: StructuredListing) {
     address: { "@type": "PostalAddress", streetAddress: listing.address || undefined,
       addressLocality: listing.parish || listing.islandName, addressCountry: listing.islandCountry },
     image: listing.images.filter(img => img.type !== "video").map(img => safeWebUrl(img.url, true)).filter(Boolean),
-    telephone: typeof td.phone === "string" ? td.phone : undefined,
-    sameAs: safeWebUrl(td.website),
   };
   const lat = listing.latitude === null ? NaN : Number(listing.latitude);
   const lng = listing.longitude === null ? NaN : Number(listing.longitude);

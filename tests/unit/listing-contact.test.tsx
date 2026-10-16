@@ -47,16 +47,14 @@ async function submitMessage() {
 }
 
 describe("public business contact", () => {
-  it("makes external contact available to guests without suggesting a VakayGo booking", async () => {
+  it("withholds direct external contact links pre-booking while showing VakayGo protection and claim link", async () => {
     await render(<ContactInfo listingId={listingId} unclaimed typeData={{ phone: "+1 (246) 555-0123 ext. 45", website: "https://www.example.com/long/path?ref=directory", googleMapsUrl: "https://maps.google.com/?q=business" }} />);
-    expect(container.querySelector('a[href="tel:+12465550123;ext=45"]')?.textContent).toContain("Call +1 (246) 555-0123");
-    const website = container.querySelector('a[href^="https://www.example.com/"]')!;
-    expect(website.textContent).toContain("Visit business website");
-    expect(website.textContent).toContain("opens in a new tab");
-    expect(website.getAttribute("target")).toBe("_blank");
-    expect(website.getAttribute("rel")).toBe("noopener noreferrer");
-    expect(container.textContent).toContain("example.com");
-    expect(container.textContent).toContain("Online bookings and payments are unavailable on VakayGo");
+    expect(container.querySelector('a[href^="tel:"]')).toBeNull();
+    expect(container.querySelector('a[href^="https://www.example.com"]')).toBeNull();
+    expect(container.querySelector('a[href^="https://maps.google.com"]')).toBeNull();
+    expect(container.textContent).toContain("Protected by VakayGo");
+    expect(container.textContent).toContain("Direct operator contact details");
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(`/auth/signup?role=operator&claim=${listingId}`);
     expect(container.querySelector("form, input, button")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -70,10 +68,11 @@ describe("public business contact", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("does not describe a currently eligible listing as unavailable", async () => {
+  it("describes in-app messaging and booking unlock for eligible listings", async () => {
     await render(<ContactInfo bookingEligible typeData={{ website: "https://example.com" }} />);
-    expect(container.textContent).toContain("Contact the business directly");
-    expect(container.textContent).not.toContain("unavailable");
+    expect(container.textContent).toContain("Protected by VakayGo");
+    expect(container.textContent).toContain("Message the operator in-app");
+    expect(container.querySelector("a")).toBeNull();
   });
 });
 

@@ -90,6 +90,22 @@ describe("message identity and recipient authorization", () => {
   it.each([null, [], {}, { ...payload, content: " " }, { ...payload, content: {} }, { ...payload, content: "a".repeat(2001) }, { ...payload, receiverId: "not-uuid" }, { ...payload, listingId: "not-uuid" }, { ...payload, attachmentUrl: "javascript:alert(1)", attachmentType: "file" }])("rejects malformed payload before writes %j", async body => {
     expect((await POST(request(body))).status).toBe(400); expect(state.inserts).toEqual([]);
   });
+  it("blocks off-platform contact details pre-booking with 422 and unlocks only on confirmed+paid bookings", async () => {
+    for (const blocked of ["Call me at +1 (473) 440-1234", "Email me at guest@example.com", "Message me on WhatsApp", "Visit https://offplatform.com"]) {
+      allowInquiry();
+      const res = await POST(request({ ...payload, content: blocked }));
+      expect(res.status).toBe(422);
+      expect(state.inserts).toEqual([]);
+    }
+    // Pending/unpaid booking still blocked
+    state.responses = [[{ id: operator }], [{ travelerId: traveler, operatorId: operator, listingId: listing, status: "pending", paidAt: null }]];
+    expect((await POST(request({ ...payload, bookingId: booking, content: "My WhatsApp is +1 473 440 1234" }))).status).toBe(422);
+    expect(state.inserts).toEqual([]);
+    // Confirmed + paid booking unlocks contact details
+    state.responses = [[{ id: operator }], [{ travelerId: traveler, operatorId: operator, listingId: listing, status: "confirmed", paidAt: date }]];
+    expect((await POST(request({ ...payload, bookingId: booking, content: "My WhatsApp is +1 473 440 1234" }))).status).toBe(200);
+    expect(state.inserts).toHaveLength(1);
+  });
 });
 
 describe("delivered conversation read state", () => {

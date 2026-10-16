@@ -26,3 +26,33 @@ export function parseMessageInput(value: unknown): MessageInput | null {
   return { receiverId: body.receiverId.toLowerCase(), content, listingId: normalizedId(body.listingId), bookingId: normalizedId(body.bookingId),
     attachmentUrl, attachmentType, clientMessageId: normalizedId(body.clientMessageId) };
 }
+
+const OFF_PLATFORM_PATTERNS: RegExp[] = [
+  // Email addresses (standard or spelled out)
+  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i,
+  /\b[a-z0-9._%+-]+\s+(?:at|\[at\])\s+[a-z0-9.-]+\s+(?:dot|\[dot\])\s+(?:com|net|org|co|io|me)\b/i,
+  // External URLs and domain names
+  /\b(?:https?:\/\/|www\.|wa\.me\/)/i,
+  /\b[a-z0-9-]{2,}\.(?:com|net|org|io|co|me|ag|bb|gd|jm|lc|tt|vc|kn|dm)\b/i,
+  // Phone numbers (7 to 15 digits with optional separators, avoiding short 4-digit years/times)
+  /(?:\+?\d[\d\s().-]{6,17}\d)/,
+  // Off-platform messaging & payment apps
+  /\b(?:whatsapp|whats\s+app|telegram|signal\s+app|instagram|zelle|venmo|cashapp|cash\s+app|western\s+union|wire\s+transfer)\b/i,
+];
+
+export function containsOffPlatformContact(content: string): boolean {
+  if (!content || typeof content !== "string") return false;
+  for (const pattern of OFF_PLATFORM_PATTERNS) {
+    if (pattern.test(content)) {
+      // If matched by the phone regex, ensure there are at least 7 actual digits
+      if (pattern.source.includes("\\d")) {
+        const match = content.match(pattern);
+        if (match && match[0].replace(/\D/g, "").length >= 7) return true;
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+

@@ -4,7 +4,7 @@ const stats = [
   { value: "7,100+", label: "Listings", sublabel: "Across the Caribbean" },
   { value: "21", label: "Islands", sublabel: "And growing" },
   { value: String(LISTING_TYPES.length), label: "Categories", sublabel: "Stays, tours, dining & more" },
-  { value: "Local", label: "Businesses", sublabel: "Find contact details and plan your visit" },
+  { value: "Protected", label: "Bookings", sublabel: "In-app messaging & buyer guarantee" },
 ];
 
 export function StatsBar() {

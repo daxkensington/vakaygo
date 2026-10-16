@@ -18,9 +18,9 @@ const props = [
   },
   {
     icon: ShieldCheck,
-    title: "Direct Local Connection & Instant Booking",
+    title: "Protected In-App Messaging & Verified Booking",
     description:
-      "Book verified Caribbean operators online with Stripe or PayPal—or connect directly via 1-tap WhatsApp Business, phone, and website links with zero middleman markups.",
+      "Ask verified Caribbean operators questions safely inside VakayGo, book online with Stripe or PayPal buyer protection, and unlock direct operator contact details upon confirmation.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image: "/images/sections/value-travel.jpg",

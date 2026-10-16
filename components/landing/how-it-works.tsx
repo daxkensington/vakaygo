@@ -20,9 +20,9 @@ const steps = [
   {
     number: "03",
     icon: TreePalm,
-    title: "Book Online or Connect 1-Tap",
+    title: "Message In-App & Book with Protection",
     description:
-      "Book verified operators directly with Stripe or PayPal—or message businesses in 1 tap via WhatsApp Business, phone, or website.",
+      "Message verified operators safely inside VakayGo, book with Stripe or PayPal buyer protection, and receive your QR voucher + direct operator contact upon confirmation.",
     color: "bg-gold-500",
   },
 ];

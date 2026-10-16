@@ -159,8 +159,28 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
     })
   );
 
+  const sanitizedTypeData =
+    listing.typeData && typeof listing.typeData === "object"
+      ? (() => {
+          const copy = { ...(listing.typeData as Record<string, unknown>) };
+          delete copy.phone;
+          delete copy.email;
+          delete copy.website;
+          delete copy.whatsapp;
+          delete copy.googleMapsUrl;
+          return copy;
+        })()
+      : listing.typeData;
+
   return {
-    listing: { ...listing, images, bookingEligible: eligibility.eligible === true, bookingEligibilityReason: eligibility.reason, isInstantBook: eligibility.eligible === true && listing.isInstantBook === true },
+    listing: {
+      ...listing,
+      typeData: sanitizedTypeData,
+      images,
+      bookingEligible: eligibility.eligible === true,
+      bookingEligibilityReason: eligibility.reason,
+      isInstantBook: eligibility.eligible === true && listing.isInstantBook === true,
+    },
     similar: similarWithImages,
   };
 }

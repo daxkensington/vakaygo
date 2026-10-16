@@ -6,6 +6,7 @@ describe("server-rendered directory structured data", () => {
     const entity = listingStructuredData(listing)["@graph"][0];
     expect(entity).toMatchObject({ "@type": "Restaurant", address: { streetAddress: listing.address, addressCountry: "Barbados" }, geo: { latitude: 0, longitude: -59.5 }, servesCuisine: "Caribbean", image: ["https://vakaygo.com/business.jpg"] });
     expect(entity).not.toHaveProperty("offers"); expect(entity).not.toHaveProperty("aggregateRating"); expect(entity).not.toHaveProperty("potentialAction");
+    expect(entity).not.toHaveProperty("telephone"); expect(entity).not.toHaveProperty("sameAs");
   });
   it("never invents an event schedule, price, rating, coordinates or availability", () => {
     const data = listingStructuredData({ ...listing, type: "event", latitude: "91", longitude: "bad", typeData: { avgRating: 5, unclaimed: false } });

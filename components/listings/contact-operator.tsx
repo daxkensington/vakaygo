@@ -152,7 +152,9 @@ function ContactOperatorForm({ operatorId, operatorName, listingId, listingTitle
               placeholder="Hi, I have a question about this listing..."
               className="w-full px-3 py-2.5 rounded-lg bg-cream-50 text-navy-700 placeholder:text-navy-300 outline-none text-sm resize-none focus:ring-2 focus:ring-gold-500/50"
             />
-            <p id={`${messageId}-notice`} className="mt-2 text-xs text-navy-400">Sending a message does not reserve anything or create a booking.</p>
+            <p id={`${messageId}-notice`} className="mt-2 text-xs text-navy-400">
+              Sending a message does not reserve anything or create a booking. For your safety, phone numbers, emails, and external links are hidden until a booking is confirmed.
+            </p>
             {error && <p id={`${messageId}-error`} role="alert" className="mt-2 text-sm text-red-600">{error}{authExpired && <> <Link href={signInHref} className="font-semibold underline">Sign in</Link></>}</p>}
             <button
               type="submit"

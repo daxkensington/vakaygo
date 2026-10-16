@@ -3,7 +3,7 @@ import { messages, users, listings, bookings } from "@/drizzle/schema";
 import { eq, or, and, desc, inArray, sql } from "drizzle-orm";
 import { requireUser } from "@/server/admin-auth";
 import { createDb } from "@/server/db";
-import { isMessageId, parseMessageInput } from "@/lib/message-input";
+import { isMessageId, parseMessageInput, containsOffPlatformContact } from "@/lib/message-input";
 import { logger } from "@/lib/logger";
 
 const pair = (userId: string, partnerId: string) => or(
@@ -11,6 +11,8 @@ const pair = (userId: string, partnerId: string) => or(
   and(eq(messages.senderId, partnerId), eq(messages.receiverId, userId)),
 );
 const failure = (error: string, status: number) => NextResponse.json({ error }, { status });
+const CONTACT_SHIELD_MESSAGE =
+  "For your protection under the VakayGo Guarantee, phone numbers, email addresses, external links, and off-platform apps (such as WhatsApp) cannot be shared before a booking is confirmed and paid.";
 
 export async function GET(request: Request) {
   try {
@@ -54,6 +56,10 @@ export async function POST(request: Request) {
     if (!auth.emailVerified) return failure("Verify your email before sending a message.", 403);
     const input = parseMessageInput(await request.json().catch(() => null));
     if (!input || input.receiverId === auth.userId) return failure("Provide a valid recipient and a message of up to 2000 characters.", 400);
+    const hasBlockedContact = auth.role !== "admin" && containsOffPlatformContact(input.content);
+    if (hasBlockedContact && !input.bookingId) {
+      return failure(CONTACT_SHIELD_MESSAGE, 422);
+    }
     const db = createDb();
     const { clientMessageId, ...values } = input;
     const replay = async () => {
@@ -76,8 +82,11 @@ export async function POST(request: Request) {
       return (await db.select({ id: messages.id }).from(messages).where(and(...conditions)).limit(1)).length > 0;
     };
     if (input.bookingId) {
-      const [booking] = await db.select({ travelerId: bookings.travelerId, operatorId: bookings.operatorId, listingId: bookings.listingId }).from(bookings).where(eq(bookings.id, input.bookingId)).limit(1);
+      const [booking] = await db.select({ travelerId: bookings.travelerId, operatorId: bookings.operatorId, listingId: bookings.listingId, status: bookings.status, paidAt: bookings.paidAt }).from(bookings).where(eq(bookings.id, input.bookingId)).limit(1);
       if (!booking || ![booking.travelerId, booking.operatorId].includes(auth.userId) || input.receiverId !== (auth.userId === booking.travelerId ? booking.operatorId : booking.travelerId) || (input.listingId && input.listingId !== booking.listingId)) return failure("This booking is not part of your conversation.", 403);
+      if (hasBlockedContact && !((booking.status === "confirmed" || booking.status === "completed") && Boolean(booking.paidAt))) {
+        return failure(CONTACT_SHIELD_MESSAGE, 422);
+      }
     } else if (input.listingId) {
       const [listing] = await db.select({ operatorId: listings.operatorId, status: listings.status, claimVerified: sql<boolean>`vakaygo_listing_claim_verified(${listings.id})` }).from(listings).where(eq(listings.id, input.listingId)).limit(1);
       if (!listing || (auth.userId === listing.operatorId ? !await existingPair(input.listingId) : input.receiverId !== listing.operatorId || listing.status !== "active" || !listing.claimVerified)) return failure("This business is unavailable for messages. Check its current contact details.", 409);

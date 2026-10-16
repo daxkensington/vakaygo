@@ -46,6 +46,7 @@ export async function GET(
         totalAmount: bookings.totalAmount,
         currency: bookings.currency,
         status: bookings.status,
+        paidAt: bookings.paidAt,
         travelerId: bookings.travelerId,
         verificationToken: bookings.verificationToken,
         checkedIn: bookings.checkedIn,
@@ -53,6 +54,7 @@ export async function GET(
         listingTitle: listings.title,
         listingType: listings.type,
         listingAddress: listings.address,
+        listingTypeData: listings.typeData,
         operatorId: listings.operatorId,
       })
       .from(bookings)
@@ -97,10 +99,24 @@ export async function GET(
       .select({
         name: users.name,
         businessName: users.businessName,
+        phone: users.phone,
+        email: users.email,
       })
       .from(users)
       .where(eq(users.id, booking.operatorId))
       .limit(1);
+
+    const isPaidAndConfirmed =
+      (booking.status === "confirmed" || booking.status === "completed") &&
+      Boolean(booking.paidAt);
+
+    const td = (booking.listingTypeData as Record<string, unknown> | null) || {};
+    const unlockedPhone = isPaidAndConfirmed
+      ? operator?.phone || (typeof td.phone === "string" ? td.phone : null)
+      : null;
+    const unlockedEmail = isPaidAndConfirmed
+      ? operator?.email || (typeof td.email === "string" ? td.email : null)
+      : null;
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vakaygo.com";
     const verifyUrl = `${baseUrl}/verify/${booking.id}/${verificationToken}`;
@@ -119,16 +135,20 @@ export async function GET(
       bookingNumber: booking.bookingNumber,
       listingTitle: booking.listingTitle,
       listingType: booking.listingType,
-      listingAddress: booking.listingAddress,
+      listingAddress: isPaidAndConfirmed ? booking.listingAddress : null,
       date: booking.startDate,
       endDate: booking.endDate,
       guestCount: booking.guestCount || 1,
       guestName: traveler?.name || "Guest",
+      operatorId: booking.operatorId,
       operatorName: operator?.businessName || operator?.name || "Local Operator",
+      operatorPhone: unlockedPhone,
+      operatorEmail: unlockedEmail,
       totalAmount: booking.totalAmount,
       discountAmount: booking.discountAmount,
       currency: booking.currency || "XCD",
       status: booking.status,
+      paymentStatus: booking.paidAt ? "paid" : "unpaid",
       checkedIn: booking.checkedIn,
     });
   } catch (error) {

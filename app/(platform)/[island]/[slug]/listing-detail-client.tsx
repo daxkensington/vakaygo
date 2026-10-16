@@ -554,7 +554,7 @@ export function ListingDetailClient({
                 <h2 className="text-xl font-bold text-navy-700">Useful information</h2>
                 <h3 className="mt-5 font-semibold text-navy-700">Where is {listing.title}?</h3>
                 <p className="mt-2 text-navy-500">{listing.address || [listing.parish, listing.islandName].filter(Boolean).join(", ")}</p>
-                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Bookings are currently unavailable for this listing. Use the contact details above, when available, to check with the business directly. You can also record interest on VakayGo. Interest does not reserve anything or create a payment.</p></>}
+                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Online checkout is being activated for this listing. Register your interest on VakayGo or ask our AI Concierge—direct operator contact details unlock automatically once a booking is confirmed and paid.</p></>}
                 {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={claimStartHref(listing.id, Boolean(user))}>start a free listing claim</Link>.</p></>}
               </section>
 

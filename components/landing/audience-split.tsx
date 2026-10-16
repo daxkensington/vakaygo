@@ -4,8 +4,8 @@ const travelerBenefits = [
   "Explore 6,900+ places on our 3D satellite map with aerial flyovers",
   "Generate custom day-by-day island itineraries with our AI Concierge",
   "Compare prices live in USD, EUR, GBP, CAD, XCD, BBD, JMD & TTD",
-  "Connect in 1 tap via WhatsApp Business, phone, or website",
-  "Book verified Caribbean operators with Stripe or PayPal protection",
+  "Message verified operators safely in-app before booking",
+  "Book with Stripe or PayPal protection & instant QR voucher unlock",
 ];
 
 const businessBenefits = [

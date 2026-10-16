@@ -16,6 +16,10 @@ import {
   XCircle,
   ArrowLeft,
   CalendarPlus,
+  Phone,
+  Mail,
+  MessageSquare,
+  Lock,
 } from "lucide-react";
 
 type VoucherData = {
@@ -29,11 +33,15 @@ type VoucherData = {
   endDate: string | null;
   guestCount: number;
   guestName: string;
+  operatorId?: string;
   operatorName: string;
+  operatorPhone?: string | null;
+  operatorEmail?: string | null;
   totalAmount: string;
   discountAmount: string | null;
   currency: string;
   status: string;
+  paymentStatus?: string;
   checkedIn: boolean;
 };
 
@@ -270,6 +278,40 @@ export default function VoucherPage({
                   value={data.listingAddress}
                   icon={<MapPin size={14} className="text-navy-300" />}
                 />
+              )}
+              {isConfirmed && data.paymentStatus === "paid" ? (
+                <>
+                  {data.operatorPhone && (
+                    <DetailRow
+                      label="Operator Phone"
+                      value={data.operatorPhone}
+                      icon={<Phone size={14} className="text-teal-500" />}
+                    />
+                  )}
+                  {data.operatorEmail && (
+                    <DetailRow
+                      label="Operator Email"
+                      value={data.operatorEmail}
+                      icon={<Mail size={14} className="text-teal-500" />}
+                    />
+                  )}
+                  {data.operatorId && (
+                    <div className="print:hidden py-3 border-b border-cream-100">
+                      <Link
+                        href={`/messages?with=${data.operatorId}`}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 text-sm font-semibold transition-colors"
+                      >
+                        <MessageSquare size={15} />
+                        Message {data.operatorName} on VakayGo
+                      </Link>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-3 border-b border-cream-100 flex items-center gap-2 text-xs text-navy-500 bg-cream-50/70 px-3 rounded-lg my-1">
+                  <Lock size={14} className="text-gold-700 shrink-0" />
+                  <span>Direct operator phone, email &amp; exact meeting address unlock once payment and confirmation are complete.</span>
+                </div>
               )}
               {data.discountAmount && parseFloat(data.discountAmount) > 0 && (
                 <DetailRow
