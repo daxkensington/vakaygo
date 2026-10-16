@@ -104,8 +104,12 @@ export default function OperatorProfilePage() {
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
+    let active = true;
+
+    setError(null);
     setLoading(true);
-    fetch(`/api/operators/${id}`)
+    fetch(`/api/operators/${id}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -114,12 +118,24 @@ export default function OperatorProfilePage() {
         return res.json();
       })
       .then((data) => {
+        if (!active || controller.signal.aborted) return;
         setOperator(data.operator);
         setListings(data.listings);
         setStats(data.stats);
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!active || controller.signal.aborted || err?.name === "AbortError") return;
+        setError(err.message);
+      })
+      .finally(() => {
+        if (!active || controller.signal.aborted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [id]);
 
   const memberYear = operator
