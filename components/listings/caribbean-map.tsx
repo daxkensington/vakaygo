@@ -8,6 +8,7 @@ import {
   MapPin, X, Maximize2, Minimize2, Compass, Play, Pause,
   Search, Navigation, Layers, Star, ChevronRight, Flame, Sun, Moon, List, Sparkles,
 } from "lucide-react";
+import { useCurrency } from "@/lib/currency";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -312,6 +313,7 @@ export default function CaribbeanMap({
   activeIsland: string;
   onIslandChange?: (island: string) => void;
 }) {
+  const { format: formatCurrency } = useCurrency();
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedRef = useRef<MapListing | null>(null);
@@ -595,7 +597,7 @@ export default function CaribbeanMap({
 
     const r = selected.avgRating ? parseFloat(selected.avgRating) : 0;
     const price = selected.priceAmount && parseFloat(selected.priceAmount) > 0
-      ? `$${parseFloat(selected.priceAmount).toFixed(0)}${selected.priceUnit ? `<span style="font-weight:400;color:#8896a7">/${selected.priceUnit}</span>` : ""}`
+      ? `${escapeHtml(formatCurrency(parseFloat(selected.priceAmount)))}${selected.priceUnit ? `<span style="font-weight:400;color:#8896a7">/${escapeHtml(selected.priceUnit)}</span>` : ""}`
       : "";
     const cfg = categoryConfig[selected.type] || categoryConfig.stay;
 
@@ -649,7 +651,7 @@ export default function CaribbeanMap({
     });
 
     popupRef.current = popup;
-  }, [selected]);
+  }, [selected, formatCurrency, userLocation]);
 
   // ── Fly to island on change ──
   useEffect(() => {
@@ -1627,7 +1629,7 @@ export default function CaribbeanMap({
             {inViewListings.slice(0, 40).map((l) => {
               const cfg = categoryConfig[l.type] || categoryConfig.stay;
               const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
-              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? `$${parseFloat(l.priceAmount).toFixed(0)}` : null;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount)) : null;
               const isSelected = selected?.id === l.id || hoveredId === l.id;
 
               return (
@@ -1756,7 +1758,7 @@ export default function CaribbeanMap({
             {inViewListings.slice(0, 20).map((l) => {
               const cfg = categoryConfig[l.type] || categoryConfig.stay;
               const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
-              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? `$${parseFloat(l.priceAmount).toFixed(0)}` : null;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount)) : null;
               return (
                 <div
                   key={l.id}
@@ -1866,7 +1868,7 @@ export default function CaribbeanMap({
                   )}
                   {flyoverListing.priceAmount && parseFloat(flyoverListing.priceAmount) > 0 && (
                     <span className="text-xs font-bold text-navy-700">
-                      ${parseFloat(flyoverListing.priceAmount).toFixed(0)}
+                      {formatCurrency(parseFloat(flyoverListing.priceAmount))}
                       {flyoverListing.priceUnit && <span className="font-normal text-navy-400">/{flyoverListing.priceUnit}</span>}
                     </span>
                   )}

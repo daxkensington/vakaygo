@@ -9,6 +9,7 @@ import {
   Clock,
   MapPin,
   ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 
 type ContactInfoProps = {
@@ -24,8 +25,13 @@ function phoneContact(value: unknown) {
   const match = label.match(/^(\+?[\d\s().-]+?)(?:\s*(?:ext\.?|x|#)\s*(\d{1,6}))?$/i);
   if (!match) return undefined;
   const number = match[1].replace(/[^\d+]/g, "");
-  if (number.replace(/\D/g, "").length < 7 || number.replace(/\D/g, "").length > 15) return undefined;
-  return { label, href: `tel:${number}${match[2] ? `;ext=${match[2]}` : ""}` };
+  const digits = number.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) return undefined;
+  const whatsappHref =
+    digits.length >= 10 && !match[2]
+      ? `https://wa.me/${digits}?text=${encodeURIComponent("Hi! I found your business on VakayGo.com and would like to inquire about availability.")}`
+      : undefined;
+  return { label, href: `tel:${number}${match[2] ? `;ext=${match[2]}` : ""}`, whatsappHref };
 }
 
 export function ContactInfo({ typeData, listingId, bookingEligible = false, unclaimed }: ContactInfoProps) {
@@ -56,18 +62,32 @@ export function ContactInfo({ typeData, listingId, bookingEligible = false, uncl
       )}
 
       <div className="mt-4 space-y-4">
-        {/* Phone */}
+        {/* Phone & WhatsApp */}
         {phone && (
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
-              <Phone size={16} className="text-gold-700" />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gold-50 rounded-full flex items-center justify-center shrink-0">
+                <Phone size={16} className="text-gold-700" />
+              </div>
+              <a
+                href={phone.href}
+                className="text-navy-600 hover:text-gold-600 transition-colors font-semibold break-words focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-700"
+              >
+                Call {phone.label}
+              </a>
             </div>
-            <a
-              href={phone.href}
-              className="text-navy-600 hover:text-gold-600 transition-colors font-semibold break-words focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-700"
-            >
-              Call {phone.label}
-            </a>
+            {phone.whatsappHref && (
+              <a
+                href={phone.whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition-colors"
+              >
+                <MessageCircle size={14} className="shrink-0" aria-hidden="true" />
+                WhatsApp Business
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            )}
           </div>
         )}
 

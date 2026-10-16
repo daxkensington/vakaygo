@@ -185,8 +185,18 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const DEFAULT_CURRENCY_CONTEXT: CurrencyContextValue = {
+  currency: "USD",
+  setCurrency: () => {},
+  convert: (amount: number) => amount,
+  format: (amount: number) => `$${amount.toFixed(0)}`,
+  symbol: "$",
+  rates: FALLBACK_RATES,
+  ratesUpdatedAt: null,
+  ratesLoading: false,
+};
+
 export function useCurrency() {
   const ctx = useContext(CurrencyContext);
-  if (!ctx) throw new Error("useCurrency must be used within CurrencyProvider");
-  return ctx;
+  return ctx ?? DEFAULT_CURRENCY_CONTEXT;
 }

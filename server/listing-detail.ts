@@ -85,9 +85,8 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
     url: img.type === "video" ? img.url : (getImageUrl(img.url) || img.url),
   }));
 
-  // Similar = same type on the SAME island (the old query's island
-  // condition was a join tautology, so it matched any island).
-  const similar = await db
+  // Similar = same type on the SAME island, sorted by proximity when coordinates exist
+  const rawSimilar = await db
     .select({
       id: listings.id,
       title: listings.title,
@@ -98,7 +97,10 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
       avgRating: listings.avgRating,
       reviewCount: listings.reviewCount,
       parish: listings.parish,
+      latitude: listings.latitude,
+      longitude: listings.longitude,
       islandSlug: islands.slug,
+      bookingEligible: sql<boolean>`vakaygo_listing_bookable(${listings.id})`,
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
@@ -110,7 +112,41 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
         ne(listings.id, listing.id)
       )
     )
-    .limit(3);
+    .limit(24);
+
+  const originLat = listing.latitude ? parseFloat(listing.latitude) : NaN;
+  const originLng = listing.longitude ? parseFloat(listing.longitude) : NaN;
+  const hasOriginCoords = Number.isFinite(originLat) && Number.isFinite(originLng);
+
+  const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const similar = [...rawSimilar]
+    .sort((a, b) => {
+      if (hasOriginCoords) {
+        const aLat = a.latitude ? parseFloat(a.latitude) : NaN;
+        const aLng = a.longitude ? parseFloat(a.longitude) : NaN;
+        const bLat = b.latitude ? parseFloat(b.latitude) : NaN;
+        const bLng = b.longitude ? parseFloat(b.longitude) : NaN;
+        const aDist = Number.isFinite(aLat) && Number.isFinite(aLng) ? haversineKm(originLat, originLng, aLat, aLng) : 9999;
+        const bDist = Number.isFinite(bLat) && Number.isFinite(bLng) ? haversineKm(originLat, originLng, bLat, bLng) : 9999;
+        if (Math.abs(aDist - bDist) > 0.2) return aDist - bDist;
+      }
+      const aRating = a.avgRating ? parseFloat(a.avgRating) : 0;
+      const bRating = b.avgRating ? parseFloat(b.avgRating) : 0;
+      return bRating - aRating;
+    })
+    .slice(0, 6);
 
   const similarWithImages = await Promise.all(
     similar.map(async (s) => {

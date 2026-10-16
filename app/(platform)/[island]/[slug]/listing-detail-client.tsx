@@ -45,6 +45,7 @@ import { addRecentlyViewed } from "@/lib/recently-viewed";
 import { getImageUrl } from "@/lib/image-utils";
 import { getIslandFlag } from "@/lib/island-flags";
 import { analytics } from "@/lib/analytics";
+import { useCurrency } from "@/lib/currency";
 import {
   Star,
   MapPin,
@@ -56,6 +57,7 @@ import {
   Heart,
   Zap,
   Sparkles,
+  Compass,
 } from "lucide-react";
 
 export type ListingDetail = {
@@ -115,6 +117,9 @@ export type SimilarListing = {
   avgRating: string | null;
   reviewCount: number | null;
   parish: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  bookingEligible?: boolean;
   islandSlug: string;
   image: string | null;
 };
@@ -141,6 +146,7 @@ export function ListingDetailClient({
 }) {
   const params = useParams();
   const { user } = useAuth();
+  const { format: formatCurrency } = useCurrency();
   const [listing, setListing] = useState<ListingDetail | null>(initialListing);
   const bookingState = useCurrentBookingEligibility(listing?.id);
   const bookingEligible = bookingState.eligible === true;
@@ -350,29 +356,38 @@ export function ListingDetailClient({
               </div>
 
               {/* Ask AI Button */}
-              <button
-                onClick={() => {
-                  // Set listing context for the concierge
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (window as any).__vakaygo_listing_context = {
-                    title: listing.title,
-                    slug: listing.slug,
-                    island: listing.islandSlug,
-                    type: listing.type,
-                    price: bookingEligible ? listing.priceAmount || undefined : undefined,
-                    bookingEligible,
-                  };
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const open = (window as any).__vakaygo_concierge_open;
-                  if (open) {
-                    open(`Tell me about "${listing.title}"`);
-                  }
-                }}
-                className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-[0_2px_12px_rgba(200,145,46,0.3)] hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02] transition-all duration-200"
-              >
-                <Sparkles size={16} />
-                Ask AI about this
-              </button>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => {
+                    // Set listing context for the concierge
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (window as any).__vakaygo_listing_context = {
+                      title: listing.title,
+                      slug: listing.slug,
+                      island: listing.islandSlug,
+                      type: listing.type,
+                      price: bookingEligible ? listing.priceAmount || undefined : undefined,
+                      bookingEligible,
+                    };
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const open = (window as any).__vakaygo_concierge_open;
+                    if (open) {
+                      open(`Tell me about "${listing.title}"`);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-gold-500 to-gold-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-[0_2px_12px_rgba(200,145,46,0.3)] hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] hover:scale-[1.02] transition-all duration-200"
+                >
+                  <Sparkles size={16} />
+                  Ask AI about this
+                </button>
+                <Link
+                  href={`/trips/new?island=${encodeURIComponent(listing.islandSlug)}&spot=${encodeURIComponent(listing.title)}`}
+                  className="inline-flex items-center gap-2 bg-navy-800 hover:bg-navy-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all duration-200"
+                >
+                  <Compass size={16} className="text-gold-400" />
+                  Plan a Trip Here
+                </Link>
+              </div>
 
               {/* Trust Badges */}
               <div className="mt-4">
@@ -773,50 +788,101 @@ export function ListingDetailClient({
             )}
           </div>
 
-          {/* Similar Listings */}
+          {/* Similar & Nearby Listings */}
           {similar.length > 0 && (
             <div className="mt-16">
-              <h2
-                className="text-2xl font-bold text-navy-700 mb-6"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                You might also like
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2
+                  className="text-2xl font-bold text-navy-700"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Nearby &amp; Similar in {listing.islandName}
+                </h2>
+                <Link
+                  href={`/${listing.islandSlug}`}
+                  className="text-sm font-semibold text-gold-700 hover:text-gold-600 transition-colors"
+                >
+                  Explore all {listing.islandName} →
+                </Link>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {similar.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/${item.islandSlug}/${item.slug}`}
-                    className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className="relative h-44 overflow-hidden">
-                      <ImageWithFallback
-                        src={getImageUrl(item.image, { width: 400 })}
-                        type={item.type}
-                        className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <p className="text-xs text-navy-400">{item.parish || listing.islandName}</p>
-                      <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="font-bold text-navy-700">
-                          <span className="text-navy-400 text-xs font-normal">View listing information</span>
-                        </span>
-                        {item.avgRating && (
-                          <div className="flex items-center gap-1">
-                            <Star size={12} className="text-gold-700 fill-gold-500" />
-                            <span className="text-xs font-semibold">
-                              {parseFloat(item.avgRating).toFixed(1)}
+                {similar.map((item) => {
+                  const oLat = listing.latitude ? parseFloat(listing.latitude) : NaN;
+                  const oLng = listing.longitude ? parseFloat(listing.longitude) : NaN;
+                  const iLat = item.latitude ? parseFloat(item.latitude) : NaN;
+                  const iLng = item.longitude ? parseFloat(item.longitude) : NaN;
+                  let distKm: number | null = null;
+                  if (Number.isFinite(oLat) && Number.isFinite(oLng) && Number.isFinite(iLat) && Number.isFinite(iLng)) {
+                    const R = 6371;
+                    const dLat = ((iLat - oLat) * Math.PI) / 180;
+                    const dLon = ((iLng - oLng) * Math.PI) / 180;
+                    const a =
+                      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos((oLat * Math.PI) / 180) *
+                        Math.cos((iLat * Math.PI) / 180) *
+                        Math.sin(dLon / 2) *
+                        Math.sin(dLon / 2);
+                    distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                  }
+                  const hasPrice = item.bookingEligible && item.priceAmount && parseFloat(item.priceAmount) > 0;
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={`/${item.islandSlug}/${item.slug}`}
+                      className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
+                    >
+                      <div className="relative h-44 overflow-hidden">
+                        <ImageWithFallback
+                          src={getImageUrl(item.image, { width: 400 })}
+                          type={item.type}
+                          className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                          <span className="bg-navy-900/80 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                            {typeLabels[item.type] || item.type}
+                          </span>
+                          {distKm !== null && distKm < 80 && (
+                            <span className="bg-white/95 backdrop-blur-sm text-navy-700 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                              📍 {distKm < 1 ? `${Math.max(100, Math.round(distKm * 1000))}m` : `${distKm.toFixed(1)} km`} away
                             </span>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="p-4">
+                        <p className="text-xs text-navy-400">{item.parish || listing.islandName}</p>
+                        <h3 className="font-semibold text-navy-700 mt-1 line-clamp-1 group-hover:text-gold-600 transition-colors">
+                          {item.title}
+                        </h3>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="font-bold text-navy-700 text-sm">
+                            {hasPrice ? (
+                              <>
+                                {formatCurrency(parseFloat(item.priceAmount!))}
+                                {item.priceUnit && (
+                                  <span className="text-navy-400 text-xs font-normal">/{item.priceUnit}</span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gold-700 text-xs font-semibold">Explore details →</span>
+                            )}
+                          </span>
+                          {item.avgRating && parseFloat(item.avgRating) > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Star size={12} className="text-gold-700 fill-gold-500" />
+                              <span className="text-xs font-semibold">
+                                {parseFloat(item.avgRating).toFixed(1)}
+                              </span>
+                              {item.reviewCount ? (
+                                <span className="text-xs text-navy-400">({item.reviewCount})</span>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}

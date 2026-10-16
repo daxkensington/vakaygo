@@ -294,7 +294,10 @@ export function Header() {
           )}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className={`xl:hidden transition-colors ${scrolled || !isLanding ? "text-navy-600" : "text-white/90"}`}>
+            <CurrencySwitcher />
+          </div>
           {user && <div className="hidden md:block"><NotificationBell scrolled={scrolled} isLanding={isLanding} /></div>}
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}

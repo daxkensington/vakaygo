@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { useCurrency } from "@/lib/currency";
 
 export type FeaturedListing = {
   id: string;
@@ -27,6 +28,7 @@ export function FeaturedListingsClient({
   listings: FeaturedListing[];
 }) {
   const [mounted, setMounted] = useState(false);
+  const { format } = useCurrency();
 
   useEffect(() => {
     // Mount on first user scroll OR after 4 s, whichever comes first.
@@ -84,9 +86,9 @@ export function FeaturedListingsClient({
                 {listing.title}
               </h3>
               <div className="flex items-center justify-between mt-2">
-                {listing.priceAmount && (
+                {listing.priceAmount && parseFloat(listing.priceAmount) > 0 && (
                   <span className="font-bold text-navy-700">
-                    ${parseFloat(listing.priceAmount).toFixed(0)}
+                    {format(parseFloat(listing.priceAmount))}
                     <span className="text-navy-400 text-sm font-normal"> / {listing.priceUnit}</span>
                   </span>
                 )}

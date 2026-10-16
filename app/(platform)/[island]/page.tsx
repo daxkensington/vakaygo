@@ -61,6 +61,31 @@ const heroImages: Record<string, string> = {
 };
 const defaultHero = "/images/hero/caribbean-hero.jpg";
 
+const islandEssentials: Record<
+  string,
+  { currency: string; language: string; bestTime: string; airport: string; driving: string }
+> = {
+  grenada: { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "GND (Maurice Bishop)", driving: "Left side" },
+  barbados: { currency: "BDS$ (BBD) / USD", language: "English", bestTime: "Dec – Apr", airport: "BGI (Grantley Adams)", driving: "Left side" },
+  jamaica: { currency: "J$ (JMD) / USD", language: "English / Patois", bestTime: "Nov – Apr", airport: "MBJ / KIN", driving: "Left side" },
+  "st-lucia": { currency: "EC$ (XCD) / USD", language: "English / Kwéyòl", bestTime: "Dec – May", airport: "UVF (Hewanorra)", driving: "Left side" },
+  "trinidad-and-tobago": { currency: "TT$ (TTD) / USD", language: "English", bestTime: "Jan – May", airport: "POS / TAB", driving: "Left side" },
+  bahamas: { currency: "B$ (BSD) / USD", language: "English", bestTime: "Nov – Apr", airport: "NAS (Lynden Pindling)", driving: "Left side" },
+  antigua: { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – Apr", airport: "ANU (V.C. Bird)", driving: "Left side" },
+  aruba: { currency: "AWG / USD", language: "Dutch / Papiamento / EN", bestTime: "Year-round", airport: "AUA (Queen Beatrix)", driving: "Right side" },
+  curacao: { currency: "ANG / USD", language: "Dutch / Papiamento / EN", bestTime: "Year-round", airport: "CUR (Hato Intl)", driving: "Right side" },
+  "dominican-republic": { currency: "RD$ (DOP) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "PUJ / SDQ", driving: "Right side" },
+  "turks-and-caicos": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "PLS (Providenciales)", driving: "Left side" },
+  "cayman-islands": { currency: "CI$ (KYD) / USD", language: "English", bestTime: "Nov – Apr", airport: "GCM (Owen Roberts)", driving: "Left side" },
+};
+const defaultEssentials = {
+  currency: "USD & Local Currency",
+  language: "English / Local",
+  bestTime: "Dec – May",
+  airport: "International Airport",
+  driving: "Local permit / Check side",
+};
+
 type Props = { params: Promise<{ island: string }> };
 
 export default async function IslandPage({ params }: Props) {
@@ -77,6 +102,7 @@ export default async function IslandPage({ params }: Props) {
   ]);
 
   const heroImg = heroImages[islandSlug] || defaultHero;
+  const essentials = islandEssentials[islandSlug] || defaultEssentials;
 
   return (
     <>
@@ -116,12 +142,26 @@ export default async function IslandPage({ params }: Props) {
               {getIslandFlag(islandSlug)} {island.name}
             </h1>
             <p className="text-white/70 mt-2 max-w-2xl">{island.description}</p>
-            <div className="flex items-center gap-6 mt-4 text-sm text-white/60">
+            <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/80">
               <span className="flex items-center gap-1">
                 <MapPin size={14} />
                 Caribbean
               </span>
-              <span>{stats.totalListings} listings</span>
+              <span>{stats.totalListings} verified places</span>
+              <Link
+                href={`/trips/new?island=${islandSlug}`}
+                className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-md transition-colors"
+              >
+                <Sparkles size={13} />
+                Plan a {island.name} Trip with AI
+              </Link>
+              <Link
+                href="/map"
+                className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white text-xs font-semibold px-3.5 py-1.5 rounded-full border border-white/25 transition-colors"
+              >
+                <Compass size={13} />
+                Explore on 3D Map
+              </Link>
             </div>
           </div>
         </section>
@@ -147,6 +187,34 @@ export default async function IslandPage({ params }: Props) {
             })}
           </div>
         </div>
+
+        {/* Island Essentials At-a-Glance Bar + 3D Map & AI Trip Planner Banner */}
+        <section className="mx-auto max-w-7xl px-6 pt-8 pb-2">
+          <div className="bg-white rounded-2xl border border-cream-200 shadow-sm p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">Currency</p>
+                <p className="text-sm font-semibold text-navy-700 mt-0.5">💱 {essentials.currency}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">Language</p>
+                <p className="text-sm font-semibold text-navy-700 mt-0.5">🗣️ {essentials.language}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">Best Time to Visit</p>
+                <p className="text-sm font-semibold text-navy-700 mt-0.5">☀️ {essentials.bestTime}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">Main Airport</p>
+                <p className="text-sm font-semibold text-navy-700 mt-0.5">✈️ {essentials.airport}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">Driving</p>
+                <p className="text-sm font-semibold text-navy-700 mt-0.5">🚗 {essentials.driving}</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Featured Listings — client-mounted after requestIdleCallback
             so the 8 external listing thumbnails (often 500 KB+ each

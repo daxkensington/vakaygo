@@ -279,6 +279,24 @@ function TripPlanner() {
         if (controller.signal.aborted || !res.ok || !Array.isArray(data?.islands) ||
           !data.islands.every((island: Island) => island && Number.isInteger(island.id) && typeof island.name === "string" && typeof island.slug === "string")) throw new Error("Destinations could not be loaded.");
         setIslandsData(data.islands);
+        if (typeof window !== "undefined") {
+          const qs = new URLSearchParams(window.location.search);
+          const requestedIslandSlug = qs.get("island");
+          const requestedSpot = qs.get("spot");
+          if (requestedIslandSlug) {
+            const matched = data.islands.find(
+              (i: Island) => i.slug.toLowerCase() === requestedIslandSlug.toLowerCase()
+            );
+            if (matched) {
+              setIslandId((prev) => prev ?? matched.id);
+            }
+          }
+          if (requestedSpot && requestedSpot.trim()) {
+            setSpecialRequests((prev) =>
+              prev ? prev : `Please include "${requestedSpot.trim()}" in the itinerary.`
+            );
+          }
+        }
       } catch {
         if (current) setIslandsError("Trip destinations could not be loaded. Please try again.");
       } finally {
