@@ -158,6 +158,90 @@ export default async function IslandsPage() {
               );
             })}
           </div>
+
+          {/* Wave 2 Global Expansion Showcase (Latin America & Mediterranean) */}
+          <section className="mt-20 rounded-3xl border border-cream-300 bg-white p-8 md:p-12 shadow-[var(--shadow-card)]">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-cream-200">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gold-600 mb-2">
+                  365-Day Sun &amp; Sea Network · Partner Onboarding Open
+                </p>
+                <h2
+                  className="text-3xl md:text-4xl font-bold text-navy-800"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Expanding to Latin America &amp; the Mediterranean
+                </h2>
+                <p className="mt-3 text-navy-500 max-w-2xl text-sm md:text-base">
+                  We are onboarding verified boat charters, boutique villas, private excursions, and VIP concierges across our next 13 coastal hubs—with 0% guest booking fees and 85%–90% operator payouts.
+                </p>
+              </div>
+              <Link
+                href="/operator/onboarding"
+                className="inline-flex items-center gap-2 rounded-full bg-gold-500 hover:bg-gold-600 px-6 py-3.5 text-sm font-semibold text-white transition-colors shrink-0"
+              >
+                List Your Business Free
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-navy-700 mb-4">
+                  Wave 2A · Latin America &amp; Central America
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { slug: "cartagena", name: "Cartagena & Rosario Islands", country: "Colombia" },
+                    { slug: "medellin", name: "Medellín & Guatapé", country: "Colombia" },
+                    { slug: "cancun-riviera-maya", name: "Cancún, Tulum & Riviera Maya", country: "Mexico" },
+                    { slug: "los-cabos", name: "Los Cabos", country: "Mexico" },
+                    { slug: "guanacaste", name: "Guanacaste & Papagayo", country: "Costa Rica" },
+                    { slug: "ambergris-caye", name: "Ambergris Caye & Placencia", country: "Belize" },
+                  ].map((hub) => (
+                    <div
+                      key={hub.slug}
+                      className="flex items-center gap-3 rounded-2xl border border-cream-200 bg-cream-50/60 px-4 py-3"
+                    >
+                      <span className="text-2xl">{getIslandFlag(hub.slug)}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-navy-800 truncate">{hub.name}</p>
+                        <p className="text-xs text-navy-500">{hub.country} · Onboarding partners</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-navy-700 mb-4">
+                  Wave 2B · Mediterranean Islands &amp; Coasts
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { slug: "santorini", name: "Santorini", country: "Greece" },
+                    { slug: "mykonos", name: "Mykonos", country: "Greece" },
+                    { slug: "crete", name: "Crete", country: "Greece" },
+                    { slug: "ibiza", name: "Ibiza & Formentera", country: "Spain" },
+                    { slug: "mallorca", name: "Mallorca", country: "Spain" },
+                    { slug: "amalfi-coast-capri", name: "Amalfi Coast & Capri", country: "Italy" },
+                    { slug: "hvar-split", name: "Hvar, Split & Dalmatian Coast", country: "Croatia" },
+                  ].map((hub) => (
+                    <div
+                      key={hub.slug}
+                      className="flex items-center gap-3 rounded-2xl border border-cream-200 bg-cream-50/60 px-4 py-3"
+                    >
+                      <span className="text-2xl">{getIslandFlag(hub.slug)}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-navy-800 truncate">{hub.name}</p>
+                        <p className="text-xs text-navy-500">{hub.country} · Onboarding partners</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
       <Footer />

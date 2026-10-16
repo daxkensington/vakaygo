@@ -394,7 +394,7 @@ export async function sendBusinessInterestOutreachEmail(
   if (row.outreachStatus === "do_not_contact") {
     return { sent: false, reason: "suppressed" };
   }
-  if (!options?.force && row.interestedCustomers < 1) {
+  if (!options?.force && options?.triggeredBy !== "cron" && row.interestedCustomers < 1) {
     return { sent: false, reason: "no_active_interest" };
   }
   // Never auto-email an unclaimed business more than once unless explicitly forced by an admin
@@ -402,7 +402,7 @@ export async function sendBusinessInterestOutreachEmail(
     return { sent: false, reason: "already_contacted" };
   }
 
-  // Enforce strict global hourly (max 2/hr) and daily (max 6/24h) outreach caps to protect domain reputation
+  // Enforce strict global hourly (max 4/hr) and daily (max 18/24h) outreach caps to protect domain reputation
   if (!options?.force) {
     const [rateRow] = await db.query(
       `SELECT
@@ -411,10 +411,10 @@ export async function sendBusinessInterestOutreachEmail(
        FROM business_outreach
        WHERE contacted_at IS NOT NULL`
     );
-    if ((rateRow?.last_hour ?? 0) >= 2) {
+    if ((rateRow?.last_hour ?? 0) >= 4) {
       return { sent: false, reason: "hourly_outreach_cap_reached" };
     }
-    if ((rateRow?.last_day ?? 0) >= 6) {
+    if ((rateRow?.last_day ?? 0) >= 18) {
       return { sent: false, reason: "daily_outreach_cap_reached" };
     }
   }
@@ -451,17 +451,36 @@ export async function sendBusinessInterestOutreachEmail(
   const unsubToken = createOutreachUnsubscribeToken(row.id);
   const unsubUrl = `https://vakaygo.com/api/outreach/unsubscribe?listingId=${encodeURIComponent(row.id)}&token=${unsubToken}`;
 
-  const count = Math.max(1, Number(row.interestedCustomers) || 1);
-  const countLabel = count === 1 ? "1 verified traveler has" : `${count} verified travelers have`;
+  const rawCount = Math.max(0, Number(row.interestedCustomers) || 0);
+  const hasInterest = rawCount >= 1;
+  const countLabel = rawCount === 1 ? "1 verified traveler has" : `${rawCount} verified travelers have`;
   const eTitle = escapeHtml(row.title);
   const eIsland = escapeHtml(row.islandName);
+
+  const subject = hasInterest
+    ? `Traveler inquiry for ${row.title} (${row.islandName})`
+    : `Verify your ${row.title} listing on VakayGo (${row.islandName})`;
+
+  const introText = hasInterest
+    ? `${countLabel} expressed interest in your listing in ${row.islandName} on VakayGo (${listingUrl}).`
+    : `Your business is featured in our ${row.islandName} travel guide on VakayGo (${listingUrl}), where travelers discover and book verified local experiences, stays, dining, and charters.`;
+
+  const introHtml = hasInterest
+    ? `<p>${countLabel} expressed interest in your business listing in <strong>${eIsland}</strong> on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>).</p>`
+    : `<p>Your business is featured in our <strong>${eIsland}</strong> travel guide on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>), where travelers discover and book verified local experiences, stays, dining, and charters.</p>`;
 
   const text = [
     `Hello ${row.title} team,`,
     ``,
-    `${countLabel} expressed interest in your listing in ${row.islandName} on VakayGo (${listingUrl}).`,
+    introText,
     ``,
-    `If you would like to manage your listing details, respond to traveler inquiries, or enable direct bookings (with payouts via Wise, PayPal, or bank transfer), you can verify ownership of your page here:`,
+    `Claiming your listing is 100% free and lets you:`,
+    `- Update your photos, pricing, WhatsApp/phone contact, and availability`,
+    `- Respond directly to traveler inquiries and booking requests`,
+    `- Keep 85%-90% on direct bookings with a 0% guest booking fee (saving up to 50% compared to legacy 20%-30% OTA commissions)`,
+    `- Receive payouts via Wise, PayPal, or local/international bank wire`,
+    ``,
+    `Verify ownership of your page in 60 seconds here:`,
     `${claimUrl}`,
     ``,
     `If you have any questions or would like us to update your business information for you, simply reply to this email.`,
@@ -476,20 +495,27 @@ export async function sendBusinessInterestOutreachEmail(
 
   const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;color:#1C2333;font-size:15px;line-height:1.6">
   <p>Hello <strong>${eTitle}</strong> team,</p>
-  <p>${countLabel} expressed interest in your business listing in <strong>${eIsland}</strong> on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>).</p>
-  <p>If you would like to manage your page details, respond to traveler inquiries, or accept direct bookings (with payouts supported via Wise, PayPal, or local/international bank wire), you can verify ownership of your listing here:</p>
+  ${introHtml}
+  <p>Claiming your VakayGo listing is <strong>100% free</strong> and gives you full control:</p>
+  <ul style="padding-left:20px;margin:12px 0">
+    <li><strong>0% Guest Booking Fee:</strong> Travelers pay zero platform markup.</li>
+    <li><strong>Keep 85%&ndash;90% of Every Booking:</strong> Save up to 50% vs. traditional 20%&ndash;30% OTA commissions.</li>
+    <li><strong>Fast Regional Payouts:</strong> Get paid via Wise, PayPal, or local/international bank wire.</li>
+    <li><strong>Direct Inquiries:</strong> Update your photos, rates, and respond directly to travelers.</li>
+  </ul>
+  <p>Verify ownership of your listing in 60 seconds here:</p>
   <p><a href="${claimUrl}" style="color:#0D9488;font-weight:600">${claimUrl}</a></p>
   <p>If you have any questions or would like our team to update any information on your page, just reply to this email.</p>
   <p>Best regards,<br>VakayGo Partner Support</p>
   <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0">
-  <p style="font-size:12px;color:#6B7280">If you prefer not to receive traveler inquiry notifications for ${eTitle}, <a href="${unsubUrl}" style="color:#6B7280">unsubscribe here</a> or reply &ldquo;unsubscribe&rdquo;.</p>
+  <p style="font-size:12px;color:#6B7280">If you prefer not to receive partner or inquiry notifications for ${eTitle}, <a href="${unsubUrl}" style="color:#6B7280">unsubscribe here</a> or reply &ldquo;unsubscribe&rdquo;.</p>
 </div>`;
 
   await sendEmail({
     from: FROM,
     to: targetEmail,
     replyTo: REPLY_TO,
-    subject: `Traveler inquiry for ${row.title} (${row.islandName})`,
+    subject,
     text,
     html,
     headers: {
@@ -500,7 +526,7 @@ export async function sendBusinessInterestOutreachEmail(
 
   const stamp = new Date().toISOString().slice(0, 10);
   const triggerLabel = options?.triggeredBy || "auto";
-  const noteAddition = `[${stamp}] Claim invitation emailed to ${targetEmail} (${triggerLabel}, ${count} interested).`;
+  const noteAddition = `[${stamp}] Claim invitation emailed to ${targetEmail} (${triggerLabel}, ${rawCount} interested).`;
   const nextStatus = options?.markStatusContacted ? "contacted" : row.outreachStatus || "new";
 
   await db.query(

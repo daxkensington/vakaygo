@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { OUTREACH_STATUSES, type OutreachStatus } from "@/lib/listing-interest";
-type Item = { id: string; title: string; slug: string; islandSlug: string; islandName: string; website: string | null; email?: string | null; phone: string | null; whatsapp?: string | null; instagram?: string | null; facebook?: string | null; contactSource: string | null; status: OutreachStatus; notes: string; updatedAt: string; contactedAt?: string | null; lastInterest: string | null; interestedCustomers: number; claimVerified: boolean; draft: string | null };
-const labels: Record<OutreachStatus, string> = { new: "New interest", reviewing: "In review", contacted: "Contacted", do_not_contact: "Do not contact" };
+type Item = { id: string; title: string; slug: string; listingType?: string; avgRating?: string | null; reviewCount?: number | null; islandSlug: string; islandName: string; website: string | null; email?: string | null; phone: string | null; whatsapp?: string | null; instagram?: string | null; facebook?: string | null; contactSource: string | null; status: OutreachStatus; notes: string; updatedAt: string; contactedAt?: string | null; lastInterest: string | null; interestedCustomers: number; claimVerified: boolean; draft: string | null };
+const labels: Record<OutreachStatus, string> = { new: "Ready for outreach", reviewing: "In review", contacted: "Contacted", do_not_contact: "Do not contact" };
+const TYPES = ["all", "vip", "excursion", "tour", "stay", "transfer", "transport", "spa", "dining", "event", "guide"] as const;
 function OutreachCard({ item, onSaved }: { item: Item; onSaved: () => void }) {
   const [status, setStatus] = useState(item.status);
   const [notes, setNotes] = useState(item.notes);
@@ -44,8 +45,8 @@ function OutreachCard({ item, onSaved }: { item: Item; onSaved: () => void }) {
     catch { setMessage("Copy is unavailable. Select and copy the draft text below."); }
   }
   return <article className="rounded-2xl border border-cream-300 bg-white p-5 sm:p-7">
-    <div className="flex flex-wrap justify-between gap-3"><div><Link href={"/" + item.islandSlug + "/" + item.slug} className="text-xl font-bold text-navy-800 hover:underline">{item.title}</Link><p className="mt-1 text-sm text-navy-500">{item.islandName} · {item.claimVerified ? "Ownership verified — help complete the listing" : "Ownership not verified"}</p></div><p className="rounded-xl bg-gold-50 px-4 py-2 text-sm font-semibold text-gold-800">{item.interestedCustomers} interested {item.interestedCustomers === 1 ? "traveler" : "travelers"}</p></div>
-    <p className="mt-3 text-xs text-navy-500">{item.lastInterest ? "Latest active interest: " + new Date(item.lastInterest).toLocaleString() : "No active interest"} · One count per verified email account; withdrawn interest is excluded.{item.contactedAt ? " · Last emailed: " + new Date(item.contactedAt).toLocaleString() : ""}</p>
+    <div className="flex flex-wrap justify-between gap-3"><div><Link href={"/" + item.islandSlug + "/" + item.slug} className="text-xl font-bold text-navy-800 hover:underline">{item.title}</Link><p className="mt-1 text-sm text-navy-500">{item.islandName}{item.listingType ? ` · ${item.listingType.toUpperCase()}` : ""}{item.avgRating ? ` · ★ ${Number(item.avgRating).toFixed(1)}` : ""} · {item.claimVerified ? "Ownership verified — help complete the listing" : "Ownership not verified"}</p></div><p className="rounded-xl bg-gold-50 px-4 py-2 text-sm font-semibold text-gold-800">{item.interestedCustomers} interested {item.interestedCustomers === 1 ? "traveler" : "travelers"}</p></div>
+    <p className="mt-3 text-xs text-navy-500">{item.lastInterest ? "Latest active interest: " + new Date(item.lastInterest).toLocaleString() : "Ready for partner claim outreach"} · One count per verified email account; withdrawn interest is excluded.{item.contactedAt ? " · Last emailed: " + new Date(item.contactedAt).toLocaleString() : ""}</p>
     <div className="mt-4 flex flex-wrap gap-4 text-sm">{item.website && <a href={item.website} target="_blank" rel="noopener noreferrer" className="text-gold-700 underline">Review business website</a>}{item.email && <span className="text-navy-600">Email on file: {item.email}</span>}{item.phone && <span className="text-navy-600">Phone on file: {item.phone}{item.contactSource ? ` (${item.contactSource})` : ""}</span>}{item.whatsapp && <span className="text-navy-600">WhatsApp: {item.whatsapp}</span>}{item.instagram && <a href={item.instagram} target="_blank" rel="noopener noreferrer" className="text-gold-700 underline">Instagram</a>}{item.facebook && <a href={item.facebook} target="_blank" rel="noopener noreferrer" className="text-gold-700 underline">Facebook</a>}{!item.website && !item.phone && !item.email && !item.whatsapp && !item.instagram && !item.facebook && <span className="text-navy-500">No contact route on file. Research the official business contact before outreach.</span>}</div>
     {item.status !== "do_not_contact" && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-cream-50 p-3 border border-cream-200">
       <input type="email" value={emailInput} onChange={e => setEmailInput(e.target.value)} placeholder="Business email (or auto-discover from website)" className="min-w-[16rem] flex-1 rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-navy-700" />
@@ -60,24 +61,27 @@ function OutreachCard({ item, onSaved }: { item: Item; onSaved: () => void }) {
 }
 export default function OutreachPage() {
   const [status, setStatus] = useState("new");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [revision, setRevision] = useState(0);
-  const key = status + ":" + page + ":" + revision;
+  const key = status + ":" + typeFilter + ":" + search + ":" + page + ":" + revision;
   const [result, setResult] = useState<{ key: string; items: Item[]; hasMore: boolean; error: string }>({ key: "", items: [], hasMore: false, error: "" });
   const busy = result.key !== key;
   const { items, hasMore, error } = result;
   const reload = useCallback(() => setRevision(value => value + 1), []);
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/admin/outreach?status=" + status + "&page=" + page, { signal: controller.signal, cache: "no-store" })
+    const qs = new URLSearchParams({ status, type: typeFilter, q: search, page: String(page) });
+    fetch("/api/admin/outreach?" + qs.toString(), { signal: controller.signal, cache: "no-store" })
       .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load outreach."); return data; })
       .then(data => { if (!controller.signal.aborted) setResult({ key, items: data.items, hasMore: data.hasMore, error: "" }); })
       .catch(error => { if (!controller.signal.aborted) setResult({ key, items: [], hasMore: false, error: error.message || "Could not load outreach." }); });
     return () => controller.abort();
-  }, [status, page, key]);
-  return <div className="mx-auto max-w-5xl"><h1 className="text-3xl font-bold text-navy-800">Business outreach</h1><p className="mt-3 max-w-3xl text-navy-500">Prioritize businesses by recorded traveler interest. Review their contact information, prepare a claim invitation, and keep track of the outcome. Interest does not create a booking.</p>
-    <div className="my-6 flex flex-wrap items-center gap-3"><label className="sr-only" htmlFor="outreach-status">Filter outreach status</label><select id="outreach-status" value={status} onChange={e => { setStatus(e.target.value); setPage(0); }} className="rounded-xl border border-cream-300 bg-white px-4 py-3">{OUTREACH_STATUSES.map(s => <option key={s} value={s}>{labels[s]}</option>)}<option value="all">All records</option></select><button onClick={reload} className="rounded-xl border border-cream-300 px-4 py-3 text-sm font-semibold">Refresh</button><Link href="/admin/claims" className="text-sm font-semibold text-gold-700 underline">View ownership claims</Link></div>
-    {busy ? <p role="status">Loading outreach…</p> : error ? <p role="alert" className="text-red-700">{error}</p> : items.length === 0 ? <div className="rounded-2xl bg-white p-10 text-center text-navy-500">No businesses in this view. New interest appears here after a traveler records it on a listing.</div> : <div className="space-y-5">{items.map(item => <OutreachCard key={item.id + item.updatedAt} item={item} onSaved={reload} />)}</div>}
+  }, [status, typeFilter, search, page, key]);
+  return <div className="mx-auto max-w-5xl"><h1 className="text-3xl font-bold text-navy-800">Business outreach</h1><p className="mt-3 max-w-3xl text-navy-500">Prioritize businesses by recorded traveler interest, category, and verified contact info. Review their contact channels, send a 1-click claim invitation, and track partner onboarding.</p>
+    <div className="my-6 flex flex-wrap items-center gap-3"><label className="sr-only" htmlFor="outreach-status">Filter outreach status</label><select id="outreach-status" value={status} onChange={e => { setStatus(e.target.value); setPage(0); }} className="rounded-xl border border-cream-300 bg-white px-4 py-3">{OUTREACH_STATUSES.map(s => <option key={s} value={s}>{labels[s]}</option>)}<option value="all">All records</option></select><label className="sr-only" htmlFor="outreach-type">Filter category</label><select id="outreach-type" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(0); }} className="rounded-xl border border-cream-300 bg-white px-4 py-3">{TYPES.map(t => <option key={t} value={t}>{t === "all" ? "All categories" : t.toUpperCase()}</option>)}</select><input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Search business or email…" className="rounded-xl border border-cream-300 bg-white px-4 py-3 text-sm" /><button onClick={reload} className="rounded-xl border border-cream-300 px-4 py-3 text-sm font-semibold">Refresh</button><Link href="/admin/claims" className="text-sm font-semibold text-gold-700 underline">View ownership claims</Link></div>
+    {busy ? <p role="status">Loading outreach…</p> : error ? <p role="alert" className="text-red-700">{error}</p> : items.length === 0 ? <div className="rounded-2xl bg-white p-10 text-center text-navy-500">No businesses match the current filters.</div> : <div className="space-y-5">{items.map(item => <OutreachCard key={item.id + item.updatedAt} item={item} onSaved={reload} />)}</div>}
     <div className="mt-6 flex items-center gap-4"><button disabled={busy || page === 0} onClick={() => setPage(p => p - 1)} className="rounded-lg border border-cream-300 px-4 py-2 disabled:opacity-40">Previous</button><span className="text-sm text-navy-500">Page {page + 1}</span><button disabled={busy || !hasMore} onClick={() => setPage(p => p + 1)} className="rounded-lg border border-cream-300 px-4 py-2 disabled:opacity-40">Next</button></div>
   </div>;
 }

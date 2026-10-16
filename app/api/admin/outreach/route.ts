@@ -10,11 +10,15 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.error;
   const status = request.nextUrl.searchParams.get("status") || "new";
+  const island = (request.nextUrl.searchParams.get("island") || "all").trim().toLowerCase();
+  const type = (request.nextUrl.searchParams.get("type") || "all").trim().toLowerCase();
+  const q = (request.nextUrl.searchParams.get("q") || "").trim().slice(0, 120);
   const page = Number(request.nextUrl.searchParams.get("page") || 0);
   if ((status !== "all" && !isOutreachStatus(status)) || !Number.isInteger(page) || page < 0 || page > 10000) return interestResponse({ error: "Invalid filter." }, 400);
   try {
     const db = neon(process.env.DATABASE_URL!);
-    const rows = await db.query(`SELECT l.id,l.title,l.slug,i.slug "islandSlug",i.name "islandName",l.address,
+    const rows = await db.query(`SELECT l.id,l.title,l.slug,l.type::text "listingType",l.avg_rating::text "avgRating",l.review_count "reviewCount",
+      i.slug "islandSlug",i.name "islandName",l.address,
       l.status "listingStatus",i.is_active "islandActive",l.type_data->>'website' website,l.type_data->>'email' email,
       l.type_data->>'whatsapp' whatsapp,l.type_data->>'instagram' instagram,l.type_data->>'facebook' facebook,
       coalesce(tc.phone, l.type_data->>'phone') phone,
@@ -29,8 +33,19 @@ export async function GET(request: NextRequest) {
         FROM listing_interest li JOIN users u ON u.id=li.user_id
         WHERE li.listing_id=l.id AND li.active=true AND u.email_verified=true AND u.role<>'admin' AND u.id<>l.operator_id) d ON true
       WHERE ($1='all' OR o.status=$1)
-        AND ($1 NOT IN ('new','reviewing') OR (d.interested_customers>0 AND l.status='active' AND i.is_active=true))
-      ORDER BY d.interested_customers DESC NULLS LAST,d.last_interest DESC NULLS LAST,l.id LIMIT 51 OFFSET $2`, [status, page * 50]);
+        AND ($1 NOT IN ('new','reviewing') OR (l.status='active' AND i.is_active=true))
+        AND ($3='all' OR i.slug=$3)
+        AND ($4='all' OR l.type::text=$4)
+        AND ($5='' OR l.title ILIKE '%'||$5||'%' OR coalesce(l.type_data->>'email','') ILIKE '%'||$5||'%')
+      ORDER BY
+        d.interested_customers DESC NULLS LAST,
+        d.last_interest DESC NULLS LAST,
+        (coalesce(l.type_data->>'email','')<>'') DESC,
+        CASE WHEN l.type IN ('vip','excursion','tour','stay','transfer','transport','spa') THEN 0 ELSE 1 END ASC,
+        l.avg_rating DESC NULLS LAST,
+        l.review_count DESC NULLS LAST,
+        l.id
+      LIMIT 51 OFFSET $2`, [status, page * 50, island, type, q]);
     const items = rows.slice(0, 50).map(row => {
       const item = {
         ...row,
@@ -40,8 +55,8 @@ export async function GET(request: NextRequest) {
         instagram: safeWebUrl(row.instagram) || null,
         facebook: safeWebUrl(row.facebook) || null,
       };
-      const draft = row.status !== "do_not_contact" && row.interestedCustomers > 0 && row.listingStatus === "active" && row.islandActive
-        ? outreachDraft(row as Parameters<typeof outreachDraft>[0]) : null;
+      const draft = row.status !== "do_not_contact" && row.listingStatus === "active" && row.islandActive
+        ? outreachDraft({ ...(row as Parameters<typeof outreachDraft>[0]), interestedCustomers: Math.max(1, Number(row.interestedCustomers) || 1) }) : null;
       return { ...item, draft };
     });
     return interestResponse({ items, hasMore: rows.length > 50, page });

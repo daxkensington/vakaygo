@@ -357,14 +357,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Ensure all active listings with traveler interest or booking requests have a business_outreach row
+    // Ensure all active listings with traveler interest, booking requests, or a verified email have a business_outreach row
     await db.query(`
       INSERT INTO business_outreach (listing_id)
       SELECT DISTINCT l.id
       FROM listings l
+      JOIN islands i ON i.id = l.island_id AND i.is_active = true
       WHERE l.status = 'active'
         AND (
-          EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
+          coalesce(l.type_data->>'email', '') <> ''
+          OR EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
           OR EXISTS (SELECT 1 FROM listing_interest li WHERE li.listing_id = l.id AND li.active = true)
         )
       ON CONFLICT (listing_id) DO NOTHING
@@ -374,23 +376,41 @@ export async function GET(request: NextRequest) {
     let emailedCount = 0;
     const results: Array<{ id: string; email: string | null; emailed: boolean }> = [];
 
-    // 1. Drip-send at most 2 outreach emails per 4-hour cron run FIRST (before slow external website crawls)
-    // Also guarded by 2/hr & 6/day global cap in sendBusinessInterestOutreachEmail
+    // 1. Drip-send at most 3 outreach emails per cron run FIRST (before slow external website crawls)
+    // Prioritized by: (1) active traveler interest/bookings, (2) high-value bookable categories, (3) highest rating/reviews
+    // Guarded by 4/hr & 18/day global cap in sendBusinessInterestOutreachEmail
     const readyToEmail = await db.query(
       `SELECT l.id, l.type_data->>'email' AS email
        FROM business_outreach o
        JOIN listings l ON l.id = o.listing_id
        JOIN islands i ON i.id = l.island_id AND i.is_active = true
+       LEFT JOIN LATERAL (
+         SELECT count(*)::int AS interested_customers
+         FROM listing_interest li
+         JOIN users u ON u.id = li.user_id
+         WHERE li.listing_id = l.id
+           AND li.active = true
+           AND u.email_verified = true
+           AND u.role <> 'admin'
+           AND u.id <> l.operator_id
+       ) d ON true
+       LEFT JOIN LATERAL (
+         SELECT count(*)::int AS booking_count
+         FROM bookings b
+         WHERE b.listing_id = l.id
+       ) bk ON true
        WHERE l.status = 'active'
          AND o.status IN ('new', 'reviewing')
          AND o.contacted_at IS NULL
-         AND (l.type_data->>'email') IS NOT NULL
-         AND (
-           EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = l.id)
-           OR EXISTS (SELECT 1 FROM listing_interest li WHERE li.listing_id = l.id AND li.active = true)
-         )
-       ORDER BY o.created_at ASC
-       LIMIT 2`
+         AND coalesce(l.type_data->>'email', '') <> ''
+         AND NOT vakaygo_listing_claim_verified(l.id)
+       ORDER BY
+         (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0)) DESC,
+         CASE WHEN l.type IN ('vip', 'excursion', 'tour', 'stay', 'transfer', 'transport', 'spa') THEN 0 ELSE 1 END ASC,
+         l.avg_rating DESC NULLS LAST,
+         l.review_count DESC NULLS LAST,
+         o.created_at ASC
+       LIMIT 3`
     );
 
     for (const item of readyToEmail) {
