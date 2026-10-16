@@ -10,9 +10,9 @@ export function Footer() {
               Vakay<span className="text-gold-400">Go</span>
             </span>
             <p className="mt-4 text-cream-300 max-w-md leading-relaxed">
-              Your whole trip, one tap. Discover verified stays, boat charters,
+              Your trip starts here. Discover stays, boat charters,
               tours, dining, and experiences across 34 Caribbean, Latin
-              American, and Mediterranean destinations — with 0% guest fees.
+              American, and Mediterranean destinations. Explore, save, and plan for free.
             </p>
             <div className="flex gap-4 mt-6">
               <a href="https://vakaygo.com" aria-label="VakayGo website" className="text-cream-300 hover:text-gold-400 transition-colors">

@@ -81,7 +81,7 @@ it("keeps responsive caller positioning without introducing a competing base rel
 
 const photos = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `owned-${index}`, url: `/owned-${index}.png`, alt: `Owned photo ${index + 1}` }));
 const openers = () => Array.from(container.querySelectorAll<HTMLElement>('[role="button"][aria-label^="Open photo"]'));
-it.each([1, 2, 3, 5, 6])("gives all visible images in the %i-photo gallery a positioned fill wrapper, including errors", async count => {
+it.each([1, 2, 3, 4, 5, 6])("gives all visible images in the %i-photo gallery a positioned fill wrapper, including errors", async count => {
   await render(<PhotoGallery photos={photos(count)} title="Owned tour" />);
   expect(openers()).toHaveLength(Math.min(count, 5));
   for (const opener of openers()) {

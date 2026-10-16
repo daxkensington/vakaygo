@@ -7,7 +7,7 @@ import { Globe, Heart, Shield, Users, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: "About VakayGo",
   description:
-    "Built by the Caribbean, for the Caribbean. VakayGo is a local-first travel platform connecting travelers with verified Caribbean operators.",
+    "Caribbean-born local travel discovery. Explore businesses and plan trips across 34 Caribbean, Latin American, and Mediterranean destinations.",
   alternates: { canonical: "https://vakaygo.com/about" },
 };
 
@@ -53,11 +53,10 @@ export default function AboutPage() {
                   For everyone.
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  The big travel platforms take 20–30% from local businesses and
-                  tack 14–18% service fees onto travelers. VakayGo charges{" "}
-                  <strong>0% guest booking fees</strong> while operators keep{" "}
-                  <strong>85%–90%</strong> of every booking — because technology
-                  should empower local coastal economies, not extract from them.
+                  Local businesses deserve to be easy to discover. VakayGo helps
+                  travelers explore places, save favorites, and plan trips, while
+                  owners can claim and manage their directory profiles for free.
+                  Online bookings and payments are not available yet.
                 </p>
                 <p className="mt-4 text-navy-500 leading-relaxed">
                   We started in Grenada because we know the Caribbean. Today
@@ -70,8 +69,8 @@ export default function AboutPage() {
                 {[
                   { icon: Globe, label: "34 Hubs", sublabel: "Caribbean, LatAm & Med" },
                   { icon: Users, label: "8,038+", sublabel: "Local businesses" },
-                  { icon: Heart, label: "85–90%", sublabel: "Operator payout" },
-                  { icon: Shield, label: "0%", sublabel: "Guest booking fee" },
+                  { icon: Heart, label: "Free", sublabel: "Travel discovery" },
+                  { icon: Shield, label: "Owner", sublabel: "Claim verification" },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] text-center">
                     <stat.icon size={24} className="text-gold-700 mx-auto mb-3" />
@@ -98,14 +97,14 @@ export default function AboutPage() {
             <div className="space-y-8">
               {[
                 {
-                  title: "Local businesses should keep their money",
+                  title: "Local businesses deserve visibility",
                   description:
-                    "Operators keep 85%–90% of every booking on VakayGo (10%–15% platform fee) and travelers pay $0 in guest booking fees. On Viator or GetYourGuide, operators lose 20%–30% while guests pay inflated markups.",
+                    "Free directory profiles help local businesses tell their story. Owners can verify a claim, keep their information current, and manage available traveler inquiries.",
                 },
                 {
                   title: "Travelers deserve authentic experiences",
                   description:
-                    "No algorithm-driven generic results. VakayGo is curated by people who live in the Caribbean, not a Silicon Valley team guessing what's good.",
+                    "Discover local places across the Caribbean and beyond. Directory information can come from public sources; check ownership labels and confirm details with the business before traveling.",
                 },
                 {
                   title: "Technology should be accessible",
@@ -115,7 +114,7 @@ export default function AboutPage() {
                 {
                   title: "Transparency builds trust",
                   description:
-                    "We show travelers exactly what operators earn. We show operators exactly what we take. No hidden fees, no fine print, no surprises.",
+                    "We distinguish directory listings from verified ownership and make current booking availability clear. Interest and messages do not create a reservation or authorize a payment.",
                 },
               ].map((value) => (
                 <div

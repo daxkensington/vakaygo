@@ -3,17 +3,17 @@ import { Check, ArrowRight } from "lucide-react";
 const travelerBenefits = [
   "Explore 8,038+ places across 34 Caribbean, Latin American & Mediterranean hubs on our 3D satellite map",
   "Generate custom day-by-day coastal & island itineraries with our AI Concierge",
-  "Compare prices live in 12 currencies (USD, EUR, GBP, CAD, MXN, COP & more)",
-  "$0 guest booking fees + earn 2%–10% loyalty rewards on every booking",
-  "Protected in-app messaging & instant QR voucher unlock",
+  "Save your favorite places into collections",
+  "Record interest in businesses you would like to visit",
+  "Message businesses with verified ownership where messaging is available; messages do not create bookings",
 ];
 
 const businessBenefits = [
-  "Claim your existing business listing in 60 seconds for free via phone or email",
-  "Receive guarded in-app traveler inquiries & instant demand alerts",
-  "Accept payouts via Wise, PayPal, SEPA/SWIFT Bank Wire, or Stripe Connect",
+  "Start a free claim for your existing business listing",
+  "Verify ownership through a trusted business contact where supported",
+  "Manage traveler inquiries after ownership verification",
   "Sync calendars via iCal and manage seasonal pricing & availability",
-  "Keep 85%–90% of every booking—up to 66% less commission than Viator & GetYourGuide",
+  "Claiming does not activate bookings or payments; launch requires separate approval",
 ];
 
 export function AudienceSplit() {

@@ -58,7 +58,7 @@ export default function ServicesPage() {
                   <span className="text-teal-500">Explore local experiences.</span>
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  From catamaran cruises in St. Lucia and Santorini to cenote dives in the Riviera Maya, Gozzo yacht charters on the Amalfi Coast, and waterfall hikes in Dominica — discover verified local excursions across 34 sun &amp; sea destinations.
+                  From catamaran cruises in St. Lucia and Santorini to cenote dives in the Riviera Maya, Gozzo yacht charters on the Amalfi Coast, and waterfall hikes in Dominica — discover local excursions across 34 sun &amp; sea destinations.
                 </p>
                 <div className="grid grid-cols-2 gap-4 mt-8">
                   {[
@@ -221,7 +221,7 @@ export default function ServicesPage() {
               List your service on VakayGo
             </h2>
             <p className="mt-4 text-white/80 max-w-xl mx-auto">
-              Offer excursions, charters, transfers, or VIP services? Claim or list your business for free and keep 85%–90% of every verified booking with 0% guest booking fees.
+              Offer excursions, charters, transfers, or VIP services? Start a free listing claim, verify ownership, and help travelers discover your business. Online bookings and payments are not available yet.
             </p>
             <Link
               href="/for-businesses"

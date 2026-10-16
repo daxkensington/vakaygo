@@ -9,7 +9,7 @@ const props = [
     icon: Layers,
     title: "Your Entire Sun & Sea Trip in One Place",
     description:
-      "Boutique stays, boat charters, local dining, beach clubs, airport transfers, and private local guides across 34 Caribbean, Latin American, and Mediterranean destinations—converted live into 12 currencies.",
+      "Discover boutique stays, boat charters, local dining, beach clubs, airport transfers, and local guides across 34 Caribbean, Latin American, and Mediterranean destinations.",
     gradient: "from-gold-500 to-gold-600",
     iconBg: "bg-gold-500",
     image: "/images/sections/value-local.jpg",
@@ -18,9 +18,9 @@ const props = [
   },
   {
     icon: ShieldCheck,
-    title: "0% Guest Fees & Direct Operator Payouts",
+    title: "Local Discovery, Clear Listing Details",
     description:
-      "Travelers pay $0 in platform booking fees while local operators keep 85%–90% of every booking. Message verified businesses safely inside VakayGo and book with buyer protection.",
+      "See where a business is located and whether its ownership has been verified. Save places and show your interest while online bookings and payments are unavailable.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image: "/images/sections/value-travel.jpg",
@@ -31,7 +31,7 @@ const props = [
     icon: Sparkles,
     title: "AI-Powered Day-by-Day Trip Planning",
     description:
-      'Tell us your vibe—"5-day romantic getaway in Santorini or St. Lucia with sunset sailing and cliffside dining"—and our AI builds a complete itinerary from real, verified local spots.',
+      'Tell us your vibe—"5-day romantic getaway in Santorini or St. Lucia with sunset sailing and cliffside dining"—and get an itinerary using places in our directory. Check opening times and availability with each business before traveling.',
     gradient: "from-gold-500 to-teal-500",
     iconBg: "bg-gradient-to-br from-gold-500 to-teal-500",
     image: "/images/sections/value-explore.jpg",

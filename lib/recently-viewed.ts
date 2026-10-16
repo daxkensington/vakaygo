@@ -16,7 +16,8 @@ export function addRecentlyViewed(listing: RecentListing): void {
   try {
     const existing = getRecentlyViewed();
     const filtered = existing.filter((item) => item.id !== listing.id);
-    const updated = [listing, ...filtered].slice(0, MAX_ITEMS);
+    // History is descriptive only. Eligibility and prices are refreshed when shown.
+    const updated = [{ ...listing, priceAmount: null, priceUnit: null }, ...filtered].slice(0, MAX_ITEMS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch {
     // localStorage unavailable (SSR, private browsing, etc.)
@@ -27,7 +28,12 @@ export function getRecentlyViewed(): RecentListing[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as RecentListing[];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is RecentListing => Boolean(item && typeof item === "object"
+      && ["id", "title", "slug", "type", "islandSlug"].every(key => typeof item[key] === "string" && item[key])
+      && (item.image === null || typeof item.image === "string")))
+      .slice(0, MAX_ITEMS).map(item => ({ ...item, priceAmount: null, priceUnit: null }));
   } catch {
     return [];
   }

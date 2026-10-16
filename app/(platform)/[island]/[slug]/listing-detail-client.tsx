@@ -46,6 +46,7 @@ import { getImageUrl } from "@/lib/image-utils";
 import { getIslandFlag } from "@/lib/island-flags";
 import { analytics } from "@/lib/analytics";
 import { useCurrency } from "@/lib/currency";
+import { resolveListingGuestCapacity } from "@/lib/listing-capacity";
 import {
   Star,
   MapPin,
@@ -108,6 +109,7 @@ type RelatedGuide = {
 };
 
 export type SimilarListing = {
+  priceCurrency?: string | null;
   id: string;
   title: string;
   slug: string;
@@ -248,6 +250,7 @@ export function ListingDetailClient({
   }
 
   const td = listing.typeData || {};
+  const guestCapacity = resolveListingGuestCapacity(listing.maxGuests, td.maxGuests);
   const images = listing.images.length > 0
     ? listing.images.map((img: { id: string; url: string; alt: string | null; type?: string | null }) => ({
         id: img.id,
@@ -457,7 +460,7 @@ export function ListingDetailClient({
               )}
 
               {/* Quick Info */}
-              {listing.typeData && (
+              {(listing.typeData || guestCapacity !== null) && (
                 <div className="flex flex-wrap gap-4 mt-8">
                   {td.duration && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
@@ -475,11 +478,11 @@ export function ListingDetailClient({
                       </span>
                     </div>
                   )}
-                  {td.maxGuests && (
+                  {guestCapacity !== null && (
                     <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
                       <UsersIcon size={16} className="text-gold-700" />
                       <span className="text-sm font-medium text-navy-600">
-                        Up to {td.maxGuests as number} guests
+                        Up to {guestCapacity} guest{guestCapacity > 1 ? "s" : ""}
                       </span>
                     </div>
                   )}
@@ -554,7 +557,7 @@ export function ListingDetailClient({
                 <h2 className="text-xl font-bold text-navy-700">Useful information</h2>
                 <h3 className="mt-5 font-semibold text-navy-700">Where is {listing.title}?</h3>
                 <p className="mt-2 text-navy-500">{listing.address || [listing.parish, listing.islandName].filter(Boolean).join(", ")}</p>
-                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Online checkout is being activated for this listing. Register your interest on VakayGo or ask our AI Concierge—direct operator contact details unlock automatically once a booking is confirmed and paid.</p></>}
+                {!bookingEligible && <><h3 className="mt-5 font-semibold text-navy-700">Can I book this listing on VakayGo?</h3><p className="mt-2 text-navy-500">Online bookings and payments are currently unavailable. You can save this listing or register interest while planning your trip. Interest is not a reservation. Direct operator contact details are available only after a confirmed, paid VakayGo booking.</p></>}
                 {!listing.claimVerified && <><h3 className="mt-5 font-semibold text-navy-700">Does this business manage its VakayGo listing?</h3><p className="mt-2 text-navy-500">Ownership has not been verified on VakayGo. Business information may need updating. If you own or represent this business, <Link className="font-semibold text-gold-700 underline" href={claimStartHref(listing.id, Boolean(user))}>start a free listing claim</Link>.</p></>}
               </section>
 
@@ -606,7 +609,7 @@ export function ListingDetailClient({
               )}
 
               {/* Booking Rules */}
-              {bookingEligible && (listing.minStay || listing.maxStay || listing.advanceNotice || listing.maxGuests) && (
+              {bookingEligible && (listing.minStay || listing.maxStay || listing.advanceNotice || guestCapacity) && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">Booking Rules</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -634,11 +637,11 @@ export function ListingDetailClient({
                         </span>
                       </div>
                     )}
-                    {listing.maxGuests && listing.maxGuests > 0 && (
+                    {guestCapacity !== null && (
                       <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
                         <UsersIcon size={16} className="text-gold-700" />
                         <span className="text-sm font-medium text-navy-600">
-                          Up to {listing.maxGuests} guest{listing.maxGuests > 1 ? "s" : ""}
+                          Up to {guestCapacity} guest{guestCapacity > 1 ? "s" : ""}
                         </span>
                       </div>
                     )}
@@ -772,6 +775,7 @@ export function ListingDetailClient({
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
                   <TransferBooking
+                    priceCurrency={listing.priceCurrency}
                     bookingEligible={bookingEligible}
                     operatorId={listing.operatorId}
                     listingId={listing.id}
@@ -858,7 +862,7 @@ export function ListingDetailClient({
                           <span className="font-bold text-navy-700 text-sm">
                             {hasPrice ? (
                               <>
-                                {formatCurrency(parseFloat(item.priceAmount!))}
+                                {formatCurrency(parseFloat(item.priceAmount!), item.priceCurrency || "USD")}
                                 {item.priceUnit && (
                                   <span className="text-navy-400 text-xs font-normal">/{item.priceUnit}</span>
                                 )}

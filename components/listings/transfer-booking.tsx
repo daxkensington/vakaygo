@@ -11,6 +11,7 @@ type TransferBookingProps = {
   listingId: string;
   listingTitle: string;
   priceAmount: string | null;
+  priceCurrency?: string | null;
   priceUnit: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   typeData: Record<string, any> | null;
@@ -33,7 +34,7 @@ export function TransferBooking(props: TransferBookingProps) {
   </BookingEligibilityGate>;
 }
 
-function EligibleTransferBooking({ listingId, priceAmount, unclaimed = false }: TransferBookingProps) {
+function EligibleTransferBooking({ listingId, priceAmount, priceCurrency, unclaimed = false }: TransferBookingProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [pickup, setPickup] = useState("airport");
@@ -206,7 +207,7 @@ function EligibleTransferBooking({ listingId, priceAmount, unclaimed = false }: 
         <div className="p-4 bg-cream-50 rounded-xl">
           <div className="flex justify-between text-sm">
             <span className="text-navy-400">{selectedVehicle.label} {roundTrip ? "(round trip)" : "(one way)"}</span>
-            <span className="font-bold text-navy-700">{hasPrice && !unclaimed ? formatCurrency(price) : "Quoted by the operator"}</span>
+            <span className="font-bold text-navy-700">{hasPrice && !unclaimed ? formatCurrency(price, priceCurrency || "USD") : "Quoted by the operator"}</span>
           </div>
         </div>
 
@@ -214,7 +215,7 @@ function EligibleTransferBooking({ listingId, priceAmount, unclaimed = false }: 
 
         <button type="submit" disabled={loading}
           className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold transition-all hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] flex items-center justify-center gap-2">
-          {loading ? <Loader2 size={18} className="animate-spin" /> : hasPrice && !unclaimed ? `Book Transfer — ${formatCurrency(price)}` : "Request Transfer"}
+          {loading ? <Loader2 size={18} className="animate-spin" /> : hasPrice && !unclaimed ? `Book Transfer — ${formatCurrency(price, priceCurrency || "USD")}` : "Request Transfer"}
         </button>
       </form>
     </div>

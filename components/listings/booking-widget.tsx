@@ -78,6 +78,8 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
     description: string | null;
   } | null>(null);
 
+  const sourceCurrency = listing.priceCurrency || "USD";
+  const formatBase = (amount: number) => formatCurrency(amount, sourceCurrency);
   const pricePerUnit = parseFloat(listing.priceAmount || "0");
   const requestOnly = unclaimed || !(pricePerUnit > 0);
 
@@ -297,27 +299,27 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
           <div className="mt-4 space-y-2 text-sm border-t border-cream-200 pt-4">
             <div className="flex justify-between">
               <span className="text-navy-400">Subtotal</span>
-              <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
+              <span className="text-navy-700">{formatBase(pricing.subtotal)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-navy-400">Service fee</span>
-              <span className="text-navy-700">{formatCurrency(pricing.serviceFee)}</span>
+              <span className="text-navy-700">{formatBase(pricing.serviceFee)}</span>
             </div>
             {includeInsurance && pricing.insuranceFee && (
               <div className="flex justify-between">
                 <span className="text-navy-400">Trip protection</span>
-                <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
+                <span className="text-navy-700">{formatBase(pricing.insuranceFee)}</span>
               </div>
             )}
             {promoDiscount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Promo discount</span>
-                <span>-{formatCurrency(promoDiscount)}</span>
+                <span>-{formatBase(promoDiscount)}</span>
               </div>
             )}
             <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
               <span className="text-navy-700">Total</span>
-              <span className="text-navy-700">{formatCurrency(finalTotal)}</span>
+              <span className="text-navy-700">{formatBase(finalTotal)}</span>
             </div>
           </div>
 
@@ -380,7 +382,7 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
           </p>
           {!requested && (
             <p className="text-sm text-navy-400 mt-1">
-              Total: {formatCurrency(pricing.total)}
+              Total: {formatBase(pricing.total)}
             </p>
           )}
           {requested ? (
@@ -411,15 +413,15 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
         <div className="mb-6">
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-navy-700">
-              {requestOnly ? "Price on request" : formatConverted(pricePerUnit)}
+              {requestOnly ? "Price on request" : formatConverted(pricePerUnit, sourceCurrency)}
             </span>
             <span className="text-navy-400">
               {!requestOnly && <>/ {listing.priceUnit || "unit"}</>}
             </span>
           </div>
-          {currency !== "USD" && (
+          {currency !== sourceCurrency && (
             <p className="text-xs text-navy-300 mt-1">
-              Prices shown in {currency}. You&apos;ll be charged in USD.
+              Price estimate shown in {currency}. Listing and checkout totals are in {sourceCurrency}.
             </p>
           )}
           {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
@@ -551,36 +553,37 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
         </div>
 
         {/* Price Breakdown */}
+        <p className="mb-2 text-xs text-navy-400">Price breakdown ({sourceCurrency})</p>
         <div className="space-y-2 mb-6 text-sm">
           <div className="flex justify-between">
             <span className="text-navy-400">
-              {formatCurrency(pricePerUnit)} × {quantity} {listing.priceUnit}
+              {formatBase(pricePerUnit)} × {quantity} {listing.priceUnit}
               {quantity > 1 ? "s" : ""}
             </span>
-            <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
+            <span className="text-navy-700">{formatBase(pricing.subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-navy-400">Guest booking fee</span>
             <span className={pricing.serviceFee === 0 ? "text-teal-600 font-semibold" : "text-navy-700"}>
-              {pricing.serviceFee === 0 ? "$0.00 (Free)" : formatCurrency(pricing.serviceFee)}
+              {pricing.serviceFee === 0 ? `${formatBase(0)} (Free)` : formatBase(pricing.serviceFee)}
             </span>
           </div>
           {includeInsurance && pricing.insuranceFee && (
             <div className="flex justify-between">
               <span className="text-navy-400">Trip protection</span>
-              <span className="text-navy-700">{formatCurrency(pricing.insuranceFee)}</span>
+              <span className="text-navy-700">{formatBase(pricing.insuranceFee)}</span>
             </div>
           )}
           {promoDiscount > 0 && (
             <div className="flex justify-between text-green-600">
               <span>Promo discount</span>
-              <span>-{formatCurrency(promoDiscount)}</span>
+              <span>-{formatBase(promoDiscount)}</span>
             </div>
           )}
           {giftCardDiscount > 0 && (
             <div className="flex justify-between text-green-600">
               <span>Gift card applied</span>
-              <span>-{formatCurrency(giftCardDiscount)}</span>
+              <span>-{formatBase(giftCardDiscount)}</span>
             </div>
           )}
           <div className="border-t border-cream-200 pt-2 flex justify-between font-semibold">
@@ -588,18 +591,18 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
             <span className="text-navy-700">
               {(promoDiscount > 0 || giftCardDiscount > 0) ? (
                 <>
-                  <span className="line-through text-navy-300 mr-1 font-normal text-xs">{formatCurrency(pricing.total)}</span>
-                  {formatCurrency(finalTotal)}
+                  <span className="line-through text-navy-300 mr-1 font-normal text-xs">{formatBase(pricing.total)}</span>
+                  {formatBase(finalTotal)}
                 </>
               ) : (
-                formatCurrency(pricing.total)
+                formatBase(pricing.total)
               )}
             </span>
           </div>
           {pricing.subtotal > 0 && (
             <div className="mt-2 flex items-center justify-between rounded-lg bg-gold-50/80 border border-gold-200/70 px-3 py-1.5 text-xs text-navy-700">
               <span className="font-medium">✨ VakayCash Reward (2% back)</span>
-              <span className="font-bold text-gold-700">+{formatCurrency(pricing.subtotal * 0.02)} credit</span>
+              <span className="font-bold text-gold-700">+{formatBase(pricing.subtotal * 0.02)} credit</span>
             </div>
           )}
         </div>

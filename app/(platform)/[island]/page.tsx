@@ -235,7 +235,7 @@ export default async function IslandPage({ params }: Props) {
                 <MapPin size={14} />
                 {island.country || "Sun & Sea"}
               </span>
-              <span>{stats.totalListings} verified places</span>
+              <span>{stats.totalListings} listed places</span>
               <Link
                 href={`/trips/new?island=${islandSlug}`}
                 className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-md transition-colors"

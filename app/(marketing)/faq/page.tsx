@@ -12,7 +12,7 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
   "For Travelers": [
     {
       q: "How do I book an experience?",
-      a: "VakayGo is currently a directory. Online bookings and payments are disabled. Browse listings and use the business's published website or phone to ask about availability. Recording interest or sending a message does not create a reservation.",
+      a: "VakayGo is currently a directory. Online bookings and payments are disabled. Browse and save places or sign in to record interest. Messaging is available for businesses with verified ownership where supported. Recording interest or sending a message does not create a reservation.",
     },
     {
       q: "What is the cancellation policy?",
@@ -24,17 +24,17 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
     },
     {
       q: "Can I book as a guest without an account?",
-      a: "Guests can browse the directory and use a business's published contact details. VakayGo bookings are currently unavailable. Sign in and verify your email to record interest or use available messaging features; neither action creates a booking.",
+      a: "Guests can browse the directory and plan which places to explore. VakayGo bookings are currently unavailable. Sign in and verify your email to record interest or use available messaging features; neither action creates a booking.",
     },
     {
       q: "How do I contact an operator?",
-      a: "Use the official website or phone shown on the listing where available. In-app messaging is available only for listings with current verified ownership and requires a signed-in, email-verified account. Unclaimed listings do not support in-app messaging. A message does not reserve a service.",
+      a: "In-app messaging is available only for listings with current verified ownership and requires a signed-in, email-verified account. Unclaimed listings support recording interest rather than messaging. Direct operator contact details may be restricted. Interest and messages do not reserve a service; contact VakayGo support if you need help with a listing.",
     },
   ],
   "For Operators": [
     {
       q: "How do I list my business?",
-      a: "Start at For Businesses and search for your existing listing. Create a business account, verify your email and prove control of the trusted business phone where supported. Contact VakayGo if the listing or trusted contact needs review. A verified claim lets the owner manage the listing; it does not enable bookings or payments, and no review deadline is guaranteed.",
+      a: "Start at For Businesses and search for your existing listing. Create a business account, verify your inbox and prove ownership through a trusted business email or phone where supported. Contact VakayGo if the listing or trusted contact needs review. A verified claim lets the owner manage the listing; it does not enable bookings or payments, and no review deadline is guaranteed.",
     },
     {
       q: "What are VakayGo's commission rates?",

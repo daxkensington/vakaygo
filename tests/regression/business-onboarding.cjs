@@ -141,16 +141,28 @@ test("durably revoked account never contacts provider or clears revocation",asyn
 test("claim start sends only the trusted stored phone, including voice option",async()=>{
   let sent;
   const v={id,claim_id:"claim",target_phone:"+14735550123"};
-  const h=load({query:async(sql)=>sql.includes("vakaygo_begin_claim")?[{id}]:sql.includes("SELECT * FROM listing_claim_verifications")?[v]:[{id}],
+  const h=load({query:async(sql)=>sql.includes("SELECT source")?[{source:"google-places"}]:sql.includes("vakaygo_begin_claim")?[{id}]:sql.includes("SELECT * FROM listing_claim_verifications")?[v]:[{id}],
     twilio:()=>({verify:{v2:{services:()=>({verifications:{create:async input=>{sent=input;return {
       sid:"VE"+"2".repeat(32),accountSid:baseEnv.TWILIO_ACCOUNT_SID,serviceSid:baseEnv.TWILIO_VERIFY_SERVICE_SID,
       to:v.target_phone,status:"pending",
     };}}})}}})});
   await h.api.startClaimVerification(id,operator,"call");
   assert.equal(sent.to,v.target_phone);assert.equal(sent.channel,"call");
-  assert.match(h.calls[0].text,/status IN \('sending','pending'\) AND expires_at<=now\(\)/);
-  assert.deepEqual(Array.from(h.calls[0].params),[id]);
-  assert.match(h.calls[1].text,/vakaygo_begin_claim/);
+  const expiry=h.calls.find(call=>call.text.includes("SET status='expired'"));
+  assert.match(expiry.text,/status IN \('sending','pending'\) AND expires_at<=now\(\)/);
+  assert.deepEqual(Array.from(expiry.params),[id]);
+  assert.ok(h.calls.some(call=>call.text.includes("vakaygo_begin_claim")));
+});
+
+test("email-only bookkeeping contacts never enter Twilio phone verification",async()=>{
+  for(const source of ["email_otp","verified_claim"]) {
+    let sends=0;
+    const h=load({query:async()=>[{source}],twilio:()=>({verify:{v2:{services:()=>({verifications:{create:async()=>{sends++;throw Error("Must not dial bookkeeping contact");}}})}}})});
+    await assert.rejects(h.api.startClaimVerification(id,operator,"sms"),/trusted business phone is unavailable/);
+    assert.equal(sends,0);
+    assert.equal(h.calls.length,1);
+    assert.match(h.calls[0].text,/SELECT source/);
+  }
 });
 test("unconfigured verification fails before any database/provider side effects",async()=>{
   const h=load({env:{TWILIO_VERIFY_SERVICE_SID:""}});

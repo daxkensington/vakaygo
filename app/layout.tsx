@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     template: "%s | VakayGo",
   },
   description:
-    "Discover 8,038+ verified stays, boat charters, tours, restaurants, and local businesses across 34 destinations in the Caribbean, Latin America, and the Mediterranean—with 0% guest booking fees.",
+    "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
   keywords: [
     "Caribbean travel",
     "Mediterranean travel",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     "Grenada tours",
     "boutique coastal stays",
     "local experiences",
-    "zero booking fee travel",
+    "local travel planning",
   ],
   openGraph: {
     type: "website",
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     siteName: "VakayGo",
     title: "VakayGo — Sun & Sea Travel Across the Caribbean, Latin America & Mediterranean",
     description:
-      "Discover 8,038+ verified stays, boat charters, tours, restaurants, and local businesses across 34 destinations in the Caribbean, Latin America, and the Mediterranean—with 0% guest booking fees.",
+      "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
     images: [
       {
         url: "https://vakaygo.com/images/hero/caribbean-hero.jpg",
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     site: "@vakaygo",
     title: "VakayGo — Sun & Sea Travel Across the Caribbean, Latin America & Mediterranean",
     description:
-      "Discover 8,038+ verified stays, boat charters, tours, restaurants, and local businesses across 34 destinations in the Caribbean, Latin America, and the Mediterranean—with 0% guest booking fees.",
+      "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
     images: ["https://vakaygo.com/images/hero/caribbean-hero.jpg"],
   },
 };
@@ -123,7 +123,7 @@ export default function RootLayout({
                   name: "VakayGo",
                   url: "https://vakaygo.com",
                   description:
-                    "Discover 8,038+ stays, tours, dining, events, and local experiences across 34 destinations in the Caribbean, Latin America, and the Mediterranean—with 0% guest booking fees.",
+                    "Discover stays, tours, dining, events, and local experiences across 34 Caribbean, Latin American, and Mediterranean destinations. Explore the directory and plan your trip.",
                   logo: {
                     "@type": "ImageObject",
                     url: "https://vakaygo.com/images/logo.jpg",

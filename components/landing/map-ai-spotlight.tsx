@@ -26,7 +26,7 @@ export function MapAiSpotlight() {
             </span>
           </h2>
           <p className="mt-4 text-white/70 text-base md:text-lg leading-relaxed">
-            No more static lists of paid ads. Explore 8,038+ verified stays, beaches, restaurants, and charters on our interactive 3D satellite map—or let our AI Concierge craft your day-by-day coastal itinerary in seconds.
+            Explore local stays, restaurants, and charters on our interactive 3D satellite map, or use our AI Concierge to help plan a day-by-day coastal itinerary with places from the directory.
           </p>
         </div>
 
@@ -49,7 +49,7 @@ export function MapAiSpotlight() {
               <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 bg-navy-900/85 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/15">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  8,038 Live GPS Pins
+                  Mapped Local Places
                 </span>
                 <span className="inline-flex items-center gap-1.5 bg-gold-500/90 backdrop-blur-md text-navy-900 text-xs font-bold px-3 py-1.5 rounded-full">
                   <Play size={11} className="fill-navy-900" />
@@ -60,7 +60,7 @@ export function MapAiSpotlight() {
               <div className="absolute bottom-3 left-4 right-4 flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 {[
                   "🔥 Iconic Landmarks",
-                  "⭐ 4.8+ Top Rated",
+                  "⭐ Ratings & Reviews",
                   "🛰️ 3D Satellite Terrain",
                   "📍 Near Me GPS",
                 ].map((pill) => (
@@ -142,7 +142,7 @@ export function MapAiSpotlight() {
                   </p>
                 </div>
                 <span className="ml-3 flex-shrink-0 bg-gold-500/20 text-gold-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-gold-400/30">
-                  ~15 sec
+                  Sample idea
                 </span>
               </div>
             </div>
@@ -160,7 +160,7 @@ export function MapAiSpotlight() {
                   Custom Day-by-Day Itineraries Grounded in Real Places
                 </h3>
                 <p className="mt-2.5 text-white/70 text-sm md:text-base leading-relaxed">
-                  Pick your island, dates, pace, and budget. Our AI builds a complete morning-to-night schedule using real, verified Caribbean hotels, restaurants, and excursions—never hallucinated links.
+                  Pick your destination, dates, pace, and budget. Our AI uses places in the directory to suggest a day-by-day plan. Review the itinerary and check business details and availability before traveling.
                 </p>
               </div>
 
