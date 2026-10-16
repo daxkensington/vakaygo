@@ -38,23 +38,23 @@
     },
     {
       "path": "/api/cron/booking-mail",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/booking-refunds",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/onboarding-readiness",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 */2 * * *"
     },
     {
       "path": "/api/cron/checkout-safety",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/schema-drift",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/enrich-listing-emails",
