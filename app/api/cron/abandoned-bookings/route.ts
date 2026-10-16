@@ -88,6 +88,11 @@ export async function GET(request: Request) {
       const listingUrl = `https://vakaygo.com/${b.islandSlug}/${b.listingSlug}`;
 
       if (verdict === "recover") {
+        const eligibility = await getListingBookingEligibility(b.listingId, { refreshProvider: true });
+        if (!eligibility.eligible || eligibility.operatorId !== b.operatorId) {
+          result.ignored++;
+          continue;
+        }
         // Respect recipient local daytime business hours (08:30–19:30) before sending recovery nudge
         const windowCheck = checkRecipientSendingWindow({
           islandSlug: b.islandSlug,
@@ -95,11 +100,6 @@ export async function GET(request: Request) {
         }, now);
         if (!windowCheck.allowed) {
           result.waiting++;
-          continue;
-        }
-        const eligibility = await getListingBookingEligibility(b.listingId, { refreshProvider: true });
-        if (!eligibility.eligible || eligibility.operatorId !== b.operatorId) {
-          result.ignored++;
           continue;
         }
         // Claim first (compare-and-set on the NULL) so two overlapping
