@@ -7,33 +7,36 @@ import { Layers, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 const props = [
   {
     icon: Layers,
-    title: "Everything in One Place",
+    title: "Your Entire Island Trip in One Place",
     description:
-      "Stays, tours, dining, events, transport, and local guides. Stop juggling 10 apps — plan your entire trip right here.",
+      "Boutique stays, boat charters, local dining, beach fetes, airport transfers, and private island guides across 21 Caribbean destinations—converted live into 8 currencies.",
     gradient: "from-gold-500 to-gold-600",
     iconBg: "bg-gold-500",
-    image:
-      "/images/sections/value-local.jpg",
+    image: "/images/sections/value-local.jpg",
+    href: "/explore",
+    cta: "Explore 6,900+ places",
   },
   {
     icon: ShieldCheck,
-    title: "Local Businesses",
+    title: "Direct Local Connection & Instant Booking",
     description:
-      "Discover local businesses, read reviews and find their contact details. Check availability and arrangements directly with the business.",
+      "Book verified Caribbean operators online with Stripe or PayPal—or connect directly via 1-tap WhatsApp Business, phone, and website links with zero middleman markups.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
-    image:
-      "/images/sections/value-travel.jpg",
+    image: "/images/sections/value-travel.jpg",
+    href: "/map",
+    cta: "Explore the 3D Map",
   },
   {
     icon: Sparkles,
-    title: "AI-Powered Trip Planning",
+    title: "AI-Powered Day-by-Day Trip Planning",
     description:
-      'Tell us your vibe. "3-day romantic getaway in Grenada" — and we\'ll build a day-by-day itinerary from real local spots.',
+      'Tell us your vibe—"5-day romantic getaway in Grenada with waterfalls and beachfront dining"—and our AI builds a complete itinerary from real, verified local spots.',
     gradient: "from-gold-500 to-teal-500",
     iconBg: "bg-gradient-to-br from-gold-500 to-teal-500",
-    image:
-      "/images/sections/value-explore.jpg",
+    image: "/images/sections/value-explore.jpg",
+    href: "/trips/new",
+    cta: "Build an AI itinerary",
   },
 ];
 
@@ -101,10 +104,10 @@ export function ValueProps() {
                   </p>
                   <div className="mt-8">
                     <Link
-                      href="/explore"
+                      href={prop.href}
                       className="inline-flex items-center gap-2 text-gold-700 font-semibold group-hover:gap-3 transition-all"
                     >
-                      Explore now
+                      {prop.cta}
                       <ArrowRight size={16} />
                     </Link>
                   </div>

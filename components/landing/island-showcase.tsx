@@ -3,27 +3,27 @@ import Image from "next/image";
 import { ArrowRight, MapPin } from "lucide-react";
 
 const islands = [
-  { name: "Grenada", slug: "grenada", flag: "🇬🇩" },
-  { name: "Puerto Rico", slug: "puerto-rico", flag: "🇵🇷" },
-  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴" },
-  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲" },
-  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹" },
-  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸" },
-  { name: "Barbados", slug: "barbados", flag: "🇧🇧" },
-  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨" },
-  { name: "Aruba", slug: "aruba", flag: "🇦🇼" },
-  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬" },
-  { name: "Curaçao", slug: "curacao", flag: "🇨🇼" },
-  { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾" },
-  { name: "USVI", slug: "us-virgin-islands", flag: "🇻🇮" },
-  { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨" },
-  { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳" },
-  { name: "Dominica", slug: "dominica", flag: "🇩🇲" },
-  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨" },
-  { name: "Martinique", slug: "martinique", flag: "🇲🇶" },
-  { name: "Guadeloupe", slug: "guadeloupe", flag: "🇬🇵" },
-  { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬" },
-  { name: "Bonaire", slug: "bonaire", flag: "🏝️" },
+  { name: "Grenada", slug: "grenada", flag: "🇬🇩", count: 468, tagline: "Spice Isle, Grand Anse & waterfalls" },
+  { name: "Dominican Republic", slug: "dominican-republic", flag: "🇩🇴", count: 414, tagline: "Punta Cana beaches, Samaná & Zona Colonial" },
+  { name: "Puerto Rico", slug: "puerto-rico", flag: "🇵🇷", count: 403, tagline: "Old San Juan, El Yunque rainforest & biobays" },
+  { name: "Jamaica", slug: "jamaica", flag: "🇯🇲", count: 394, tagline: "Negril cliffs, Montego Bay & Blue Mountains" },
+  { name: "St. Lucia", slug: "st-lucia", flag: "🇱🇨", count: 366, tagline: "Iconic Pitons, volcanic mud baths & catamarans" },
+  { name: "Guadeloupe", slug: "guadeloupe", flag: "🇬🇵", count: 366, tagline: "French-Creole cuisine, volcano hikes & lagoons" },
+  { name: "Bahamas", slug: "bahamas", flag: "🇧🇸", count: 357, tagline: "Exuma cays, pink sand beaches & reef diving" },
+  { name: "US Virgin Islands", slug: "us-virgin-islands", flag: "🇻🇮", count: 350, tagline: "Trunk Bay, St. John national park & sailing" },
+  { name: "Martinique", slug: "martinique", flag: "🇲🇶", count: 349, tagline: "Mount Pelée, rum distilleries & bays" },
+  { name: "Trinidad & Tobago", slug: "trinidad-and-tobago", flag: "🇹🇹", count: 346, tagline: "Pigeon Point, Nylon Pool & vibrant culture" },
+  { name: "Aruba", slug: "aruba", flag: "🇦🇼", count: 335, tagline: "Eagle Beach, Arikok desert trails & wrecks" },
+  { name: "Barbados", slug: "barbados", flag: "🇧🇧", count: 334, tagline: "Platinum West Coast, Oistins & rum heritage" },
+  { name: "Curaçao", slug: "curacao", flag: "🇨🇼", count: 319, tagline: "Willemstad harbor, Klein Curaçao & coves" },
+  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬", count: 302, tagline: "365 beaches, Nelson's Dockyard &Shirley Heights" },
+  { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨", count: 287, tagline: "Grace Bay powder sands & barrier reef" },
+  { name: "Bonaire", slug: "bonaire", flag: "🏝️", count: 282, tagline: "Shore diving capital, salt flats & windsurfing" },
+  { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾", count: 279, tagline: "Seven Mile Beach, Stingray City & caves" },
+  { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨", count: 262, tagline: "Bequia, Tobago Cays marine park & falls" },
+  { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳", count: 258, tagline: "Brimstone Hill fortress & Nevis Peak" },
+  { name: "Dominica", slug: "dominica", flag: "🇩🇲", count: 228, tagline: "Boiling Lake, Trafalgar Falls & whale watching" },
+  { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬", count: 218, tagline: "The Baths at Virgin Gorda & Jost Van Dyke" },
 ];
 
 const islandImages: Record<string, string> = {
@@ -90,29 +90,29 @@ export function IslandShowcase() {
                   quality={75}
                   className="object-cover transition-transform duration-700 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-navy-900/25 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy-900/90 via-navy-900/35 to-transparent" />
                 <div className="absolute inset-0 bg-navy-900/10 group-hover:bg-navy-900/0 transition-colors duration-500" />
 
                 {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6">
+                <div className="absolute bottom-0 left-0 right-0 p-6 pr-16">
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{island.flag}</span>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">
+                    <div className="min-w-0">
+                      <h3 className="text-xl font-bold text-white truncate">
                         {island.name}
                       </h3>
-                      <p className="text-white/60 text-sm flex items-center gap-1">
-                        <MapPin size={12} />
-                        Discover local listings
+                      <p className="text-white/75 text-xs line-clamp-1 mt-0.5">
+                        {island.tagline}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Island action */}
-                <div className="absolute top-5 right-5">
-                  <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                    Explore island
+                {/* Island count badge */}
+                <div className="absolute top-4 right-4">
+                  <span className="bg-navy-900/70 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1">
+                    <MapPin size={11} className="text-gold-400" />
+                    {island.count} places
                   </span>
                 </div>
 

@@ -416,8 +416,42 @@ export function Hero() {
           </div>
         </form>
 
+        {/* Quick Discovery Pills */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs">
+          <a
+            href="/trips/new"
+            className="inline-flex items-center gap-1.5 bg-gold-500/90 hover:bg-gold-500 text-navy-900 font-bold px-4 py-2 rounded-full shadow-lg transition-all duration-200 hover:scale-105"
+          >
+            ✨ AI Trip Planner
+          </a>
+          <a
+            href="/map"
+            className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-semibold px-4 py-2 rounded-full border border-white/25 transition-all duration-200"
+          >
+            🗺️ 3D Interactive Map
+          </a>
+          <a
+            href="/explore?type=stay"
+            className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
+          >
+            🏨 Boutique Stays
+          </a>
+          <a
+            href="/explore?type=excursion"
+            className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
+          >
+            🚤 Boat &amp; Snorkel Excursions
+          </a>
+          <a
+            href="/explore?type=dining"
+            className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
+          >
+            🍽️ Waterfront Dining
+          </a>
+        </div>
+
         {/* Stats */}
-        <div className="mt-14 flex flex-wrap justify-center gap-12 text-sm">
+        <div className="mt-10 flex flex-wrap justify-center gap-12 text-sm">
           {[
             { value: "7,100+", label: "Listings" },
             { value: "21", label: "Islands" },

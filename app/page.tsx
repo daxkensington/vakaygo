@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { alternates: { canonical: "https://vakaygo.com/" } };
 import { Hero } from "@/components/landing/hero";
 import { StatsBar } from "@/components/landing/stats-bar";
+import { MapAiSpotlight } from "@/components/landing/map-ai-spotlight";
 import { ValueProps } from "@/components/landing/value-props";
 import { FeaturedListings } from "@/components/landing/featured-listings";
 import { HowItWorks } from "@/components/landing/how-it-works";
@@ -66,6 +67,9 @@ export default function LandingPage() {
         </div>
         <div className="defer-offscreen">
           <StatsBar />
+        </div>
+        <div className="defer-offscreen">
+          <MapAiSpotlight />
         </div>
         <div className="defer-offscreen">
           <FeaturedListings />

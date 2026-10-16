@@ -4,25 +4,25 @@ const steps = [
   {
     number: "01",
     icon: Globe,
-    title: "Choose Your Island",
+    title: "Explore in 3D or Ask AI",
     description:
-      "Choose a Caribbean island and discover its stays, food, transport and experiences.",
+      "Fly over 21 Caribbean islands on our 3D satellite map or tell our AI Concierge your travel dates, budget, and vibe.",
     color: "bg-gold-500",
   },
   {
     number: "02",
     icon: Search,
-    title: "Discover & Compare",
+    title: "Compare Verified Local Places",
     description:
-      "Browse listing details, photos and reviews. Save your favorites and check the business contact details where available.",
+      "Browse 6,900+ authentic stays, tours, restaurants, and charters with live multi-currency pricing, photos, and local essentials.",
     color: "bg-teal-500",
   },
   {
     number: "03",
     icon: TreePalm,
-    title: "Plan Your Visit",
+    title: "Book Online or Connect 1-Tap",
     description:
-      "Contact the business directly to confirm availability, prices and arrangements before you travel.",
+      "Book verified operators directly with Stripe or PayPal—or message businesses in 1 tap via WhatsApp Business, phone, or website.",
     color: "bg-gold-500",
   },
 ];

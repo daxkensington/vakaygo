@@ -1,19 +1,19 @@
 import { Check, ArrowRight } from "lucide-react";
 
 const travelerBenefits = [
-  "Discover local stays, food and experiences",
-  "Compare listing information across the Caribbean",
-  "Save places and plan your trip",
-  "Show interest in businesses you want to learn more about",
-  "View business contact details where available",
+  "Explore 6,900+ places on our 3D satellite map with aerial flyovers",
+  "Generate custom day-by-day island itineraries with our AI Concierge",
+  "Compare prices live in USD, EUR, GBP, CAD, XCD, BBD, JMD & TTD",
+  "Connect in 1 tap via WhatsApp Business, phone, or website",
+  "Book verified Caribbean operators with Stripe or PayPal protection",
 ];
 
 const businessBenefits = [
-  "Find and claim your existing listing for free",
-  "Verify that you own or represent the business",
-  "Update descriptions, photos and contact details",
-  "Help travelers find accurate local information",
-  "Complete onboarding before bookings can be enabled",
+  "Claim your existing Caribbean business listing in 60 seconds for free",
+  "Receive direct traveler inquiries & Notify-Me demand alerts",
+  "Accept online bookings via Stripe, PayPal, or local Caribbean bank settlement",
+  "Sync calendars via iCal and manage seasonal pricing & availability",
+  "Keep 92% of every booking—less than a third of traditional OTA fees",
 ];
 
 export function AudienceSplit() {

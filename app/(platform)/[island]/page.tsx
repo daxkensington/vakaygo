@@ -58,6 +58,17 @@ const heroImages: Record<string, string> = {
   curacao: "/images/islands/curacao.jpg",
   "dominican-republic": "/images/islands/dominican-republic.jpg",
   antigua: "/images/islands/antigua.jpg",
+  "st-vincent": "/images/islands/st-vincent.jpg",
+  dominica: "/images/islands/dominica.jpg",
+  "turks-and-caicos": "/images/islands/turks-and-caicos.jpg",
+  "cayman-islands": "/images/islands/cayman-islands.jpg",
+  bonaire: "/images/islands/bonaire.jpg",
+  "st-kitts": "/images/islands/st-kitts.jpg",
+  martinique: "/images/islands/martinique.jpg",
+  guadeloupe: "/images/islands/guadeloupe.jpg",
+  "us-virgin-islands": "/images/islands/us-virgin-islands.jpg",
+  "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
+  "puerto-rico": "/images/islands/puerto-rico.jpg",
 };
 const defaultHero = "/images/hero/caribbean-hero.jpg";
 
@@ -77,6 +88,15 @@ const islandEssentials: Record<
   "dominican-republic": { currency: "RD$ (DOP) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "PUJ / SDQ", driving: "Right side" },
   "turks-and-caicos": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "PLS (Providenciales)", driving: "Left side" },
   "cayman-islands": { currency: "CI$ (KYD) / USD", language: "English", bestTime: "Nov – Apr", airport: "GCM (Owen Roberts)", driving: "Left side" },
+  "puerto-rico": { currency: "USD ($)", language: "Spanish / English", bestTime: "Dec – Apr", airport: "SJU (Luis Muñoz Marín)", driving: "Right side" },
+  guadeloupe: { currency: "EUR (€)", language: "French / Creole", bestTime: "Dec – May", airport: "PTP (Pointe-à-Pitre)", driving: "Right side" },
+  martinique: { currency: "EUR (€)", language: "French / Creole", bestTime: "Dec – May", airport: "FDF (Aimé Césaire)", driving: "Right side" },
+  "us-virgin-islands": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "STT (Cyril E. King)", driving: "Left side" },
+  "british-virgin-islands": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "EIS (Terrance B. Lettsome)", driving: "Left side" },
+  bonaire: { currency: "USD ($)", language: "Dutch / Papiamentu / EN", bestTime: "Year-round", airport: "BON (Flamingo Intl)", driving: "Right side" },
+  "st-vincent": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SVD (Argyle Intl)", driving: "Left side" },
+  "st-kitts": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SKB (Robert L. Bradshaw)", driving: "Left side" },
+  dominica: { currency: "EC$ (XCD) / USD", language: "English / Kwéyòl", bestTime: "Dec – May", airport: "DOM (Douglas-Charles)", driving: "Left side" },
 };
 const defaultEssentials = {
   currency: "USD & Local Currency",
