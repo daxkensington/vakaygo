@@ -43,6 +43,18 @@ type Booking = {
   paymentEligible?: boolean;
 };
 
+function formatBookingAmount(amount: string, currency: string | null | undefined) {
+  const value = parseFloat(amount);
+  if (!Number.isFinite(value)) return `$${value.toFixed(2)}`;
+  const code = (currency ?? "").toUpperCase();
+  if (code === "XCD") return `EC$${value.toFixed(2)}`;
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: code }).format(value);
+  } catch {
+    return `${code} ${value.toFixed(2)}`.trim();
+  }
+}
+
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   requested: { label: "Request sent", color: "text-gold-700", bg: "bg-gold-50" },
   pending: { label: "Pending", color: "text-yellow-700", bg: "bg-yellow-50" },
@@ -352,7 +364,7 @@ function BookingsContent() {
                         ) : (
                           <>
                             <p className="text-xl font-bold text-navy-700">
-                              ${parseFloat(booking.totalAmount).toFixed(2)}
+                              {formatBookingAmount(booking.totalAmount, booking.currency)}
                             </p>
                             <p className="text-xs text-navy-400">
                               {booking.paidAt ? "total paid" : "total due"}
