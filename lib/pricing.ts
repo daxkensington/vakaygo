@@ -4,16 +4,16 @@
 
 // ─── CATEGORY-SPECIFIC RATES ────────────────────────────────────
 export const CATEGORY_RATES: Record<string, { travelerFee: number; operatorFee: number; label: string }> = {
-  stay:      { travelerFee: 0.04, operatorFee: 0.08, label: "12% total (4% guest + 8% host) — saves 35-50% vs Airbnb/Booking.com" },
-  excursion: { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% operator) — saves 50-65% vs Viator" },
-  tour:      { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% operator) — saves 50-65% vs Viator/GYG" },
-  dining:    { travelerFee: 0.04, operatorFee: 0.08, label: "12% on pre-paid culinary experiences — $0 on free table reservations" },
-  event:     { travelerFee: 0.05, operatorFee: 0.05, label: "10% total (5% guest + 5% organizer) — cheaper than Eventbrite" },
-  transfer:  { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% driver) — transparent, fixed pricing" },
-  transport: { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% operator) — saves 50%+ vs Uber/OTAs" },
-  vip:       { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% operator) — luxury concierge positioning" },
-  guide:     { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% guide) — saves 50%+ vs ToursByLocals" },
-  spa:       { travelerFee: 0.05, operatorFee: 0.10, label: "15% total (5% guest + 10% spa) — competitive with spa marketplaces" },
+  stay:      { travelerFee: 0.00, operatorFee: 0.12, label: "0% guest fee · 12% host commission — saves 25-45% vs Airbnb/Booking.com" },
+  excursion: { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% operator commission — saves 40-50% vs Viator" },
+  tour:      { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% operator commission — saves 40-50% vs Viator/GYG" },
+  dining:    { travelerFee: 0.00, operatorFee: 0.12, label: "0% guest fee · 12% on pre-paid culinary experiences ($0 on table reservations)" },
+  event:     { travelerFee: 0.00, operatorFee: 0.10, label: "0% guest fee · 10% organizer commission — cheaper than Eventbrite" },
+  transfer:  { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% driver commission — transparent, fixed pricing" },
+  transport: { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% operator commission — saves 50%+ vs Uber/OTAs" },
+  vip:       { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% operator commission — luxury concierge positioning" },
+  guide:     { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% guide commission — saves 40%+ vs ToursByLocals" },
+  spa:       { travelerFee: 0.00, operatorFee: 0.15, label: "0% guest fee · 15% spa commission — competitive with spa marketplaces" },
 };
 
 // ─── DINING SUBSCRIPTION TIERS ──────────────────────────────────

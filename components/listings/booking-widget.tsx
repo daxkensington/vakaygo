@@ -560,8 +560,10 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
             <span className="text-navy-700">{formatCurrency(pricing.subtotal)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-navy-400">Service fee</span>
-            <span className="text-navy-700">{formatCurrency(pricing.serviceFee)}</span>
+            <span className="text-navy-400">Guest booking fee</span>
+            <span className={pricing.serviceFee === 0 ? "text-teal-600 font-semibold" : "text-navy-700"}>
+              {pricing.serviceFee === 0 ? "$0.00 (Free)" : formatCurrency(pricing.serviceFee)}
+            </span>
           </div>
           {includeInsurance && pricing.insuranceFee && (
             <div className="flex justify-between">
@@ -594,6 +596,12 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
               )}
             </span>
           </div>
+          {pricing.subtotal > 0 && (
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-gold-50/80 border border-gold-200/70 px-3 py-1.5 text-xs text-navy-700">
+              <span className="font-medium">✨ VakayCash Reward (2% back)</span>
+              <span className="font-bold text-gold-700">+{formatCurrency(pricing.subtotal * 0.02)} credit</span>
+            </div>
+          )}
         </div>
 
         </>}
