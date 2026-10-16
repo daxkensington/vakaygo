@@ -21,6 +21,7 @@ export default function BookingPage() {
     fetch("/api/listings/"+encodeURIComponent(slug),{signal:abort.signal, cache:"no-store"})
       .then(async r => { if(!r.ok) throw new Error("This listing is unavailable"); return r.json(); })
       .then(data => {
+        if (data.listing == null) throw new Error("This listing is unavailable");
         setState({ slug, listing: data.listing, error: "" });
       })
       .catch(e => {if(e.name !== "AbortError")setState({ slug, listing: null, error: "This listing is unavailable" });});
