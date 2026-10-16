@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
@@ -11,6 +10,7 @@ export type FeaturedListing = {
   id: string;
   slug: string;
   title: string;
+  type?: string;
   image: string | null;
   parish: string | null;
   priceAmount: string | null;
@@ -27,35 +27,9 @@ export function FeaturedListingsClient({
   islandName: string;
   listings: FeaturedListing[];
 }) {
-  const [mounted, setMounted] = useState(false);
   const { format } = useCurrency();
 
-  useEffect(() => {
-    // Mount on first user scroll OR after 4 s, whichever comes first.
-    // Lighthouse's LCP measurement window closes by ~3-4 s, so the
-    // 500 KB+ external listing thumbnails stay off the network during
-    // that window entirely. Real users scroll within 1-2 s and see
-    // the grid before noticing.
-    let mounted = false;
-    const fire = () => {
-      if (mounted) return;
-      mounted = true;
-      setMounted(true);
-      window.removeEventListener("scroll", fire);
-      window.removeEventListener("touchstart", fire);
-    };
-    window.addEventListener("scroll", fire, { passive: true });
-    window.addEventListener("touchstart", fire, { passive: true });
-    const t = setTimeout(fire, 4000);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("scroll", fire);
-      window.removeEventListener("touchstart", fire);
-    };
-  }, []);
-
   if (listings.length === 0) return null;
-  if (!mounted) return null;
 
   return (
     <>
@@ -70,11 +44,9 @@ export function FeaturedListingsClient({
             className="group bg-white rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 hover:-translate-y-1"
           >
             <div className="relative h-44 overflow-hidden">
-              {/* Same component as every other card so the Blob original
-                  (200–3,300 KB) is served as a ~400px WebP. */}
               <ImageWithFallback
                 src={image}
-                type="tour"
+                type={listing.type || "tour"}
                 alt={listing.title}
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"

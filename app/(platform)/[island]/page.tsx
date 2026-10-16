@@ -380,6 +380,7 @@ export default async function IslandPage({ params }: Props) {
                 id: l.id,
                 slug: l.slug,
                 title: l.title,
+                type: l.type,
                 image: l.image,
                 parish: l.parish,
                 priceAmount: l.priceAmount,
