@@ -49,15 +49,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "BLOB_READ_WRITE_TOKEN not set" }, { status: 500 });
   }
 
-  // Find listings that still have direct googleapis.com photo URLs (i.e.
-  // not yet migrated to Blob), oldest first so we cycle through every one.
+  // Find listings that either have direct googleapis.com photo URLs (not yet
+  // migrated to Blob) OR have a googlePlaceId and no media rows yet.
   const stale = await db.execute(sql`
     SELECT DISTINCT l.id::text AS id, l.title, l.type_data->>'googlePlaceId' AS place_id
     FROM listings l
-    JOIN media m ON m.listing_id = l.id
+    LEFT JOIN media m ON m.listing_id = l.id
     WHERE l.status = 'active'
       AND l.type_data->>'googlePlaceId' IS NOT NULL
-      AND m.url LIKE '%googleapis.com%'
+      AND (m.id IS NULL OR m.url LIKE '%googleapis.com%')
     ORDER BY 1
     LIMIT ${BATCH_SIZE}
   `);
