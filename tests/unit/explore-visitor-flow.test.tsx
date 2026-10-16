@@ -149,3 +149,17 @@ it("opens a labelled native filter dialog and returns focus to its trigger on Es
   await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); }); await tick();
   expect(document.querySelector('[role="dialog"]')).toBeNull(); expect(document.activeElement).toBe(trigger);
 });
+
+it("identifies USD estimates consistently in desktop filters, chips, sorting and mobile filters", async () => {
+  await render(initial({ filters: parseListingFilters(new URLSearchParams("minPrice=100&maxPrice=120&sort=price-asc")) }));
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Minimum price in USD"]')?.placeholder).toBe("Min USD");
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Maximum price in USD"]')?.placeholder).toBe("Max USD");
+  expect(container.textContent).toContain("Min USD $100"); expect(container.textContent).toContain("Max USD $120");
+  expect(container.querySelector('option[value="price-asc"]')?.textContent).toContain("USD estimate");
+  expect(container.textContent).toContain("Price filters and sorting use USD estimates");
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Open filters"]')!.click()); await tick();
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+  expect(dialog.textContent).toContain("Price Range (USD estimates)"); expect(dialog.textContent).toContain("Filters use USD estimates");
+  expect(dialog.querySelector<HTMLInputElement>('[aria-label="Minimum price in USD"]')?.value).toBe("100");
+  expect(dialog.querySelector<HTMLInputElement>('[aria-label="Maximum price in USD"]')?.value).toBe("120");
+});

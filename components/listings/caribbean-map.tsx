@@ -19,6 +19,8 @@ export type MapListing = {
   slug: string;
   type: string;
   priceAmount: string | null;
+  priceCurrency?: string | null;
+  bookingEligible?: boolean;
   priceUnit: string | null;
   avgRating: string | null;
   reviewCount: number | null;
@@ -328,7 +330,7 @@ export default function CaribbeanMap({
   activeIsland: string;
   onIslandChange?: (island: string) => void;
 }) {
-  const { format: formatCurrency } = useCurrency();
+  const { format: formatCurrency, convert: convertCurrency } = useCurrency();
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedRef = useRef<MapListing | null>(null);
@@ -612,7 +614,7 @@ export default function CaribbeanMap({
 
     const r = selected.avgRating ? parseFloat(selected.avgRating) : 0;
     const price = selected.priceAmount && parseFloat(selected.priceAmount) > 0
-      ? `${escapeHtml(formatCurrency(parseFloat(selected.priceAmount)))}${selected.priceUnit ? `<span style="font-weight:400;color:#8896a7">/${escapeHtml(selected.priceUnit)}</span>` : ""}`
+      ? `${escapeHtml(formatCurrency(parseFloat(selected.priceAmount), selected.priceCurrency || "USD"))}${selected.priceUnit ? `<span style="font-weight:400;color:#8896a7">/${escapeHtml(selected.priceUnit)}</span>` : ""}`
       : "";
     const cfg = categoryConfig[selected.type] || categoryConfig.stay;
 
@@ -1022,8 +1024,8 @@ export default function CaribbeanMap({
     }
     return [...base].sort((a, b) => {
       if (sortBy === "price") {
-        const pa = a.priceAmount ? parseFloat(a.priceAmount) : Infinity;
-        const pb = b.priceAmount ? parseFloat(b.priceAmount) : Infinity;
+        const pa = a.priceAmount ? convertCurrency(parseFloat(a.priceAmount), a.priceCurrency || "USD") : Infinity;
+        const pb = b.priceAmount ? convertCurrency(parseFloat(b.priceAmount), b.priceCurrency || "USD") : Infinity;
         if (pa !== pb) return pa - pb;
       } else if (sortBy === "reviews") {
         const ra = a.reviewCount || 0;
@@ -1036,7 +1038,7 @@ export default function CaribbeanMap({
       const scoreB = (b.avgRating ? parseFloat(b.avgRating) : 0) * 10 + Math.min(b.reviewCount || 0, 300) * 0.05;
       return scoreB - scoreA;
     });
-  }, [filtered, mapBounds, sortBy]);
+  }, [filtered, mapBounds, sortBy, convertCurrency]);
 
   const handleCardHover = useCallback((listing: MapListing | null) => {
     setHoveredId(listing?.id || null);
@@ -1089,7 +1091,7 @@ export default function CaribbeanMap({
         const priceNum = l.priceAmount ? parseFloat(l.priceAmount) : null;
         const ratingNum = l.avgRating ? parseFloat(l.avgRating) : 0;
         const badgePrefix = priceNum && priceNum > 0
-          ? `${cfg.emoji} $${Math.round(priceNum)}`
+          ? `${cfg.emoji} ${formatCurrency(priceNum, l.priceCurrency || "USD")}`
           : ratingNum > 0
           ? `${cfg.emoji} ★${ratingNum.toFixed(1)}`
           : cfg.emoji;
@@ -1111,7 +1113,7 @@ export default function CaribbeanMap({
         };
       }),
     });
-  }, [filtered, mapReady]);
+  }, [filtered, mapReady, formatCurrency]);
 
   // ── Heatmap toggle: show/hide layers ──
   useEffect(() => {
@@ -1644,7 +1646,7 @@ export default function CaribbeanMap({
             {inViewListings.slice(0, 40).map((l) => {
               const cfg = categoryConfig[l.type] || categoryConfig.stay;
               const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
-              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount)) : null;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount), l.priceCurrency || "USD") : null;
               const isSelected = selected?.id === l.id || hoveredId === l.id;
 
               return (
@@ -1773,7 +1775,7 @@ export default function CaribbeanMap({
             {inViewListings.slice(0, 20).map((l) => {
               const cfg = categoryConfig[l.type] || categoryConfig.stay;
               const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
-              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount)) : null;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? formatCurrency(parseFloat(l.priceAmount), l.priceCurrency || "USD") : null;
               return (
                 <div
                   key={l.id}
@@ -1883,7 +1885,7 @@ export default function CaribbeanMap({
                   )}
                   {flyoverListing.priceAmount && parseFloat(flyoverListing.priceAmount) > 0 && (
                     <span className="text-xs font-bold text-navy-700">
-                      {formatCurrency(parseFloat(flyoverListing.priceAmount))}
+                      {formatCurrency(parseFloat(flyoverListing.priceAmount), flyoverListing.priceCurrency || "USD")}
                       {flyoverListing.priceUnit && <span className="font-normal text-navy-400">/{flyoverListing.priceUnit}</span>}
                     </span>
                   )}

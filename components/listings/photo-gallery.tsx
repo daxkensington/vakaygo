@@ -79,132 +79,39 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
 
   return (
     <>
-      {/* Gallery Grid */}
+      {/* Mobile: full-width swipeable photos. Desktop: a filled layout for each photo count. */}
       <div className="mx-auto max-w-7xl px-6 mb-8">
-        {displayPhotos.length >= 5 ? (
-          <div className="grid grid-cols-4 grid-rows-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div className="col-span-2 row-span-2 relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
-              {isVideo(displayPhotos[0]) ? (
-                <>
-                  <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-navy-900/20 hover:bg-navy-900/30 transition-colors">
-                    <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play size={24} className="text-navy-700 ml-1" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <ImageWithFallback
-                  src={displayPhotos[0].url || null}
-                  type={type}
-                  className="absolute inset-0 hover:opacity-95 transition-opacity"
-                  iconSize={56}
-                  priority
-                  sizes="(max-width: 768px) 100vw, 66vw"
-                />
-              )}
-            </div>
-            {displayPhotos.slice(1, 5).map((photo, i) => (
-              <div key={photo.id} className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photo " + (i + 2) + " of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(i + 1); } }} onClick={() => openModal(i + 1)}>
-                {isVideo(photo) ? (
-                  <>
-                    <video src={photo.url} muted className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-navy-900/20 hover:bg-navy-900/30 transition-colors">
-                      <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                        <Play size={16} className="text-navy-700 ml-0.5" />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <ImageWithFallback
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                    src={photo.url || null}
-                    type={type}
-                    className="absolute inset-0 hover:opacity-90 transition-opacity"
-                    iconSize={32}
-                  />
-                )}
-                {i === 3 && proxiedPhotos.length > 5 && (
-                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
-                    <span className="text-white font-semibold text-lg">
-                      +{proxiedPhotos.length - 5} more
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : displayPhotos.length >= 2 ? (
-          <div className="grid grid-cols-2 gap-2 rounded-3xl overflow-hidden h-[400px] md:h-[480px]">
-            <div className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
-              {isVideo(displayPhotos[0]) ? (
-                <>
-                  <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-navy-900/20 hover:bg-navy-900/30 transition-colors">
-                    <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play size={24} className="text-navy-700 ml-1" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <ImageWithFallback
-                  src={displayPhotos[0].url || null}
-                  type={type}
-                  className="absolute inset-0 hover:opacity-95 transition-opacity"
-                  iconSize={56}
-                  priority
-                  sizes="(max-width: 768px) 100vw, 66vw"
-                />
-              )}
-            </div>
-            <div className="grid grid-rows-2 gap-2">
-              {displayPhotos.slice(1, 3).map((photo, i) => (
-                <div key={photo.id} className="relative cursor-pointer" role="button" tabIndex={0} aria-label={"Open photo " + (i + 2) + " of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(i + 1); } }} onClick={() => openModal(i + 1)}>
-                  {isVideo(photo) ? (
-                    <>
-                      <video src={photo.url} muted className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-navy-900/20 hover:bg-navy-900/30 transition-colors">
-                        <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                          <Play size={16} className="text-navy-700 ml-0.5" />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <ImageWithFallback
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                      src={photo.url || null}
-                      type={type}
-                      className="absolute inset-0 hover:opacity-90 transition-opacity"
-                      iconSize={32}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="relative cursor-pointer rounded-3xl overflow-hidden h-[400px] md:h-[480px]" role="button" tabIndex={0} aria-label={"Open photos of " + title} onKeyDown={e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(0); } }} onClick={() => openModal(0)}>
-            {isVideo(displayPhotos[0]) ? (
-              <>
-                <video src={displayPhotos[0].url} muted className="w-full h-full object-cover" />
+        <div className={`flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-3xl h-[280px] sm:h-[360px] md:h-[480px] md:grid md:overflow-hidden ${displayPhotos.length === 1 ? "md:grid-cols-1" : displayPhotos.length === 2 ? "md:grid-cols-2" : displayPhotos.length === 5 ? "md:grid-cols-4 md:grid-rows-2" : "md:grid-cols-2 md:grid-rows-2"}`}>
+          {displayPhotos.map((photo, index) => (
+            <div
+              key={photo.id}
+              role="button"
+              tabIndex={0}
+              aria-label={index === 0 ? "Open photos of " + title : "Open photo " + (index + 1) + " of " + title}
+              className={`relative cursor-pointer w-full shrink-0 snap-center md:w-auto ${index === 0 && displayPhotos.length === 5 ? "md:col-span-2 md:row-span-2" : index === 0 && displayPhotos.length === 3 ? "md:row-span-2" : ""}`}
+              onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openModal(index); } }}
+              onClick={() => openModal(index)}
+            >
+              {isVideo(photo) ? <>
+                <video src={photo.url} muted className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center bg-navy-900/20 hover:bg-navy-900/30 transition-colors">
-                  <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center">
-                    <Play size={28} className="text-navy-700 ml-1" />
-                  </div>
+                  <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center"><Play size={24} className="text-navy-700 ml-1" /></div>
                 </div>
-              </>
-            ) : (
-              <ImageWithFallback
-                src={displayPhotos[0].url || null}
+              </> : <ImageWithFallback
+                src={photo.url || null}
+                alt={photo.alt || title}
                 type={type}
-                className="absolute inset-0"
-                iconSize={56}
-                priority
-                  sizes="(max-width: 768px) 100vw, 66vw"
-              />
-            )}
-          </div>
-        )}
+                className="absolute inset-0 hover:opacity-95 transition-opacity"
+                iconSize={index === 0 ? 56 : 32}
+                priority={index === 0}
+                sizes={displayPhotos.length === 1 ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
+              />}
+              {index === 4 && proxiedPhotos.length > 5 && <div className="absolute inset-0 bg-black/70 flex items-center justify-center"><span className="text-white font-semibold text-lg">+{proxiedPhotos.length - 5} more</span></div>}
+              {proxiedPhotos.length > 1 && <span aria-hidden="true" className="absolute bottom-3 right-3 rounded-full bg-navy-900/70 px-2.5 py-1 text-xs font-semibold text-white md:hidden">{index + 1} / {proxiedPhotos.length}</span>}
+            </div>
+          ))}
+        </div>
+        {displayPhotos.length > 1 && <p className="mt-2 text-xs text-navy-400 md:hidden">Swipe to see photos. Tap a photo to open the gallery.</p>}
       </div>
 
       {/* Fullscreen Modal */}

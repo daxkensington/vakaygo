@@ -15,6 +15,7 @@ type ListingCardProps = {
   slug: string;
   type: string;
   priceAmount: string | null;
+  priceCurrency?: string | null;
   priceUnit: string | null;
   avgRating: string | null;
   reviewCount: number | null;
@@ -152,7 +153,7 @@ export function ListingCard(props: ListingCardProps) {
         {props.bookingEligible === true && props.priceAmount && parseFloat(props.priceAmount) > 0 && (
           <p className="mt-2">
             <span className="font-bold text-navy-700">
-              {format(parseFloat(props.priceAmount))}
+              {format(parseFloat(props.priceAmount), props.priceCurrency || "USD")}
             </span>
             <span className="text-navy-400 text-sm"> / {props.priceUnit}</span>
           </p>

@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { bookingInputError, isDemoListing, localBookingNow } from "@/lib/booking-validation";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
+import { bookingPaymentEligible } from "@/lib/booking-payment-eligibility";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
@@ -357,8 +358,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ bookings: results.map(row => {
       const eligibility = eligibleListings.get(row.listingId);
       const bookingEligible = !!eligibility?.eligible && eligibility.operatorId === row.operatorId;
-      return { ...row, bookingEligible, paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && bookingEligible && row.datesAvailable === true &&
-        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility?.stripeAccountId)) };
+      return { ...row, bookingEligible, paymentEligible: !!eligibility && bookingPaymentEligible(row, eligibility) };
     }) });
   } catch (error) {
     logger.error("Get bookings error", error);

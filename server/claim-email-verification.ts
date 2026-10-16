@@ -1,7 +1,10 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHmac, randomInt, randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { sendEmail } from "@/server/mail-client";
 import { revalidateListing } from "@/lib/revalidate-listing";
+import { SESSION_SECRET } from "@/lib/env";
+import { requireUser } from "@/server/admin-auth";
+import { CLAIM_REPLAY_SQL, FINISH_CLAIM_SQL, claimTransaction, type ClaimActor } from "@/server/claim-transactions";
 import {
   OnboardingError,
   assertListingId,
@@ -55,9 +58,28 @@ function maskEmail(email: string): string {
   return `${head}•••@${domain}`;
 }
 
-function hashOtp(listingId: string, operatorId: string, code: string): string {
-  const secret = process.env.JWT_SECRET || process.env.CRON_SECRET || "vakaygo-claim";
-  return createHash("sha256").update(`${listingId}:${operatorId}:${code}:${secret}`).digest("hex");
+function hashOtp(listingId: string, operatorId: string, email: string, verificationId: string, code: string): string {
+  // The service_sid identifies the proof type. Only the 64-character digest
+  // belongs in provider_verification_id (varchar64). Binding the published
+  // email and challenge ID also invalidates codes after contact replacement.
+  return createHmac("sha256", SESSION_SECRET()).update(JSON.stringify([listingId, operatorId, email, verificationId, code])).digest("hex");
+}
+
+async function currentActor(operatorId: string): Promise<ClaimActor> {
+  const auth = await requireUser();
+  if (!auth.ok) throw new OnboardingError("Please sign in again.", 401);
+  if (auth.userId !== operatorId || !auth.emailVerified || !["operator", "admin"].includes(auth.role))
+    throw new OnboardingError("A verified business account is required.", 403);
+  return auth;
+}
+
+function matchesBusinessEmail(userEmail: string | null, businessEmail: string | null, website: unknown): boolean {
+  const domain = extractDomain(userEmail);
+  return !!userEmail && (userEmail === businessEmail || !!domain && [extractDomain(businessEmail), extractDomain(website)].includes(domain));
+}
+
+function escaped(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
 
 function fallbackE164Phone(listingId: string): string {
@@ -66,88 +88,125 @@ function fallbackE164Phone(listingId: string): string {
   return `+1${num.toString()}`;
 }
 
+type ClaimProof =
+  | { kind: "email"; verificationId: string; hash: string; businessEmail: string }
+  | { kind: "domain"; operatorEmail: string; businessEmail: string | null; website: string | null; matches: boolean }
+  | { kind: "admin"; claimId: string };
+
 export async function finalizeVerifiedClaimInDb(
-  listingId: string,
-  operatorId: string,
-  adminNote: string,
-  providerTag: string
+  listingId: string, operatorId: string, actor: ClaimActor, evidence: ClaimProof, adminNote: string,
 ): Promise<string> {
-  const db = sql();
-  const [row] = await db`
-    SELECT l.id, l.operator_id, u.name AS operator_name, tc.phone AS trusted_phone,
-           EXISTS(SELECT 1 FROM users u2 WHERE u2.id = l.operator_id AND lower(u2.email) = 'unclaimed@vakaygo.com') AS unclaimed
-    FROM listings l
-    JOIN users u ON u.id = ${operatorId}::uuid
-    LEFT JOIN listing_trusted_contacts tc ON tc.listing_id = l.id
-    WHERE l.id = ${listingId}::uuid
-  `;
-  if (!row) throw new OnboardingError("Listing not found", 404);
-  if (!row.unclaimed && row.operator_id !== operatorId) {
-    throw new OnboardingError("This listing has already been claimed by another account", 409);
+  assertListingId(listingId);
+  const isAdmin = evidence.kind === "admin";
+  if (isAdmin && actor.role !== "admin") throw new OnboardingError("Administrator review required", 403);
+  let statement: string;
+  let values: unknown[];
+  let prepare: string | undefined;
+  if (evidence.kind === "email") {
+    values = [adminNote, false, evidence.verificationId, evidence.hash, evidence.businessEmail];
+    statement = `${CLAIM_REPLAY_SQL.replace("AND v.status='verified'", "AND v.id=$8::uuid AND v.status='verified'")},
+      attempt AS (
+        UPDATE listing_claim_verifications v SET attempts=v.attempts+1,
+          status=CASE WHEN v.provider_verification_id=$9 THEN 'verified' ELSE v.status END,
+          provider_approved_at=CASE WHEN v.provider_verification_id=$9 THEN now() ELSE NULL END,
+          verified_at=CASE WHEN v.provider_verification_id=$9 THEN now() ELSE NULL END,
+          check_token=NULL,check_locked_until=NULL,updated_at=now()
+        FROM target t,listing_claims c,listing_trusted_contacts tc
+        WHERE v.id=$8::uuid AND v.listing_id=t.id AND v.operator_id=$5::uuid AND v.service_sid='vakaygo_email_otp'
+          AND v.provider_account_id='vakaygo' AND v.status='pending' AND v.expires_at>now() AND v.attempts<5
+          AND c.id=v.claim_id AND c.listing_id=t.id AND c.operator_id=$5::uuid AND c.status='pending'
+          AND tc.listing_id=t.id AND tc.phone=v.target_phone AND tc.original_operator_id=t.operator_id
+          AND lower(trim(t.type_data->>'email'))=$10
+        RETURNING v.id,v.claim_id,v.provider_verification_id=$9 AS matched
+      ), proof AS (SELECT id,claim_id FROM attempt WHERE matched)
+      ${FINISH_CLAIM_SQL},EXISTS(SELECT 1 FROM attempt WHERE NOT matched) AS "incorrectCode",
+      1/CASE WHEN NOT EXISTS(SELECT 1 FROM actor) OR EXISTS(SELECT 1 FROM attempt WHERE NOT matched)
+        OR EXISTS(SELECT 1 FROM onboarded) OR EXISTS(SELECT 1 FROM replay) THEN 1 ELSE 0 END AS "claimCommitted"`;
+  } else {
+    // Domain proof is computed server-side and bound to the exact current
+    // account and listing contact values again at the write. Admin approval
+    // keeps the selected request, including its notes and reviewer identity.
+    const domain = evidence.kind === "domain" ? evidence : null;
+    values = [adminNote, isAdmin, isAdmin ? evidence.claimId : null, fallbackE164Phone(listingId),
+      domain?.operatorEmail || null, domain?.businessEmail || null, domain?.website || null, domain?.matches || false];
+    const eligibleSql = `,
+      eligible AS MATERIALIZED (
+        SELECT t.* FROM target t CROSS JOIN claimant u
+        WHERE ($7::boolean OR ($13::boolean AND lower(trim(u.email))=$10
+          AND nullif(lower(trim(t.type_data->>'email')),'') IS NOT DISTINCT FROM $11::text
+          AND t.type_data->>'website' IS NOT DISTINCT FROM $12::text))
+          AND NOT EXISTS(SELECT 1 FROM listing_claim_verifications v WHERE v.listing_id=t.id
+            AND v.status IN ('sending','pending','verified') AND (v.operator_id<>$5::uuid OR v.status='verified'))
+          AND (NOT $7::boolean OR EXISTS(SELECT 1 FROM listing_claims c WHERE c.id=$8::uuid
+            AND c.listing_id=t.id AND c.operator_id=$5::uuid AND c.status='pending'))
+      )`;
+    prepare = `${eligibleSql}, inserted_contact AS (
+        INSERT INTO listing_trusted_contacts(listing_id,original_operator_id,phone,source,source_reference)
+        SELECT id,operator_id,$9,'verified_claim',CASE WHEN $7::boolean THEN 'admin-review' ELSE 'domain-verified' END
+        FROM eligible WHERE trusted_phone IS NULL RETURNING listing_id,phone
+      ), contact AS MATERIALIZED (
+        SELECT id AS listing_id,trusted_phone AS phone FROM eligible WHERE trusted_phone IS NOT NULL
+        UNION ALL SELECT listing_id,phone FROM inserted_contact
+      ), existing_claim AS MATERIALIZED (
+        SELECT c.id,c.listing_id FROM listing_claims c JOIN eligible t ON t.id=c.listing_id
+        WHERE c.operator_id=$5::uuid AND c.status='pending'
+          AND (NOT $7::boolean OR c.id=$8::uuid)
+          AND (NOT EXISTS(SELECT 1 FROM listing_claim_verifications v WHERE v.listing_id=t.id AND v.status IN ('sending','pending'))
+            OR EXISTS(SELECT 1 FROM listing_claim_verifications v WHERE v.claim_id=c.id AND v.operator_id=$5::uuid AND v.status IN ('sending','pending')))
+        ORDER BY c.created_at DESC,c.id LIMIT 1
+      ), inserted_claim AS (
+        INSERT INTO listing_claims(listing_id,operator_id,contact_name,contact_phone)
+        SELECT t.id,$5::uuid,coalesce(nullif(u.name,''),'Business Representative'),tc.phone
+        FROM eligible t JOIN contact tc ON tc.listing_id=t.id CROSS JOIN claimant u
+        WHERE NOT $7::boolean AND NOT EXISTS(SELECT 1 FROM existing_claim)
+        RETURNING id,listing_id
+      ), chosen_claim AS MATERIALIZED (
+        SELECT * FROM existing_claim UNION ALL SELECT * FROM inserted_claim
+      ), updated_proof AS (
+        UPDATE listing_claim_verifications v SET status='pending',expires_at=now()+interval '10 minutes',
+          service_sid=CASE WHEN $7::boolean THEN 'vakaygo_admin_review' ELSE 'vakaygo_domain_verify' END,
+          provider_account_id='vakaygo',provider_verification_id=concat(CASE WHEN $7::boolean THEN 'admin:' ELSE 'domain:' END,v.claim_id),
+          provider_approved_at=now(),verified_at=NULL,check_token=NULL,check_locked_until=NULL,updated_at=now()
+        FROM chosen_claim c,contact tc WHERE v.claim_id=c.id AND v.listing_id=c.listing_id AND v.operator_id=$5::uuid
+          AND v.status IN ('sending','pending','expired','failed') AND v.target_phone=tc.phone
+        RETURNING v.id,v.claim_id
+      ), inserted_proof AS (
+        INSERT INTO listing_claim_verifications(listing_id,operator_id,claim_id,target_phone,service_sid,provider_account_id,
+          provider_verification_id,status,provider_approved_at,verified_at)
+        SELECT c.listing_id,$5::uuid,c.id,tc.phone,
+          CASE WHEN $7::boolean THEN 'vakaygo_admin_review' ELSE 'vakaygo_domain_verify' END,'vakaygo',
+          concat(CASE WHEN $7::boolean THEN 'admin:' ELSE 'domain:' END,c.id),'pending',now(),NULL
+        FROM chosen_claim c JOIN contact tc ON tc.listing_id=c.listing_id
+        WHERE NOT EXISTS(SELECT 1 FROM listing_claim_verifications v WHERE v.claim_id=c.id)
+        RETURNING id,claim_id
+      ) SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",$6::text AS note,
+        (SELECT count(*) FROM updated_proof)+(SELECT count(*) FROM inserted_proof) AS prepared`;
+    // PostgreSQL data-changing CTEs share a snapshot: an UPDATE cannot target
+    // a claim inserted by a sibling CTE. Prepare the exact pending proof first,
+    // then consume it in a fresh statement inside this same locked transaction.
+    statement = `${CLAIM_REPLAY_SQL}${isAdmin ? ", selected_replay AS (SELECT claim_id FROM replay WHERE claim_id=$8::uuid)" : ""}${eligibleSql},
+      proof AS (
+        UPDATE listing_claim_verifications v SET status='verified',verified_at=now(),provider_approved_at=now(),updated_at=now()
+        FROM eligible t,listing_claims c,listing_trusted_contacts tc
+        WHERE v.listing_id=t.id AND v.operator_id=$5::uuid AND v.status='pending' AND v.expires_at>now()
+          AND v.claim_id=c.id AND c.status='pending' AND c.listing_id=t.id AND c.operator_id=$5::uuid
+          AND (NOT $7::boolean OR c.id=$8::uuid) AND tc.listing_id=t.id AND tc.phone=v.target_phone
+          AND tc.original_operator_id=t.operator_id AND v.provider_account_id='vakaygo'
+          AND v.service_sid=CASE WHEN $7::boolean THEN 'vakaygo_admin_review' ELSE 'vakaygo_domain_verify' END
+          AND v.provider_verification_id=concat(CASE WHEN $7::boolean THEN 'admin:' ELSE 'domain:' END,c.id)
+          AND $9::text IS NOT NULL
+        RETURNING v.id,v.claim_id
+      ) ${isAdmin ? FINISH_CLAIM_SQL.replace("(SELECT claim_id FROM replay)", "(SELECT claim_id FROM selected_replay)") : FINISH_CLAIM_SQL}`;
+    // PostgreSQL has no built-in SQL ASSERT. An explicit runtime arithmetic
+    // assertion aborts this static transaction if no completion/valid replay
+    // exists, including a trigger that suppresses a downstream write.
+    statement += `,1/CASE WHEN NOT EXISTS(SELECT 1 FROM actor) OR EXISTS(SELECT 1 FROM onboarded) OR EXISTS(SELECT 1 FROM ${isAdmin ? "selected_replay" : "replay"}) THEN 1 ELSE 0 END AS "claimCommitted"`;
   }
-
-  let phone = row.trusted_phone as string | null;
-  if (!phone) {
-    phone = fallbackE164Phone(listingId);
-    await db`
-      INSERT INTO listing_trusted_contacts (listing_id, original_operator_id, phone, source, source_reference)
-      VALUES (${listingId}::uuid, ${row.operator_id}::uuid, ${phone}, 'verified_claim', ${providerTag})
-      ON CONFLICT (listing_id) DO UPDATE SET phone = EXCLUDED.phone
-    `;
-  }
-
-  const [claim] = await db`
-    INSERT INTO listing_claims (listing_id, operator_id, status, contact_name, contact_phone, admin_notes, reviewed_at)
-    VALUES (
-      ${listingId}::uuid,
-      ${operatorId}::uuid,
-      'approved',
-      ${row.operator_name || "Business Representative"},
-      ${phone},
-      ${adminNote},
-      NOW()
-    )
-    RETURNING id
-  `;
-
-  const providerId = `${providerTag}:${claim.id}`;
-  const [verif] = await db`
-    INSERT INTO listing_claim_verifications (
-      listing_id, operator_id, claim_id, target_phone, service_sid, provider_account_id,
-      provider_verification_id, status, provider_approved_at, verified_at, expires_at
-    )
-    VALUES (
-      ${listingId}::uuid, ${operatorId}::uuid, ${claim.id}::uuid, ${phone},
-      'vakaygo_email_verify', 'vakaygo', ${providerId}, 'verified', NOW(), NOW(), NOW() + interval '1 day'
-    )
-    RETURNING id
-  `;
-
-  await db`
-    UPDATE listings
-    SET operator_id = ${operatorId}::uuid,
-        type_data = (coalesce(type_data::jsonb, '{}'::jsonb) || '{"unclaimed": false}'::jsonb)::json,
-        updated_at = NOW()
-    WHERE id = ${listingId}::uuid
-  `;
-
-  await db`
-    INSERT INTO listing_onboarding (listing_id, operator_id, verified_claim_id)
-    VALUES (${listingId}::uuid, ${operatorId}::uuid, ${verif.id}::uuid)
-    ON CONFLICT (listing_id) DO UPDATE
-    SET operator_id = EXCLUDED.operator_id,
-        verified_claim_id = EXCLUDED.verified_claim_id,
-        updated_at = NOW()
-  `;
-
-  await db`
-    UPDATE listing_claims
-    SET status = 'rejected', admin_notes = 'Another verified claim was completed', reviewed_at = NOW(), updated_at = NOW()
-    WHERE listing_id = ${listingId}::uuid AND id <> ${claim.id}::uuid AND status = 'pending'
-  `;
-
+  const result = await claimTransaction(actor, listingId, operatorId, statement, values, { expireChallenges: evidence.kind !== "email", prepare });
+  if (result.incorrectCode) throw new OnboardingError("The verification code is incorrect", 400);
+  if (typeof result.claimId !== "string") throw new OnboardingError("Verification expired, another claim is active, or the account/business contact changed. Refresh the claim status.", 409);
   await revalidateListing(listingId);
-  return claim.id as string;
+  return result.claimId;
 }
 
 export async function getEnhancedClaimStatus(listingId: string, operatorId: string, operatorEmail: string) {
@@ -206,84 +265,73 @@ export async function startEnhancedClaimVerification(
   channel: "sms" | "call" | "email" = "sms"
 ) {
   assertListingId(listingId);
-  if (channel === "sms" || channel === "call") {
-    try {
-      return await startClaimVerification(listingId, operatorId, channel);
-    } catch (err) {
-      // If Twilio is unconfigured and the listing has a business email, fall through to email OTP
-      const status = await getEnhancedClaimStatus(listingId, operatorId, operatorEmail);
-      if (!status.verification.channels.includes("email")) throw err;
-    }
-  }
-
+  if (!["sms", "call", "email"].includes(channel)) throw new OnboardingError("Choose email, text message or voice call");
+  const actor = await currentActor(operatorId);
+  if (cleanEmail(operatorEmail) !== cleanEmail(actor.email)) throw new OnboardingError("Your account changed. Please sign in again.", 401);
+  if (channel === "sms" || channel === "call") return startClaimVerification(listingId, operatorId, channel);
   const db = sql();
   const [row] = await db`
-    SELECT l.id, l.title, l.operator_id, l.type_data->>'email' AS business_email,
-           u.name AS operator_name, tc.phone AS trusted_phone,
-           EXISTS(SELECT 1 FROM users u2 WHERE u2.id = l.operator_id AND lower(u2.email) = 'unclaimed@vakaygo.com') AS unclaimed
-    FROM listings l
-    JOIN users u ON u.id = ${operatorId}::uuid
-    LEFT JOIN listing_trusted_contacts tc ON tc.listing_id = l.id
-    WHERE l.id = ${listingId}::uuid
+    SELECT type_data->>'email' AS business_email FROM listings WHERE id=${listingId}::uuid
   `;
   const bizEmail = cleanEmail(row?.business_email);
-  if (!row || !row.unclaimed || !bizEmail) {
+  if (!bizEmail) {
     throw new OnboardingError("Automated verification is unavailable; submit a claim request for team review", 503);
   }
-
-  let phone = row.trusted_phone as string | null;
-  if (!phone) {
-    phone = fallbackE164Phone(listingId);
-    await db`
-      INSERT INTO listing_trusted_contacts (listing_id, original_operator_id, phone, source, source_reference)
-      VALUES (${listingId}::uuid, ${row.operator_id}::uuid, ${phone}, 'email_otp', ${bizEmail})
-      ON CONFLICT (listing_id) DO NOTHING
-    `;
-  }
-
-  const code = String(randomInt(100000, 999999));
-  const otpHash = `email-otp:${hashOtp(listingId, operatorId, code)}`;
-
-  await db`
-    UPDATE listing_claim_verifications
-    SET status = 'expired', updated_at = NOW()
-    WHERE listing_id = ${listingId}::uuid AND status IN ('sending', 'pending')
-  `;
-
-  const [claim] = await db`
-    INSERT INTO listing_claims (listing_id, operator_id, contact_name, contact_phone)
-    VALUES (${listingId}::uuid, ${operatorId}::uuid, ${row.operator_name || "Business Representative"}, ${phone})
-    RETURNING id
-  `;
-
-  await db`
-    INSERT INTO listing_claim_verifications (
-      listing_id, operator_id, claim_id, target_phone, service_sid, provider_account_id,
-      provider_verification_id, status
-    )
-    VALUES (
-      ${listingId}::uuid, ${operatorId}::uuid, ${claim.id}::uuid, ${phone},
-      'vakaygo_email_otp', 'vakaygo', ${otpHash}, 'pending'
-    )
-  `;
-
+  const code = String(randomInt(100000, 1000000));
+  const verificationId = randomUUID();
+  const otpHash = hashOtp(listingId, operatorId, bizEmail, verificationId, code);
+  const started = await claimTransaction(actor, listingId, operatorId, `,
+    eligible AS MATERIALIZED (
+      SELECT t.* FROM target t WHERE lower(trim(t.type_data->>'email'))=$6
+        AND NOT EXISTS(SELECT 1 FROM listing_claim_verifications v WHERE v.listing_id=t.id AND v.status IN ('sending','pending','verified'))
+        AND (SELECT count(*) FROM listing_claim_verifications v WHERE (v.listing_id=t.id OR v.operator_id=$5::uuid)
+          AND v.created_at>now()-interval '1 hour')<5
+    ), inserted_contact AS (
+      INSERT INTO listing_trusted_contacts(listing_id,original_operator_id,phone,source,source_reference)
+      SELECT id,operator_id,$7,'email_otp',$6 FROM eligible WHERE trusted_phone IS NULL
+      RETURNING listing_id,phone
+    ), contact AS MATERIALIZED (
+      SELECT id AS listing_id,trusted_phone AS phone FROM eligible WHERE trusted_phone IS NOT NULL
+      UNION ALL SELECT listing_id,phone FROM inserted_contact
+    ), claim AS (
+      INSERT INTO listing_claims(listing_id,operator_id,contact_name,contact_phone)
+      SELECT t.id,$5::uuid,coalesce(nullif(u.name,''),'Business Representative'),tc.phone
+      FROM eligible t JOIN contact tc ON tc.listing_id=t.id CROSS JOIN claimant u RETURNING id,listing_id
+    ), challenge AS (
+      INSERT INTO listing_claim_verifications(id,listing_id,operator_id,claim_id,target_phone,service_sid,provider_account_id,provider_verification_id,status)
+      SELECT $8::uuid,c.listing_id,$5::uuid,c.id,tc.phone,'vakaygo_email_otp','vakaygo',$9,'sending'
+      FROM claim c JOIN contact tc ON tc.listing_id=c.listing_id RETURNING id,claim_id
+    ) SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",(SELECT id FROM challenge) AS "verificationId",
+      (SELECT claim_id FROM challenge) AS "claimId",(SELECT title FROM eligible) AS title`,
+  [bizEmail, fallbackE164Phone(listingId), verificationId, otpHash], { expireChallenges: true });
+  if (started.verificationId !== verificationId) throw new OnboardingError("A verification is active, the request limit was reached, or this business changed. Refresh the claim status.", 409);
   try {
     await sendEmail({
       from: "VakayGo <support@vakaygo.com>",
       to: bizEmail,
-      subject: `${code} is your VakayGo verification code for ${row.title}`,
+      subject: `${code} is your VakayGo verification code for ${String(started.title)}`,
       html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1e293b;">
         <p style="margin:0 0 12px;">Hi there,</p>
-        <p style="margin:0 0 16px;">Use the verification code below to confirm ownership of <strong>${row.title}</strong> on VakayGo:</p>
+        <p style="margin:0 0 16px;">Use the verification code below to confirm ownership of <strong>${escaped(String(started.title))}</strong> on VakayGo:</p>
         <div style="font-size:28px;font-weight:700;letter-spacing:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;color:#0f172a;">${code}</div>
         <p style="margin:16px 0 0;font-size:13px;color:#64748b;">This code expires in 10 minutes. If you did not request this code, you can safely ignore this email.</p>
       </div>`,
     });
-  } catch {
+    const pending = await claimTransaction(actor, listingId, operatorId, `,
+      updated AS (
+        UPDATE listing_claim_verifications v SET status='pending',updated_at=now() FROM target t
+        WHERE v.id=$6::uuid AND v.listing_id=t.id AND v.operator_id=$5::uuid AND v.status='sending' AND v.expires_at>now()
+          AND lower(trim(t.type_data->>'email'))=$7 AND v.target_phone=t.trusted_phone
+        RETURNING v.id
+      ) SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",(SELECT id FROM updated) AS "verificationId"`, [verificationId, bizEmail]);
+    if (pending.verificationId !== verificationId) throw new OnboardingError("Verification changed; refresh this page.", 409);
+  } catch (error) {
+    await db`UPDATE listing_claim_verifications SET status='failed',updated_at=now()
+      WHERE id=${verificationId}::uuid AND operator_id=${operatorId}::uuid AND status='sending'`;
+    if (error instanceof OnboardingError) throw error;
     throw new OnboardingError("Unable to send a code to the business email; please try again or request team review", 503);
   }
-
-  return { claim: { id: claim.id, status: "pending" }, verification: { state: "pending", channel: "email" } };
+  return { claim: { id: started.claimId, status: "pending" }, verification: { state: "pending", channel: "email" } };
 }
 
 export async function completeEnhancedClaimVerification(listingId: string, operatorId: string, code: unknown) {
@@ -292,32 +340,25 @@ export async function completeEnhancedClaimVerification(listingId: string, opera
     throw new OnboardingError("Enter the verification code", 400);
   }
 
+  const actor = await currentActor(operatorId);
   const db = sql();
   const [latest] = await db`
-    SELECT id, claim_id, service_sid, provider_verification_id, status, expires_at, attempts
-    FROM listing_claim_verifications
-    WHERE listing_id = ${listingId}::uuid AND operator_id = ${operatorId}::uuid
-    ORDER BY created_at DESC
+    SELECT v.id,v.claim_id,v.service_sid,l.type_data->>'email' AS business_email
+    FROM listing_claim_verifications v JOIN listings l ON l.id=v.listing_id
+    WHERE v.listing_id = ${listingId}::uuid AND v.operator_id = ${operatorId}::uuid
+    ORDER BY v.created_at DESC,v.id DESC
     LIMIT 1
   `;
 
   if (latest && latest.service_sid === "vakaygo_email_otp") {
-    if (latest.status === "verified") {
-      return { claim: { id: latest.claim_id, status: "approved" }, verification: { state: "verified" }, onboardingUrl: "/operator/onboarding/" + listingId };
-    }
-    if (latest.status !== "pending" || Date.parse(String(latest.expires_at)) <= Date.now() || Number(latest.attempts) >= 5) {
-      throw new OnboardingError("Verification expired or attempt limit reached; request a new code", 409);
-    }
-    const expected = `email-otp:${hashOtp(listingId, operatorId, code.trim())}`;
-    if (latest.provider_verification_id !== expected) {
-      await db`
-        UPDATE listing_claim_verifications
-        SET attempts = attempts + 1, updated_at = NOW()
-        WHERE id = ${latest.id}::uuid
-      `;
-      throw new OnboardingError("The verification code is incorrect", 400);
-    }
-    const claimId = await finalizeVerifiedClaimInDb(listingId, operatorId, "Verified via business email code", "email-otp-verified");
+    // A missing/changed contact cannot satisfy a pending challenge, but must
+    // not prevent a verified current owner from replaying its committed result.
+    const businessEmail = cleanEmail(latest.business_email) || "";
+    const verificationId = String(latest.id);
+    const claimId = await finalizeVerifiedClaimInDb(listingId, operatorId, actor, {
+      kind: "email", verificationId, businessEmail,
+      hash: hashOtp(listingId, operatorId, businessEmail, verificationId, code),
+    }, "Verified via business email code");
     return { claim: { id: claimId, status: "approved" }, verification: { state: "verified" }, onboardingUrl: "/operator/onboarding/" + listingId };
   }
 
@@ -326,12 +367,15 @@ export async function completeEnhancedClaimVerification(listingId: string, opera
 
 export async function completeInstantDomainClaim(listingId: string, operatorId: string, operatorEmail: string) {
   assertListingId(listingId);
-  const status = await getEnhancedClaimStatus(listingId, operatorId, operatorEmail);
-  const instantEligible = (status.verification as { instantEligible?: boolean })?.instantEligible === true;
-  if (!instantEligible) {
-    throw new OnboardingError("Your account email does not match this listing's verified domain or business email", 403);
-  }
-  const claimId = await finalizeVerifiedClaimInDb(listingId, operatorId, `Verified via matching business email/domain (${operatorEmail})`, "domain-verified");
+  const actor = await currentActor(operatorId);
+  const [meta] = await sql()`SELECT type_data->>'email' AS business_email,type_data->>'website' AS website
+    FROM listings WHERE id=${listingId}::uuid`;
+  const businessEmail = cleanEmail(meta?.business_email), userEmail = cleanEmail(operatorEmail);
+  const website = typeof meta?.website === "string" ? meta.website : null;
+  const claimId = await finalizeVerifiedClaimInDb(listingId, operatorId, actor, {
+    kind: "domain", operatorEmail: userEmail || "", businessEmail, website,
+    matches: matchesBusinessEmail(userEmail, businessEmail, website),
+  }, "Verified via matching business email/domain");
   return { claim: { id: claimId, status: "approved" }, verification: { state: "verified" }, onboardingUrl: "/operator/onboarding/" + listingId };
 }
 

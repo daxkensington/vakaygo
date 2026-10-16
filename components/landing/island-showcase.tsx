@@ -95,7 +95,7 @@ export function IslandShowcase() {
             Explore 34 Sun &amp; Sea Destinations
           </h2>
           <p className="mt-4 text-navy-400 max-w-2xl mx-auto text-lg">
-            From Grenada and St. Lucia to Cartagena, Cancún, Santorini, and the Amalfi Coast — discover verified local stays, charters, and experiences.
+            From Grenada and St. Lucia to Cartagena, Cancún, Santorini, and the Amalfi Coast — discover local stays, charters, and experiences.
           </p>
         </div>
 

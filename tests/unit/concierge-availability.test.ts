@@ -82,6 +82,21 @@ describe("concierge availability", () => {
     expect((await response.json()).message).toBe("Email hello@vakaygo.com.");
   });
 
+  it("grounds the concierge in current directory capabilities across all supported regions", async () => {
+    const fetch = vi.fn(async () => Response.json({ content: [{ type: "text", text: "Synthetic reply" }], stop_reason: "end_turn" }));
+    vi.stubGlobal("fetch", fetch);
+    expect((await POST(request())).status).toBe(200);
+    const prompt = JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).system as string;
+    expect(prompt).toContain("website interface is currently English");
+    expect(prompt).toContain("current verified ownership");
+    expect(prompt).toContain("Payment onboarding and new payouts are currently unavailable");
+    expect(prompt).toContain("all supported Caribbean, Latin American and Mediterranean destinations");
+    expect(prompt).not.toContain("Site available in English, Spanish");
+    expect(prompt).not.toContain("Earn 10 points per dollar");
+    expect(prompt).not.toContain("supports Caribbean payouts via Wise");
+    expect(prompt).not.toContain("outside Caribbean travel");
+  });
+
   it("treats an empty provider response as unavailable", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: [], stop_reason: "end_turn" })));
     expect((await POST(request())).status).toBe(503);

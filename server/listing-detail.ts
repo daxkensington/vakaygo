@@ -95,6 +95,7 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
       priceAmount: listings.priceAmount,
       priceUnit: listings.priceUnit,
       avgRating: listings.avgRating,
+      priceCurrency: listings.priceCurrency,
       reviewCount: listings.reviewCount,
       parish: listings.parish,
       latitude: listings.latitude,

@@ -7,8 +7,8 @@ vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentP
 vi.mock("next/dynamic", () => ({ default: () => ({ listings, activeIsland }: { listings: MapListing[]; activeIsland: string }) => React.createElement("div", { "data-map": true, "data-island": activeIsland }, listings.map(listing => React.createElement("p", { key: listing.id }, listing.title))) }));
 import MapPage from "@/app/(platform)/map/page";
 
-const fixture = (title: string, islandSlug = "grenada"): MapListing => ({ id: title, title, slug: "synthetic-listing", type: "tour", priceAmount: null, priceUnit: null, avgRating: null, reviewCount: 0, parish: null, islandSlug, islandName: islandSlug, image: null, isFeatured: false, latitude: "12.1", longitude: "-61.7" });
-const response = (listings: MapListing[]) => Response.json({ listings });
+const fixture = (title: string, islandSlug = "grenada"): MapListing => ({ id: title, title, slug: "synthetic-listing", type: "tour", priceAmount: null, priceCurrency: "USD", bookingEligible: false, priceUnit: null, avgRating: null, reviewCount: 0, parish: null, islandSlug, islandName: islandSlug, image: null, isFeatured: false, latitude: "12.1", longitude: "-61.7" });
+const response = (listings: MapListing[], nextCursor: string | null = null, totalCount: number | null = listings.length) => Response.json({ listings, nextCursor, totalCount });
 function deferred() { let finish!: (value: Response) => void; return { promise: new Promise<Response>(resolve => { finish = resolve; }), resolve: (value: Response) => finish(value) }; }
 let root: Root, container: HTMLDivElement, fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -57,8 +57,8 @@ it.each(["HTTP", "network", "malformed"])("shows an honest %s failure and retrie
   expect(fetchMock.mock.calls[2][0]).toContain("island=barbados"); expect(fetchMock.mock.calls.every(call => call[1].cache === "no-store")).toBe(true);
 });
 
-it("distinguishes successful empty and unmapped results from failures with readable map status", async () => {
-  fetchMock.mockResolvedValueOnce(response([])).mockResolvedValueOnce(response([{ ...fixture("No coordinates"), latitude: null, longitude: null }]));
+it("distinguishes a successful empty map scope from failures with readable map status", async () => {
+  fetchMock.mockResolvedValueOnce(response([])).mockResolvedValueOnce(response([]));
   await render(); expect(container.querySelector('[role="alert"]')).toBeNull(); expect(container.textContent).toContain("No map locations are available for these listings");
   await click("Grenada"); expect(container.querySelector('[role="region"]')?.getAttribute("aria-label")).toBe("Grenada listing map");
   expect(container.querySelector('[role="status"]')?.textContent).toContain("No map locations are available for Grenada");
@@ -81,4 +81,49 @@ it("aborts a pending read on disposal and never starts a follow-up request", asy
   expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
   await act(async () => pending.resolve(response([fixture("Late unmount result")])));
   expect(container.textContent).toBe("Left map"); expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+const pin = (number: number): MapListing => ({ ...fixture(`Pin ${number}`, `destination-${number % 34}`), id: `00000000-0000-0000-0000-${number.toString(16).padStart(12, "0")}` });
+
+it("progressively displays the first page while later pages load and preserves it if a later page fails", async () => {
+  const pending = deferred();
+  const first = Array.from({ length: 250 }, (_, index) => pin(index + 1));
+  fetchMock.mockResolvedValueOnce(response(first, first.at(-1)!.id, 8038)).mockReturnValueOnce(pending.promise);
+  await render();
+  expect(container.querySelector("[data-map]")).not.toBeNull();
+  expect(container.querySelectorAll("[data-map] p")).toHaveLength(250);
+  expect(container.textContent).toContain("250 locations loaded");
+  expect(container.querySelector('[role="region"]')?.getAttribute("aria-busy")).toBe("true");
+  await act(async () => pending.resolve(Response.json({ error: "Synthetic later page failure" }, { status: 503 })));
+  expect(container.querySelectorAll("[data-map] p")).toHaveLength(250);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("already loaded are still available");
+  expect(container.textContent).not.toContain("250 mapped listings");
+});
+
+it("loads all8038 locations across34 destinations in bounded pages without the former7500 cutoff", async () => {
+  const all = Array.from({ length: 8038 }, (_, index) => pin(index + 1));
+  fetchMock.mockImplementation(async (url: string) => {
+    const params = new URL(url, "https://vakaygo.test").searchParams;
+    const cursor = params.get("cursor");
+    const start = cursor ? parseInt(cursor.slice(-12), 16) : 0;
+    const rows = all.slice(start, start + 250);
+    return response(rows, start + rows.length < all.length ? rows.at(-1)!.id : null, cursor ? null : all.length);
+  });
+  await render();
+  expect(fetchMock).toHaveBeenCalledTimes(33);
+  expect(fetchMock.mock.calls.every(([url]) => url.startsWith("/api/map/listings?") && !url.includes("limit="))).toBe(true);
+  expect(container.querySelectorAll("[data-map] p")).toHaveLength(8038);
+  expect(container.textContent).toContain("8038 mapped listings");
+  expect(container.querySelector('[role="region"]')?.getAttribute("aria-busy")).toBe("false");
+  expect(new Set(all.map(row => row.islandSlug)).size).toBe(34);
+});
+
+it("rejects a repeated paging cursor instead of reporting a truncated map as complete", async () => {
+  const row = pin(1);
+  fetchMock.mockResolvedValue(response([row], row.id, 1000));
+  await render();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(container.querySelectorAll("[data-map] p")).toHaveLength(1);
+  expect(container.textContent).not.toContain("1 mapped listings");
 });

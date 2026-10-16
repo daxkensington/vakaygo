@@ -10,6 +10,7 @@ import { awardBookingPoints } from "@/server/loyalty";
 import { cancelBooking } from "@/server/cancel-booking";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
+import { bookingPaymentEligible } from "@/lib/booking-payment-eligibility";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function GET(
@@ -92,8 +93,7 @@ export async function GET(
     return NextResponse.json({ booking: {
       ...row,
       bookingEligible: eligibility.eligible && eligibility.operatorId === row.operatorId,
-      paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && eligibility.eligible && eligibility.operatorId === row.operatorId && row.datesAvailable === true &&
-        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility.stripeAccountId)),
+      paymentEligible: bookingPaymentEligible(row, eligibility),
     } });
   } catch (error) {
     logger.error("Get booking error", error);

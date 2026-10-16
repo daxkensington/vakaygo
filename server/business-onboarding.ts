@@ -373,9 +373,9 @@ export async function getClaimStatus(listingId: string, operatorId: string) {
   const [row] = await query<{
     id: string; title: string; type: string; address: string | null; island_name: string; island_slug: string; slug: string;
     operator_id: string; claim_valid: boolean; verification_busy_until: string | null;
-    unclaimed: boolean; phone: string | null; claim: { id: string; status: string; createdAt: string; adminNotes: string | null } | null;
+    unclaimed: boolean; phone: string | null; contact_source: string | null; claim: { id: string; status: string; createdAt: string; adminNotes: string | null } | null;
     verification: ClaimVerification | null;
-  }>(`SELECT l.id,l.title,l.type,l.address,i.name island_name,i.slug island_slug,l.slug,t.phone,l.operator_id,
+  }>(`SELECT l.id,l.title,l.type,l.address,i.name island_name,i.slug island_slug,l.slug,t.phone,t.source contact_source,l.operator_id,
    vakaygo_listing_claim_verified(l.id) claim_valid,
    (SELECT min(active.expires_at) FROM listing_claim_verifications active
     WHERE (active.target_phone=t.phone OR active.listing_id=l.id) AND active.status IN ('sending','pending') AND active.expires_at>now()) verification_busy_until,
@@ -392,15 +392,16 @@ export async function getClaimStatus(listingId: string, operatorId: string) {
   const expired = !!v && !["verified","revoked"].includes(v.status) && Date.parse(v.expires_at) <= Date.now();
   const claimVerified = row.operator_id === operatorId && row.claim_valid === true && row.claim?.status === "approved";
   const contactChanged = !!v && !expired && ["sending", "pending"].includes(v.status) && v.target_phone !== row.phone;
-  const available = row.unclaimed === true && !!row.phone && configured && !contactChanged;
-  const phoneHint = row.phone ? "••• ••• " + row.phone.slice(-2) : null;
+  const phoneIsTrusted = !!row.phone && !["email_otp", "verified_claim"].includes(row.contact_source || "");
+  const available = row.unclaimed === true && phoneIsTrusted && configured && !contactChanged;
+  const phoneHint = phoneIsTrusted ? "••• ••• " + row.phone!.slice(-2) : null;
   return {
     listing: { id: row.id,title: row.title,type: row.type,address: row.address,islandName: row.island_name,
       url: "/" + row.island_slug + "/" + row.slug,unclaimed: row.unclaimed === true,phoneHint },
     claim: row.claim, claimVerified,
     verification: { state: claimVerified ? "verified" : contactChanged ? "contact_changed" : v?.status === "verified" ? "revoked" : expired ? "expired" : v?.status || "not_started", phoneHint,
       available, canStart: available && !row.verification_busy_until,
-      reason: contactChanged ? "trusted_contact_changed" : !row.phone ? "trusted_contact_unavailable" : !configured ? "verification_unavailable" : null,
+      reason: contactChanged ? "trusted_contact_changed" : !phoneIsTrusted ? "trusted_contact_unavailable" : !configured ? "verification_unavailable" : null,
       expiresAt: v?.expires_at || null, busyUntil: row.verification_busy_until || null, channels: ["sms","call"] },
   };
 }
@@ -408,6 +409,11 @@ export async function startClaimVerification(listingId: string, operatorId: stri
   assertListingId(listingId);
   if (channel !== "sms" && channel !== "call") throw new OnboardingError("Choose text message or voice call");
   const provider = verifyConfiguration();
+  // Email/domain proofs use a bookkeeping E164 slot for the existing schema.
+  // It is never independently sourced telephone proof and must not be dialled.
+  const [contact] = await query<{ source: string }>("SELECT source FROM listing_trusted_contacts WHERE listing_id=$1", [listingId]);
+  if (!contact || ["email_otp", "verified_claim"].includes(contact.source))
+    throw new OnboardingError("A trusted business phone is unavailable. Choose business email or team review.", 409);
   // Release only expired challenges for this listing, including an older trusted phone.
   await query(`UPDATE listing_claim_verifications SET status='expired',updated_at=now()
     WHERE listing_id=$1 AND status IN ('sending','pending') AND expires_at<=now()`, [listingId]);

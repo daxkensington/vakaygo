@@ -1,9 +1,12 @@
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { createDb } from "@/server/db";
 import { listings, islands, media } from "@/drizzle/schema";
-import { eq, and, desc, asc, gte, lte, inArray, sql, type SQL } from "drizzle-orm";
+import { eq, and, desc, asc, gte, inArray, sql, type SQL } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { parseSearchQuery, likeEscape } from "@/lib/search-terms";
+import { stayGuestCapacity } from "@/server/listing-capacity";
+import { getExchangeRates } from "@/server/exchange-rates";
+import { listingPriceInUsd } from "@/server/listing-prices";
 import {
   filtersToSearchParams,
   type ListingFilters,
@@ -18,7 +21,7 @@ import {
 
 type Db = ReturnType<typeof createDb>;
 
-function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean): { where: SQL; relevance: SQL | null } {
+function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean, usdPrice: SQL): { where: SQL; relevance: SQL | null } {
   const conditions: SQL[] = [eq(listings.status, "active")];
 
   if (f.type) conditions.push(eq(listings.type, f.type));
@@ -65,14 +68,14 @@ function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean): { wher
     }
   }
 
-  if (f.minPrice != null) conditions.push(gte(listings.priceAmount, String(f.minPrice)));
-  if (f.maxPrice != null) conditions.push(lte(listings.priceAmount, String(f.maxPrice)));
+  if (f.minPrice != null) conditions.push(sql`${usdPrice} >= ${f.minPrice}`);
+  if (f.maxPrice != null) conditions.push(sql`${usdPrice} <= ${f.maxPrice}`);
   if (f.minRating != null) conditions.push(gte(listings.avgRating, String(f.minRating)));
 
   if (f.guests != null) {
     conditions.push(
       sql`(
-        (${listings.type} = 'stay' AND (${listings.typeData}->>'maxGuests')::int >= ${f.guests})
+        (${listings.type} = 'stay' AND ${stayGuestCapacity} >= ${f.guests})
         OR (${listings.type} IN ('tour', 'excursion') AND (
           ${listings.typeData}->>'groupSize' IS NULL
           OR (${listings.typeData}->>'groupSize')::int >= ${f.guests}
@@ -111,10 +114,10 @@ function buildWhere(db: Db, f: ListingFilters, bookingsEnabled: boolean): { wher
   return { where: and(...conditions)!, relevance };
 }
 
-function orderFor(f: ListingFilters, relevance: SQL | null): SQL[] {
+function orderFor(f: ListingFilters, relevance: SQL | null, usdPrice: SQL): SQL[] {
   const primary: SQL[] =
-    f.sort === "price-asc" ? [sql`${listings.priceAmount} ASC NULLS LAST`]
-    : f.sort === "price-desc" ? [sql`${listings.priceAmount} DESC NULLS LAST`]
+    f.sort === "price-asc" ? [sql`${usdPrice} ASC NULLS LAST`]
+    : f.sort === "price-desc" ? [sql`${usdPrice} DESC NULLS LAST`]
     : f.sort === "rating" ? [sql`${listings.avgRating} DESC NULLS LAST`, sql`${listings.reviewCount} DESC NULLS LAST`]
     : f.sort === "newest" ? [sql`${listings.createdAt} DESC NULLS LAST`]
     : f.sort === "most-reviews" ? [sql`${listings.reviewCount} DESC NULLS LAST`, sql`${listings.avgRating} DESC NULLS LAST`]
@@ -140,7 +143,12 @@ const reviewSourceExpr = sql<"google" | "vakaygo">`
        THEN 'google' ELSE 'vakaygo' END`;
 
 export async function searchListings(f: ListingFilters, db: Db = createDb()): Promise<ListingResult[]> {
-  const { where, relevance } = buildWhere(db, f, await bookingLaunchEnabled());
+  const bookingsEnabled = await bookingLaunchEnabled();
+  const needsPrice = f.minPrice != null || f.maxPrice != null || f.sort === "price-asc" || f.sort === "price-desc";
+  const usdPrice = bookingsEnabled && needsPrice
+    ? listingPriceInUsd((await getExchangeRates()).rates, sql<boolean>`vakaygo_listing_bookable(${listings.id})`)
+    : sql`NULL::numeric`;
+  const { where, relevance } = buildWhere(db, f, bookingsEnabled, usdPrice);
 
   const rows = await db
     .select({
@@ -149,7 +157,7 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
-      bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
+      bookingEligible: bookingsEnabled ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
@@ -166,7 +174,7 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(where)
-    .orderBy(...orderFor(f, relevance))
+    .orderBy(...orderFor(f, relevance, usdPrice))
     .limit(f.limit)
     .offset(f.offset);
 
@@ -192,7 +200,12 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
 }
 
 export async function countListings(f: ListingFilters, db: Db = createDb()): Promise<number> {
-  const { where } = buildWhere(db, f, await bookingLaunchEnabled());
+  const bookingsEnabled = await bookingLaunchEnabled();
+  const needsPrice = f.minPrice != null || f.maxPrice != null;
+  const usdPrice = bookingsEnabled && needsPrice
+    ? listingPriceInUsd((await getExchangeRates()).rates, sql<boolean>`vakaygo_listing_bookable(${listings.id})`)
+    : sql`NULL::numeric`;
+  const { where } = buildWhere(db, f, bookingsEnabled, usdPrice);
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(listings)

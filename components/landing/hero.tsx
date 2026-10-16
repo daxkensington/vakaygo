@@ -231,7 +231,7 @@ export function Hero() {
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
           Stays. Boat Charters. Tours. Dining. Transfers. Concierge.{" "}
           <br className="hidden md:block" />
-          Book direct with verified local operators — with 0% guest booking fees.
+          Discover local places and plan your trip. Online bookings and payments are not available yet.
         </p>
 
         {/* Search Bar */}

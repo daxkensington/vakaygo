@@ -35,7 +35,6 @@ import {
   Calendar,
   X,
   Star,
-  DollarSign,
   Sparkles,
   Minus,
   Plus,
@@ -625,11 +624,11 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               </select>
               {/* Price Range */}
               <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
-                <DollarSign size={16} className="text-navy-300 shrink-0" />
+                <span className="text-xs font-semibold text-navy-500">USD</span>
                 <input
                   type="number"
-                  placeholder="Min"
-                  aria-label="Minimum price"
+                  placeholder="Min USD"
+                  aria-label="Minimum price in USD"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -638,8 +637,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <span className="text-navy-300 text-sm">-</span>
                 <input
                   type="number"
-                  placeholder="Max"
-                  aria-label="Maximum price"
+                  placeholder="Max USD"
+                  aria-label="Maximum price in USD"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -718,6 +717,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               </div>
             </div>
 
+            <p className="mt-2 text-xs text-navy-500">Price filters and sorting use USD estimates. Confirm the current price and price unit with the business.</p>
+
             {/* Active Filters Pills */}
             {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration || cuisineType) && (
               <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -763,7 +764,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     onClick={() => setMinPrice("")}
                     className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
                   >
-                    Min ${minPrice}
+                    Min USD ${minPrice}
                     <X size={12} />
                   </button>
                 )}
@@ -772,7 +773,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     onClick={() => setMaxPrice("")}
                     className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
                   >
-                    Max ${maxPrice}
+                    Max USD ${maxPrice}
                     <X size={12} />
                   </button>
                 )}
@@ -1013,7 +1014,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
         {viewMode === "map" ? (
           /* ── Map View ─────────────────────────────────────────── */
           <div className="mx-auto max-w-[1600px] px-4 py-4">
-            <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 px-2">
               <p className="text-navy-400 text-sm">
                 Showing{" "}
                 <span className="font-semibold text-navy-700">
@@ -1029,12 +1030,12 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
+                className="max-w-full text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
+                <option value="price-asc">Price (USD estimate): Low to High</option>
+                <option value="price-desc">Price (USD estimate): High to Low</option>
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1093,7 +1094,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               <RecentlyViewed />
             )}
 
-            <div className="flex items-center justify-between mb-6 gap-4">
+            <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
               <p className="text-navy-400 text-sm">
                 <span className="block sm:inline text-navy-700 font-semibold text-base sm:mr-2" style={{ fontFamily: "var(--font-display)" }} role="heading" aria-level={2}>
                   {heading}
@@ -1112,12 +1113,12 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
+                className="max-w-full text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
+                <option value="price-asc">Price (USD estimate): Low to High</option>
+                <option value="price-desc">Price (USD estimate): High to Low</option>
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1247,14 +1248,14 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
               <div>
                 <span className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
-                  Price Range
+                  Price Range (USD estimates)
                 </span>
                 <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-3">
-                  <DollarSign size={16} className="text-navy-300 shrink-0" />
+                  <span className="text-xs font-semibold text-navy-500">USD</span>
                   <input
                     type="number"
-                    placeholder="Min"
-                    aria-label="Minimum price"
+                    placeholder="Min USD"
+                    aria-label="Minimum price in USD"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -1263,14 +1264,15 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <span className="text-navy-300 text-sm">-</span>
                   <input
                     type="number"
-                    placeholder="Max"
-                    aria-label="Maximum price"
+                    placeholder="Max USD"
+                    aria-label="Maximum price in USD"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                     min="0"
                   />
                 </div>
+                <p className="mt-2 text-xs text-navy-500">Filters use USD estimates. Confirm the current price and price unit with the business.</p>
               </div>
 
               <div>
