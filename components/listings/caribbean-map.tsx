@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import {
   MapPin, X, Maximize2, Minimize2, Compass, Play, Pause,
-  Search, Navigation, Layers, Star, ChevronRight, Flame, Sun, Moon,
+  Search, Navigation, Layers, Star, ChevronRight, Flame, Sun, Moon, List, Sparkles,
 } from "lucide-react";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -237,58 +237,69 @@ function buildIslandFlyover(slug: string, listings: MapListing[]): FlyoverWaypoi
   return waypoints;
 }
 
-// ─── Create listing marker ──────────────────────────────────────
-function createListingMarker(listing: MapListing): { wrapper: HTMLDivElement; pin: HTMLDivElement } {
-  const config = categoryConfig[listing.type] || categoryConfig.stay;
-  const price = listing.priceAmount && parseFloat(listing.priceAmount) > 0
-    ? `$${parseFloat(listing.priceAmount).toFixed(0)}`
-    : null;
+function buildCaribbeanOverviewFlyover(listings: MapListing[]): FlyoverWaypoint[] {
+  const mappable = listings.filter(
+    (l) => l.latitude && l.longitude && !isNaN(parseFloat(l.latitude!)) && !BUSINESS_PATTERNS.test(l.title)
+  );
+  if (mappable.length === 0) return FLYOVER_WAYPOINTS;
 
-  const wrapper = document.createElement("div");
-  wrapper.style.cssText = "position: relative; display: flex; flex-direction: column; align-items: center;";
+  const featuredIslands = [
+    "grenada", "st-lucia", "barbados", "antigua", "jamaica",
+    "aruba", "bahamas", "turks-and-caicos", "curacao", "dominican-republic",
+  ];
 
-  // Tooltip
-  const tooltip = document.createElement("div");
-  tooltip.style.cssText = `
-    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-    margin-bottom: 8px; padding: 6px 12px; border-radius: 10px;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
-    color: white; font-size: 12px; font-weight: 600;
-    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s;
-    max-width: 200px; overflow: hidden; text-overflow: ellipsis;
-  `;
-  tooltip.textContent = listing.title;
-
-  // Pin
-  const pin = document.createElement("div");
-
-  if (price) {
-    pin.style.cssText = `
-      background: ${config.color}; color: white;
-      padding: 4px 10px; border-radius: 20px;
-      font-size: 12px; font-weight: 700; white-space: nowrap;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.35); border: 2px solid white;
-      cursor: pointer; transition: all 0.2s ease;
-    `;
-    pin.textContent = price;
-  } else {
-    pin.style.cssText = `
-      width: 36px; height: 36px; border-radius: 50%;
-      background: ${config.color}; border: 2.5px solid white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; cursor: pointer; transition: all 0.2s ease;
-    `;
-    pin.textContent = config.emoji;
+  const picked: MapListing[] = [];
+  for (const slug of featuredIslands) {
+    const iconicList = ICONIC_ATTRACTIONS[slug] || [];
+    const candidates = mappable.filter((l) => l.islandSlug === slug);
+    if (candidates.length === 0) continue;
+    const best = candidates
+      .map((l) => {
+        const iconic = iconicList.some((k) => l.title.toLowerCase().includes(k));
+        const isAttraction = ATTRACTION_KEYWORDS.test(l.title);
+        const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
+        const reviews = l.reviewCount || 0;
+        const score =
+          (iconic ? 500 : 0) +
+          (isAttraction ? 120 : 0) +
+          rating * 10 +
+          Math.min(reviews, 500) * 0.15 +
+          (l.isFeatured ? 40 : 0) +
+          (l.image ? 25 : 0);
+        return { l, score };
+      })
+      .sort((a, b) => b.score - a.score)[0]?.l;
+    if (best) picked.push(best);
   }
 
-  wrapper.appendChild(tooltip);
-  wrapper.appendChild(pin);
+  if (picked.length === 0) return FLYOVER_WAYPOINTS;
 
-  wrapper.addEventListener("mouseenter", () => { tooltip.style.opacity = "1"; });
-  wrapper.addEventListener("mouseleave", () => { tooltip.style.opacity = "0"; });
+  const waypoints: FlyoverWaypoint[] = [
+    { center: CARIBBEAN_CENTER, zoom: 5, pitch: 30, bearing: 0, label: "The Caribbean — 3D Island Hopping Tour" },
+  ];
 
-  return { wrapper, pin };
+  picked.slice(0, 9).forEach((l, i) => {
+    const bearing = [-25, 30, -35, 20, -15, 40, -30, 25, -20][i % 9];
+    const pitch = [55, 58, 52, 60, 54, 58, 50, 56, 55][i % 9];
+    waypoints.push({
+      center: [parseFloat(l.longitude!), parseFloat(l.latitude!)] as [number, number],
+      zoom: 14.5,
+      pitch,
+      bearing,
+      label: `${l.title} · ${l.islandName}`,
+      listing: l,
+    });
+  });
+
+  waypoints.push({
+    center: CARIBBEAN_CENTER,
+    zoom: 5,
+    pitch: 35,
+    bearing: 0,
+    label: `Explore All ${mappable.length.toLocaleString()} Caribbean Places`,
+  });
+
+  return waypoints;
 }
 
 // ─── Main Component ─────────────────────────────────────────────
@@ -303,7 +314,6 @@ export default function CaribbeanMap({
 }) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<Map<string, { marker: mapboxgl.Marker; element: HTMLDivElement }>>(new Map());
   const selectedRef = useRef<MapListing | null>(null);
 
   const [selected, setSelected] = useState<MapListing | null>(null);
@@ -321,9 +331,14 @@ export default function CaribbeanMap({
   const [mapReady, setMapReady] = useState(false);
   const [heatmapActive, setHeatmapActive] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
-  const [autoDarkApplied, setAutoDarkApplied] = useState(false);
+  const [, setAutoDarkApplied] = useState(false);
   const [isNighttime, setIsNighttime] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sortBy, setSortBy] = useState<"top" | "reviews" | "price">("top");
+  const [mapBounds, setMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
 
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userLocationRef = useRef<[number, number] | null>(null);
@@ -366,13 +381,24 @@ export default function CaribbeanMap({
     // ── Bearing tracker for compass rose ──
     map.on("rotate", () => { setMapBearing(map.getBearing()); });
 
-    // ── URL hash sync (shareable map state) ──
+    // ── URL hash & viewport bounds sync ──
     const updateHash = () => {
       const c = map.getCenter();
       const z = map.getZoom().toFixed(2);
       const p = map.getPitch().toFixed(0);
       const b = map.getBearing().toFixed(0);
       window.location.hash = `map=${z}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}/${p}/${b}`;
+      if (typeof map.getBounds === "function") {
+        const bounds = map.getBounds();
+        if (bounds) {
+          setMapBounds({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest(),
+          });
+        }
+      }
     };
     map.on("moveend", updateHash);
     map.on("zoomend", updateHash);
@@ -656,6 +682,26 @@ export default function CaribbeanMap({
       clusterRadius: 60,
     });
 
+    // Cluster outer glow halo
+    map.addLayer({
+      id: "clusters-glow",
+      type: "circle",
+      source: "listings",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": [
+          "step", ["get", "point_count"],
+          "#D4A017", 20, "#14B8A6", 100, "#1E3A5F",
+        ],
+        "circle-radius": [
+          "step", ["get", "point_count"],
+          28, 20, 35, 100, 44,
+        ],
+        "circle-opacity": 0.25,
+        "circle-blur": 0.4,
+      },
+    });
+
     // Cluster circles
     map.addLayer({
       id: "clusters",
@@ -673,7 +719,7 @@ export default function CaribbeanMap({
         ],
         "circle-stroke-width": 3,
         "circle-stroke-color": "#fff",
-        "circle-opacity": 0.9,
+        "circle-opacity": 0.94,
       },
     });
 
@@ -691,6 +737,25 @@ export default function CaribbeanMap({
       paint: { "text-color": "#ffffff" },
     });
 
+    // Individual unclustered pin outer glow halo
+    map.addLayer({
+      id: "unclustered-halo",
+      type: "circle",
+      source: "listings",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": ["get", "color"],
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          6, ["case", ["boolean", ["get", "featured"], false], 13, 11],
+          12, ["case", ["boolean", ["get", "featured"], false], 18, 15],
+          16, ["case", ["boolean", ["get", "featured"], false], 22, 18],
+        ],
+        "circle-opacity": 0.28,
+        "circle-blur": 0.35,
+      },
+    });
+
     // Individual unclustered points
     map.addLayer({
       id: "unclustered-point",
@@ -699,7 +764,12 @@ export default function CaribbeanMap({
       filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-color": ["get", "color"],
-        "circle-radius": 8,
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          6, ["case", ["boolean", ["get", "featured"], false], 9, 7],
+          12, ["case", ["boolean", ["get", "featured"], false], 12, 9.5],
+          16, ["case", ["boolean", ["get", "featured"], false], 15, 12],
+        ],
         "circle-radius-transition": { duration: 300, delay: 0 },
         "circle-stroke-width": 2.5,
         "circle-stroke-color": "#fff",
@@ -731,24 +801,26 @@ export default function CaribbeanMap({
       },
     });
 
-    // Price labels on unclustered points (zoom 12+)
+    // Rich category + rating/price + title labels on unclustered points (zoom 12+)
     map.addLayer({
       id: "unclustered-label",
       type: "symbol",
       source: "listings",
-      filter: ["all", ["!", ["has", "point_count"]], ["has", "price"]],
+      filter: ["!", ["has", "point_count"]],
       minzoom: 12,
       layout: {
-        "text-field": ["concat", "$", ["to-string", ["round", ["get", "price"]]]],
+        "text-field": ["get", "badgeLabel"],
         "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
-        "text-size": 11,
-        "text-offset": [0, -1.8],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 12.5],
+        "text-offset": [0, -1.3],
         "text-anchor": "bottom",
+        "text-allow-overlap": false,
+        "text-optional": true,
       },
       paint: {
-        "text-color": "#1E3A5F",
-        "text-halo-color": "#fff",
-        "text-halo-width": 2,
+        "text-color": "#0F172A",
+        "text-halo-color": "rgba(255,255,255,0.96)",
+        "text-halo-width": 2.2,
       },
     });
 
@@ -786,6 +858,7 @@ export default function CaribbeanMap({
       className: "vakaygo-hover-popup",
       maxWidth: "240px",
     });
+    hoverPopupRef.current = hoverPopup;
 
     map.on("mouseenter", "unclustered-point", (e) => {
       map.getCanvas().style.cursor = "pointer";
@@ -848,6 +921,63 @@ export default function CaribbeanMap({
       : mappable;
   }, [listings, activeCategories, searchQuery]);
 
+  const inViewListings = useMemo(() => {
+    let base = filtered;
+    if (mapBounds) {
+      const inside = filtered.filter((l) => {
+        const lat = parseFloat(l.latitude!);
+        const lng = parseFloat(l.longitude!);
+        return lat <= mapBounds.north && lat >= mapBounds.south && lng <= mapBounds.east && lng >= mapBounds.west;
+      });
+      if (inside.length > 0) base = inside;
+    }
+    return [...base].sort((a, b) => {
+      if (sortBy === "price") {
+        const pa = a.priceAmount ? parseFloat(a.priceAmount) : Infinity;
+        const pb = b.priceAmount ? parseFloat(b.priceAmount) : Infinity;
+        if (pa !== pb) return pa - pb;
+      } else if (sortBy === "reviews") {
+        const ra = a.reviewCount || 0;
+        const rb = b.reviewCount || 0;
+        if (rb !== ra) return rb - ra;
+      }
+      const featDiff = (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+      if (featDiff !== 0) return featDiff;
+      const scoreA = (a.avgRating ? parseFloat(a.avgRating) : 0) * 10 + Math.min(a.reviewCount || 0, 300) * 0.05;
+      const scoreB = (b.avgRating ? parseFloat(b.avgRating) : 0) * 10 + Math.min(b.reviewCount || 0, 300) * 0.05;
+      return scoreB - scoreA;
+    });
+  }, [filtered, mapBounds, sortBy]);
+
+  const handleCardHover = useCallback((listing: MapListing | null) => {
+    setHoveredId(listing?.id || null);
+    const map = mapRef.current;
+    const hp = hoverPopupRef.current;
+    if (!map || !hp) return;
+    if (!listing || !listing.latitude || !listing.longitude) {
+      hp.remove();
+      return;
+    }
+    const cfg = categoryConfig[listing.type] || categoryConfig.stay;
+    const r = listing.avgRating ? parseFloat(listing.avgRating).toFixed(1) : "";
+    const safeTitle = escapeHtml(listing.title);
+    const safeImage = listing.image ? escapeHtml(listing.image) : "";
+    hp.setLngLat([parseFloat(listing.longitude), parseFloat(listing.latitude)])
+      .setHTML(`
+        <div style="display:flex;gap:8px;align-items:center;padding:8px;font-family:system-ui,sans-serif;">
+          ${safeImage ? `<img src="${safeImage}" alt="${safeTitle}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:52px;height:52px;border-radius:8px;background:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${cfg.emoji}</div>`}
+          <div style="min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:#1e293b;line-height:1.3;">${safeTitle}</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+              ${r ? `<span style="font-size:11px;color:#1e293b;">⭐ ${r}</span>` : ""}
+              <span style="font-size:10px;color:${cfg.color};font-weight:600;">${cfg.emoji} ${cfg.label}</span>
+            </div>
+          </div>
+        </div>
+      `)
+      .addTo(map);
+  }, []);
+
   // ── Update GeoJSON data when filters/listings change ──
   useEffect(() => {
     const map = mapRef.current;
@@ -864,20 +994,33 @@ export default function CaribbeanMap({
     // Update the source data (no layer recreation needed)
     source.setData({
       type: "FeatureCollection",
-      features: filtered.map((l) => ({
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
-        },
-        properties: {
-          id: l.id,
-          title: l.title,
-          type: l.type,
-          price: l.priceAmount ? parseFloat(l.priceAmount) : null,
-          color: categoryConfig[l.type]?.color || "#D4A017",
-        },
-      })),
+      features: filtered.map((l) => {
+        const cfg = categoryConfig[l.type] || categoryConfig.stay;
+        const shortTitle = l.title.length > 22 ? `${l.title.slice(0, 20).trim()}…` : l.title;
+        const priceNum = l.priceAmount ? parseFloat(l.priceAmount) : null;
+        const ratingNum = l.avgRating ? parseFloat(l.avgRating) : 0;
+        const badgePrefix = priceNum && priceNum > 0
+          ? `${cfg.emoji} $${Math.round(priceNum)}`
+          : ratingNum > 0
+          ? `${cfg.emoji} ★${ratingNum.toFixed(1)}`
+          : cfg.emoji;
+        return {
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
+          },
+          properties: {
+            id: l.id,
+            title: l.title,
+            type: l.type,
+            price: priceNum,
+            color: cfg.color,
+            featured: Boolean(l.isFeatured || ratingNum >= 4.8),
+            badgeLabel: `${badgePrefix} · ${shortTitle}`,
+          },
+        };
+      }),
     });
   }, [filtered, mapReady]);
 
@@ -886,7 +1029,7 @@ export default function CaribbeanMap({
     const map = mapRef.current;
     if (!map || !mapReady || !layersInitRef.current) return;
 
-    const pinLayers = ["clusters", "cluster-count", "unclustered-point", "unclustered-label"];
+    const pinLayers = ["clusters-glow", "clusters", "cluster-count", "unclustered-halo", "unclustered-point", "unclustered-label"];
 
     if (heatmapActive) {
       pinLayers.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none"); });
@@ -962,7 +1105,7 @@ export default function CaribbeanMap({
     const island = activeIslandRef.current;
     const waypoints = island
       ? buildIslandFlyover(island, listings)
-      : FLYOVER_WAYPOINTS;
+      : buildCaribbeanOverviewFlyover(listings);
 
     flyoverWaypointsRef.current = waypoints;
     setIsFlyover(true);
@@ -1229,10 +1372,19 @@ export default function CaribbeanMap({
 
       {/* Right controls */}
       <div className="absolute top-20 right-3 flex flex-col gap-2 z-10">
+        <button
+          onClick={() => setSidebarOpen((prev) => !prev)}
+          className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
+            sidebarOpen ? "bg-navy-700 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"
+          }`}
+          title={sidebarOpen ? "Hide places list" : "Show places list"}
+        >
+          <List size={16} />
+        </button>
         <button onClick={locateUser} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title="My location">
           <Navigation size={16} className="text-navy-700" />
         </button>
-        <button onClick={isFlyover ? stopFlyover : startFlyover} className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${isFlyover ? "bg-gold-700 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"}`} title="Cinematic tour">
+        <button onClick={isFlyover ? stopFlyover : startFlyover} className={`w-9 h-9 rounded-lg shadow-lg flex items-center justify-center transition-colors ${isFlyover ? "bg-gold-700 text-white" : "bg-white/90 backdrop-blur-md hover:bg-white text-navy-700"}`} title="3D Cinematic Tour">
           {isFlyover ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <button onClick={resetView} className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors" title={`Reset view (bearing: ${Math.round(mapBearing)}°)`}>
@@ -1245,10 +1397,12 @@ export default function CaribbeanMap({
 
       {/* Listing count & active filter summary */}
       {mapReady && (
-        <div className="absolute top-14 left-3 z-10">
-          <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-lg px-3 py-2 text-xs max-w-[260px]">
-            <div className="font-semibold text-navy-700">
-              Showing {filtered.length.toLocaleString()} of {listings.filter(l => l.latitude && l.longitude && Number.isFinite(Number(l.latitude)) && Number.isFinite(Number(l.longitude))).length.toLocaleString()} listings
+        <div className="absolute top-14 left-14 z-10 hidden sm:block">
+          <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-lg px-3.5 py-2 text-xs max-w-[280px] border border-white/60">
+            <div className="font-semibold text-navy-700 flex items-center gap-2">
+              <span>
+                Showing {filtered.length.toLocaleString()} of {listings.filter(l => l.latitude && l.longitude && Number.isFinite(Number(l.latitude)) && Number.isFinite(Number(l.longitude))).length.toLocaleString()} listings
+              </span>
             </div>
             {activeCategories.size < Object.keys(categoryConfig).length && (
               <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -1311,6 +1465,166 @@ export default function CaribbeanMap({
           ))}
         </div>
       </div>
+
+      {/* Viewport-Synced Explorer Drawer (rendered after Category filters to preserve button query order) */}
+      {sidebarOpen && !isFlyover && (
+        <aside
+          aria-label="Places in map view"
+          className="hidden md:flex flex-col absolute top-3 bottom-14 right-14 w-[330px] z-10 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-cream-200/80 overflow-hidden"
+        >
+          {/* Drawer Header */}
+          <div className="px-3.5 py-3 border-b border-cream-200 bg-white/90">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-navy-700">
+                  {activeIsland && islandCoords[activeIsland] ? islandCoords[activeIsland].name : "Caribbean Explorer"}
+                </h2>
+                <p className="text-[11px] text-navy-400">
+                  {inViewListings.length.toLocaleString()} places in current view
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={startFlyover}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-700 hover:bg-gold-800 text-white text-[11px] font-semibold shadow-sm transition-colors"
+                >
+                  <Sparkles size={11} />
+                  3D Tour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label="Close places panel"
+                  className="p-1 rounded-lg text-navy-400 hover:text-navy-700 hover:bg-cream-100"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Sort pills */}
+            <div className="flex items-center gap-1 mt-2">
+              {([
+                { id: "top", label: "Top Rated" },
+                { id: "reviews", label: "Most Reviewed" },
+                { id: "price", label: "Bookable Price" },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSortBy(tab.id)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors ${
+                    sortBy === tab.id
+                      ? "bg-navy-700 text-white"
+                      : "bg-cream-100 text-navy-600 hover:bg-cream-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Scrollable Card List */}
+          <div className="flex-1 overflow-y-auto divide-y divide-cream-100 p-2 space-y-1.5">
+            {inViewListings.slice(0, 40).map((l) => {
+              const cfg = categoryConfig[l.type] || categoryConfig.stay;
+              const rating = l.avgRating ? parseFloat(l.avgRating) : 0;
+              const price = l.priceAmount && parseFloat(l.priceAmount) > 0 ? `$${parseFloat(l.priceAmount).toFixed(0)}` : null;
+              const isSelected = selected?.id === l.id || hoveredId === l.id;
+
+              return (
+                <div
+                  key={l.id}
+                  onMouseEnter={() => handleCardHover(l)}
+                  onMouseLeave={() => handleCardHover(null)}
+                  onClick={() => {
+                    setSelected(l);
+                    mapRef.current?.flyTo({
+                      center: [parseFloat(l.longitude!), parseFloat(l.latitude!)],
+                      zoom: Math.max(mapRef.current?.getZoom() || 12, 15),
+                      pitch: 52,
+                      duration: 1100,
+                    });
+                  }}
+                  className={`group flex gap-2.5 p-2 rounded-xl cursor-pointer transition-all ${
+                    isSelected ? "bg-gold-50/90 ring-1 ring-gold-400" : "hover:bg-cream-50"
+                  }`}
+                >
+                  {/* Thumbnail */}
+                  <div
+                    className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center text-2xl"
+                    style={{ backgroundColor: `${cfg.color}22` }}
+                  >
+                    <span>{cfg.emoji}</span>
+                    {l.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={l.image}
+                        alt={l.title}
+                        loading="lazy"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                    {l.isFeatured && (
+                      <span className="absolute top-1 left-1 bg-amber-400 text-navy-900 text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow">
+                        ★ Featured
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Card Info */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white"
+                          style={{ background: cfg.color }}
+                        >
+                          {cfg.emoji} {cfg.label}
+                        </span>
+                        {rating > 0 && (
+                          <span className="text-[11px] font-semibold text-navy-700 flex items-center gap-0.5">
+                            <Star size={10} className="text-gold-600 fill-gold-500" />
+                            {rating.toFixed(1)}
+                            {l.reviewCount ? <span className="text-navy-400 font-normal">({l.reviewCount})</span> : null}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xs font-semibold text-navy-800 line-clamp-1 mt-1 group-hover:text-gold-700 transition-colors">
+                        {l.title}
+                      </h3>
+                      <p className="text-[10px] text-navy-400 truncate">
+                        📍 {l.parish ? `${l.parish}, ` : ""}{l.islandName}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-1">
+                      {price ? (
+                        <span className="text-xs font-bold text-navy-800">
+                          {price}
+                          {l.priceUnit && <span className="text-[10px] font-normal text-navy-400">/{l.priceUnit}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-navy-400 font-medium">Tap to fly to pin</span>
+                      )}
+                      <Link
+                        href={`/${l.islandSlug}/${l.slug}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] font-semibold text-gold-700 hover:text-gold-800 flex items-center gap-0.5"
+                      >
+                        Details <ChevronRight size={11} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      )}
 
       {/* Flyover HUD */}
       {isFlyover && flyoverLabel && (

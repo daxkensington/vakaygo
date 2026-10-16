@@ -79,7 +79,7 @@ export default function MapPage() {
     }, 20_000);
     async function loadListings() {
       try {
-        const params = new URLSearchParams({ limit: "1500" });
+        const params = new URLSearchParams({ limit: "2000" });
         if (activeIsland) params.set("island", activeIsland);
         const res = await fetch(`/api/listings?${params}`, { signal: controller.signal, cache: "no-store" });
         if (!current || controller.signal.aborted) return;
@@ -102,17 +102,17 @@ export default function MapPage() {
   return (
     <main className="flex flex-col h-[calc(100vh-64px)]">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200 gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <MapIcon size={18} className="text-gold-700" />
           <h1 className="text-sm font-semibold text-navy-700">Caribbean Map</h1>
-          <span className="text-xs text-navy-400" aria-live="polite">
+          <span className="text-xs text-navy-400 bg-cream-100 px-2 py-0.5 rounded-full font-medium" aria-live="polite">
             {loading ? "Loading..." : failed ? "Listings unavailable" : `${listings.length} mapped listings`}
           </span>
         </div>
 
         {/* Island quick-select */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[60vw]">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[58vw]">
           {islands.map((island) => (
             <button
               key={island.slug}
@@ -120,7 +120,7 @@ export default function MapPage() {
               onClick={() => setActiveIsland(island.slug)}
               className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                 activeIsland === island.slug
-                  ? "bg-gold-700 text-white"
+                  ? "bg-gold-700 text-white shadow-sm"
                   : "bg-cream-50 text-navy-600 hover:bg-cream-100"
               }`}
             >
@@ -129,12 +129,22 @@ export default function MapPage() {
           ))}
         </div>
 
-        <Link
-          href="/explore"
-          className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-700 font-medium"
-        >
-          Explore <ChevronRight size={14} />
-        </Link>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {activeIsland && (
+            <Link
+              href={`/${activeIsland}`}
+              className="hidden md:flex items-center gap-1 text-xs text-navy-600 hover:text-gold-700 font-medium"
+            >
+              {islandName} Guide <ChevronRight size={13} />
+            </Link>
+          )}
+          <Link
+            href={activeIsland ? `/explore?island=${activeIsland}` : "/explore"}
+            className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-800 font-semibold"
+          >
+            Explore <ChevronRight size={14} />
+          </Link>
+        </div>
       </div>
 
       {/* Full-height map */}
