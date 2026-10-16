@@ -5,6 +5,7 @@ import { savedListings, listings, users, islands } from "@/drizzle/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { sendPriceDropAlert } from "@/server/email";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
+import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 
 import { logger } from "@/lib/logger";
 
@@ -79,6 +80,13 @@ export async function GET(request: Request) {
       if (last === null) {
         seeded++;
       } else if (current <= last * DROP_THRESHOLD && row.email) {
+        const windowCheck = checkRecipientSendingWindow({
+          islandSlug: row.islandSlug,
+          email: row.email,
+        });
+        if (!windowCheck.allowed) {
+          continue; // hold lastKnownPrice so the alert sends during daytime hours
+        }
         try {
           if (!(await getListingBookingEligibility(row.listingId, { refreshProvider: true })).eligible) continue;
           await sendPriceDropAlert({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { enrichListingContactEmail, sendBusinessInterestOutreachEmail } from "@/server/outreach-automation";
+import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import { sendEmail } from "@/server/mail-client";
 import { logger } from "@/lib/logger";
 
@@ -242,6 +243,15 @@ async function runOperatorBootstrap() {
       [op.listingId]
     );
     if (row && !row.emailed_at && row.operator_email) {
+      const opWindow = checkRecipientSendingWindow({
+        islandSlug: String(row.island_slug || ""),
+        country: op.island,
+        email: String(row.operator_email),
+      });
+      if (!opWindow.allowed) {
+        actions.push(`deferred_quiet_hours:${op.title}(${opWindow.localTimeFormatted}_${opWindow.timeZone})`);
+        continue;
+      }
       const onboardingUrl = `https://vakaygo.com/operator/onboarding/${op.listingId}`;
       const text = [
         `Hi ${op.name},`,
@@ -291,7 +301,7 @@ async function runOperatorBootstrap() {
   const [paulaFlag] = await db.query(
     `SELECT enabled FROM feature_flags WHERE key = 'emailed_paula_grasse_2026_10_15' LIMIT 1`
   );
-  if (!paulaFlag?.enabled) {
+  if (!paulaFlag?.enabled && checkRecipientSendingWindow({ country: "US" }).allowed) {
     await sendEmail({
       from: "VakayGo Support <hello@vakaygo.com>",
       to: "paulagrasse@yahoo.com",
@@ -374,13 +384,14 @@ export async function GET(request: NextRequest) {
 
     let enrichedCount = 0;
     let emailedCount = 0;
+    let skippedQuietHoursCount = 0;
     const results: Array<{ id: string; email: string | null; emailed: boolean }> = [];
 
     // 1. Drip-send at most 4 outreach emails per cron run FIRST (before slow external website crawls)
     // Prioritized by: (1) active traveler interest/bookings, (2) high-value bookable categories, (3) highest rating/reviews
-    // Guarded by 4/hr & 18/day global cap in sendBusinessInterestOutreachEmail
-    const readyToEmail = await db.query(
-      `SELECT l.id, l.type_data->>'email' AS email
+    // Filtered by recipient local timezone business hours (08:30–19:30 local time) + 4/hr & 18/day global cap
+    const readyCandidates = await db.query(
+      `SELECT l.id, l.type_data->>'email' AS email, i.slug AS island_slug, i.country AS island_country
        FROM business_outreach o
        JOIN listings l ON l.id = o.listing_id
        JOIN islands i ON i.id = l.island_id AND i.is_active = true
@@ -410,10 +421,20 @@ export async function GET(request: NextRequest) {
          l.avg_rating DESC NULLS LAST,
          l.review_count DESC NULLS LAST,
          o.created_at ASC
-       LIMIT 4`
+       LIMIT 60`
     );
 
-    for (const item of readyToEmail) {
+    for (const item of readyCandidates) {
+      if (emailedCount >= 4) break;
+      const windowCheck = checkRecipientSendingWindow({
+        islandSlug: String(item.island_slug || ""),
+        country: String(item.island_country || ""),
+        email: String(item.email || ""),
+      });
+      if (!windowCheck.allowed) {
+        skippedQuietHoursCount++;
+        continue;
+      }
       const mailRes = await sendBusinessInterestOutreachEmail(item.id, {
         triggeredBy: "cron",
         markStatusContacted: true,
@@ -483,6 +504,7 @@ export async function GET(request: NextRequest) {
       scanned: candidates.length,
       enrichedCount,
       emailedCount,
+      skippedQuietHoursCount,
       results,
     });
   } catch (error) {
