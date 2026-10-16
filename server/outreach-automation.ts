@@ -134,6 +134,20 @@ export function isValidBusinessEmail(raw: unknown): raw is string {
   return true;
 }
 
+function decodeCfEmail(hex: string): string {
+  try {
+    const r = parseInt(hex.slice(0, 2), 16);
+    let email = "";
+    for (let n = 2; n < hex.length; n += 2) {
+      const charCode = parseInt(hex.slice(n, n + 2), 16) ^ r;
+      email += String.fromCharCode(charCode);
+    }
+    return email;
+  } catch {
+    return "";
+  }
+}
+
 export function extractBusinessEmailsFromHtml(html: string, websiteUrl?: string | null): string[] {
   if (!html || typeof html !== "string") return [];
 
@@ -149,8 +163,17 @@ export function extractBusinessEmailsFromHtml(html: string, websiteUrl?: string 
   const candidates = new Map<string, number>();
 
   const recordCandidate = (raw: string, bonus: number) => {
-    const cleaned = decodeURIComponent(raw)
+    let decoded = raw;
+    try {
+      decoded = decodeURIComponent(raw);
+    } catch {
+      // ignore malformed URI sequence
+    }
+    const cleaned = decoded
       .replace(/^mailto:/i, "")
+      .replace(/\\u0040/gi, "@")
+      .replace(/&#64;/g, "@")
+      .replace(/&#46;/g, ".")
       .split(/[?&"'\s<>(),;]/)[0]
       .replace(/[.:,;]+$/, "")
       .trim()
@@ -176,16 +199,30 @@ export function extractBusinessEmailsFromHtml(html: string, websiteUrl?: string 
     }
   };
 
-  // 1. High-signal mailto: links
-  const mailtoRegex = /mailto:([^\s"'<>?#]+)/gi;
+  // 1. Cloudflare email-protection (data-cfemail and /cdn-cgi/l/email-protection#...)
+  const cfRegex = /(?:data-cfemail=["']|\/cdn-cgi\/l\/email-protection#)([0-9a-fA-F]{10,200})/g;
   let match: RegExpExecArray | null;
+  while ((match = cfRegex.exec(html)) !== null) {
+    const cfDecoded = decodeCfEmail(match[1]);
+    if (cfDecoded) recordCandidate(cfDecoded, 45);
+  }
+
+  // 2. High-signal mailto: links
+  const mailtoRegex = /mailto:([^\s"'<>?#]+)/gi;
   while ((match = mailtoRegex.exec(html)) !== null) {
     recordCandidate(match[1], 40);
   }
 
-  // 2. Plain email addresses in text/attributes
+  // 3. Obfuscated [at] / (at) addresses
+  const obfRegex = /\b([a-zA-Z0-9._%+-]{1,64})\s*(?:\[at\]|\(at\))\s*([a-zA-Z0-9.-]{1,190})\s*(?:\[dot\]|\(dot\)|\.)\s*([a-zA-Z]{2,24})\b/gi;
+  while ((match = obfRegex.exec(html)) !== null) {
+    recordCandidate(`${match[1]}@${match[2]}.${match[3]}`, 30);
+  }
+
+  // 4. Plain email addresses in text/attributes
+  const normalizedHtml = html.replace(/&#64;/g, "@").replace(/&#46;/g, ".").replace(/\\u0040/gi, "@");
   const emailRegex = /\b([a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,190}\.[a-zA-Z]{2,24})\b/g;
-  while ((match = emailRegex.exec(html)) !== null) {
+  while ((match = emailRegex.exec(normalizedHtml)) !== null) {
     recordCandidate(match[1], 10);
   }
 
@@ -233,7 +270,7 @@ async function fetchHtmlWithTimeout(url: string, timeoutMs = 4500): Promise<stri
       return null;
     }
     const text = await res.text();
-    return text.slice(0, 250_000);
+    return text.slice(0, 2_000_000);
   } catch {
     return null;
   }

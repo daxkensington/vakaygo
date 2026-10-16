@@ -15,8 +15,11 @@ export async function GET(request: NextRequest) {
   try {
     const db = neon(process.env.DATABASE_URL!);
     const rows = await db.query(`SELECT l.id,l.title,l.slug,i.slug "islandSlug",i.name "islandName",l.address,
-      l.status "listingStatus",i.is_active "islandActive",l.type_data->>'website' website,l.type_data->>'email' email,tc.phone,
-      tc.source "contactSource",tc.source_reference "contactSourceReference",
+      l.status "listingStatus",i.is_active "islandActive",l.type_data->>'website' website,l.type_data->>'email' email,
+      l.type_data->>'whatsapp' whatsapp,l.type_data->>'instagram' instagram,l.type_data->>'facebook' facebook,
+      coalesce(tc.phone, l.type_data->>'phone') phone,
+      coalesce(tc.source, CASE WHEN coalesce(l.type_data->>'phone','')<>'' THEN 'directory' ELSE NULL END) "contactSource",
+      tc.source_reference "contactSourceReference",
       o.status,o.notes,o.updated_at::text "updatedAt",o.contacted_at "contactedAt",
       coalesce(d.interested_customers,0)::int "interestedCustomers",d.last_interest "lastInterest",
       vakaygo_listing_claim_verified(l.id) "claimVerified"
@@ -29,7 +32,14 @@ export async function GET(request: NextRequest) {
         AND ($1 NOT IN ('new','reviewing') OR (d.interested_customers>0 AND l.status='active' AND i.is_active=true))
       ORDER BY d.interested_customers DESC NULLS LAST,d.last_interest DESC NULLS LAST,l.id LIMIT 51 OFFSET $2`, [status, page * 50]);
     const items = rows.slice(0, 50).map(row => {
-      const item = { ...row, website: safeWebUrl(row.website) || null, email: row.email || null };
+      const item = {
+        ...row,
+        website: safeWebUrl(row.website) || null,
+        email: row.email || null,
+        whatsapp: row.whatsapp || null,
+        instagram: safeWebUrl(row.instagram) || null,
+        facebook: safeWebUrl(row.facebook) || null,
+      };
       const draft = row.status !== "do_not_contact" && row.interestedCustomers > 0 && row.listingStatus === "active" && row.islandActive
         ? outreachDraft(row as Parameters<typeof outreachDraft>[0]) : null;
       return { ...item, draft };
