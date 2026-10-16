@@ -7,8 +7,8 @@ async function session(role = "traveler") {
 }
 test("claim finder resolves a real listing and keeps its claim identifier", async ({ page, request }) => {
   await page.goto("/for-businesses");
-  await expect(page).toHaveTitle("Claim Your Caribbean Business Listing | VakayGo");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Claim it");
+  await expect(page).toHaveTitle("Claim Your Business Listing — 0% Guest Fee & 85%–90% Payouts | VakayGo");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Your business.");
   await page.getByRole("textbox", { name: "Business name" }).fill("Audit directory cafe");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByRole("link", { name: "Claim this listing", exact: true })).toHaveAttribute("href", "/auth/signup?role=operator&claim=20000000-0000-4000-8000-000000000009");
