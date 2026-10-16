@@ -21,16 +21,19 @@ export const DESTINATION_TIMEZONES: Record<string, string> = {
   "mallorca": "Europe/Madrid",
   "ibiza": "Europe/Madrid",
   "amalfi-coast": "Europe/Rome",
+  "amalfi-coast-capri": "Europe/Rome",
   "hvar-split": "Europe/Zagreb",
 
   // Latin America (Mexico, Belize, Costa Rica, Colombia)
   "tulum": "America/Cancun",
   "cancun": "America/Cancun",
+  "cancun-riviera-maya": "America/Cancun",
   "los-cabos": "America/Mazatlan",
   "puerto-vallarta": "America/Mexico_City",
   "ambergris-caye": "America/Belize",
   "guanacaste": "America/Costa_Rica",
   "cartagena": "America/Bogota",
+  "medellin": "America/Bogota",
 
   // Western Caribbean (UTC-5 / EST-EDT)
   "jamaica": "America/Jamaica",
