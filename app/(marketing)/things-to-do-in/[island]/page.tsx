@@ -115,6 +115,30 @@ const heroImages: Record<string, string> = {
   "hvar-split": "/images/islands/hvar-split.jpg",
 };
 
+const caribbeanSeasonFaqSlugs = new Set<string>([
+  "grenada",
+  "barbados",
+  "jamaica",
+  "trinidad-and-tobago",
+  "st-lucia",
+  "bahamas",
+  "aruba",
+  "curacao",
+  "dominican-republic",
+  "antigua",
+  "st-vincent",
+  "dominica",
+  "turks-and-caicos",
+  "cayman-islands",
+  "bonaire",
+  "st-kitts",
+  "martinique",
+  "guadeloupe",
+  "us-virgin-islands",
+  "british-virgin-islands",
+  "puerto-rico",
+]);
+
 const sectionConfig = [
   { type: "tour", label: "Tours & Excursions", icon: Compass, color: "bg-teal-500" },
   { type: "excursion", label: "Excursions & Adventures", icon: Compass, color: "bg-teal-600" },
@@ -139,16 +163,18 @@ const typeFallbacks: Record<string, string> = {
   guide: "from-gold-400 to-teal-500",
 };
 
-function getFaqs(name: string) {
+function getFaqs(name: string, slug: string) {
   return [
     {
       q: `What are the top things to do in ${name}?`,
       a: `${name} offers a wide range of activities including guided tours, snorkeling, hiking, fine dining, cultural events, and beach excursions. Use VakayGo to discover and book the best local experiences rated by real travelers.`,
     },
-    {
-      q: `When is the best time to visit ${name}?`,
-      a: `The Caribbean dry season (December to April) is generally the best time to visit ${name}, with warm temperatures and less rainfall. However, the wet season (June to November) offers lower prices and fewer crowds.`,
-    },
+    ...(caribbeanSeasonFaqSlugs.has(slug)
+      ? [{
+          q: `When is the best time to visit ${name}?`,
+          a: `The Caribbean dry season (December to April) is generally the best time to visit ${name}, with warm temperatures and less rainfall. However, the wet season (June to November) offers lower prices and fewer crowds.`,
+        }]
+      : []),
     {
       q: `How do I get around ${name}?`,
       a: `You can explore ${name} by taxi, rental car, local minibus, or private transfer. VakayGo offers transport and transfer options so you can book rides directly from verified local operators.`,
@@ -187,7 +213,7 @@ export default async function ThingsToDoPage({ params }: Props) {
   >[];
 
   const heroImg = heroImages[slug] || "/images/hero/caribbean-hero.jpg";
-  const faqs = getFaqs(island.name);
+  const faqs = getFaqs(island.name, slug);
 
   // JSON-LD ItemList
   const jsonLd = {
