@@ -91,6 +91,7 @@ const tiers = [
 export default function RewardsPage() {
   const { user, loading: authLoading } = useAuth();
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
+  const [loyaltyError, setLoyaltyError] = useState(false);
   const [referrals, setReferrals] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "earned" | "redeemed">("all");
@@ -98,23 +99,32 @@ export default function RewardsPage() {
   const [generatingCode, setGeneratingCode] = useState(false);
 
   const fetchData = useCallback(async () => {
-    try {
-      const [loyaltyRes, referralRes] = await Promise.all([
-        fetch(`/api/loyalty?filter=${filter}`),
-        fetch("/api/referrals"),
-      ]);
-
-      if (loyaltyRes.ok) {
-        setLoyalty(await loyaltyRes.json());
-      }
-      if (referralRes.ok) {
-        setReferrals(await referralRes.json());
-      }
-    } catch {
-      // Silent fail
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([
+      (async () => {
+        try {
+          const res = await fetch(`/api/loyalty?filter=${filter}`);
+          if (!res.ok) {
+            setLoyaltyError(true);
+            return;
+          }
+          setLoyalty(await res.json());
+          setLoyaltyError(false);
+        } catch {
+          setLoyaltyError(true);
+        }
+      })(),
+      (async () => {
+        try {
+          const res = await fetch("/api/referrals");
+          if (res.ok) {
+            setReferrals(await res.json());
+          }
+        } catch {
+          // Referral failures do not affect loyalty loading.
+        }
+      })(),
+    ]);
+    setLoading(false);
   }, [filter]);
 
   useEffect(() => {
@@ -137,11 +147,17 @@ export default function RewardsPage() {
     }
   }
 
-  function copyReferralLink() {
+  async function copyReferralLink() {
     if (!referrals?.referralLink) return;
-    navigator.clipboard.writeText(referrals.referralLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(false);
+    try {
+      if (!navigator.clipboard?.writeText) return;
+      await navigator.clipboard.writeText(referrals.referralLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   }
 
   if (authLoading || loading) {
@@ -175,8 +191,14 @@ export default function RewardsPage() {
   const tier = (loyalty?.tier || "explorer") as string;
   const colors = tierColors[tier] || tierColors.explorer;
   const nextTier = loyalty?.nextTier;
+  const tierMinPoints = loyalty?.tierInfo?.minPoints;
+  const tierSpan = nextTier && typeof tierMinPoints === "number"
+    ? nextTier.pointsNeeded - tierMinPoints
+    : 0;
   const progressPercent = nextTier
-    ? Math.min(100, ((points - (loyalty?.tierInfo?.minPoints || 0)) / (nextTier.pointsNeeded - (loyalty?.tierInfo?.minPoints || 0))) * 100)
+    ? Number.isFinite(tierSpan) && tierSpan !== 0
+      ? Math.min(100, ((points - (tierMinPoints ?? 0)) / tierSpan) * 100)
+      : 0
     : 100;
 
   return (
@@ -186,6 +208,19 @@ export default function RewardsPage() {
         <div className="mx-auto max-w-5xl px-4 md:px-6 py-10">
 
           {/* ─── HERO SECTION ─────────────────────────────────── */}
+          {loyaltyError ? (
+            <div role="alert" className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6 mb-10">
+              <h1 className="text-2xl font-bold text-navy-700">Your Rewards</h1>
+              <p className="text-navy-500 mt-2">Unable to load your loyalty rewards. Please try again.</p>
+              <button
+                type="button"
+                onClick={() => fetchData()}
+                className="mt-4 bg-gold-700 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
           <div className={`relative overflow-hidden bg-gradient-to-br ${colors.gradient} rounded-3xl p-8 md:p-12 text-white mb-10`}>
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-20 translate-x-20" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
@@ -237,9 +272,11 @@ export default function RewardsPage() {
               </div>
             </div>
           </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* ─── LEFT COLUMN: HISTORY + TIERS ────────────── */}
+            {!loyaltyError && (
             <div className="lg:col-span-2 space-y-8">
 
               {/* Points History */}
@@ -351,6 +388,7 @@ export default function RewardsPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* ─── RIGHT COLUMN: REFERRAL ──────────────────── */}
             <div className="space-y-8">
@@ -398,6 +436,7 @@ export default function RewardsPage() {
                       </code>
                       <button
                         onClick={copyReferralLink}
+                        aria-label="Copy referral link"
                         className="shrink-0 p-2 hover:bg-cream-200 rounded-lg transition-colors"
                       >
                         {copied ? (
@@ -476,7 +515,7 @@ export default function RewardsPage() {
               </div>
 
               {/* Quick Redeem */}
-              {points >= 500 && (
+              {!loyaltyError && points >= 500 && (
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
                   <h3 className="font-bold mb-2">Ready to Redeem?</h3>
                   <p className="text-teal-100 text-sm mb-4">
