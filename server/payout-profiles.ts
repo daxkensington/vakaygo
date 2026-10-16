@@ -8,7 +8,7 @@ export const ALLOWED_PAYOUT_METHODS = ["paypal", "wise", "bank_wire"] as const;
 export type PayoutMethod = (typeof ALLOWED_PAYOUT_METHODS)[number];
 
 export const ALLOWED_PAYOUT_CURRENCIES = [
-  "USD", "XCD", "BBD", "JMD", "KYD", "TTD", "DOP", "BSD", "AWG", "ANG", "EUR",
+  "USD", "EUR", "GBP", "CAD", "XCD", "BBD", "JMD", "KYD", "TTD", "DOP", "BSD", "AWG", "ANG", "MXN", "COP", "CRC", "BZD",
 ] as const;
 export type PayoutCurrency = (typeof ALLOWED_PAYOUT_CURRENCIES)[number];
 

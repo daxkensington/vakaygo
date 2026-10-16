@@ -121,6 +121,7 @@ export function isValidBusinessEmail(raw: unknown): raw is string {
   const [local, domain] = email.split("@");
   if (!local || !domain) return false;
   if (domain.endsWith(".invalid") || domain.endsWith(".local") || domain.endsWith(".test")) return false;
+  if (/^(?:badmail|honeypot|spamtrap)\./i.test(domain)) return false;
   if (/\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|eot|mp4|pdf|zip)$/i.test(domain)) return false;
   if (BLOCKED_EMAIL_DOMAINS.has(domain)) return false;
   for (const blocked of BLOCKED_EMAIL_DOMAINS) {
@@ -478,7 +479,7 @@ export async function sendBusinessInterestOutreachEmail(
     `- Update your photos, pricing, WhatsApp/phone contact, and availability`,
     `- Respond directly to traveler inquiries and booking requests`,
     `- Keep 85%-90% on direct bookings with a 0% guest booking fee (saving up to 50% compared to legacy 20%-30% OTA commissions)`,
-    `- Receive payouts via Wise, PayPal, or local/international bank wire`,
+    `- Receive payouts in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire`,
     ``,
     `Verify ownership of your page in 60 seconds here:`,
     `${claimUrl}`,
@@ -500,7 +501,7 @@ export async function sendBusinessInterestOutreachEmail(
   <ul style="padding-left:20px;margin:12px 0">
     <li><strong>0% Guest Booking Fee:</strong> Travelers pay zero platform markup.</li>
     <li><strong>Keep 85%&ndash;90% of Every Booking:</strong> Save up to 50% vs. traditional 20%&ndash;30% OTA commissions.</li>
-    <li><strong>Fast Regional Payouts:</strong> Get paid via Wise, PayPal, or local/international bank wire.</li>
+    <li><strong>Fast Multi-Currency Payouts:</strong> Get paid in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire.</li>
     <li><strong>Direct Inquiries:</strong> Update your photos, rates, and respond directly to travelers.</li>
   </ul>
   <p>Verify ownership of your listing in 60 seconds here:</p>

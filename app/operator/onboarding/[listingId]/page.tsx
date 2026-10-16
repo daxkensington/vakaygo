@@ -145,7 +145,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href={`/operator/listings/${listingId}`} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700">Review listing details</Link>
           <button disabled={busy || !canConnect} aria-describedby="payment-country-status" onClick={() => void perform("connect")} className={buttonClass}>{status.stripe.connected ? "Continue secure payment setup" : "Start secure payment setup"}</button>
-          <Link href={`/operator/payouts?listingId=${encodeURIComponent(listingId)}`} className="rounded-xl border border-gold-300 bg-gold-50 px-5 py-3 font-semibold text-gold-800">Caribbean &amp; direct payout setup (PayPal / Wise / Wire)</Link>
+          <Link href={`/operator/payouts?listingId=${encodeURIComponent(listingId)}`} className="rounded-xl border border-gold-300 bg-gold-50 px-5 py-3 font-semibold text-gold-800">Global &amp; direct payout setup (PayPal / Wise / Wire)</Link>
           <button disabled={busy || refreshing} onClick={() => void load(true).then(fresh => { if (fresh) setMessage("Verification status refreshed."); })} className="rounded-xl border border-cream-300 px-5 py-3 font-semibold text-navy-700 disabled:opacity-50">Refresh verification status</button>
         </div>
         <p id="payment-country-status" className="mt-4 text-sm text-navy-500" aria-live="polite">{!selectedCountryName
