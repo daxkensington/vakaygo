@@ -30,8 +30,13 @@ export async function GET(request: NextRequest) {
     const db = getDb();
     const { searchParams } = new URL(request.url);
 
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12")));
+    const parseInteger = (value: string | null, fallback: number): number => {
+      if (value === null || !/^[+-]?[0-9]+$/.test(value)) return fallback;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && Number.isInteger(parsed) ? parsed : fallback;
+    };
+    const page = Math.max(1, parseInteger(searchParams.get("page"), 1));
+    const limit = Math.min(50, Math.max(1, parseInteger(searchParams.get("limit"), 12)));
     const offset = (page - 1) * limit;
     const category = searchParams.get("category");
     const islandSlug = searchParams.get("island");
