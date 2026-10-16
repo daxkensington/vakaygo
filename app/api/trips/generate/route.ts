@@ -66,7 +66,7 @@ async function runWhileActive<T>(signal: AbortSignal, work: () => PromiseLike<T>
   });
 }
 
-const SYSTEM_PROMPT = `You are VakayGo's AI Trip Planner. You create personalized Caribbean itineraries using REAL listings from the VakayGo platform.
+const SYSTEM_PROMPT = `You are VakayGo's AI Trip Planner. You create personalized itineraries across 34 Caribbean, Latin American, and Mediterranean destinations using REAL listings from the VakayGo platform.
 
 For each day of the trip, search for actual listings and build a schedule:
 - Morning activity (tour, excursion, or free time)

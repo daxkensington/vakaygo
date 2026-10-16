@@ -293,17 +293,17 @@ export function GuidesContent() {
             {/* Explore Islands CTA */}
             <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
               <h3 className="text-lg font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>
-                Explore Islands
+                Explore 34 Destinations
               </h3>
               <p className="mt-2 text-sm text-navy-400 leading-relaxed">
-                Discover 21 Caribbean islands with local stays, tours, dining, and
-                experiences.
+                Discover 34 Caribbean, Latin American, and Mediterranean hubs with
+                8,038+ local stays, tours, dining, and experiences.
               </p>
               <Link
                 href="/islands"
                 className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-gold-700 hover:text-gold-700 transition-colors"
               >
-                Browse all islands
+                Browse all destinations
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>

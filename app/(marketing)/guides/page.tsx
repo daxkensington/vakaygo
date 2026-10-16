@@ -8,13 +8,13 @@ import type { Metadata } from "next";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Caribbean Travel Guides & Tips",
+  title: "Global Sun & Sea Travel Guides — Caribbean, Latin America & Mediterranean",
   description:
-    "Expert Caribbean travel guides, destination tips, local culture insights, food recommendations, and trip planning advice from VakayGo.",
+    "Expert destination guides, local culture insights, restaurant recommendations, and trip planning advice across 34 Caribbean, Latin American, and Mediterranean hubs.",
   openGraph: {
-    title: "Caribbean Travel Guides & Tips | VakayGo",
+    title: "Global Sun & Sea Travel Guides | VakayGo",
     description:
-      "Expert Caribbean travel guides, destination tips, local culture insights, food recommendations, and trip planning advice.",
+      "Expert destination guides, local culture insights, restaurant recommendations, and trip planning advice across 34 coastal hubs.",
     url: "https://vakaygo.com/guides",
     type: "website",
   },
@@ -31,19 +31,20 @@ export default function GuidesPage() {
           <div className="absolute inset-0 bg-[url('/images/hero/caribbean-hero.jpg')] bg-cover bg-center opacity-20" />
           <div className="relative mx-auto max-w-4xl px-6 text-center">
             <p className="text-sm font-semibold text-gold-400 uppercase tracking-widest mb-4">
-              Travel Guides
+              34 Coastal Destinations
             </p>
             <h1
               className="text-4xl md:text-6xl font-bold text-white leading-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Caribbean Travel
+              Global Sun &amp; Sea
               <br />
-              <span className="text-gold-400">Guides & Tips</span>
+              <span className="text-gold-400">Travel Guides &amp; Tips</span>
             </h1>
             <p className="mt-6 text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
-              Insider knowledge from locals and seasoned travelers. Everything you
-              need to plan the perfect Caribbean getaway.
+              Insider knowledge from locals across the Caribbean, Latin America,
+              and the Mediterranean. Everything you need to plan an authentic
+              getaway with 0% guest booking fees.
             </p>
           </div>
         </section>
