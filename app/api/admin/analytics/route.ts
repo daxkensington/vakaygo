@@ -104,19 +104,28 @@ export async function GET() {
       .limit(5);
 
     // ── Top operators by revenue ───────────────────────────────
+    const operatorRevenue = db
+      .select({
+        operatorId: bookings.operatorId,
+        revenue: sql<number>`sum(${bookings.totalAmount})`.as("revenue"),
+      })
+      .from(bookings)
+      .groupBy(bookings.operatorId)
+      .as("operator_revenue");
+
     const topOperators = await db
       .select({
         name: users.name,
         businessName: users.businessName,
         listingCount: sql<number>`count(distinct ${listings.id})::int`,
-        revenue: sql<number>`coalesce(sum(${bookings.totalAmount}), 0)::numeric`,
+        revenue: sql<number>`coalesce(${operatorRevenue.revenue}, 0)::numeric`,
       })
       .from(users)
       .leftJoin(listings, eq(listings.operatorId, users.id))
-      .leftJoin(bookings, eq(bookings.operatorId, users.id))
+      .leftJoin(operatorRevenue, eq(operatorRevenue.operatorId, users.id))
       .where(eq(users.role, "operator"))
-      .groupBy(users.id, users.name, users.businessName)
-      .orderBy(desc(sql`coalesce(sum(${bookings.totalAmount}), 0)`))
+      .groupBy(users.id, users.name, users.businessName, operatorRevenue.revenue)
+      .orderBy(desc(sql`coalesce(${operatorRevenue.revenue}, 0)`))
       .limit(5);
 
     // ── Platform health ────────────────────────────────────────
