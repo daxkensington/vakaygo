@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
-// @sentry/nextjs v10 exposes no "/config" subpath — its export map is
-// ".", "./import", "./loader", "./async-storage-shim". withSentryConfig is
-// re-exported from the package root, which is also Sentry's documented import.
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({

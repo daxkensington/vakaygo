@@ -11,6 +11,7 @@ import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -108,9 +109,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-screen flex flex-col">
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-gold-700 focus:text-white focus:px-4 focus:py-2 focus:rounded-xl focus:font-semibold">
-          Skip to content
-        </a>
+        <SkipToContent />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -153,7 +152,7 @@ export default function RootLayout({
           }}
         />
         <LocaleHtmlAttrs />
-        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content" tabIndex={-1}>{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
         {process.env.VERCEL === "1" && <Analytics />}

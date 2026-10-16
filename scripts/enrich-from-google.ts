@@ -20,6 +20,9 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { recordValue, textValue } from "../lib/value-guards";
+import type { EnrichmentRow } from "./lib/enrichment-types";
+type GoogleListing = EnrichmentRow & { description: string | null; priceAmount: string | null };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
@@ -140,7 +143,7 @@ async function main() {
   const typeCondition = typeFilter ? sql`AND l.type = ${typeFilter}` : sql``;
 
   // Get listings that have a Google Place ID and are missing price or have generated descriptions
-  const result = await db.execute(sql`
+  const result = await db.execute<GoogleListing>(sql`
     SELECT l.id, l.title, l.type, l.description,
       l.price_amount as "priceAmount",
       l.type_data as "typeData"
@@ -154,7 +157,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Processing ${listings.length} listings with Google Place IDs\n`);
   if (dryRun) console.log("=== DRY RUN ===\n");
 
@@ -173,9 +176,9 @@ async function main() {
     const batch = listings.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
-        const td = listing.typeData || {};
-        const placeId = td.googlePlaceId;
+      batch.map(async (listing) => {
+        const td = recordValue(listing.typeData);
+        const placeId = textValue(td.googlePlaceId);
         if (!placeId) return;
 
         const details = await fetchPlaceDetails(placeId);
@@ -186,7 +189,7 @@ async function main() {
         }
 
         const updates: string[] = [];
-        let newTypeData = { ...td };
+        const newTypeData = { ...td };
         let priceAmount: number | null = null;
         let priceUnit: string | null = null;
         let newDescription: string | null = null;

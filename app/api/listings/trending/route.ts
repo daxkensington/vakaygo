@@ -4,6 +4,9 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { listings, listingViews, islands, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 import { logger } from "@/lib/logger";
 function getDb() {
@@ -13,6 +16,7 @@ function getDb() {
 export async function GET() {
   try {
     const db = getDb();
+    const bookingsEnabled = await bookingLaunchEnabled();
 
     // Get top 12 listings by view count in the last 7 days
     const trending = await db
@@ -23,6 +27,7 @@ export async function GET() {
         type: listings.type,
         headline: listings.headline,
         priceAmount: listings.priceAmount,
+        bookingEligible: bookingsEnabled ? currentListingBookable() : sql<boolean>`false`,
         priceCurrency: listings.priceCurrency,
         priceUnit: listings.priceUnit,
         avgRating: listings.avgRating,
@@ -31,19 +36,16 @@ export async function GET() {
         isFeatured: listings.isFeatured,
         islandSlug: islands.slug,
         islandName: islands.name,
-        image: media.url,
+        image: sql<string | null>`(SELECT ${media.url} FROM ${media} WHERE ${media.listingId} = ${listings.id}
+          ORDER BY ${media.isPrimary} DESC NULLS LAST, ${media.sortOrder} ASC LIMIT 1)`,
         viewCount: sql<number>`count(${listingViews.id})::int`.as("view_count"),
       })
       .from(listingViews)
       .innerJoin(listings, eq(listingViews.listingId, listings.id))
       .innerJoin(islands, eq(listings.islandId, islands.id))
-      .leftJoin(
-        media,
-        and(eq(media.listingId, listings.id), eq(media.isPrimary, true))
-      )
       .where(
         and(
-          eq(listings.status, "active"),
+          publicDirectoryListings(),
           sql`${listingViews.createdAt} >= now() - interval '7 days'`
         )
       )
@@ -61,14 +63,15 @@ export async function GET() {
         listings.parish,
         listings.isFeatured,
         islands.slug,
-        islands.name,
-        media.url
+        islands.name
       )
       .orderBy(desc(sql`count(${listingViews.id})`))
       .limit(12);
 
     const data = trending.map((t) => ({
       ...t,
+      bookingEligible: t.bookingEligible === true,
+      priceAmount: t.bookingEligible === true ? t.priceAmount : null,
       image: getImageUrl(t.image) || null,
     }));
 

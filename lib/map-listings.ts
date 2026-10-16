@@ -1,7 +1,10 @@
 import { LISTING_TYPES } from "@/lib/listing-filters";
 import type { MapListing } from "@/components/listings/caribbean-map";
 
-export const MAP_PAGE_SIZE = 250;
+/** Keep the first paint small; only directory continuations use the larger bound. */
+export const MAP_INITIAL_PAGE_SIZE = 250;
+export const MAP_PAGE_SIZE = 1000;
+export const MAP_PAGE_BYTE_LIMIT = 768 * 1024;
 export const MAP_PAGE_TIMEOUT_MS = 20_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

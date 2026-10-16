@@ -21,6 +21,7 @@
  *     pick it up after refreshing the photo_reference.
  */
 import { neon } from "@neondatabase/serverless";
+import { errorMessage } from "../lib/value-guards";
 import { put } from "@vercel/blob";
 
 const args = new Map(
@@ -74,9 +75,9 @@ async function migrateOne(row: Row): Promise<void> {
   let res: Response;
   try {
     res = await fetch(fetchUrl, { redirect: "follow" });
-  } catch (err: any) {
+  } catch (err) {
     failed++;
-    console.warn(`  fetch error ${row.id}: ${err.message}`);
+    console.warn(`  fetch error ${row.id}: ${errorMessage(err)}`);
     return;
   }
 
@@ -114,9 +115,9 @@ async function migrateOne(row: Row): Promise<void> {
       allowOverwrite: true,
       token: BLOB_TOKEN,
     });
-  } catch (err: any) {
+  } catch (err) {
     failed++;
-    console.warn(`  blob upload error ${row.id}: ${err.message}`);
+    console.warn(`  blob upload error ${row.id}: ${errorMessage(err)}`);
     return;
   }
 

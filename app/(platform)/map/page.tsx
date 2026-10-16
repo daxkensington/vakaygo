@@ -109,10 +109,10 @@ export default function MapPage() {
   }, [activeIsland, loadKey]);
 
   return (
-    <main className="flex flex-col h-[calc(100vh-64px)]">
+    <main className="flex min-w-0 w-full flex-col h-[calc(100vh-64px)]">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200 gap-3">
-        <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-white border-b border-cream-200 gap-3">
+        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-2 sm:flex-none">
           <MapIcon size={18} className="text-gold-700" />
           <h1 className="text-sm font-semibold text-navy-700">Destination Map</h1>
           <span className="text-xs text-navy-400 bg-cream-100 px-2 py-0.5 rounded-full font-medium" aria-live="polite">
@@ -121,13 +121,13 @@ export default function MapPage() {
         </div>
 
         {/* Island quick-select */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[58vw]">
+        <div className="order-last flex w-full min-w-0 items-center gap-1.5 overflow-x-auto scrollbar-none sm:order-none sm:w-auto sm:flex-1 sm:max-w-[58vw]">
           {islands.map((island) => (
             <button
               key={island.slug}
               aria-pressed={activeIsland === island.slug}
               onClick={() => setActiveIsland(island.slug)}
-              className={`flex-shrink-0 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className={`min-h-11 flex-shrink-0 px-3 py-2 text-xs font-medium rounded-full transition-colors ${
                 activeIsland === island.slug
                   ? "bg-gold-700 text-white shadow-sm"
                   : "bg-cream-50 text-navy-600 hover:bg-cream-100"
@@ -149,7 +149,7 @@ export default function MapPage() {
           )}
           <Link
             href={activeIsland ? `/explore?island=${activeIsland}` : "/explore"}
-            className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-800 font-semibold"
+            className="flex min-h-11 items-center gap-1 text-xs text-gold-700 hover:text-gold-800 font-semibold"
           >
             Explore <ChevronRight size={14} />
           </Link>

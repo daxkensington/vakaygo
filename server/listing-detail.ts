@@ -4,6 +4,9 @@ import { listings, media, islands, users } from "@/drizzle/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { publicListingTypeData } from "@/lib/listing-public-data";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -61,7 +64,7 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .innerJoin(users, eq(listings.operatorId, users.id))
-    .where(and(eq(listings.slug, slug), islandSlug ? eq(islands.slug, islandSlug) : undefined, eq(islands.isActive, true), eq(listings.status, "active"), ne(listings.operatorId, "197d8586-7fd3-4999-91de-a50ad7d70e23")))
+    .where(and(eq(listings.slug, slug), islandSlug ? eq(islands.slug, islandSlug) : undefined, publicDirectoryListings()))
     .limit(1);
 
   if (!listing) return null;
@@ -101,14 +104,14 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
       latitude: listings.latitude,
       longitude: listings.longitude,
       islandSlug: islands.slug,
-      bookingEligible: sql<boolean>`vakaygo_listing_bookable(${listings.id})`,
+      bookingEligible: currentListingBookable(),
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
       and(
         eq(listings.type, listing.type),
-        eq(listings.status, "active"),
+        publicDirectoryListings(),
         eq(listings.islandId, listing.islandId),
         ne(listings.id, listing.id)
       )
@@ -160,18 +163,7 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
     })
   );
 
-  const sanitizedTypeData =
-    listing.typeData && typeof listing.typeData === "object"
-      ? (() => {
-          const copy = { ...(listing.typeData as Record<string, unknown>) };
-          delete copy.phone;
-          delete copy.email;
-          delete copy.website;
-          delete copy.whatsapp;
-          delete copy.googleMapsUrl;
-          return copy;
-        })()
-      : listing.typeData;
+  const sanitizedTypeData = publicListingTypeData(listing.typeData);
 
   return {
     listing: {

@@ -12,7 +12,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, media, islands } from "../drizzle/schema";
+import { listings, media, islands, listingTypeEnum } from "../drizzle/schema";
 import { eq, and, isNull, sql, not, like } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
@@ -22,7 +22,10 @@ const args = process.argv.slice(2);
 const limitArg = args.find((a) => a.startsWith("--limit="));
 const limit = limitArg ? parseInt(limitArg.split("=")[1]) : 50;
 const typeArg = args.find((a) => a.startsWith("--type="));
-const typeFilter = typeArg ? typeArg.split("=")[1] : null;
+const rawType = typeArg?.split("=")[1];
+const typeFilter = listingTypeEnum.enumValues.find(value => value === rawType);
+if (typeArg && !typeFilter) throw new Error("Invalid --type: use a supported listing type");
+type AiPhotoListing = Pick<typeof listings.$inferSelect, "id" | "title" | "type" | "islandId">;
 const googleOnly = args.includes("--google-only");
 const concurrencyArg = args.find((a) => a.startsWith("--concurrency="));
 const concurrency = concurrencyArg ? parseInt(concurrencyArg.split("=")[1]) : 3;
@@ -112,7 +115,7 @@ async function main() {
 
   const db = drizzle(neon(DATABASE_URL));
 
-  let listingsToProcess: { id: string; title: string; type: string; islandId: number }[];
+  let listingsToProcess: AiPhotoListing[];
 
   if (googleOnly) {
     // Find listings whose ONLY images are Google Places URLs (likely broken/expired)
@@ -120,7 +123,7 @@ async function main() {
       ? sql`AND l.type = ${typeFilter}`
       : sql``;
 
-    const result = await db.execute(sql`
+    const result = await db.execute<AiPhotoListing>(sql`
       SELECT l.id, l.title, l.type, l.island_id as "islandId"
       FROM listings l
       WHERE l.status = 'active'
@@ -136,12 +139,12 @@ async function main() {
         ${typeCondition}
       LIMIT ${limit}
     `);
-    listingsToProcess = result.rows as any;
+    listingsToProcess = result.rows;
   } else {
     // Original: listings with zero media rows
     const conditions = [eq(listings.status, "active")];
     if (typeFilter) {
-      conditions.push(eq(listings.type, typeFilter as any));
+      conditions.push(eq(listings.type, typeFilter));
     }
 
     listingsToProcess = await db

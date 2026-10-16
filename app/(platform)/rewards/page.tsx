@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
@@ -90,50 +90,86 @@ const tiers = [
 
 export default function RewardsPage() {
   const { user, loading: authLoading } = useAuth();
+  if (authLoading) return <RewardsLoading />;
+  if (!user) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6 pt-20">
+          <Lock size={48} className="text-navy-200 mb-6" />
+          <h1 className="text-2xl font-bold text-navy-700">Sign in to view rewards</h1>
+          <p className="text-navy-400 mt-2">View your existing points and rewards history. New rewards and redemption are unavailable.</p>
+          <Link href="/auth/signin?next=%2Frewards" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors">
+            Sign In
+          </Link>
+        </div>
+      </>
+    );
+  }
+  return <RewardsAccount key={`${user.id}:${user.role}:${user.email}`} />;
+}
+
+function RewardsLoading() {
+  return <><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-700" /></div></>;
+}
+
+function RewardsAccount() {
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [referrals, setReferrals] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "earned" | "redeemed">("all");
   const [copied, setCopied] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [loyaltyRes, referralRes] = await Promise.all([
-        fetch(`/api/loyalty?filter=${filter}`),
-        fetch("/api/referrals"),
-      ]);
-
-      if (loyaltyRes.ok) {
-        setLoyalty(await loyaltyRes.json());
-      }
-      if (referralRes.ok) {
-        setReferrals(await referralRes.json());
-      }
-    } catch {
-      // Silent fail
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
+  const active = useRef(true);
+  const mutations = useRef(new Set<AbortController>());
 
   useEffect(() => {
-    if (user) fetchData();
-    else setLoading(false);
-  }, [user, fetchData]);
+    active.current = true;
+    const pending = mutations.current;
+    return () => {
+      active.current = false;
+      for (const controller of pending) controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    async function fetchData() {
+      try {
+        const [loyaltyData, referralData] = await Promise.all([
+          fetch(`/api/loyalty?filter=${filter}`, { cache: "no-store", signal: controller.signal }).then(response => response.ok ? response.json() : null),
+          fetch("/api/referrals", { cache: "no-store", signal: controller.signal }).then(response => response.ok ? response.json() : null),
+        ]);
+        if (!current || controller.signal.aborted) return;
+        if (loyaltyData) setLoyalty(loyaltyData);
+        if (referralData) setReferrals(referralData);
+      } catch {
+        // A failed read must not restore data from an obsolete account/filter.
+      } finally {
+        if (current && !controller.signal.aborted) setLoading(false);
+      }
+    }
+    void fetchData();
+    return () => { current = false; controller.abort(); };
+  }, [filter]);
 
   async function generateCode() {
+    if (generatingCode) return;
+    const controller = new AbortController(); mutations.current.add(controller);
     setGeneratingCode(true);
     try {
-      const res = await fetch("/api/referrals", { method: "POST" });
+      const res = await fetch("/api/referrals", { method: "POST", signal: controller.signal });
       if (res.ok) {
         const data = await res.json();
-        setReferrals((prev) => prev ? { ...prev, referralCode: data.referralCode, referralLink: data.referralLink } : prev);
+        if (active.current && !controller.signal.aborted)
+          setReferrals((prev) => prev ? { ...prev, referralCode: data.referralCode, referralLink: data.referralLink } : prev);
       }
     } catch {
       // Silent
     } finally {
-      setGeneratingCode(false);
+      mutations.current.delete(controller);
+      if (active.current && !controller.signal.aborted) setGeneratingCode(false);
     }
   }
 
@@ -144,32 +180,7 @@ export default function RewardsPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (authLoading || loading) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-700" />
-        </div>
-      </>
-    );
-  }
-
-  if (!user) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6 pt-20">
-          <Lock size={48} className="text-navy-200 mb-6" />
-          <h1 className="text-2xl font-bold text-navy-700">Sign in to view rewards</h1>
-          <p className="text-navy-400 mt-2">Earn points on every booking and unlock exclusive perks.</p>
-          <Link href="/auth/signin" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors">
-            Sign In
-          </Link>
-        </div>
-      </>
-    );
-  }
+  if (loading) return <RewardsLoading />;
 
   const points = loyalty?.points || 0;
   const tier = (loyalty?.tier || "explorer") as string;
@@ -204,7 +215,7 @@ export default function RewardsPage() {
 
                 <p className="text-white/80 text-lg">
                   {loyalty?.tierInfo?.name || "Explorer"} Member
-                  {loyalty?.discount ? ` — ${(loyalty.discount * 100).toFixed(0)}% fee discount active` : ""}
+                  {loyalty?.discount ? ` — recorded tier discount: ${(loyalty.discount * 100).toFixed(0)}%` : ""}
                 </p>
 
                 {nextTier && (
@@ -231,13 +242,14 @@ export default function RewardsPage() {
               </div>
 
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[180px]">
-                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Points Value</p>
+                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Historical program value</p>
                 <p className="text-3xl font-bold">${(points / 100).toFixed(2)}</p>
-                <p className="text-white/60 text-xs mt-1">in booking credit</p>
+                <p className="text-white/60 text-xs mt-1">Redemption unavailable</p>
               </div>
             </div>
           </div>
 
+          <p role="status" className="mb-8 rounded-xl bg-gold-50 p-4 text-sm text-navy-700">New booking rewards, referral bonuses, tier benefits and redemption are unavailable during the directory launch. Your existing points and transaction history remain visible below.</p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* ─── LEFT COLUMN: HISTORY + TIERS ────────────── */}
             <div className="lg:col-span-2 space-y-8">
@@ -306,7 +318,8 @@ export default function RewardsPage() {
 
               {/* ─── TIER LADDER ────────────────────────────── */}
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
-                <h2 className="text-lg font-bold text-navy-700 mb-6">Tier Benefits</h2>
+                <h2 className="text-lg font-bold text-navy-700 mb-2">Historical program tiers</h2>
+                <p className="text-sm text-navy-500 mb-6">These recorded program descriptions are not current offers. Tier benefits are unavailable.</p>
                 <div className="space-y-4">
                   {tiers.map((t) => {
                     const isCurrent = t.key === tier;
@@ -357,27 +370,8 @@ export default function RewardsPage() {
 
               {/* How to Earn */}
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
-                <h2 className="text-lg font-bold text-navy-700 mb-4">How to Earn</h2>
-                <div className="space-y-3">
-                  {[
-                    { icon: "\uD83D\uDCB3", label: "Complete a booking", value: "10 pts/$1" },
-                    { icon: "\u2B50", label: "Leave a review", value: "100 pts" },
-                    { icon: "\uD83E\uDD1D", label: "Refer a friend", value: "500 pts each" },
-                    { icon: "\uD83C\uDF89", label: "First booking bonus", value: "200 pts" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="text-lg w-8 text-center">{item.icon}</span>
-                      <span className="flex-1 text-sm text-navy-600">{item.label}</span>
-                      <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full">
-                        +{item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t border-cream-100 text-xs text-navy-400">
-                  <p>1,000 points = $10 credit. Min redemption: 500 pts ($5).</p>
-                  <p className="mt-1">Points expire after 12 months of inactivity.</p>
-                </div>
+                <h2 className="text-lg font-bold text-navy-700 mb-4">Rewards availability</h2>
+                <p className="text-sm text-navy-500">You can review existing points and transactions. New earning and redemption are unavailable; browsing, saving places and sharing links do not earn booking rewards.</p>
               </div>
 
               {/* Referral Section */}
@@ -387,7 +381,7 @@ export default function RewardsPage() {
                   <h2 className="text-lg font-bold text-navy-700">Invite Friends</h2>
                 </div>
                 <p className="text-sm text-navy-500 mb-4">
-                  Share your link and earn 500 points when your friend completes their first booking. They get 500 points too!
+                  Share the directory with friends. New referral bonuses are unavailable; any existing referral records appear below.
                 </p>
 
                 {referrals?.referralCode ? (
@@ -411,7 +405,7 @@ export default function RewardsPage() {
                     {/* Share buttons */}
                     <div className="flex gap-2 mb-6">
                       <a
-                        href={`https://wa.me/?text=Join%20VakayGo%20and%20get%20500%20bonus%20points!%20${encodeURIComponent(referrals.referralLink || "")}`}
+                        href={`https://wa.me/?text=Explore%20places%20and%20plan%20a%20trip%20with%20VakayGo.%20${encodeURIComponent(referrals.referralLink || "")}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors"
@@ -420,7 +414,7 @@ export default function RewardsPage() {
                         WhatsApp
                       </a>
                       <a
-                        href={`mailto:?subject=Join%20VakayGo&body=Hey!%20Join%20VakayGo%20and%20get%20500%20bonus%20points%20on%20your%20first%20booking.%20${encodeURIComponent(referrals.referralLink || "")}`}
+                        href={`mailto:?subject=Explore%20VakayGo&body=Explore%20places%20and%20plan%20a%20trip%20with%20VakayGo.%20${encodeURIComponent(referrals.referralLink || "")}`}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-navy-500 hover:bg-navy-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors"
                       >
                         <Mail size={14} />

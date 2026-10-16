@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, listings, users } from "@/drizzle/schema";
+import { bookings, listings, users, bookingStatusEnum } from "@/drizzle/schema";
 import { eq, sql, desc, and, gte, lte } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { jwtVerify } from "jose";
@@ -47,7 +47,11 @@ export async function GET(request: NextRequest) {
 
     // Build conditions
     const conditions = [];
-    if (status) conditions.push(eq(bookings.status, status as any));
+    if (status) {
+      const validStatus = bookingStatusEnum.enumValues.find(value => value === status);
+      if (!validStatus) return NextResponse.json({ error: "Invalid booking status" }, { status: 400 });
+      conditions.push(eq(bookings.status, validStatus));
+    }
     if (from) conditions.push(gte(bookings.startDate, new Date(from)));
     if (to) conditions.push(lte(bookings.startDate, new Date(to)));
 

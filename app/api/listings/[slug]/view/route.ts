@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { cookies, headers } from "next/headers";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { listings, listingViews } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export async function POST(
   request: NextRequest,
@@ -49,8 +48,8 @@ export async function POST(
       const cookieStore = await cookies();
       const token = cookieStore.get("session")?.value;
       if (token) {
-        const { payload } = await jwtVerify(token, SECRET);
-        userId = payload.id as string;
+        const currentSession = await verifyCurrentSessionToken(token);
+        userId = currentSession?.userId ?? null;
       }
     } catch {
       // anonymous view is fine

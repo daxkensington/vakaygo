@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 
 const travelerBenefits = [
@@ -67,7 +68,7 @@ export function AudienceSplit() {
                   </li>
                 ))}
               </ul>
-              <a
+              <Link prefetch={false}
                 href="/explore"
                 className="inline-flex items-center gap-2 mt-10 bg-white text-teal-700 px-8 py-3.5 rounded-full font-semibold hover:bg-cream-100 transition-colors group"
               >
@@ -76,7 +77,7 @@ export function AudienceSplit() {
                   size={16}
                   className="group-hover:translate-x-1 transition-transform"
                 />
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -114,7 +115,7 @@ export function AudienceSplit() {
                   </li>
                 ))}
               </ul>
-              <a
+              <Link prefetch={false}
                 href="/for-businesses"
                 className="inline-flex items-center gap-2 mt-10 bg-gold-700 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-800 transition-colors group"
               >
@@ -123,7 +124,7 @@ export function AudienceSplit() {
                   size={16}
                   className="group-hover:translate-x-1 transition-transform"
                 />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

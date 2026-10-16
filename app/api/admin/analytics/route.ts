@@ -9,30 +9,13 @@ import {
   islands,
 } from "@/drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
-
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return null;
-    return payload.id as string;
-  } catch {
-    return null;
-  }
-}
+import { paidUsdBookingValue, operatorPaidUsdBookingValue, repeatCompletedBookingRate } from "@/server/analytics-metrics";
 
 export async function GET() {
   const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -77,14 +60,14 @@ export async function GET() {
         title: listings.title,
         type: listings.type,
         bookingCount: sql<number>`count(${bookings.id})::int`,
-        revenue: sql<number>`coalesce(sum(${bookings.totalAmount}), 0)::numeric`,
+        revenue: sql<number>`coalesce(sum(${paidUsdBookingValue}), 0)::numeric`,
         avgRating: listings.avgRating,
       })
       .from(listings)
       .leftJoin(bookings, eq(bookings.listingId, listings.id))
       .where(eq(listings.status, "active"))
       .groupBy(listings.id, listings.title, listings.type, listings.avgRating)
-      .orderBy(desc(sql`coalesce(sum(${bookings.totalAmount}), 0)`))
+      .orderBy(desc(sql`coalesce(sum(${paidUsdBookingValue}), 0)`))
       .limit(5);
 
     // ── Top islands by bookings ────────────────────────────────
@@ -93,7 +76,7 @@ export async function GET() {
         name: islands.name,
         listingCount: sql<number>`count(distinct ${listings.id})::int`,
         bookingCount: sql<number>`count(distinct ${bookings.id})::int`,
-        revenue: sql<number>`coalesce(sum(${bookings.totalAmount}), 0)::numeric`,
+        revenue: sql<number>`coalesce(sum(${paidUsdBookingValue}), 0)::numeric`,
       })
       .from(islands)
       .leftJoin(listings, eq(listings.islandId, islands.id))
@@ -109,14 +92,13 @@ export async function GET() {
         name: users.name,
         businessName: users.businessName,
         listingCount: sql<number>`count(distinct ${listings.id})::int`,
-        revenue: sql<number>`coalesce(sum(${bookings.totalAmount}), 0)::numeric`,
+        revenue: operatorPaidUsdBookingValue,
       })
       .from(users)
       .leftJoin(listings, eq(listings.operatorId, users.id))
-      .leftJoin(bookings, eq(bookings.operatorId, users.id))
       .where(eq(users.role, "operator"))
       .groupBy(users.id, users.name, users.businessName)
-      .orderBy(desc(sql`coalesce(sum(${bookings.totalAmount}), 0)`))
+      .orderBy(desc(operatorPaidUsdBookingValue))
       .limit(5);
 
     // ── Platform health ────────────────────────────────────────
@@ -131,7 +113,11 @@ export async function GET() {
       .select({
         totalReviews: sql<number>`count(*)::int`,
       })
-      .from(reviews);
+      .from(reviews)
+      .innerJoin(bookings, eq(reviews.bookingId, bookings.id))
+      .where(sql`${bookings.status} = 'completed' AND ${reviews.isPublished} IS TRUE`);
+
+    const [repeatHealth] = await db.select({ rate: repeatCompletedBookingRate }).from(users).limit(1);
 
     const completedBookings = bookingFunnel.completed;
 
@@ -145,14 +131,14 @@ export async function GET() {
               ).toFixed(1)
             )
           : 0,
-      avgResponseTime: 2.4, // placeholder in hours
+      avgResponseTime: null,
       reviewRate:
         completedBookings > 0
           ? parseFloat(
               ((reviewHealth.totalReviews / completedBookings) * 100).toFixed(1)
             )
-          : 0,
-      repeatBookingRate: 18.5, // placeholder percentage
+          : null,
+      repeatBookingRate: repeatHealth?.rate ?? null,
     };
 
     // ── Recent activity (last 7 days) ──────────────────────────

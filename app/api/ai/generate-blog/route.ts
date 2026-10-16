@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
   informative:
@@ -25,7 +24,9 @@ export async function POST(request: Request) {
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     if (payload.role !== "operator" && payload.role !== "admin") {
       return NextResponse.json({ error: "Operators only" }, { status: 403 });
     }

@@ -21,6 +21,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { listings, media, islands } from "../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { recordValue, textValue } from "../lib/value-guards";
+import type { EnrichmentRow } from "./lib/enrichment-types";
+type PhotoListing = EnrichmentRow & { address: string | null; latitude: string | null; longitude: string | null; reliable_photos: string };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
@@ -51,10 +54,15 @@ async function fetchGooglePhotos(
     const data = await res.json();
     if (data.status !== "OK" || !data.result?.photos) return [];
 
-    return data.result.photos.slice(0, 5).map((p: any) => ({
-      url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${p.photo_reference}`,
+    const photos: unknown = data.result.photos;
+    if (!Array.isArray(photos)) return [];
+    return photos.slice(0, 5).flatMap((p: unknown) => {
+      const reference = textValue(recordValue(p).photo_reference);
+      return reference ? [{
+      url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${reference}`,
       source: "google",
-    }));
+      }] : [];
+    });
   } catch {
     return [];
   }
@@ -293,7 +301,7 @@ async function main() {
 
   // Find listings that need more photos
   const typeCondition = typeFilter ? sql`AND l.type = ${typeFilter}` : sql``;
-  const result = await db.execute(sql`
+  const result = await db.execute<PhotoListing>(sql`
     SELECT
       l.id, l.title, l.type, l.address, l.latitude, l.longitude,
       l.type_data as "typeData",
@@ -308,7 +316,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listingsToProcess = result.rows as any[];
+  const listingsToProcess = result.rows;
   console.log(`Found ${listingsToProcess.length} listings needing photos (min-photos=${minPhotos})\n`);
 
   if (dryRun) console.log("=== DRY RUN ===\n");
@@ -336,11 +344,11 @@ async function main() {
     const batch = listingsToProcess.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
-        const td = (listing.typeData || {}) as Record<string, any>;
-        const placeId = td.googlePlaceId;
-        const website = td.website;
-        let newPhotos: { url: string; source: string }[] = [];
+      batch.map(async (listing) => {
+        const td = recordValue(listing.typeData);
+        const placeId = textValue(td.googlePlaceId);
+        const website = textValue(td.website);
+        const newPhotos: { url: string; source: string }[] = [];
 
         // 1. Google Places
         if (sources.includes("google") && placeId && newPhotos.length === 0) {
@@ -370,8 +378,8 @@ async function main() {
         if (sources.includes("facebook") && newPhotos.length < 3) {
           const fbPhotos = await fetchFacebookImages(
             listing.title,
-            listing.latitude,
-            listing.longitude
+            listing.latitude === null ? null : Number(listing.latitude),
+            listing.longitude === null ? null : Number(listing.longitude)
           );
           for (const photo of fbPhotos) {
             if (await validateImage(photo.url)) {
@@ -388,8 +396,8 @@ async function main() {
         ) {
           const yelpPhotos = await fetchYelpPhotos(
             listing.title,
-            listing.latitude,
-            listing.longitude
+            listing.latitude === null ? null : Number(listing.latitude),
+            listing.longitude === null ? null : Number(listing.longitude)
           );
           for (const photo of yelpPhotos) {
             if (await validateImage(photo.url)) {

@@ -294,21 +294,25 @@ function TravelerWelcome({ name }: { name: string }) {
 
 export function PersonalizedHome() {
   const { user, loading } = useAuth();
+  if (loading || !user) return null;
+  return <PersonalizedHomeForUser key={`${user.id}:${user.role}:${user.email}`} user={user} />;
+}
+
+function PersonalizedHomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
   const [operatorStats, setOperatorStats] = useState<OperatorStats | null>(
     null
   );
 
   useEffect(() => {
+    const controller = new AbortController();
     if (user?.role === "operator") {
-      fetch("/api/operator/stats")
+      fetch("/api/operator/stats", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
-        .then((data) => setOperatorStats(data))
+        .then((data) => { if (!controller.signal.aborted) setOperatorStats(data); })
         .catch(() => {});
     }
-  }, [user]);
-
-  if (loading) return null;
-  if (!user) return null;
+    return () => controller.abort();
+  }, [user.id, user.role]);
 
   const firstName = user.name?.split(" ")[0] || "there";
 

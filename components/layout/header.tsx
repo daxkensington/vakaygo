@@ -265,7 +265,7 @@ export function Header() {
                 <Star size={14} className="fill-gold-500" />
                 Rewards
               </Link>
-              <MessageBadge scrolled={scrolled} isLanding={isLanding} />
+              <MessageBadge key={`${user.id}:${user.role}:${user.email}`} scrolled={scrolled} isLanding={isLanding} />
               <Link
                 href={user.role === "operator" ? "/operator" : "/profile"}
                 aria-label={user.role === "operator" ? "Open business dashboard" : "Profile"}
@@ -298,7 +298,7 @@ export function Header() {
           <div className={`xl:hidden transition-colors ${scrolled || !isLanding ? "text-navy-600" : "text-white/90"}`}>
             <CurrencySwitcher />
           </div>
-          {user && <div className="hidden md:block"><NotificationBell scrolled={scrolled} isLanding={isLanding} /></div>}
+          {user && <div className="hidden md:block"><NotificationBell key={`${user.id}:${user.role}:${user.email}`} scrolled={scrolled} isLanding={isLanding} /></div>}
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}

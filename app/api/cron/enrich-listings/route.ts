@@ -4,6 +4,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+import { recordValue, textValue, textList } from "@/lib/value-guards";
+type EnrichmentListing = { id: string; title: string; type: string; description: string | null; priceAmount: string | null; typeData: unknown };
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
 
   try {
     // Find listings with Google Place IDs that are missing key data
-    const listings = await db.execute(sql`
+    const listings = await db.execute<EnrichmentListing>(sql`
       SELECT l.id, l.title, l.type, l.description,
         l.price_amount as "priceAmount",
         l.type_data as "typeData"
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
           l.type_data->>'website' IS NULL
           OR l.type_data->>'phone' IS NULL
           OR l.type_data->>'hours' IS NULL
-          OR CHAR_LENGTH(l.description) < 80
+          OR COALESCE(CHAR_LENGTH(l.description), 0) < 80
         )
       ORDER BY l.updated_at ASC
       LIMIT ${BATCH_SIZE}
@@ -55,29 +57,31 @@ export async function GET(req: Request) {
 
     let enriched = 0;
 
-    for (const listing of listings.rows as any[]) {
-      const td = listing.typeData || {};
-      const placeId = td.googlePlaceId;
+    for (const listing of listings.rows) {
+      const td = recordValue(listing.typeData);
+      const placeId = textValue(td.googlePlaceId);
       if (!placeId) continue;
 
       try {
         const res = await fetch(
           `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=website,formatted_phone_number,opening_hours,editorial_summary,price_level&key=${GOOGLE_API_KEY}`
         );
-        const data = await res.json();
+        const data = recordValue(await res.json());
         if (data.status !== "OK") continue;
 
-        const r = data.result;
+        const r = recordValue(data.result);
         const newTd = { ...td };
         let descUpdate = "";
-        let priceUpdate = "";
 
-        if (!td.website && r.website) newTd.website = r.website;
-        if (!td.phone && r.formatted_phone_number) newTd.phone = r.formatted_phone_number;
-        if (r.opening_hours?.weekday_text) newTd.hours = r.opening_hours.weekday_text;
+        const website = textValue(r.website);
+        const phone = textValue(r.formatted_phone_number);
+        const hours = textList(recordValue(r.opening_hours).weekday_text);
+        if (!td.website && website) newTd.website = website;
+        if (!td.phone && phone) newTd.phone = phone;
+        if (hours) newTd.hours = hours;
 
-        const newDesc = r.editorial_summary?.overview;
-        if (newDesc && newDesc.length > 30 && listing.description.length < 80) {
+        const newDesc = textValue(recordValue(r.editorial_summary).overview);
+        if (newDesc && newDesc.length > 30 && (listing.description?.length || 0) < 80) {
           descUpdate = newDesc;
         }
 

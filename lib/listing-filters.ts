@@ -98,8 +98,8 @@ function readParam(src: ParamSource, key: string): string | null {
 function readNumber(src: ParamSource, key: string, opts: { min?: number; max?: number; int?: boolean } = {}): number | null {
   const raw = readParam(src, key);
   if (raw == null) return null;
-  const n = opts.int ? parseInt(raw, 10) : parseFloat(raw);
-  if (!Number.isFinite(n)) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || (opts.int && !Number.isSafeInteger(n))) return null;
   if (opts.min != null && n < opts.min) return null;
   if (opts.max != null && n > opts.max) return null;
   return n;
@@ -131,7 +131,10 @@ export function parseListingFilters(src: ParamSource, opts: { maxLimit?: number 
   const cuisine = rawCuisine ? rawCuisine.slice(0, 40) : null;
 
   const rawDate = readParam(src, "date");
-  const date = rawDate && DATE_RE.test(rawDate) && !Number.isNaN(Date.parse(rawDate)) ? rawDate : null;
+  const parsedDate = rawDate && DATE_RE.test(rawDate) && !rawDate.startsWith("0000-")
+    ? new Date(`${rawDate}T00:00:00.000Z`) : null;
+  const date = parsedDate && !Number.isNaN(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === rawDate
+    ? rawDate : null;
 
   const rawDuration = readParam(src, "duration");
   const duration = rawDuration && (DURATION_OPTIONS as readonly string[]).includes(rawDuration)
