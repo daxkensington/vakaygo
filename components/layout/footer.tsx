@@ -10,9 +10,9 @@ export function Footer() {
               Vakay<span className="text-gold-400">Go</span>
             </span>
             <p className="mt-4 text-cream-300 max-w-md leading-relaxed">
-              Your whole trip, one tap. Discover stays, tours, dining, events,
-              and experiences across the Caribbean — all powered by locals who
-              know it best.
+              Your whole trip, one tap. Discover verified stays, boat charters,
+              tours, dining, and experiences across 34 Caribbean, Latin
+              American, and Mediterranean destinations — with 0% guest fees.
             </p>
             <div className="flex gap-4 mt-6">
               <a href="https://vakaygo.com" aria-label="VakayGo website" className="text-cream-300 hover:text-gold-400 transition-colors">
@@ -31,7 +31,7 @@ export function Footer() {
             <h3 className="font-semibold text-white mb-4">Platform</h3>
             <ul className="text-base text-cream-300">
               <li><a href="/explore" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Explore</a></li>
-              <li><a href="/islands" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Islands</a></li>
+              <li><a href="/islands" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Destinations</a></li>
               <li><a href="/guides" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Guides</a></li>
               <li><a href="/services" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Services</a></li>
               <li><a href="/for-businesses" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">For Businesses</a></li>
@@ -52,7 +52,7 @@ export function Footer() {
 
         {/* Popular Destinations */}
         <div className="mt-12 pt-8 border-t border-navy-600">
-          <h3 className="font-semibold text-white mb-4">Popular Destinations</h3>
+          <h3 className="font-semibold text-white mb-4">Popular Destinations Across the Caribbean, Latin America &amp; Mediterranean</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 text-base text-cream-300">
             <a href="/things-to-do-in-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Grenada</a>
             <a href="/things-to-do-in-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Barbados</a>
@@ -60,12 +60,18 @@ export function Footer() {
             <a href="/things-to-do-in-st-lucia" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in St. Lucia</a>
             <a href="/things-to-do-in-bahamas" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Bahamas</a>
             <a href="/things-to-do-in-aruba" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Aruba</a>
-            <a href="/best-restaurants-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Grenada</a>
-            <a href="/best-restaurants-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Barbados</a>
-            <a href="/best-restaurants-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Jamaica</a>
+            <a href="/things-to-do-in-cancun-riviera-maya" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cancún &amp; Tulum</a>
+            <a href="/things-to-do-in-los-cabos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Los Cabos</a>
+            <a href="/things-to-do-in-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Cartagena</a>
+            <a href="/things-to-do-in-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Santorini</a>
+            <a href="/things-to-do-in-mykonos" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mykonos</a>
+            <a href="/things-to-do-in-ibiza" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Ibiza</a>
+            <a href="/things-to-do-in-amalfi-coast-capri" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Amalfi &amp; Capri</a>
+            <a href="/things-to-do-in-mallorca" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Mallorca</a>
+            <a href="/things-to-do-in-hvar-split" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Things to Do in Hvar &amp; Split</a>
             <a href="/best-hotels-grenada" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Grenada</a>
-            <a href="/best-hotels-barbados" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Barbados</a>
-            <a href="/best-hotels-jamaica" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Jamaica</a>
+            <a href="/best-hotels-santorini" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Hotels in Santorini</a>
+            <a href="/best-restaurants-cartagena" className="inline-block px-2 py-3 hover:text-gold-400 transition-colors">Best Restaurants in Cartagena</a>
           </div>
         </div>
 
@@ -74,7 +80,7 @@ export function Footer() {
             &copy; {new Date().getFullYear()} VakayGo. All rights reserved.
           </p>
           <p className="text-sm text-cream-400">
-            Made with love in the Caribbean
+            Born in the Caribbean · Live across 34 Global Sun &amp; Sea Destinations
           </p>
         </div>
       </div>

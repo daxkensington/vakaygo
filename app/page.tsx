@@ -21,19 +21,20 @@ export default function LandingPage() {
   const homepageJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "VakayGo — Caribbean Travel Platform",
+    name: "VakayGo — Global Sun & Sea Travel Platform",
     description:
-      "Discover stays, tours, restaurants and local businesses across the Caribbean. Explore listing information and plan your trip with VakayGo.",
+      "Discover verified stays, boat charters, tours, restaurants, and local experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees.",
     url: "https://vakaygo.com",
     isPartOf: { "@id": "https://vakaygo.com/#website" },
     about: {
       "@type": "Organization",
       "@id": "https://vakaygo.com/#organization",
       name: "VakayGo",
-      areaServed: {
-        "@type": "Place",
-        name: "Caribbean",
-      },
+      areaServed: [
+        { "@type": "Place", name: "Caribbean" },
+        { "@type": "Place", name: "Latin America" },
+        { "@type": "Place", name: "Mediterranean" },
+      ],
     },
     breadcrumb: {
       "@type": "BreadcrumbList",

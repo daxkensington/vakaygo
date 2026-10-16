@@ -16,14 +16,29 @@ const islands = [
   { name: "Aruba", slug: "aruba", flag: "🇦🇼", count: 335, tagline: "Eagle Beach, Arikok desert trails & wrecks" },
   { name: "Barbados", slug: "barbados", flag: "🇧🇧", count: 334, tagline: "Platinum West Coast, Oistins & rum heritage" },
   { name: "Curaçao", slug: "curacao", flag: "🇨🇼", count: 319, tagline: "Willemstad harbor, Klein Curaçao & coves" },
-  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬", count: 302, tagline: "365 beaches, Nelson's Dockyard &Shirley Heights" },
+  { name: "Antigua & Barbuda", slug: "antigua", flag: "🇦🇬", count: 302, tagline: "365 beaches, Nelson's Dockyard & Shirley Heights" },
   { name: "Turks & Caicos", slug: "turks-and-caicos", flag: "🇹🇨", count: 287, tagline: "Grace Bay powder sands & barrier reef" },
-  { name: "Bonaire", slug: "bonaire", flag: "🏝️", count: 282, tagline: "Shore diving capital, salt flats & windsurfing" },
+  { name: "Bonaire", slug: "bonaire", flag: "🇧🇶", count: 282, tagline: "Shore diving capital, salt flats & windsurfing" },
   { name: "Cayman Islands", slug: "cayman-islands", flag: "🇰🇾", count: 279, tagline: "Seven Mile Beach, Stingray City & caves" },
   { name: "St. Vincent", slug: "st-vincent", flag: "🇻🇨", count: 262, tagline: "Bequia, Tobago Cays marine park & falls" },
   { name: "St. Kitts & Nevis", slug: "st-kitts", flag: "🇰🇳", count: 258, tagline: "Brimstone Hill fortress & Nevis Peak" },
   { name: "Dominica", slug: "dominica", flag: "🇩🇲", count: 228, tagline: "Boiling Lake, Trafalgar Falls & whale watching" },
   { name: "BVI", slug: "british-virgin-islands", flag: "🇻🇬", count: 218, tagline: "The Baths at Virgin Gorda & Jost Van Dyke" },
+  // Wave 2A — Latin America
+  { name: "Cancún & Riviera Maya", slug: "cancun-riviera-maya", flag: "🇲🇽", count: 91, tagline: "Tulum cenotes, Mayan ruins & catamaran cruises" },
+  { name: "Ambergris Caye", slug: "ambergris-caye", flag: "🇧🇿", count: 91, tagline: "Belize Barrier Reef, Great Blue Hole & charters" },
+  { name: "Los Cabos", slug: "los-cabos", flag: "🇲🇽", count: 90, tagline: "El Arco, Sea of Cortez yachts & desert escapes" },
+  { name: "Guanacaste", slug: "guanacaste", flag: "🇨🇷", count: 87, tagline: "Papagayo bays, surf charters & eco-lodges" },
+  { name: "Medellín & Guatapé", slug: "medellin", flag: "🇨🇴", count: 80, tagline: "Eternal spring valleys, coffee fincas & lake stays" },
+  { name: "Cartagena", slug: "cartagena", flag: "🇨🇴", count: 78, tagline: "Walled city villas & Rosario Islands yachts" },
+  // Wave 2B — Mediterranean
+  { name: "Mykonos", slug: "mykonos", flag: "🇬🇷", count: 94, tagline: "Cycladic villas, Delos sails & beach clubs" },
+  { name: "Crete", slug: "crete", flag: "🇬🇷", count: 94, tagline: "Balos lagoon, Samaria Gorge & Venetian harbors" },
+  { name: "Santorini", slug: "santorini", flag: "🇬🇷", count: 93, tagline: "Caldera sunset catamarans & Oia cave suites" },
+  { name: "Ibiza & Formentera", slug: "ibiza", flag: "🇪🇸", count: 90, tagline: "Formentera boat charters, fincas & coves" },
+  { name: "Mallorca", slug: "mallorca", flag: "🇪🇸", count: 83, tagline: "Tramuntana coast, Palma bay sails & calas" },
+  { name: "Amalfi Coast & Capri", slug: "amalfi-coast-capri", flag: "🇮🇹", count: 81, tagline: "Positano cliffs, Capri Riva boats & lemon groves" },
+  { name: "Hvar & Split", slug: "hvar-split", flag: "🇭🇷", count: 78, tagline: "Dalmatian island hopping, Blue Cave & stone villas" },
 ];
 
 const islandImages: Record<string, string> = {
@@ -48,6 +63,19 @@ const islandImages: Record<string, string> = {
   "us-virgin-islands": "/images/islands/us-virgin-islands.jpg",
   "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
   "puerto-rico": "/images/islands/puerto-rico.jpg",
+  cartagena: "/images/islands/cartagena.jpg",
+  medellin: "/images/islands/medellin.jpg",
+  "cancun-riviera-maya": "/images/islands/cancun-riviera-maya.jpg",
+  "los-cabos": "/images/islands/los-cabos.jpg",
+  guanacaste: "/images/islands/guanacaste.jpg",
+  "ambergris-caye": "/images/islands/ambergris-caye.jpg",
+  santorini: "/images/islands/santorini.jpg",
+  mykonos: "/images/islands/mykonos.jpg",
+  crete: "/images/islands/crete.jpg",
+  ibiza: "/images/islands/ibiza.jpg",
+  mallorca: "/images/islands/mallorca.jpg",
+  "amalfi-coast-capri": "/images/islands/amalfi-coast-capri.jpg",
+  "hvar-split": "/images/islands/hvar-split.jpg",
 };
 
 const defaultImage = "/images/hero/caribbean-hero.jpg";
@@ -58,16 +86,16 @@ export function IslandShowcase() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-16">
           <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
-            Island Hopping
+            Caribbean · Latin America · Mediterranean
           </p>
           <h2
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Explore 21 Caribbean Islands
+            Explore 34 Sun &amp; Sea Destinations
           </h2>
-          <p className="mt-4 text-navy-400 max-w-lg mx-auto text-lg">
-            From Grenada to the Bahamas — discover what each island has to offer.
+          <p className="mt-4 text-navy-400 max-w-2xl mx-auto text-lg">
+            From Grenada and St. Lucia to Cartagena, Cancún, Santorini, and the Amalfi Coast — discover verified local stays, charters, and experiences.
           </p>
         </div>
 

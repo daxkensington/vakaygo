@@ -41,20 +41,20 @@ const islandImages: Record<string, string> = {
   "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
   "puerto-rico": "/images/islands/puerto-rico.jpg",
   // Wave 2A — Latin America
-  cartagena: "/images/islands/curacao.jpg",
-  medellin: "/images/islands/dominica.jpg",
-  "cancun-riviera-maya": "/images/islands/turks-and-caicos.jpg",
-  "los-cabos": "/images/islands/aruba.jpg",
-  guanacaste: "/images/islands/st-lucia.jpg",
-  "ambergris-caye": "/images/islands/cayman-islands.jpg",
+  cartagena: "/images/islands/cartagena.jpg",
+  medellin: "/images/islands/medellin.jpg",
+  "cancun-riviera-maya": "/images/islands/cancun-riviera-maya.jpg",
+  "los-cabos": "/images/islands/los-cabos.jpg",
+  guanacaste: "/images/islands/guanacaste.jpg",
+  "ambergris-caye": "/images/islands/ambergris-caye.jpg",
   // Wave 2B — Mediterranean
-  santorini: "/images/islands/antigua.jpg",
-  mykonos: "/images/islands/bahamas.jpg",
-  crete: "/images/islands/grenada.jpg",
-  ibiza: "/images/islands/barbados.jpg",
-  mallorca: "/images/islands/martinique.jpg",
-  "amalfi-coast-capri": "/images/islands/st-vincent.jpg",
-  "hvar-split": "/images/islands/british-virgin-islands.jpg",
+  santorini: "/images/islands/santorini.jpg",
+  mykonos: "/images/islands/mykonos.jpg",
+  crete: "/images/islands/crete.jpg",
+  ibiza: "/images/islands/ibiza.jpg",
+  mallorca: "/images/islands/mallorca.jpg",
+  "amalfi-coast-capri": "/images/islands/amalfi-coast-capri.jpg",
+  "hvar-split": "/images/islands/hvar-split.jpg",
 };
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 

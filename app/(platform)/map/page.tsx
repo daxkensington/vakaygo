@@ -39,6 +39,19 @@ const islands = [
   { slug: "martinique", name: "Martinique" },
   { slug: "guadeloupe", name: "Guadeloupe" },
   { slug: "british-virgin-islands", name: "BVI" },
+  { slug: "cancun-riviera-maya", name: "Cancún & Riviera Maya" },
+  { slug: "los-cabos", name: "Los Cabos" },
+  { slug: "cartagena", name: "Cartagena" },
+  { slug: "medellin", name: "Medellín" },
+  { slug: "guanacaste", name: "Guanacaste" },
+  { slug: "ambergris-caye", name: "Ambergris Caye" },
+  { slug: "santorini", name: "Santorini" },
+  { slug: "mykonos", name: "Mykonos" },
+  { slug: "crete", name: "Crete" },
+  { slug: "ibiza", name: "Ibiza" },
+  { slug: "mallorca", name: "Mallorca" },
+  { slug: "amalfi-coast-capri", name: "Amalfi & Capri" },
+  { slug: "hvar-split", name: "Hvar & Split" },
 ];
 
 type MapLoad = { key: string; status: "loading" | "ready" | "error"; listings: MapListing[] };
@@ -79,7 +92,7 @@ export default function MapPage() {
     }, 20_000);
     async function loadListings() {
       try {
-        const params = new URLSearchParams({ limit: "7500" });
+        const params = new URLSearchParams({ limit: "9000" });
         if (activeIsland) params.set("island", activeIsland);
         const res = await fetch(`/api/listings?${params}`, { signal: controller.signal, cache: "no-store" });
         if (!current || controller.signal.aborted) return;

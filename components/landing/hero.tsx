@@ -214,7 +214,7 @@ export function Hero() {
       >
         <div className="inline-flex items-center gap-2 bg-white/20 md:bg-white/10 md:backdrop-blur-md text-white/90 border border-white/20 rounded-full px-5 py-2 text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-gold-400 rounded-full animate-pulse" />
-          7,100+ listings across 21 Caribbean islands
+          8,000+ listings across 34 Caribbean, LatAm &amp; Mediterranean destinations
         </div>
 
         <h1
@@ -229,9 +229,9 @@ export function Hero() {
         </h1>
 
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-          Stays. Tours. Dining. Events. Transport. Guides.{" "}
+          Stays. Boat Charters. Tours. Dining. Transfers. Concierge.{" "}
           <br className="hidden md:block" />
-          Everything you need for the perfect Caribbean vacation.
+          Book direct with verified local operators — with 0% guest booking fees.
         </p>
 
         {/* Search Bar */}
@@ -258,28 +258,47 @@ export function Hero() {
                     aria-label="Select destination island"
                     className="w-full bg-transparent text-navy-700 text-sm font-medium mt-0.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-gold-700 rounded"
                   >
-                    <option value="">All Caribbean Islands</option>
-                    <option value="grenada">{getIslandFlag("grenada")} Grenada</option>
-                    <option value="trinidad-and-tobago">{getIslandFlag("trinidad-and-tobago")} Trinidad & Tobago</option>
-                    <option value="barbados">{getIslandFlag("barbados")} Barbados</option>
-                    <option value="st-lucia">{getIslandFlag("st-lucia")} St. Lucia</option>
-                    <option value="jamaica">{getIslandFlag("jamaica")} Jamaica</option>
-                    <option value="bahamas">{getIslandFlag("bahamas")} Bahamas</option>
-                    <option value="antigua">{getIslandFlag("antigua")} Antigua</option>
-                    <option value="aruba">{getIslandFlag("aruba")} Aruba</option>
-                    <option value="dominican-republic">{getIslandFlag("dominican-republic")} Dominican Republic</option>
-                    <option value="puerto-rico">{getIslandFlag("puerto-rico")} Puerto Rico</option>
-                    <option value="curacao">{getIslandFlag("curacao")} Curaçao</option>
-                    <option value="cayman-islands">{getIslandFlag("cayman-islands")} Cayman Islands</option>
-                    <option value="us-virgin-islands">{getIslandFlag("us-virgin-islands")} USVI</option>
-                    <option value="dominica">{getIslandFlag("dominica")} Dominica</option>
-                    <option value="st-vincent">{getIslandFlag("st-vincent")} St. Vincent</option>
-                    <option value="st-kitts">{getIslandFlag("st-kitts")} St. Kitts</option>
-                    <option value="turks-and-caicos">{getIslandFlag("turks-and-caicos")} Turks & Caicos</option>
-                    <option value="bonaire">{getIslandFlag("bonaire")} Bonaire</option>
-                    <option value="martinique">{getIslandFlag("martinique")} Martinique</option>
-                    <option value="guadeloupe">{getIslandFlag("guadeloupe")} Guadeloupe</option>
-                    <option value="british-virgin-islands">{getIslandFlag("british-virgin-islands")} BVI</option>
+                    <option value="">All 34 Destinations</option>
+                    <optgroup label="Caribbean Islands">
+                      <option value="grenada">{getIslandFlag("grenada")} Grenada</option>
+                      <option value="trinidad-and-tobago">{getIslandFlag("trinidad-and-tobago")} Trinidad &amp; Tobago</option>
+                      <option value="barbados">{getIslandFlag("barbados")} Barbados</option>
+                      <option value="st-lucia">{getIslandFlag("st-lucia")} St. Lucia</option>
+                      <option value="jamaica">{getIslandFlag("jamaica")} Jamaica</option>
+                      <option value="bahamas">{getIslandFlag("bahamas")} Bahamas</option>
+                      <option value="antigua">{getIslandFlag("antigua")} Antigua</option>
+                      <option value="aruba">{getIslandFlag("aruba")} Aruba</option>
+                      <option value="dominican-republic">{getIslandFlag("dominican-republic")} Dominican Republic</option>
+                      <option value="puerto-rico">{getIslandFlag("puerto-rico")} Puerto Rico</option>
+                      <option value="curacao">{getIslandFlag("curacao")} Curaçao</option>
+                      <option value="cayman-islands">{getIslandFlag("cayman-islands")} Cayman Islands</option>
+                      <option value="us-virgin-islands">{getIslandFlag("us-virgin-islands")} USVI</option>
+                      <option value="dominica">{getIslandFlag("dominica")} Dominica</option>
+                      <option value="st-vincent">{getIslandFlag("st-vincent")} St. Vincent</option>
+                      <option value="st-kitts">{getIslandFlag("st-kitts")} St. Kitts</option>
+                      <option value="turks-and-caicos">{getIslandFlag("turks-and-caicos")} Turks &amp; Caicos</option>
+                      <option value="bonaire">{getIslandFlag("bonaire")} Bonaire</option>
+                      <option value="martinique">{getIslandFlag("martinique")} Martinique</option>
+                      <option value="guadeloupe">{getIslandFlag("guadeloupe")} Guadeloupe</option>
+                      <option value="british-virgin-islands">{getIslandFlag("british-virgin-islands")} BVI</option>
+                    </optgroup>
+                    <optgroup label="Latin America & Central America">
+                      <option value="cancun-riviera-maya">{getIslandFlag("cancun-riviera-maya")} Cancún &amp; Riviera Maya</option>
+                      <option value="los-cabos">{getIslandFlag("los-cabos")} Los Cabos</option>
+                      <option value="cartagena">{getIslandFlag("cartagena")} Cartagena</option>
+                      <option value="medellin">{getIslandFlag("medellin")} Medellín &amp; Guatapé</option>
+                      <option value="guanacaste">{getIslandFlag("guanacaste")} Guanacaste, Costa Rica</option>
+                      <option value="ambergris-caye">{getIslandFlag("ambergris-caye")} Ambergris Caye, Belize</option>
+                    </optgroup>
+                    <optgroup label="Mediterranean Islands & Coasts">
+                      <option value="santorini">{getIslandFlag("santorini")} Santorini, Greece</option>
+                      <option value="mykonos">{getIslandFlag("mykonos")} Mykonos, Greece</option>
+                      <option value="crete">{getIslandFlag("crete")} Crete, Greece</option>
+                      <option value="ibiza">{getIslandFlag("ibiza")} Ibiza &amp; Formentera</option>
+                      <option value="mallorca">{getIslandFlag("mallorca")} Mallorca, Spain</option>
+                      <option value="amalfi-coast-capri">{getIslandFlag("amalfi-coast-capri")} Amalfi Coast &amp; Capri</option>
+                      <option value="hvar-split">{getIslandFlag("hvar-split")} Hvar &amp; Split, Croatia</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>

@@ -1,10 +1,10 @@
 import { LISTING_TYPES } from "@/lib/listing-filters";
 
 const stats = [
-  { value: "7,100+", label: "Listings", sublabel: "Across the Caribbean" },
-  { value: "21", label: "Islands", sublabel: "And growing" },
-  { value: String(LISTING_TYPES.length), label: "Categories", sublabel: "Stays, tours, dining & more" },
-  { value: "Protected", label: "Bookings", sublabel: "In-app messaging & buyer guarantee" },
+  { value: "8,000+", label: "Listings", sublabel: "Caribbean, LatAm & Mediterranean" },
+  { value: "34", label: "Destinations", sublabel: "3 global sun & sea regions" },
+  { value: String(LISTING_TYPES.length), label: "Categories", sublabel: "Stays, charters, tours & dining" },
+  { value: "0%", label: "Guest Fee", sublabel: "Protected bookings + 2% VakayCash" },
 ];
 
 export function StatsBar() {
