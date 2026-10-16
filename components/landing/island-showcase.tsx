@@ -159,7 +159,7 @@ export function IslandShowcase() {
             href="/islands"
             className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] group"
           >
-            Explore all islands
+            Explore all 34 destinations
             <ArrowRight
               size={16}
               className="transition-transform group-hover:translate-x-1"

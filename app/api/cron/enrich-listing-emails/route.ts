@@ -320,15 +320,15 @@ export async function GET(request: NextRequest) {
   const db = neon(process.env.DATABASE_URL!);
   const runWave = request.nextUrl.searchParams.get("runWave");
   let waveAuthorized = false;
-  if (runWave === "2026-10-15-drip-2") {
+  if (runWave === "2026-10-16-wave3-drip") {
     const [flag] = await db.query(
-      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_15_drip_2_started' LIMIT 1`
+      `SELECT enabled FROM feature_flags WHERE key = 'wave_2026_10_16_wave3_drip_started' LIMIT 1`
     );
     if (!flag?.enabled) {
       waveAuthorized = true;
       await db.query(
         `INSERT INTO feature_flags (key, enabled, description, updated_at)
-         VALUES ('wave_2026_10_15_drip_2_started', true, 'Initial outreach drip started', now())
+         VALUES ('wave_2026_10_16_wave3_drip_started', true, 'Wave 3 global sun & sea outreach drip started', now())
          ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`
       );
     }
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
     let emailedCount = 0;
     const results: Array<{ id: string; email: string | null; emailed: boolean }> = [];
 
-    // 1. Drip-send at most 3 outreach emails per cron run FIRST (before slow external website crawls)
+    // 1. Drip-send at most 4 outreach emails per cron run FIRST (before slow external website crawls)
     // Prioritized by: (1) active traveler interest/bookings, (2) high-value bookable categories, (3) highest rating/reviews
     // Guarded by 4/hr & 18/day global cap in sendBusinessInterestOutreachEmail
     const readyToEmail = await db.query(
@@ -410,7 +410,7 @@ export async function GET(request: NextRequest) {
          l.avg_rating DESC NULLS LAST,
          l.review_count DESC NULLS LAST,
          o.created_at ASC
-       LIMIT 3`
+       LIMIT 4`
     );
 
     for (const item of readyToEmail) {

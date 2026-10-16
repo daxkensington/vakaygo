@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
 // Exchange Rates API — fetches live rates with 1-hour in-memory cache
 
-const SUPPORTED_CURRENCIES = ["USD", "XCD", "EUR", "GBP", "CAD", "BBD", "JMD", "TTD"] as const;
+const SUPPORTED_CURRENCIES = ["USD", "XCD", "EUR", "GBP", "CAD", "BBD", "JMD", "TTD", "DOP", "MXN", "COP", "CRC"] as const;
 
 const FALLBACK_RATES: Record<string, number> = {
   USD: 1,
@@ -12,6 +12,10 @@ const FALLBACK_RATES: Record<string, number> = {
   BBD: 2.00,
   JMD: 155.0,
   TTD: 6.78,
+  DOP: 60.5,
+  MXN: 20.1,
+  COP: 4150.0,
+  CRC: 512.0,
 };
 
 let cachedRates: { rates: Record<string, number>; timestamp: number } | null = null;

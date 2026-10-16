@@ -7,20 +7,20 @@ import { Layers, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 const props = [
   {
     icon: Layers,
-    title: "Your Entire Island Trip in One Place",
+    title: "Your Entire Sun & Sea Trip in One Place",
     description:
-      "Boutique stays, boat charters, local dining, beach fetes, airport transfers, and private island guides across 21 Caribbean destinations—converted live into 8 currencies.",
+      "Boutique stays, boat charters, local dining, beach clubs, airport transfers, and private local guides across 34 Caribbean, Latin American, and Mediterranean destinations—converted live into 12 currencies.",
     gradient: "from-gold-500 to-gold-600",
     iconBg: "bg-gold-500",
     image: "/images/sections/value-local.jpg",
     href: "/explore",
-    cta: "Explore 6,900+ places",
+    cta: "Explore 8,038+ places",
   },
   {
     icon: ShieldCheck,
-    title: "Protected In-App Messaging & Verified Booking",
+    title: "0% Guest Fees & Direct Operator Payouts",
     description:
-      "Ask verified Caribbean operators questions safely inside VakayGo, book online with Stripe or PayPal buyer protection, and unlock direct operator contact details upon confirmation.",
+      "Travelers pay $0 in platform booking fees while local operators keep 85%–90% of every booking. Message verified businesses safely inside VakayGo and book with buyer protection.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image: "/images/sections/value-travel.jpg",
@@ -31,7 +31,7 @@ const props = [
     icon: Sparkles,
     title: "AI-Powered Day-by-Day Trip Planning",
     description:
-      'Tell us your vibe—"5-day romantic getaway in Grenada with waterfalls and beachfront dining"—and our AI builds a complete itinerary from real, verified local spots.',
+      'Tell us your vibe—"5-day romantic getaway in Santorini or St. Lucia with sunset sailing and cliffside dining"—and our AI builds a complete itinerary from real, verified local spots.',
     gradient: "from-gold-500 to-teal-500",
     iconBg: "bg-gradient-to-br from-gold-500 to-teal-500",
     image: "/images/sections/value-explore.jpg",
@@ -52,9 +52,9 @@ export function ValueProps() {
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight leading-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            The travel platform
+            The sun &amp; sea platform
             <br />
-            <span className="text-teal-500">powered by the Caribbean</span>
+            <span className="text-teal-500">powered by local operators</span>
           </h2>
         </div>
 

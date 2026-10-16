@@ -6,7 +6,7 @@ const steps = [
     icon: Globe,
     title: "Explore in 3D or Ask AI",
     description:
-      "Fly over 21 Caribbean islands on our 3D satellite map or tell our AI Concierge your travel dates, budget, and vibe.",
+      "Fly over 34 Caribbean, Latin American, and Mediterranean destinations on our 3D satellite map or tell our AI Concierge your travel dates, budget, and vibe.",
     color: "bg-gold-500",
   },
   {
@@ -14,15 +14,15 @@ const steps = [
     icon: Search,
     title: "Compare Verified Local Places",
     description:
-      "Browse 6,900+ authentic stays, tours, restaurants, and charters with live multi-currency pricing, photos, and local essentials.",
+      "Browse 8,038+ authentic stays, tours, restaurants, and charters with live 12-currency pricing, photos, and local travel essentials.",
     color: "bg-teal-500",
   },
   {
     number: "03",
     icon: TreePalm,
-    title: "Message In-App & Book with Protection",
+    title: "Book Direct with 0% Guest Fees",
     description:
-      "Message verified operators safely inside VakayGo, book with Stripe or PayPal buyer protection, and receive your QR voucher + direct operator contact upon confirmation.",
+      "Message verified operators safely inside VakayGo, book with $0 traveler booking fees while local businesses keep 85%–90%, and receive your instant QR voucher.",
     color: "bg-gold-500",
   },
 ];

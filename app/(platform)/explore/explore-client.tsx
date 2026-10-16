@@ -98,11 +98,15 @@ const durationOptions = [
 
 const cuisineOptions = [
   "Caribbean",
+  "Mediterranean",
   "Seafood",
-  "International",
+  "Greek",
   "Italian",
-  "Indian",
+  "Spanish",
   "Mexican",
+  "Colombian",
+  "International",
+  "Indian",
   "BBQ",
   "Vegetarian",
 ];
@@ -1019,7 +1023,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <span className="font-semibold text-navy-700">
                   {totalCount === null ? countError ? "an unavailable total" : "..." : totalCount.toLocaleString()}
                 </span>{" "}
-                experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
+                experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across 34 destinations"}
               </p>
               <select
                 aria-label="Sort by"
@@ -1102,7 +1106,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <span className="font-semibold text-navy-700">
                   {totalCount === null ? countError ? "an unavailable total" : "..." : totalCount.toLocaleString()}
                 </span>{" "}
-                experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across the Caribbean"}
+                experiences{activeIsland ? ` in ${activeIsland.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}` : " across 34 destinations"}
               </p>
               <select
                 aria-label="Sort by"

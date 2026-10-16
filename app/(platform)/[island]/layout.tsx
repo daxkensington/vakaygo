@@ -90,7 +90,9 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   // Use title.absolute so the chain "root template → [island] → [slug]"
   // resolves the same regardless of nesting depth (it doesn't otherwise
   // — template inheritance through nested segments was inconsistent).
-  const title = `${island.name} — Caribbean Travel & Experiences | VakayGo`;
+  const countryLabel =
+    island.country && island.country !== island.name ? `, ${island.country}` : "";
+  const title = `${island.name}${countryLabel} — Stays, Tours & Experiences | VakayGo`;
   const description =
     island.description ||
     `Explore stays, tours, dining, and experiences in ${island.name}. Book directly with verified local operators on VakayGo.`;
@@ -108,7 +110,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
       siteName: "VakayGo",
       images: [
         {
-          url: `https://vakaygo.com/api/og?title=${encodeURIComponent(island.name)}&subtitle=${encodeURIComponent("Caribbean Travel & Experiences")}`,
+          url: `https://vakaygo.com/api/og?title=${encodeURIComponent(island.name)}&subtitle=${encodeURIComponent(`${island.country || "Sun & Sea"} Travel & Experiences`)}`,
           width: 1200,
           height: 630,
           alt: island.name,
@@ -141,7 +143,7 @@ export default async function IslandLayout({ children, params }: Props) {
     description: island.description || undefined,
     url: `https://vakaygo.com/${slug}`,
     image: heroImg,
-    containedInPlace: { "@type": "Place", name: "Caribbean" },
+    containedInPlace: { "@type": "Place", name: island.country || "Sun & Sea" },
   };
   if (geo) {
     jsonLd.geo = {

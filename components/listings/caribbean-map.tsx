@@ -105,17 +105,17 @@ type FlyoverWaypoint = {
   listing?: MapListing;
 };
 
-// Flyover waypoints — hit the highlights across the Caribbean
+// Flyover waypoints — hit flagship highlights across the Caribbean, Latin America & Mediterranean
 const FLYOVER_WAYPOINTS: FlyoverWaypoint[] = [
-  { center: [-66, 18] as [number, number], zoom: 5, pitch: 30, bearing: 0, label: "The Caribbean" },
+  { center: [-66, 18] as [number, number], zoom: 5, pitch: 30, bearing: 0, label: "Global Sun & Sea" },
   { center: [-61.75, 12.05] as [number, number], zoom: 11, pitch: 55, bearing: -20, label: "Grenada" },
   { center: [-60.98, 13.91] as [number, number], zoom: 11, pitch: 50, bearing: 15, label: "St. Lucia" },
-  { center: [-59.55, 13.19] as [number, number], zoom: 11, pitch: 45, bearing: -10, label: "Barbados" },
-  { center: [-61.80, 17.06] as [number, number], zoom: 11, pitch: 50, bearing: 20, label: "Antigua" },
-  { center: [-77.30, 18.11] as [number, number], zoom: 9, pitch: 45, bearing: -15, label: "Jamaica" },
-  { center: [-69.97, 12.52] as [number, number], zoom: 12, pitch: 50, bearing: 30, label: "Aruba" },
-  { center: [-77.40, 25.03] as [number, number], zoom: 9, pitch: 40, bearing: 0, label: "Bahamas" },
-  { center: [-66, 18] as [number, number], zoom: 5, pitch: 30, bearing: 0, label: "Explore All Islands" },
+  { center: [-75.55, 10.42] as [number, number], zoom: 12, pitch: 50, bearing: -15, label: "Cartagena" },
+  { center: [-87.07, 20.63] as [number, number], zoom: 10, pitch: 45, bearing: 20, label: "Cancún & Riviera Maya" },
+  { center: [25.43, 36.42] as [number, number], zoom: 11, pitch: 55, bearing: -25, label: "Santorini" },
+  { center: [14.48, 40.62] as [number, number], zoom: 11, pitch: 50, bearing: 15, label: "Amalfi Coast & Capri" },
+  { center: [1.42, 38.97] as [number, number], zoom: 11, pitch: 45, bearing: 10, label: "Ibiza" },
+  { center: [-66, 18] as [number, number], zoom: 5, pitch: 30, bearing: 0, label: "Explore All 34 Hubs" },
 ];
 
 // Caribbean overview

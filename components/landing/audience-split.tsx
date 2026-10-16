@@ -1,19 +1,19 @@
 import { Check, ArrowRight } from "lucide-react";
 
 const travelerBenefits = [
-  "Explore 6,900+ places on our 3D satellite map with aerial flyovers",
-  "Generate custom day-by-day island itineraries with our AI Concierge",
-  "Compare prices live in USD, EUR, GBP, CAD, XCD, BBD, JMD & TTD",
-  "$0 guest booking fees + earn 2%–5% VakayCash cashback on every booking",
+  "Explore 8,038+ places across 34 Caribbean, Latin American & Mediterranean hubs on our 3D satellite map",
+  "Generate custom day-by-day coastal & island itineraries with our AI Concierge",
+  "Compare prices live in 12 currencies (USD, EUR, GBP, CAD, MXN, COP & more)",
+  "$0 guest booking fees + earn 2%–10% loyalty rewards on every booking",
   "Protected in-app messaging & instant QR voucher unlock",
 ];
 
 const businessBenefits = [
-  "Claim your existing Caribbean business listing in 60 seconds for free",
-  "Receive guarded in-app traveler inquiries & Notify-Me demand alerts",
-  "Accept online bookings via Stripe, PayPal, or local Caribbean bank settlement",
+  "Claim your existing business listing in 60 seconds for free via phone or email",
+  "Receive guarded in-app traveler inquiries & instant demand alerts",
+  "Accept payouts via Wise, PayPal, SEPA/SWIFT Bank Wire, or Stripe Connect",
   "Sync calendars via iCal and manage seasonal pricing & availability",
-  "Keep 85%–92% of every booking—up to 50% less commission than Viator & Airbnb",
+  "Keep 85%–90% of every booking—up to 66% less commission than Viator & GetYourGuide",
 ];
 
 export function AudienceSplit() {
