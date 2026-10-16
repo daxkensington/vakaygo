@@ -78,6 +78,21 @@ const islandCoords: Record<string, { center: [number, number]; zoom: number; nam
   martinique:             { center: [-61.0242, 14.6415], zoom: 11, name: "Martinique" },
   guadeloupe:             { center: [-61.551, 16.265], zoom: 10, name: "Guadeloupe" },
   bonaire:                { center: [-68.2655, 12.1443], zoom: 12, name: "Bonaire" },
+  // Wave 2A — Latin America
+  cartagena:              { center: [-75.5478, 10.4236], zoom: 12, name: "Cartagena" },
+  medellin:               { center: [-75.5659, 6.2088], zoom: 12, name: "Medellín" },
+  "cancun-riviera-maya":  { center: [-87.0739, 20.6296], zoom: 9, name: "Cancún & Riviera Maya" },
+  "los-cabos":            { center: [-109.9167, 22.8905], zoom: 10, name: "Los Cabos" },
+  guanacaste:             { center: [-85.8371, 10.2993], zoom: 10, name: "Guanacaste" },
+  "ambergris-caye":       { center: [-87.9611, 17.9214], zoom: 12, name: "Ambergris Caye" },
+  // Wave 2B — Mediterranean
+  santorini:              { center: [25.4328, 36.4167], zoom: 11, name: "Santorini" },
+  mykonos:                { center: [25.3289, 37.4467], zoom: 12, name: "Mykonos" },
+  crete:                  { center: [24.8, 35.3387], zoom: 9, name: "Crete" },
+  ibiza:                  { center: [1.4206, 38.97], zoom: 11, name: "Ibiza" },
+  mallorca:               { center: [2.95, 39.62], zoom: 10, name: "Mallorca" },
+  "amalfi-coast-capri":   { center: [14.48, 40.62], zoom: 11, name: "Amalfi Coast & Capri" },
+  "hvar-split":           { center: [16.4411, 43.34], zoom: 10, name: "Hvar & Split" },
 };
 
 // Flyover waypoint type

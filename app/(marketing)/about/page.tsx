@@ -53,23 +53,25 @@ export default function AboutPage() {
                   For everyone.
                 </h2>
                 <p className="mt-6 text-navy-500 leading-relaxed">
-                  The big travel platforms take 20-30% from local businesses.
-                  That&apos;s money that should stay in the communities travelers
-                  visit. VakayGo takes just 3-5% — because we believe technology
-                  should empower local economies, not extract from them.
+                  The big travel platforms take 20–30% from local businesses and
+                  tack 14–18% service fees onto travelers. VakayGo charges{" "}
+                  <strong>0% guest booking fees</strong> while operators keep{" "}
+                  <strong>85%–90%</strong> of every booking — because technology
+                  should empower local coastal economies, not extract from them.
                 </p>
                 <p className="mt-4 text-navy-500 leading-relaxed">
-                  We started in Grenada because we know the Caribbean. We&apos;re
-                  expanding across 21 islands because every community deserves a
-                  platform that works for them.
+                  We started in Grenada because we know the Caribbean. Today
+                  we&apos;re live across 34 destinations in the Caribbean, Latin
+                  America, and the Mediterranean because every coastal community
+                  deserves a platform that works for them.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { icon: Globe, label: "21 Islands", sublabel: "Across the Caribbean" },
-                  { icon: Users, label: "7,230+", sublabel: "Local businesses" },
-                  { icon: Heart, label: "3-5%", sublabel: "Fair commission" },
-                  { icon: Shield, label: "100%", sublabel: "Verified operators" },
+                  { icon: Globe, label: "34 Hubs", sublabel: "Caribbean, LatAm & Med" },
+                  { icon: Users, label: "8,038+", sublabel: "Local businesses" },
+                  { icon: Heart, label: "85–90%", sublabel: "Operator payout" },
+                  { icon: Shield, label: "0%", sublabel: "Guest booking fee" },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] text-center">
                     <stat.icon size={24} className="text-gold-700 mx-auto mb-3" />
@@ -98,7 +100,7 @@ export default function AboutPage() {
                 {
                   title: "Local businesses should keep their money",
                   description:
-                    "Our 3-5% commission is the lowest in the industry. When a tour guide earns $100, they keep $95-97. On Viator, they'd keep $75. That difference changes lives.",
+                    "Operators keep 85%–90% of every booking on VakayGo (10%–15% platform fee) and travelers pay $0 in guest booking fees. On Viator or GetYourGuide, operators lose 20%–30% while guests pay inflated markups.",
                 },
                 {
                   title: "Travelers deserve authentic experiences",

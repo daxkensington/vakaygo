@@ -13,20 +13,20 @@ export function MapAiSpotlight() {
         <div className="text-center max-w-3xl mx-auto mb-14">
           <span className="inline-flex items-center gap-2 bg-gold-500/15 border border-gold-400/30 text-gold-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
             <Sparkles size={13} />
-            Next-Gen Caribbean Discovery
+            Next-Gen Global Sun &amp; Sea Discovery
           </span>
           <h2
             className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Fly Over the Islands in 3D.
+            Fly Over 34 Destinations in 3D.
             <br />
             <span className="bg-gradient-to-r from-gold-300 via-gold-400 to-teal-300 bg-clip-text text-transparent">
               Build Your Itinerary with AI.
             </span>
           </h2>
           <p className="mt-4 text-white/70 text-base md:text-lg leading-relaxed">
-            No more static lists of paid ads. Explore 6,917+ verified stays, beaches, restaurants, and charters on our interactive 3D satellite map—or let our AI Concierge craft your day-by-day island itinerary in seconds.
+            No more static lists of paid ads. Explore 8,038+ verified stays, beaches, restaurants, and charters on our interactive 3D satellite map—or let our AI Concierge craft your day-by-day coastal itinerary in seconds.
           </p>
         </div>
 
@@ -36,7 +36,7 @@ export function MapAiSpotlight() {
             <div className="relative h-60 overflow-hidden">
               <Image
                 src="/images/sections/map-showcase.jpg"
-                alt="VakayGo 3D Interactive Caribbean Map"
+                alt="VakayGo 3D Interactive Global Map"
                 fill
                 loading="lazy"
                 sizes="(min-width: 1024px) 50vw, 100vw"
@@ -49,7 +49,7 @@ export function MapAiSpotlight() {
               <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 bg-navy-900/85 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/15">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  6,917 Live GPS Pins
+                  8,038 Live GPS Pins
                 </span>
                 <span className="inline-flex items-center gap-1.5 bg-gold-500/90 backdrop-blur-md text-navy-900 text-xs font-bold px-3 py-1.5 rounded-full">
                   <Play size={11} className="fill-navy-900" />
@@ -84,10 +84,10 @@ export function MapAiSpotlight() {
                   className="text-2xl md:text-3xl font-bold text-white leading-snug"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Explore All 21 Islands in Real-Time 3D
+                  Explore All 34 Destinations in Real-Time 3D
                 </h3>
                 <p className="mt-2.5 text-white/70 text-sm md:text-base leading-relaxed">
-                  Pan across 3D volcanic peaks and turquoise bays, filter by 10 categories, watch automated aerial flyover tours of each island&apos;s top landmarks, and browse live viewport-synced place cards.
+                  Pan across 3D volcanic peaks, Mediterranean calderas, and turquoise Caribbean bays, filter by 10 categories, watch automated aerial flyover tours, and browse live viewport-synced place cards.
                 </p>
               </div>
 
@@ -173,7 +173,7 @@ export function MapAiSpotlight() {
                   <ArrowRight size={16} />
                 </Link>
                 <span className="text-xs text-white/50 flex items-center gap-1">
-                  <MapPin size={13} /> Works across all 21 islands
+                  <MapPin size={13} /> Works across all 34 destinations
                 </span>
               </div>
             </div>

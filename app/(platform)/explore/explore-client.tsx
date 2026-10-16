@@ -583,7 +583,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 onChange={(e) => setActiveIsland(e.target.value)}
                 className="hidden md:block px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer hover:bg-cream-100 transition-colors min-w-[7rem]"
               >
-                <option value="">All Islands</option>
+                <option value="">All Destinations</option>
                 <option value="grenada">🇬🇩 Grenada</option>
                 <option value="trinidad-and-tobago">🇹🇹 Trinidad & Tobago</option>
                 <option value="barbados">🇧🇧 Barbados</option>
@@ -605,6 +605,19 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <option value="martinique">🇲🇶 Martinique</option>
                 <option value="guadeloupe">🇬🇵 Guadeloupe</option>
                 <option value="bonaire">🇧🇶 Bonaire</option>
+                <option value="cartagena">🇨🇴 Cartagena</option>
+                <option value="medellin">🇨🇴 Medellín</option>
+                <option value="cancun-riviera-maya">🇲🇽 Cancún & Riviera Maya</option>
+                <option value="los-cabos">🇲🇽 Los Cabos</option>
+                <option value="guanacaste">🇨🇷 Guanacaste</option>
+                <option value="ambergris-caye">🇧🇿 Ambergris Caye</option>
+                <option value="santorini">🇬🇷 Santorini</option>
+                <option value="mykonos">🇬🇷 Mykonos</option>
+                <option value="crete">🇬🇷 Crete</option>
+                <option value="ibiza">🇪🇸 Ibiza</option>
+                <option value="mallorca">🇪🇸 Mallorca</option>
+                <option value="amalfi-coast-capri">🇮🇹 Amalfi Coast & Capri</option>
+                <option value="hvar-split">🇭🇷 Hvar & Split</option>
               </select>
               {/* Price Range */}
               <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
@@ -1190,7 +1203,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   onChange={(e) => setActiveIsland(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 text-sm font-medium outline-none appearance-none cursor-pointer"
                 >
-                  <option value="">All Islands</option>
+                  <option value="">All Destinations</option>
                   <option value="grenada">🇬🇩 Grenada</option>
                   <option value="trinidad-and-tobago">🇹🇹 Trinidad & Tobago</option>
                   <option value="barbados">🇧🇧 Barbados</option>
@@ -1212,6 +1225,19 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <option value="martinique">🇲🇶 Martinique</option>
                   <option value="guadeloupe">🇬🇵 Guadeloupe</option>
                   <option value="bonaire">🇧🇶 Bonaire</option>
+                  <option value="cartagena">🇨🇴 Cartagena</option>
+                  <option value="medellin">🇨🇴 Medellín</option>
+                  <option value="cancun-riviera-maya">🇲🇽 Cancún & Riviera Maya</option>
+                  <option value="los-cabos">🇲🇽 Los Cabos</option>
+                  <option value="guanacaste">🇨🇷 Guanacaste</option>
+                  <option value="ambergris-caye">🇧🇿 Ambergris Caye</option>
+                  <option value="santorini">🇬🇷 Santorini</option>
+                  <option value="mykonos">🇬🇷 Mykonos</option>
+                  <option value="crete">🇬🇷 Crete</option>
+                  <option value="ibiza">🇪🇸 Ibiza</option>
+                  <option value="mallorca">🇪🇸 Mallorca</option>
+                  <option value="amalfi-coast-capri">🇮🇹 Amalfi Coast & Capri</option>
+                  <option value="hvar-split">🇭🇷 Hvar & Split</option>
                 </select>
               </div>
 

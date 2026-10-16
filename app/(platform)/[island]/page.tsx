@@ -69,6 +69,21 @@ const heroImages: Record<string, string> = {
   "us-virgin-islands": "/images/islands/us-virgin-islands.jpg",
   "british-virgin-islands": "/images/islands/british-virgin-islands.jpg",
   "puerto-rico": "/images/islands/puerto-rico.jpg",
+  // Wave 2A — Latin America
+  cartagena: "/images/islands/cartagena.jpg",
+  medellin: "/images/islands/medellin.jpg",
+  "cancun-riviera-maya": "/images/islands/cancun-riviera-maya.jpg",
+  "los-cabos": "/images/islands/los-cabos.jpg",
+  guanacaste: "/images/islands/guanacaste.jpg",
+  "ambergris-caye": "/images/islands/ambergris-caye.jpg",
+  // Wave 2B — Mediterranean
+  santorini: "/images/islands/santorini.jpg",
+  mykonos: "/images/islands/mykonos.jpg",
+  crete: "/images/islands/crete.jpg",
+  ibiza: "/images/islands/ibiza.jpg",
+  mallorca: "/images/islands/mallorca.jpg",
+  "amalfi-coast-capri": "/images/islands/amalfi-coast-capri.jpg",
+  "hvar-split": "/images/islands/hvar-split.jpg",
 };
 const defaultHero = "/images/hero/caribbean-hero.jpg";
 
@@ -97,6 +112,21 @@ const islandEssentials: Record<
   "st-vincent": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SVD (Argyle Intl)", driving: "Left side" },
   "st-kitts": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SKB (Robert L. Bradshaw)", driving: "Left side" },
   dominica: { currency: "EC$ (XCD) / USD", language: "English / Kwéyòl", bestTime: "Dec – May", airport: "DOM (Douglas-Charles)", driving: "Left side" },
+  // Wave 2A — Latin America
+  cartagena: { currency: "COP ($) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "CTG (Rafael Núñez)", driving: "Right side" },
+  medellin: { currency: "COP ($) / USD", language: "Spanish / English", bestTime: "Year-round", airport: "MDE (José María Córdova)", driving: "Right side" },
+  "cancun-riviera-maya": { currency: "MXN ($) / USD", language: "Spanish / English", bestTime: "Nov – Apr", airport: "CUN / TQO", driving: "Right side" },
+  "los-cabos": { currency: "MXN ($) / USD", language: "Spanish / English", bestTime: "Nov – May", airport: "SJD (Los Cabos Intl)", driving: "Right side" },
+  guanacaste: { currency: "CRC (₡) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "LIR (Guanacaste Intl)", driving: "Right side" },
+  "ambergris-caye": { currency: "BZD ($) / USD", language: "English / Spanish", bestTime: "Nov – May", airport: "BZE / SPR", driving: "Right side (Golf Carts)" },
+  // Wave 2B — Mediterranean
+  santorini: { currency: "EUR (€)", language: "Greek / English", bestTime: "May – Oct", airport: "JTR (Santorini Intl)", driving: "Right side" },
+  mykonos: { currency: "EUR (€)", language: "Greek / English", bestTime: "May – Oct", airport: "JMK (Mykonos Intl)", driving: "Right side" },
+  crete: { currency: "EUR (€)", language: "Greek / English", bestTime: "Apr – Oct", airport: "HER / CHQ", driving: "Right side" },
+  ibiza: { currency: "EUR (€)", language: "Spanish / Catalan / EN", bestTime: "May – Oct", airport: "IBZ (Ibiza Airport)", driving: "Right side" },
+  mallorca: { currency: "EUR (€)", language: "Spanish / Catalan / EN", bestTime: "Apr – Oct", airport: "PMI (Palma de Mallorca)", driving: "Right side" },
+  "amalfi-coast-capri": { currency: "EUR (€)", language: "Italian / English", bestTime: "May – Oct", airport: "NAP (Naples Intl)", driving: "Right side" },
+  "hvar-split": { currency: "EUR (€)", language: "Croatian / English", bestTime: "May – Oct", airport: "SPU (Split Airport)", driving: "Right side" },
 };
 const defaultEssentials = {
   currency: "USD & Local Currency",

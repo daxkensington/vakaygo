@@ -21,7 +21,21 @@ const islands = [
   { name: "Turks & Caicos", flag: "🇹🇨", slug: "turks-and-caicos", tagline: "Beautiful by Nature", status: "Live now", active: true },
   { name: "Martinique", flag: "🇲🇶", slug: "martinique", tagline: "Île aux Fleurs", status: "Live now", active: true },
   { name: "Guadeloupe", flag: "🇬🇵", slug: "guadeloupe", tagline: "Butterfly Island", status: "Live now", active: true },
-  { name: "More Islands", flag: "🌊", slug: "", tagline: "Expanding globally", status: "Request yours", active: false },
+  { name: "Bonaire", flag: "🇧🇶", slug: "bonaire", tagline: "Diver's Paradise", status: "Live now", active: true },
+  { name: "Cartagena", flag: "🇨🇴", slug: "cartagena", tagline: "Walled City Magic", status: "Live now", active: true },
+  { name: "Medellín", flag: "🇨🇴", slug: "medellin", tagline: "Eternal Spring", status: "Live now", active: true },
+  { name: "Cancún & Riviera Maya", flag: "🇲🇽", slug: "cancun-riviera-maya", tagline: "Cenotes & Coast", status: "Live now", active: true },
+  { name: "Los Cabos", flag: "🇲🇽", slug: "los-cabos", tagline: "Sea of Cortez", status: "Live now", active: true },
+  { name: "Guanacaste", flag: "🇨🇷", slug: "guanacaste", tagline: "Pura Vida Coast", status: "Live now", active: true },
+  { name: "Ambergris Caye", flag: "🇧🇿", slug: "ambergris-caye", tagline: "Barrier Reef Hub", status: "Live now", active: true },
+  { name: "Santorini", flag: "🇬🇷", slug: "santorini", tagline: "Aegean Caldera", status: "Live now", active: true },
+  { name: "Mykonos", flag: "🇬🇷", slug: "mykonos", tagline: "Cycladic Luxury", status: "Live now", active: true },
+  { name: "Crete", flag: "🇬🇷", slug: "crete", tagline: "Lagoon & History", status: "Live now", active: true },
+  { name: "Ibiza", flag: "🇪🇸", slug: "ibiza", tagline: "Balearic Escape", status: "Live now", active: true },
+  { name: "Mallorca", flag: "🇪🇸", slug: "mallorca", tagline: "Tramuntana & Coves", status: "Live now", active: true },
+  { name: "Amalfi & Capri", flag: "🇮🇹", slug: "amalfi-coast-capri", tagline: "La Dolce Vita", status: "Live now", active: true },
+  { name: "Hvar & Split", flag: "🇭🇷", slug: "hvar-split", tagline: "Dalmatian Coast", status: "Live now", active: true },
+  { name: "More Destinations", flag: "🌊", slug: "", tagline: "Expanding globally", status: "Request yours", active: false },
 ];
 
 export function Roadmap() {
@@ -30,18 +44,18 @@ export function Roadmap() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center mb-16">
           <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
-            Caribbean-Wide
+            Global Sun &amp; Sea Network
           </p>
           <h2
             className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            21 islands.{" "}
+            34 destinations.{" "}
             <span className="text-teal-500">One platform.</span>
           </h2>
           <p className="mt-4 text-navy-400 max-w-lg mx-auto text-lg">
-            From Grenada to Puerto Rico — discover the entire Caribbean on
-            VakayGo.
+            From the Caribbean to Latin America &amp; the Mediterranean — discover
+            8,000+ local businesses on VakayGo.
           </p>
         </div>
 

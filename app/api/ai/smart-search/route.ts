@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 Parse into filters:
 {
   "type": one of "stay", "tour", "dining", "event", "transport", "excursion", "transfer", "vip", "guide", "spa" (only if clearly mentioned),
-  "island": island slug like "grenada", "barbados", "jamaica", "st-lucia", "trinidad-and-tobago", "antigua", "dominica", "bahamas", "aruba", "curacao", "cayman-islands", "puerto-rico", "dominican-republic" (only if clearly mentioned),
+  "island": destination slug like "grenada", "barbados", "jamaica", "st-lucia", "trinidad-and-tobago", "antigua", "dominica", "bahamas", "aruba", "curacao", "cayman-islands", "puerto-rico", "dominican-republic", "turks-and-caicos", "us-virgin-islands", "british-virgin-islands", "st-kitts", "martinique", "guadeloupe", "bonaire", "st-vincent", "cartagena", "medellin", "cancun-riviera-maya", "los-cabos", "guanacaste", "ambergris-caye", "santorini", "mykonos", "crete", "ibiza", "mallorca", "amalfi-coast-capri", "hvar-split" (only if clearly mentioned),
   "q": keyword string for text search (extract the key subject/activity),
   "minPrice": number (only if a budget floor is mentioned),
   "maxPrice": number (only if a budget ceiling is mentioned),

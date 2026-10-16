@@ -22,16 +22,16 @@ export function WaitlistSection() {
       <div className="relative mx-auto max-w-2xl px-6 text-center">
         <div className="inline-flex items-center gap-2 bg-gold-500/20 text-gold-300 border border-gold-500/30 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
           <Palmtree size={14} />
-          Now live across 21 islands
+          Now live across 34 destinations
         </div>
         <h2
           className="text-4xl md:text-5xl font-bold text-white tracking-tight"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Ready to explore the Caribbean?
+          Ready to explore the coast?
         </h2>
         <p className="mt-4 text-white/60 text-lg max-w-md mx-auto">
-          Sign up free and start planning your perfect island getaway.
+          Sign up free and start planning your Caribbean, Latin American, or Mediterranean getaway.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">

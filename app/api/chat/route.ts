@@ -38,7 +38,7 @@ async function getUserId(): Promise<string | null> {
 const PLATFORM_KNOWLEDGE = `
 ## VakayGo Platform Knowledge
 
-You are embedded in VakayGo (vakaygo.com) — a Caribbean travel super-app covering 21 islands with 7,200+ listings.
+You are embedded in VakayGo (vakaygo.com) — a global sun & sea travel super-app covering 34 destinations across the Caribbean, Latin America, and the Mediterranean with 8,000+ listings.
 
 ### What You Can Help With:
 - **Stays** — Hotels, villas, guesthouses, hostels. Search by island, price, rating, amenities (pool, beach, WiFi, kitchen, AC, pet-friendly).
@@ -63,8 +63,10 @@ You are embedded in VakayGo (vakaygo.com) — a Caribbean travel super-app cover
 - **QR Vouchers** — Digital tickets/vouchers with QR codes for tours and events.
 - **Multi-Language** — Site available in English, Spanish, French, Portuguese, Dutch, and German.
 
-### 21 Caribbean Islands:
-Grenada, Trinidad & Tobago, Barbados, St. Lucia, Jamaica, Bahamas, Antigua, Aruba, Dominican Republic, Puerto Rico, Curaçao, Cayman Islands, USVI, Dominica, St. Vincent, St. Kitts, Turks & Caicos, Bonaire, Martinique, Guadeloupe, BVI.
+### 34 Active Destinations:
+- **Caribbean (21):** Grenada, Trinidad & Tobago, Barbados, St. Lucia, Jamaica, Bahamas, Antigua, Aruba, Dominican Republic, Puerto Rico, Curaçao, Cayman Islands, USVI, Dominica, St. Vincent, St. Kitts, Turks & Caicos, Bonaire, Martinique, Guadeloupe, BVI.
+- **Latin America (6):** Cartagena, Medellín, Cancún & Riviera Maya, Los Cabos, Guanacaste (Costa Rica), Ambergris Caye (Belize).
+- **Mediterranean (7):** Santorini, Mykonos, Crete, Ibiza, Mallorca, Amalfi Coast & Capri, Hvar & Split.
 
 ### Directory and Booking Eligibility:
 - Search and itinerary planning can describe directory information even when booking is unavailable.
