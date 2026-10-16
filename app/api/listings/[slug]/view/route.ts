@@ -14,6 +14,11 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const ua = request.headers.get("user-agent") || "";
+    if (/bot|crawl|spider|slurp|facebookexternalhit|whatsapp|headless|lighthouse|prerender|ahrefs|semrush|bytespider|gptbot|claudebot/i.test(ua)) {
+      return NextResponse.json({ tracked: false, reason: "bot" });
+    }
+
     const { slug } = await params;
     const body = await request.json().catch(() => ({}));
     const source = body.source || "direct";
