@@ -24,6 +24,7 @@ import {
   Users,
   Sparkles,
   ChevronDown,
+  Flower2,
 } from "lucide-react";
 
 // ISR: rebuilt in the background at most hourly, so new posts/listings
@@ -149,6 +150,7 @@ const sectionConfig = [
   { type: "transfer", label: "Airport Transfers", icon: Car, color: "bg-navy-600" },
   { type: "vip", label: "VIP Experiences", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Local Guides", icon: Users, color: "bg-gold-500" },
+  { type: "spa", label: "Spas", icon: Flower2, color: "bg-rose-500" },
 ] as const;
 
 const typeFallbacks: Record<string, string> = {
@@ -161,6 +163,7 @@ const typeFallbacks: Record<string, string> = {
   transfer: "from-navy-500 to-navy-700",
   vip: "from-gold-500 to-gold-700",
   guide: "from-gold-400 to-teal-500",
+  spa: "from-rose-400 to-rose-600",
 };
 
 function getFaqs(name: string, slug: string) {
