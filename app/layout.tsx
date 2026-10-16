@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, DM_Serif_Display } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
@@ -14,16 +14,42 @@ import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const dmSans = localFont({
+  src: "./fonts/DMSans-latin.woff2",
+  variable: "--font-dm-sans-latin",
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
 });
 
-const dmSerif = DM_Serif_Display({
-  variable: "--font-display",
-  subsets: ["latin"],
+const dmSansExtended = localFont({
+  src: "./fonts/DMSans-latin-ext.woff2",
+  variable: "--font-dm-sans-latin-ext",
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const dmSerif = localFont({
+  src: "./fonts/DMSerifDisplay-latin.woff2",
+  variable: "--font-dm-serif-latin",
   weight: "400",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+});
+
+const dmSerifExtended = localFont({
+  src: "./fonts/DMSerifDisplay-latin-ext.woff2",
+  variable: "--font-dm-serif-latin-ext",
+  weight: "400",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
 });
 
 export const viewport: Viewport = {
@@ -100,7 +126,7 @@ export default function RootLayout({
   // lang/dir are fixed up client-side by <LocaleHtmlAttrs/>; reading the
   // locale cookie here made every page dynamic (see that component).
   return (
-    <html lang="en" dir="ltr" data-dir="ltr" data-scroll-behavior="smooth" className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" dir="ltr" data-dir="ltr" data-scroll-behavior="smooth" className={`${dmSans.variable} ${dmSansExtended.variable} ${dmSerif.variable} ${dmSerifExtended.variable}`}>
       <head>
         {/* manifest + theme-color moved to the metadata/viewport exports below.
             A hardcoded <link>/<meta> always wins (the browser takes the first),
