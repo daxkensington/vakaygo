@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  AlertTriangle,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Save,
-} from "lucide-react";
+import { AlertTriangle, Search, ChevronDown, ChevronUp, Loader2, Clock, CheckCircle, Eye, Save } from "lucide-react";
 
 type Dispute = {
   id: string;

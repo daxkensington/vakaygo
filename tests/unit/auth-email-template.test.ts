@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-const sendEmail = vi.hoisted(() => vi.fn(async (_message: { html: string; replyTo?: string }) => ({ data: { id: "synthetic-mail" } })));
+const sendEmail = vi.hoisted(() => vi.fn<(message: { html: string; replyTo?: string }) => Promise<{ data: { id: string } }>>(async () => ({ data: { id: "synthetic-mail" } })));
 vi.mock("@/server/mail-client", () => ({ sendEmail }));
 import { sendWelcomeEmail, sendVerificationEmail, sendMagicLinkEmail } from "@/server/email";
 

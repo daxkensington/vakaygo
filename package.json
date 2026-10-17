@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "check:i18n": "node scripts/check-i18n.mjs",
     "db:generate": "drizzle-kit generate",
@@ -66,8 +66,7 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^7.3.6",
-    "vitest": "^4.1.4",
-    "shadcn": "^4.1.0"
+    "vitest": "^4.1.4"
   },
   "overrides": {
     "@esbuild-kit/core-utils": {

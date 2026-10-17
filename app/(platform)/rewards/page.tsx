@@ -5,24 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
-import {
-  Star,
-  Gift,
-  Copy,
-  Check,
-  Users,
-  TrendingUp,
-  Award,
-  ArrowRight,
-  Loader2,
-  Lock,
-  Mail,
-  Share2,
-  Trophy,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
-import { LoyaltyBadge } from "@/components/shared/loyalty-badge";
+import { Gift, Copy, Check, ArrowRight, Loader2, Lock, Mail, Share2, Trophy, Sparkles, ChevronRight } from "lucide-react";
 
 type LoyaltyData = {
   points: number;

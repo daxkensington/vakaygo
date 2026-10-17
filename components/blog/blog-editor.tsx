@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import { useRouter } from "next/navigation";
@@ -510,7 +512,10 @@ export function BlogEditor({
             </div>
             {form.coverImage ? (
               <div className="relative">
-                <img
+                <Image
+                  unoptimized
+                  width={1600}
+                  height={900}
                   src={form.coverImage}
                   alt="Cover"
                   className="w-full aspect-video rounded-xl object-cover"
@@ -677,7 +682,10 @@ export function BlogEditor({
 
               {generatedImageUrl && !generatingImage && (
                 <div className="mb-4">
-                  <img
+                  <Image
+                    unoptimized
+                    width={1024}
+                    height={1024}
                     src={generatedImageUrl}
                     alt="Generated cover"
                     className="w-full aspect-square rounded-xl object-cover shadow-sm"

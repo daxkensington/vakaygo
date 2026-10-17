@@ -15,7 +15,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { media } from "@/drizzle/schema";
-import { like, isNull, eq } from "drizzle-orm";
+import { like, eq } from "drizzle-orm";
 import sharp from "sharp";
 
 const BATCH_SIZE = parseInt(process.argv.find((a) => a.startsWith("--batch-size="))?.split("=")[1] || "100");

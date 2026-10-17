@@ -1,5 +1,8 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -1199,11 +1202,13 @@ function TripPlanner() {
                                   <div className="flex items-start gap-3">
                                     {/* Image */}
                                     {item.image && (
-                                      <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-cream-200">
-                                        <img
-                                          src={item.image}
+                                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-cream-200">
+                                        <ImageWithFallback
+                                          src={getImageUrl(item.image)}
+                                          type={item.type}
                                           alt={item.title}
-                                          className="w-full h-full object-cover"
+                                          sizes="64px"
+                                          className="absolute inset-0"
                                         />
                                       </div>
                                     )}

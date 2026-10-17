@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState, useCallback } from "react";
 import {
   Users,
@@ -62,7 +64,10 @@ function formatDate(iso: string) {
 function Avatar({ user }: { user: User }) {
   if (user.avatarUrl) {
     return (
-      <img
+      <Image
+        unoptimized
+        width={40}
+        height={40}
         src={user.avatarUrl}
         alt=""
         className="h-10 w-10 rounded-full object-cover"

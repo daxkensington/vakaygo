@@ -198,7 +198,6 @@ function VerifyBooking({
   }
 
   const isValid = data.status === "confirmed";
-  const isExpired = data.status === "completed" || data.status === "cancelled" || data.status === "refunded";
   const isPending = data.status === "pending";
   const currencySymbol = data.currency === "XCD" ? "EC$" : "$";
 

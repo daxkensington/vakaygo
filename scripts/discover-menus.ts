@@ -37,7 +37,6 @@ const concurrency = parseInt(getArg("concurrency") || "3");
 
 type MenuListing = { id: string; title: string; typeData: unknown; island: string };
 
-
 interface MenuResult {
   menu: MenuSection[];
   menuPdfUrl?: string;
@@ -233,9 +232,6 @@ function extractMenuFromText(html: string): MenuSection[] {
     .replace(/<nav[\s\S]*?<\/nav>/gi, "")
     .replace(/<footer[\s\S]*?<\/footer>/gi, "")
     .replace(/<header[\s\S]*?<\/header>/gi, "");
-
-  // Try to find sections by headers
-  const sections: MenuSection[] = [];
 
   // Split by h2/h3 headers to find sections
   const sectionPattern = /<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi;
@@ -497,9 +493,6 @@ async function discoverMenu(
   if (placeId && GOOGLE_API_KEY) {
     const googleData = await fetchGoogleCuisineData(placeId);
     if (googleData?.servesInfo && googleData.servesInfo.length > 0) {
-      const typeDataUpdate = {
-        serves: googleData.servesInfo,
-      };
       if (!bestResult) {
         bestResult = { menu: [], source: "google-serves" };
       }

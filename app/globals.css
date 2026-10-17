@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+/* Unmodified shadcn@4.21.4 dist/tailwind.css; MIT notice: ../LICENSES/shadcn-MIT.txt.
+   Source: https://registry.npmjs.org/shadcn/-/shadcn-4.21.4.tgz */
+@import "./styles/shadcn.css";
 @import "./fonts/fallbacks.css";
 
 @custom-variant dark (&:is(.dark *));

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { payouts, taxDocuments, users } from "@/drizzle/schema";
+import { payouts, taxDocuments } from "@/drizzle/schema";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, Image as ImageIcon, Loader2, GripVertical } from "lucide-react";
 
@@ -33,14 +35,6 @@ export default function PhotoUploader({
   const [isDragging, setIsDragging] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const updatePhotos = useCallback(
-    (newPhotos: Photo[]) => {
-      setPhotos(newPhotos);
-      onPhotosChange?.(newPhotos);
-    },
-    [onPhotosChange]
-  );
 
   const uploadFile = useCallback(
     async (file: File, tempId: string) => {
@@ -254,7 +248,10 @@ export default function PhotoUploader({
               key={item.id}
               className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm"
             >
-              <img
+              <Image
+                unoptimized
+                width={48}
+                height={48}
                 src={item.preview}
                 alt=""
                 className="h-12 w-12 rounded-lg object-cover"
@@ -305,7 +302,10 @@ export default function PhotoUploader({
                 ${dragIndex === index ? "opacity-50" : "opacity-100"}
               `}
             >
-              <img
+              <Image
+                unoptimized
+                fill
+                sizes="(max-width: 640px) 50vw, 33vw"
                 src={photo.url}
                 alt={photo.alt || ""}
                 className="h-full w-full object-cover"

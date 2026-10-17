@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Users,
-  Plus,
-  Loader2,
-  Trash2,
-  X,
-  AlertCircle,
-  CheckCircle,
-  Mail,
-  Shield,
-  UserPlus,
-} from "lucide-react";
+import { Users, Loader2, Trash2, X, AlertCircle, CheckCircle, Mail, Shield, UserPlus } from "lucide-react";
 
 type TeamMember = {
   id: string;

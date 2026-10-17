@@ -77,7 +77,7 @@ const OPTIMIZABLE_HOSTS = [
 ];
 
 function isOptimizable(src: string): boolean {
-  if (src.startsWith("/") && !src.startsWith("/api/")) return true; // static asset
+  if (src.startsWith("/") && !src.startsWith("//") && !src.startsWith("/api/")) return true; // static asset
   try {
     const { protocol, hostname } = new URL(src);
     if (protocol !== "https:") return false;
@@ -100,17 +100,7 @@ function isOptimizable(src: string): boolean {
  * Pass `priority` for above-the-fold images (hero, first card) so the
  * browser fetches them eagerly with high priority.
  */
-export function ImageWithFallback({
-  src,
-  type,
-  alt,
-  className = "",
-  iconSize = 40,
-  children,
-  onClick,
-  priority = false,
-  sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
-}: {
+type ImageWithFallbackProps = {
   src: string | null;
   type: string;
   alt?: string;
@@ -121,7 +111,25 @@ export function ImageWithFallback({
   priority?: boolean;
   /** CSS `sizes` for srcset selection. Default fits a 1/2/3-column card grid. */
   sizes?: string;
-}) {
+};
+
+// A replacement URL gets its own load state; failure of a previous source must
+// not hide a newly uploaded or refreshed image. The key also isolates late errors.
+export function ImageWithFallback(props: ImageWithFallbackProps) {
+  return <ImageWithFallbackSource key={props.src} {...props} />;
+}
+
+function ImageWithFallbackSource({
+  src,
+  type,
+  alt,
+  className = "",
+  iconSize = 40,
+  children,
+  onClick,
+  priority = false,
+  sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+}: ImageWithFallbackProps) {
   const [failed, setFailed] = useState(false);
   // Fill images need a positioned wrapper. Merge the default so explicit
   // caller positioning also controls the missing/failed image placeholder.
