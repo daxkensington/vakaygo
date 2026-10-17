@@ -179,17 +179,26 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
     .map(Number)
     .sort((a, b) => a - b);
 
-  const totalDays =
+  // Items can sit beyond the date span (or on non-contiguous days), so the
+  // tab count must reach the highest planned day for them to stay reachable.
+  const maxItemDay = sortedDays
+    .filter((d) => Number.isInteger(d) && d >= 1)
+    .reduce((max, d) => Math.max(max, d), 0);
+
+  const dateDays =
     trip?.startDate && trip?.endDate
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(trip.endDate).getTime() -
-              new Date(trip.startDate).getTime()) /
-              86400000
-          )
+      ? Math.ceil(
+          (new Date(trip.endDate).getTime() -
+            new Date(trip.startDate).getTime()) /
+            86400000
         )
-      : sortedDays.length;
+      : 0;
+
+  const totalDays = Math.max(
+    1,
+    Number.isFinite(dateDays) ? dateDays : 0,
+    maxItemDay
+  );
 
   const allDays = Array.from({ length: totalDays }, (_, i) => i + 1);
 
