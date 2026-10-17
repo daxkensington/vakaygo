@@ -101,3 +101,21 @@ it("rejects revoked sessions on all trip read/write routes before database or AI
   const responses = await Promise.all([POST(request()), listTrips(), createTrip(request()), readTrip(request(), params), editTrip(request(), params), deleteTrip(request(), params)]);
   expect(responses.map(r => r.status)).toEqual([401, 401, 401, 401, 401, 401]); expect(state.dbStarts).toBe(0);
 });
+it("requires an actual successful catalogue lookup even for a model plan containing only personal time", async () => {
+  const plan = itinerary(); Object.assign(plan.days[0].items[0], { type: "free", listingId: null, title: "Fort George is completely free and open now", note: "Just show up." });
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: [{ type: "text", text: JSON.stringify(plan) }], stop_reason: "end_turn" })));
+  expect((await POST(request())).status).toBe(503); expect(state.execute).not.toHaveBeenCalled();
+});
+it("saves only deterministic planning text after an empty successful catalogue search, discarding named free/open claims and estimated costs", async () => {
+  const plan = itinerary(); const invented = "Fort George is completely free and open now. No reservation needed. Just show up.";
+  plan.title = invented; plan.summary = invented; plan.days[0].theme = invented;
+  Object.assign(plan.days[0].items[0], { type: "free", listingId: null, title: invented, note: invented });
+  state.search.mockResolvedValue([]); vi.stubGlobal("fetch", provider(plan));
+  const response = await POST(request()); expect(response.status).toBe(200); const result = await response.json();
+  expect(JSON.stringify(result.itinerary)).not.toContain(invented); expect(result.itinerary).not.toHaveProperty("estimatedBudget");
+  expect(result.itinerary.days[0].items[0]).toMatchObject({ title: "Personal time", price: null, listingId: null });
+  const query = new PgDialect().sqlToQuery(state.execute.mock.calls[0][0]);
+  expect(JSON.stringify(query.params)).not.toContain(invented); expect(JSON.stringify(query.params)).toContain("Planning slots are suggestions only");
+  const sent = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+  expect(sent.system).toContain("Missing/null/zero platform prices"); expect(sent.system).toContain("Planning slots");
+});

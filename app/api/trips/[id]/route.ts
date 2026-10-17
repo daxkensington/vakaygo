@@ -6,6 +6,8 @@ import { eq, and, inArray, asc, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { requireUser } from "@/server/admin-auth";
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { PERSONAL_NOTE, UNKNOWN_VISITOR_FACTS } from "@/server/trip-planner-response";
 
 import { logger } from "@/lib/logger";
 
@@ -99,7 +101,7 @@ export async function GET(
         })
         .from(listings)
         .innerJoin(islands, eq(listings.islandId, islands.id))
-        .where(and(inArray(listings.id, listingIds), eq(listings.status, "active")));
+        .where(and(inArray(listings.id, listingIds), publicDirectoryListings()));
 
       for (const l of listingRows) {
         listingMap.set(l.id, { ...l, priceAmount: l.bookingEligible === true ? l.priceAmount : null });
@@ -117,6 +119,12 @@ export async function GET(
 
     const itemsWithListings = items.map((item) => ({
       ...item,
+      // Historical AI text has no item-level provenance. Leave stored notes intact,
+      // but expose catalog names and explicit unknowns instead of model prose.
+      ...(trip.isAiGenerated ? {
+        customTitle: item.listingId ? (listingMap.get(item.listingId)?.title ?? "Directory listing unavailable") : "Personal time",
+        customNote: item.listingId ? UNKNOWN_VISITOR_FACTS : PERSONAL_NOTE,
+      } : {}),
       listing: item.listingId && listingMap.has(item.listingId)
         ? {
             ...listingMap.get(item.listingId),
