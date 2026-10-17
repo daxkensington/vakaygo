@@ -185,7 +185,7 @@ function getFaqs(name: string, slug: string) {
     },
     {
       q: `What is the local currency in ${name}?`,
-      a: `Most Caribbean islands use the Eastern Caribbean Dollar (XCD), though US dollars are widely accepted. VakayGo shows prices in your preferred currency so you always know the cost upfront.`,
+      a: `VakayGo displays prices in USD by default. Currency conversions are estimates. Confirm the local currency and current prices with the business.`,
     },
   ];
 }
