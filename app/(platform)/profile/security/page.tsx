@@ -380,10 +380,11 @@ function SecurityContent() {
                 )}
                 <div className="flex items-end gap-3">
                   <div className="flex-1 max-w-xs">
-                    <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    <label htmlFor="totp-verification-code" className="block text-sm font-medium text-navy-600 mb-1.5">
                       Verification Code
                     </label>
                     <input
+                      id="totp-verification-code"
                       type="text"
                       value={totpCode}
                       onChange={(e) => setTotpCode(e.target.value)}
@@ -448,10 +449,11 @@ function SecurityContent() {
               <div className="space-y-4">
                 <div className="flex items-end gap-3">
                   <div className="flex-1 max-w-xs">
-                    <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    <label htmlFor="phone-verification-number" className="block text-sm font-medium text-navy-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
+                      id="phone-verification-number"
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}

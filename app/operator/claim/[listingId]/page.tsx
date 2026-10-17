@@ -146,18 +146,18 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
   const mutationsBlocked = busy || refreshing || needsStatusRefresh;
 
   if (loading) return <div className="p-8" role="status"><Loader2 className="animate-spin" aria-label="Loading business verification" /></div>;
-  if (blocked === "email") return <main className="max-w-xl p-8">
+  if (blocked === "email") return <div className="max-w-xl p-8">
     <h1 className="text-2xl font-bold text-navy-700">Confirm your email</h1>
     <p className="mt-3 text-navy-500">Verify the inbox on this account before claiming the business. The confirmation link brings you back to this listing. Claiming does not enable bookings.</p>
     <Link href={`/auth/verify-email?claim=${listingId}`} className="mt-6 inline-flex rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white">Continue email verification</Link>
-  </main>;
-  if (blocked === "role") return <main className="max-w-xl p-8">
+  </div>;
+  if (blocked === "role") return <div className="max-w-xl p-8">
     <h1 className="text-2xl font-bold text-navy-700">Claim this business</h1>
     <p className="mt-3 text-navy-500">A business account is needed to verify your authority and manage a listing. Switching is free and keeps your traveler history.</p>
     {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
     <button disabled={mutationsBlocked} className="mt-6 rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white disabled:opacity-50" onClick={() => void verify("become_operator")}>Switch to a business account</button>
     {needsStatusRefresh && <button type="button" disabled={busy || refreshing} onClick={() => void load()} className="mt-4 block font-semibold underline">Refresh claim status</button>}
-  </main>;
+  </div>;
 
   const listing = summary?.listing;
   const supportHref = listing && /^\/[\w-]+\/[\w-]+$/.test(listing.url) ? `/contact?listing=${encodeURIComponent(listing.url)}` : "/contact";
@@ -165,7 +165,7 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
   const pending = summary?.verification?.state === "pending" || codeSent;
   const sending = summary?.verification?.state === "sending";
   const anotherAttempt = !!summary?.verification?.busyUntil && !pending && !sending;
-  return <main className="mx-auto max-w-2xl p-6 md:p-8">
+  return <div className="mx-auto max-w-2xl p-6 md:p-8">
     <Link href="/operator/listings" className="text-sm font-semibold text-gold-700">Back to your listings</Link>
     <h1 className="mt-5 text-3xl font-bold text-navy-700">Verify your business</h1>
     <p className="mt-2 text-navy-500">Claiming verifies control of the business. Bookings remain unavailable until company onboarding is complete and booking services are enabled.</p>
@@ -217,5 +217,5 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
         </div>
       </div>}</>}
     </section>}
-  </main>;
+  </div>;
 }
