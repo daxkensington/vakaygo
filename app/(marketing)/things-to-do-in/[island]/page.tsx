@@ -144,6 +144,7 @@ const sectionConfig = [
   { type: "transfer", label: "Airport Transfers", icon: Car, color: "bg-navy-600" },
   { type: "vip", label: "VIP Experiences", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Local Guides", icon: Users, color: "bg-gold-500" },
+  { type: "spa", label: "Spas & Wellness", icon: Sparkles, color: "bg-teal-500" },
 ] as const;
 
 const typeFallbacks: Record<string, string> = {
@@ -156,6 +157,7 @@ const typeFallbacks: Record<string, string> = {
   transfer: "from-navy-500 to-navy-700",
   vip: "from-gold-500 to-gold-700",
   guide: "from-gold-400 to-teal-500",
+  spa: "from-teal-400 to-teal-600",
 };
 
 function getFaqs(name: string, slug: string) {
