@@ -135,6 +135,7 @@ function getAmenities(typeData: Record<string, unknown> | null): string[] {
 function getPriceRange(priceAmount: string | null): string {
   if (!priceAmount) return "Varies";
   const p = parseFloat(priceAmount);
+  if (!Number.isFinite(p) || p <= 0) return "Varies";
   if (p < 80) return "Budget";
   if (p < 200) return "Mid-Range";
   if (p < 400) return "Upscale";
@@ -232,7 +233,7 @@ export default async function BestHotelsPage({ params }: Props) {
               },
             }
           : {}),
-        ...(listing.priceAmount
+        ...(getPriceRange(listing.priceAmount) !== "Varies"
           ? {
               priceRange: getPriceRange(listing.priceAmount),
             }
