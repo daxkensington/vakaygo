@@ -41,6 +41,14 @@ type ReferralStats = {
   };
 };
 
+type HistoryFilter = "all" | "earned" | "redeemed";
+type ReadState<T> =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "success"; data: T };
+type LoyaltyRead = { filter: HistoryFilter; attempt: number; result: ReadState<LoyaltyData> };
+type ReferralRead = { filter: HistoryFilter; attempt: number; result: ReadState<ReferralStats> };
+
 const tierEmojis: Record<string, string> = {
   explorer: "\uD83C\uDF0D",
   adventurer: "\uD83C\uDFD4\uFE0F",
@@ -93,14 +101,28 @@ export default function RewardsPage() {
 }
 
 function RewardsLoading() {
-  return <><Header /><div className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} className="animate-spin text-gold-700" /></div></>;
+  return <><Header /><div role="status" className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} aria-hidden="true" className="animate-spin text-gold-700" /><span className="sr-only">Loading rewards</span></div></>;
+}
+
+function ReadFeedback({ status, label, retry }: { status: "loading" | "error"; label: string; retry: () => void }) {
+  return status === "loading" ? (
+    <p role="status" className="p-6 text-sm text-navy-500">Loading {label}…</p>
+  ) : (
+    <div className="p-6 text-sm text-navy-700">
+      <p role="alert">Unable to load {label}. Please try again.</p>
+      <button type="button" onClick={retry} className="mt-3 rounded-lg bg-gold-700 px-4 py-2 font-semibold text-white hover:bg-gold-800">
+        Retry {label}
+      </button>
+    </div>
+  );
 }
 
 function RewardsAccount() {
-  const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
-  const [referrals, setReferrals] = useState<ReferralStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "earned" | "redeemed">("all");
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+  const [loyaltyAttempt, setLoyaltyAttempt] = useState(0);
+  const [referralAttempt, setReferralAttempt] = useState(0);
+  const [loyaltyRead, setLoyaltyRead] = useState<LoyaltyRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
+  const [referralRead, setReferralRead] = useState<ReferralRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
   const [copied, setCopied] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const active = useRef(true);
@@ -118,27 +140,54 @@ function RewardsAccount() {
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
-    async function fetchData() {
+    setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "loading" } });
+    async function fetchLoyalty() {
       try {
-        const [loyaltyData, referralData] = await Promise.all([
-          fetch(`/api/loyalty?filter=${filter}`, { cache: "no-store", signal: controller.signal }).then(response => response.ok ? response.json() : null),
-          fetch("/api/referrals", { cache: "no-store", signal: controller.signal }).then(response => response.ok ? response.json() : null),
-        ]);
-        if (!current || controller.signal.aborted) return;
-        if (loyaltyData) setLoyalty(loyaltyData);
-        if (referralData) setReferrals(referralData);
+        const response = await fetch(`/api/loyalty?filter=${filter}`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Loyalty read failed");
+        const data: LoyaltyData = await response.json();
+        if (current && !controller.signal.aborted)
+          setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "success", data } });
       } catch {
-        // A failed read must not restore data from an obsolete account/filter.
-      } finally {
-        if (current && !controller.signal.aborted) setLoading(false);
+        if (current && !controller.signal.aborted)
+          setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "error" } });
       }
     }
-    void fetchData();
+    void fetchLoyalty();
     return () => { current = false; controller.abort(); };
-  }, [filter]);
+  }, [filter, loyaltyAttempt]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    setReferralRead({ filter, attempt: referralAttempt, result: { status: "loading" } });
+    setCopied(false);
+    async function fetchReferrals() {
+      try {
+        const response = await fetch("/api/referrals", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Referral read failed");
+        const data: ReferralStats = await response.json();
+        if (current && !controller.signal.aborted)
+          setReferralRead({ filter, attempt: referralAttempt, result: { status: "success", data } });
+      } catch {
+        if (current && !controller.signal.aborted)
+          setReferralRead({ filter, attempt: referralAttempt, result: { status: "error" } });
+      }
+    }
+    void fetchReferrals();
+    return () => { current = false; controller.abort(); };
+  }, [filter, referralAttempt]);
+
+  const loyaltyResult: ReadState<LoyaltyData> = loyaltyRead.filter === filter && loyaltyRead.attempt === loyaltyAttempt
+    ? loyaltyRead.result : { status: "loading" };
+  const referralResult: ReadState<ReferralStats> = referralRead.filter === filter && referralRead.attempt === referralAttempt
+    ? referralRead.result : { status: "loading" };
+  const loyalty = loyaltyResult.status === "success" ? loyaltyResult.data : null;
+  const referrals = referralResult.status === "success" ? referralResult.data : null;
 
   async function generateCode() {
-    if (generatingCode) return;
+    if (!active.current || !referrals || generatingCode) return;
+    const requestedRead = referralRead;
     const controller = new AbortController(); mutations.current.add(controller);
     setGeneratingCode(true);
     try {
@@ -146,7 +195,9 @@ function RewardsAccount() {
       if (res.ok) {
         const data = await res.json();
         if (active.current && !controller.signal.aborted)
-          setReferrals((prev) => prev ? { ...prev, referralCode: data.referralCode, referralLink: data.referralLink } : prev);
+          setReferralRead((prev) => prev === requestedRead && prev.result.status === "success"
+            ? { ...prev, result: { status: "success", data: { ...prev.result.data, referralCode: data.referralCode, referralLink: data.referralLink } } }
+            : prev);
       }
     } catch {
       // Silent
@@ -157,20 +208,18 @@ function RewardsAccount() {
   }
 
   function copyReferralLink() {
-    if (!referrals?.referralLink) return;
+    if (!active.current || !referrals?.referralLink) return;
     navigator.clipboard.writeText(referrals.referralLink);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { if (active.current) setCopied(false); }, 2000);
   }
 
-  if (loading) return <RewardsLoading />;
-
-  const points = loyalty?.points || 0;
-  const tier = (loyalty?.tier || "explorer") as string;
-  const colors = tierColors[tier] || tierColors.explorer;
+  const points = loyalty?.points;
+  const tier = loyalty?.tier;
+  const colors = tier ? tierColors[tier] || tierColors.explorer : tierColors.explorer;
   const nextTier = loyalty?.nextTier;
-  const progressPercent = nextTier
-    ? Math.min(100, ((points - (loyalty?.tierInfo?.minPoints || 0)) / (nextTier.pointsNeeded - (loyalty?.tierInfo?.minPoints || 0))) * 100)
+  const progressPercent = loyalty && nextTier
+    ? Math.min(100, ((loyalty.points - loyalty.tierInfo.minPoints) / (nextTier.pointsNeeded - loyalty.tierInfo.minPoints)) * 100)
     : 100;
 
   return (
@@ -180,6 +229,7 @@ function RewardsAccount() {
         <div className="mx-auto max-w-5xl px-4 md:px-6 py-10">
 
           {/* ─── HERO SECTION ─────────────────────────────────── */}
+          {loyalty && tier && points !== undefined ? (
           <div className={`relative overflow-hidden bg-gradient-to-br ${colors.gradient} rounded-3xl p-8 md:p-12 text-white mb-10`}>
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-20 translate-x-20" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
@@ -197,8 +247,8 @@ function RewardsAccount() {
                 </div>
 
                 <p className="text-white/80 text-lg">
-                  {loyalty?.tierInfo?.name || "Explorer"} Member
-                  {loyalty?.discount ? ` — recorded tier discount: ${(loyalty.discount * 100).toFixed(0)}%` : ""}
+                  {loyalty.tierInfo.name} Member
+                  {loyalty.discount ? ` — recorded tier discount: ${(loyalty.discount * 100).toFixed(0)}%` : ""}
                 </p>
 
                 {nextTier && (
@@ -231,6 +281,9 @@ function RewardsAccount() {
               </div>
             </div>
           </div>
+          ) : (
+            <h1 className="mb-10 text-3xl font-bold text-navy-700">Your Rewards</h1>
+          )}
 
           <p role="status" className="mb-8 rounded-xl bg-gold-50 p-4 text-sm text-navy-700">New booking rewards, referral bonuses, tier benefits and redemption are unavailable during the directory launch. Your existing points and transaction history remain visible below.</p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -245,6 +298,8 @@ function RewardsAccount() {
                     {(["all", "earned", "redeemed"] as const).map((f) => (
                       <button
                         key={f}
+                        type="button"
+                        aria-pressed={filter === f}
                         onClick={() => setFilter(f)}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           filter === f
@@ -259,8 +314,10 @@ function RewardsAccount() {
                 </div>
 
                 <div className="divide-y divide-cream-100">
-                  {loyalty?.transactions && loyalty.transactions.length > 0 ? (
-                    loyalty.transactions.map((tx) => {
+                  {loyaltyResult.status !== "success" ? (
+                    <ReadFeedback status={loyaltyResult.status} label="rewards" retry={() => setLoyaltyAttempt(attempt => attempt + 1)} />
+                  ) : loyaltyResult.data.transactions.length > 0 ? (
+                    loyaltyResult.data.transactions.map((tx) => {
                       const typeInfo = typeIcons[tx.type] || { icon: "\u2022", color: "text-gray-500" };
                       const isPositive = tx.points > 0;
 
@@ -300,6 +357,7 @@ function RewardsAccount() {
               </div>
 
               {/* ─── TIER LADDER ────────────────────────────── */}
+              {loyalty && (
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
                 <h2 className="text-lg font-bold text-navy-700 mb-2">Historical program tiers</h2>
                 <p className="text-sm text-navy-500 mb-6">These recorded program descriptions are not current offers. Tier benefits are unavailable.</p>
@@ -346,6 +404,7 @@ function RewardsAccount() {
                   })}
                 </div>
               </div>
+              )}
             </div>
 
             {/* ─── RIGHT COLUMN: REFERRAL ──────────────────── */}
@@ -367,13 +426,17 @@ function RewardsAccount() {
                   Share the directory with friends. New referral bonuses are unavailable; any existing referral records appear below.
                 </p>
 
-                {referrals?.referralCode ? (
+                {referralResult.status !== "success" ? (
+                  <ReadFeedback status={referralResult.status} label="referrals" retry={() => setReferralAttempt(attempt => attempt + 1)} />
+                ) : referrals?.referralCode ? (
                   <>
                     <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-4 py-3 mb-4">
                       <code className="flex-1 text-sm text-navy-700 font-mono truncate">
                         {referrals.referralLink}
                       </code>
                       <button
+                        type="button"
+                        aria-label={copied ? "Referral link copied" : "Copy referral link"}
                         onClick={copyReferralLink}
                         className="shrink-0 p-2 hover:bg-cream-200 rounded-lg transition-colors"
                       >
@@ -436,12 +499,13 @@ function RewardsAccount() {
                   </>
                 ) : (
                   <button
+                    type="button"
                     onClick={generateCode}
                     disabled={generatingCode}
                     className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                   >
                     {generatingCode ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <><Loader2 size={16} aria-hidden="true" className="animate-spin" /><span className="sr-only">Generating referral link</span></>
                     ) : (
                       <>
                         <Gift size={16} />
@@ -453,7 +517,7 @@ function RewardsAccount() {
               </div>
 
               {/* Quick Redeem */}
-              {points >= 500 && (
+              {loyalty && points !== undefined && points >= 500 && (
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
                   <h3 className="font-bold mb-2">Ready to Redeem?</h3>
                   <p className="text-teal-100 text-sm mb-4">
