@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { CURRENCIES } from "@/lib/currency";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface ListingCard {
@@ -13,6 +14,9 @@ interface ListingCard {
   island: string;
   type: string;
   price: number | null;
+  currency?: string | null;
+  priceUnit?: string | null;
+  bookingEligible?: boolean;
   rating: number | null;
   image: string | null;
   url: string;
@@ -296,6 +300,11 @@ function VoiceVisualizer({ state, personality }: { state: VoiceState; personalit
 
 // ─── Listing Card Component ─────────────────────────────────────
 function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick: () => void }) {
+  const currency = typeof listing.currency === "string" ? listing.currency.trim().toUpperCase() : "";
+  const hasPrice = listing.bookingEligible === true && typeof listing.price === "number"
+    && Number.isFinite(listing.price) && listing.price > 0 && CURRENCIES.includes(currency);
+  const price = hasPrice ? new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" }).format(listing.price!) : null;
+  const unit = typeof listing.priceUnit === "string" ? listing.priceUnit.trim() : "";
   return (
     <button
       onClick={onClick}
@@ -318,10 +327,10 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
           {listing.title}
         </h4>
         <div className="flex items-center justify-between mt-1.5">
-          {listing.price !== null ? (
-            <span className="text-xs font-bold text-navy-700">${listing.price.toFixed(0)}</span>
+          {hasPrice ? (
+            <span className="text-xs font-bold text-navy-700">{price}{unit ? ` / ${unit}` : ""}</span>
           ) : (
-            <span className="text-xs text-navy-400">Price TBD</span>
+            <span className="text-xs text-navy-400">Explore details</span>
           )}
           {listing.rating !== null && listing.rating > 0 && (
             <div className="flex items-center gap-0.5">

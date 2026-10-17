@@ -56,7 +56,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - uses: ./.github/actions/prepare-test-db
       - name: Verify audit regressions against isolated PostgreSQL
-        run: npm test -- --run tests/unit/enhanced-claims-db.test.ts tests/unit/concierge-memory-db.test.ts tests/unit/discovery-capacity-db.test.ts tests/unit/listing-price-currency-db.test.ts tests/unit/discovery-map-db.test.ts tests/unit/admin-analytics-db.test.ts tests/unit/listing-bookability-db.test.ts tests/unit/phone-verification-db.test.ts
+        run: npm test -- --run tests/unit/enhanced-claims-db.test.ts tests/unit/concierge-memory-db.test.ts tests/unit/discovery-capacity-db.test.ts tests/unit/listing-price-currency-db.test.ts tests/unit/discovery-map-db.test.ts tests/unit/listing-similarity-db.test.ts tests/unit/admin-analytics-db.test.ts tests/unit/listing-bookability-db.test.ts tests/unit/phone-verification-db.test.ts
         env:
           VAKAYGO_CLAIM_DB_TESTS: "true"
           VAKAYGO_CONCIERGE_DB_TESTS: "true"

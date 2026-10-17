@@ -36,13 +36,18 @@ it.skipIf(process.env.VAKAYGO_DISCOVERY_DB_TESTS !== "true")("excludes unroutabl
     ('bad-latitude','Place','place',1,'active',91,-61),
     ('bad-longitude','Place','place',1,'active',12,181),
     ('missing-coordinate','Place','place',1,'active',NULL,-61),
+    ('quarantined-match','Unconfirmed point','unconfirmed-point',1,'active',12.1400463,-61.1895325),
+    ('quarantined-corrected','Corrected point','corrected-point',1,'active',12.0556930,-61.6336657),
+    ('other-record-same-point','Other point','other-point',1,'active',12.1400463,-61.1895325),
     ('blocked-operator','Place','place',1,'active',12,-61)
-  ), listings AS (SELECT *,CASE WHEN label='blocked-operator'
+  ), listings AS (SELECT *,CASE WHEN label IN ('quarantined-match','quarantined-corrected')
+    THEN '500af6ce-7cca-4e01-be27-8d92e5ec4d96'::uuid
+    ELSE '82000000-0000-4000-8000-000000000001'::uuid END AS id,CASE WHEN label='blocked-operator'
     THEN '197d8586-7fd3-4999-91de-a50ad7d70e23'::uuid
     ELSE '81000000-0000-4000-8000-000000000001'::uuid END AS operator_id FROM cases)`;
   for (const [island, expected] of [
-    [null, ["coordinate-boundary", "other-destination", "unicode-title", "valid"]],
-    ["valid-destination", ["coordinate-boundary", "unicode-title", "valid"]],
+    [null, ["coordinate-boundary", "other-destination", "other-record-same-point", "quarantined-corrected", "unicode-title", "valid"]],
+    ["valid-destination", ["coordinate-boundary", "other-record-same-point", "quarantined-corrected", "unicode-title", "valid"]],
   ] as const) {
     const expression = new PgDialect().sqlToQuery(publicMapLocations(island)!);
     const from = `FROM listings JOIN islands ON listings.island_id=islands.id WHERE ${expression.sql}`;

@@ -13,6 +13,7 @@ import { verifySession, type SessionPayload } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
+import { RESPONSE_PLAN_TOOL, hasConciergeActionResult, renderConciergeResponse, type ConciergeToolResult } from "@/server/concierge-response";
 
 const unavailable = () => NextResponse.json({
   error: "The concierge is temporarily unavailable. Please retry or contact hello@vakaygo.com.",
@@ -75,9 +76,9 @@ You are embedded in VakayGo (vakaygo.com), a travel directory covering 34 destin
 
 ### Customer Support & Business Onboarding:
 - Human support is available by email at hello@vakaygo.com or the contact form at /contact.
-- If a visitor or business owner wants to open a support ticket, get help with a claim, or add their business to VakayGo right here in chat, ask for their email address and details (if not already provided) and call the \`submit_support_or_business_inquiry\` tool to send their ticket to the VakayGo team and email them an instant confirmation with their reference number.
+- Direct support and business inquiries to /contact, where the visitor can review and send the form themselves. Do not claim to submit a ticket or send an email in chat.
 - For business owners: Existing listings can be claimed free at /for-businesses. Brand-new businesses not yet in the directory can be added free at /auth/signup?role=operator&next=/operator/listings/new. A verified claim does not enable bookings or payments. Payment onboarding and new payouts are currently unavailable; future provider and payout options depend on the approved company country and platform configuration.
-- Never claim a live real-time human agent has taken over the chat window; explain that \`submit_support_or_business_inquiry\` sends an email ticket to the VakayGo team with an instant email confirmation.
+- Never claim a live human agent has taken over the chat window. Direct support inquiries to /contact for the visitor to review and send; chat does not send tickets or confirmation emails.
 - Do not invent a /help page, a phone number, or office hours. /messages is for conversations with listing operators; it is not VakayGo customer support.
 
 ### Important Rules:
@@ -231,12 +232,14 @@ function buildSystemPrompt(personality: string, locale: string, memoryContext: s
 
   // Concise output for voice
   prompt += `\n\nKeep responses concise: 2-4 sentences of commentary + listing data. This is critical for voice mode where long responses are tedious to listen to.`;
+  prompt += `\n\n## Final response contract\nFinish with respond_with_plan. Select only exact island/slug references returned by tools in this request and the provided topic enums. Free-form prose is not shown to visitors. Use kind=clarify with a clarification topic if you need more information, or kind=platform for VakayGo guidance. Set the optional supported language enum when the visitor requests a different response language; otherwise omit it to use their current locale. Current visitor admission, access, opening hours and reservation requirements are unconfirmed. Never encode narrative or claims in reference fields. Saved-memory receipts are rendered from their actual tool results. Chat cannot submit or email support/business inquiries; use support, claim_business or add_business topics to direct the visitor to review and send an inquiry at /contact.`;
 
   return prompt;
 }
 
 // ─── Tool Definitions ───────────────────────────────────────────
 const TOOLS = [
+  RESPONSE_PLAN_TOOL,
   {
     name: "search_listings",
     description: "Search VakayGo's 7,200+ real listings by type, island, price range, rating. Use this to find stays, tours, restaurants, events, transport, guides, etc.",
@@ -304,125 +307,8 @@ const TOOLS = [
       required: ["slugs", "island"],
     },
   },
-  {
-    name: "submit_support_or_business_inquiry",
-    description: "Submit a customer support ticket or a Caribbean business claim/onboarding request directly to the VakayGo team on behalf of the visitor, and send an instant confirmation email to the visitor. Use this when a visitor or business owner provides their email address and wants to add/claim their business, get help with a booking or account issue, or have the VakayGo team follow up by email.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        name: { type: "string", description: "Visitor or business contact name" },
-        email: { type: "string", description: "Visitor or business email address for reply" },
-        category: {
-          type: "string",
-          enum: ["General", "Booking Help", "Operator Support", "Technical Issue", "Partnership"],
-          description: "Inquiry category",
-        },
-        subject: { type: "string", description: "Short summary of the request or business name" },
-        message: { type: "string", description: "Detailed message, question, or business details (island, website, phone, offering)" },
-      },
-      required: ["email", "category", "subject", "message"],
-    },
-  },
+
 ];
-
-function escapeChatHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-async function submitSupportOrBusinessInquiry(input: {
-  name?: string;
-  email?: string;
-  category?: string;
-  subject?: string;
-  message?: string;
-}) {
-  const email = typeof input?.email === "string" ? input.email.trim() : "";
-  const name = typeof input?.name === "string" && input.name.trim() ? input.name.trim().slice(0, 120) : "VakayGo Visitor";
-  const category = typeof input?.category === "string" && input.category.trim() ? input.category.trim().slice(0, 80) : "General";
-  const subject = typeof input?.subject === "string" && input.subject.trim() ? input.subject.trim().slice(0, 200) : "Chat Concierge Inquiry";
-  const message = typeof input?.message === "string" ? input.message.trim().slice(0, 5000) : "";
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { submitted: false, error: "Please provide a valid email address so our team can reply." };
-  }
-  if (!message) {
-    return { submitted: false, error: "Please include the details of your question or business." };
-  }
-
-  const refId = `VG-CHAT-${Date.now().toString(36).toUpperCase()}`;
-  const eName = escapeChatHtml(name);
-  const eEmail = escapeChatHtml(email);
-  const eCategory = escapeChatHtml(category);
-  const eSubject = escapeChatHtml(subject);
-  const eMessage = escapeChatHtml(message);
-
-  try {
-    const { sendEmail } = await import("@/server/mail-client");
-    await sendEmail({
-      from: "VakayGo <hello@vakaygo.com>",
-      to: "bookings@vakaygo.com",
-      replyTo: email,
-      subject: `[Chat ${eCategory}] ${eSubject} (${refId})`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
-        <h2 style="margin:0 0 12px">[Chat Concierge · ${eCategory}] ${eSubject}</h2>
-        <p style="margin:0 0 8px"><strong>Reference:</strong> ${refId}</p>
-        <p style="margin:0 0 8px"><strong>From:</strong> ${eName} (${eEmail})</p>
-        <div style="background:#FAF5E8;padding:16px;border-radius:10px;white-space:pre-wrap;margin-top:12px">${eMessage}</div>
-      </div>`,
-    });
-
-    const lower = email.toLowerCase();
-    if (!lower.endsWith(".invalid") && !lower.endsWith(".example")) {
-      const isBusiness =
-        category === "Partnership" ||
-        category === "Operator Support" ||
-        /\b(claim|listing|business|operator|partner|charter|tour|hotel|villa|restaurant|rental)\b/i.test(`${subject} ${message}`);
-      await sendEmail({
-        from: "VakayGo <hello@vakaygo.com>",
-        to: email,
-        replyTo: "support@vakaygo.com",
-        subject: `We received your VakayGo inquiry (${refId})`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
-          <h2 style="margin:0 0 12px">Your VakayGo request is logged (${refId})</h2>
-          <p style="line-height:1.6">Hi ${eName},</p>
-          <p style="line-height:1.6">Our team has received your ${eCategory.toLowerCase()} inquiry via the VakayGo AI Concierge and will follow up by email shortly.</p>
-          ${
-            isBusiness
-              ? `<div style="background:#FAF5E8;padding:16px;border-radius:10px;margin:16px 0">
-                  <p style="margin:0 0 8px;font-weight:bold">Get started right away (100% Free):</p>
-                  <ul style="margin:0;padding-left:18px;line-height:1.6">
-                    <li>Claim an existing listing: <a href="https://vakaygo.com/for-businesses">vakaygo.com/for-businesses</a></li>
-                    <li>Add a brand-new business listing: <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new">vakaygo.com/operator/listings/new</a></li>
-                  </ul>
-                </div>`
-              : ""
-          }
-          <p style="font-size:13px;color:#6E7491">Need to add anything? Just reply to this email.</p>
-        </div>`,
-      }).catch(() => {});
-    }
-
-    return {
-      submitted: true,
-      referenceId: refId,
-      selfServiceLinks: {
-        claimExistingBusiness: "https://vakaygo.com/for-businesses",
-        addNewBusiness: "https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new",
-      },
-    };
-  } catch (err) {
-    logger.error("Chat inquiry submission failed", err);
-    return {
-      submitted: false,
-      error: "Could not send the ticket right now. Please email hello@vakaygo.com or use /contact.",
-    };
-  }
-}
 
 // ─── Tool Executor ──────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -438,8 +324,6 @@ async function executeTool(name: string, input: any, actor: SessionPayload | nul
       return getIslandInfo(input);
     case "compare_listings":
       return compareListings(input);
-    case "submit_support_or_business_inquiry":
-      return submitSupportOrBusinessInquiry(input);
     case "save_memory":
       if (!actor) return { saved: false, reason: "User not logged in" };
       return saveMemory(actor, input.category, input.fact, input.source);
@@ -448,63 +332,27 @@ async function executeTool(name: string, input: any, actor: SessionPayload | nul
   }
 }
 
-// ─── Extract listing cards from tool results ────────────────────
-type ListingCard = {
-  title: string;
-  slug: string;
-  island: string;
-  type: string;
-  price: number | null;
-  rating: number | null;
-  image: string | null;
-  url: string;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractListings(toolResults: { name: string; result: any }[]): ListingCard[] {
-  const cards: ListingCard[] = [];
-  const seen = new Set<string>();
-
-  for (const { name, result } of toolResults) {
-    if (name === "search_listings" && Array.isArray(result)) {
-      for (const item of result) {
-        if (!seen.has(item.slug)) {
-          seen.add(item.slug);
-          cards.push({
-            title: item.title, slug: item.slug, island: item.island,
-            type: item.type, price: item.price, rating: item.rating,
-            image: item.image, url: item.url,
-          });
-        }
-      }
-    } else if (name === "get_listing_details" && result && !result.error) {
-      if (!seen.has(result.slug)) {
-        seen.add(result.slug);
-        cards.push({
-          title: result.title, slug: result.slug, island: result.island,
-          type: result.type, price: result.price, rating: result.rating,
-          image: result.images?.[0] || null, url: result.url,
-        });
-      }
-    } else if (name === "compare_listings" && Array.isArray(result)) {
-      for (const item of result) {
-        if (!seen.has(item.slug)) {
-          seen.add(item.slug);
-          cards.push({
-            title: item.title, slug: item.slug, island: item.island,
-            type: item.type, price: item.price, rating: item.rating,
-            image: null, url: item.url,
-          });
-        }
-      }
-    }
-  }
-
-  return cards;
+/** Bound tool waits to the existing request deadline; an interrupted write stays unconfirmed. */
+async function withinDeadline<T>(operation: () => Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try { return await Promise.race([operation(), interrupted]); }
+  finally { signal.removeEventListener("abort", onAbort); }
 }
 
 // ─── POST Handler ───────────────────────────────────────────────
 export async function POST(request: Request) {
+  const allToolResults: ConciergeToolResult[] = [];
+  let responseLocale: unknown = "en";
+  let responseVoiceMode = false;
+  let bookingsEnabled = false;
+  const actionReceipt = () => hasConciergeActionResult(allToolResults)
+    ? NextResponse.json(renderConciergeResponse({ results: allToolResults, locale: responseLocale, voiceMode: responseVoiceMode, bookingsEnabled }))
+    : null;
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
@@ -552,6 +400,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    responseLocale = locale;
+    responseVoiceMode = voiceMode === true;
 
     const apiKey = env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -569,7 +419,7 @@ export async function POST(request: Request) {
 
     // Build the full system prompt with personality + platform knowledge + memory + language
     let systemPrompt = buildSystemPrompt(personality || "coral", locale || "en", memoryContext);
-    const bookingsEnabled = await bookingLaunchEnabled();
+    bookingsEnabled = await bookingLaunchEnabled();
     systemPrompt += bookingsEnabled
       ? "\n\nBooking launch is enabled, but every listing still requires explicit current tool eligibility."
       : "\n\nOnline bookings, reservation requests and payments are disabled platform-wide. Offer directory browsing and trip planning only. Do not invite the user to book, reserve, request a booking, pay, or redeem booking credit.";
@@ -603,8 +453,9 @@ export async function POST(request: Request) {
       content: m.content,
     }));
 
-    const allToolResults: { name: string; result: unknown }[] = [];
-    let finalText = "";
+    let responsePlan: unknown;
+    let receivedPlan = false;
+    let receivedText = false;
     const MAX_ITERATIONS = 4;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -631,7 +482,7 @@ export async function POST(request: Request) {
           status: res.status,
           requestId: res.headers.get("request-id"),
         });
-        return unavailable();
+        return actionReceipt() ?? unavailable();
       }
 
       const data = await res.json();
@@ -643,7 +494,7 @@ export async function POST(request: Request) {
 
       if (textBlocks.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        finalText = textBlocks.map((b: any) => b.text).join("\n");
+        receivedText ||= textBlocks.some((b: any) => typeof b.text === "string" && b.text.trim());
       }
 
       if (toolUseBlocks.length === 0 || data.stop_reason === "end_turn") {
@@ -653,17 +504,26 @@ export async function POST(request: Request) {
       // Execute all tool calls
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolResults: any[] = [];
+      const plans: unknown[] = [];
       for (const block of toolUseBlocks) {
         signal.throwIfAborted();
+        if (block.name === RESPONSE_PLAN_TOOL.name) {
+          plans.push(block.input);
+          toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify({ received: true }) });
+          continue;
+        }
+        const resultSlot = { name: block.name, result: { unconfirmed: true } as unknown };
+        allToolResults.push(resultSlot);
         try {
-          const result = await executeTool(block.name, block.input, actor);
-          allToolResults.push({ name: block.name, result });
+          const result = await withinDeadline(() => executeTool(block.name, block.input, actor), signal);
+          resultSlot.result = result;
           toolResults.push({
             type: "tool_result",
             tool_use_id: block.id,
             content: JSON.stringify(result),
           });
         } catch (err) {
+          if (signal.aborted) throw err;
           logger.error("Chat tool execution failed", err, { tool: block.name });
           toolResults.push({
             type: "tool_result",
@@ -672,6 +532,11 @@ export async function POST(request: Request) {
             is_error: true,
           });
         }
+      }
+      if (plans.length) {
+        receivedPlan = true;
+        responsePlan = plans.length === 1 ? plans[0] : null;
+        break;
       }
 
       apiMessages = [
@@ -685,15 +550,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const listingCards = extractListings(allToolResults);
-    if (!finalText.trim()) return unavailable();
-
-    return NextResponse.json({
-      message: finalText,
-      ...(listingCards.length > 0 ? { listings: listingCards } : {}),
-    });
+    if (!receivedPlan && !receivedText && allToolResults.length === 0) return unavailable();
+    return NextResponse.json(renderConciergeResponse({ plan: responsePlan, results: allToolResults, locale: responseLocale, voiceMode: responseVoiceMode, bookingsEnabled }));
   } catch (error) {
     logger.error("Chat API error", error);
-    return unavailable();
+    return actionReceipt() ?? unavailable();
   }
 }
