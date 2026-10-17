@@ -4,6 +4,7 @@ import { getTableName } from "drizzle-orm";
 const state = vi.hoisted(() => ({
   islandSlug: "old-island", missing: false, lookupError: false, queries: 0,
   revalidate: vi.fn(), warn: vi.fn(),
+  directory: vi.fn(),
 }));
 vi.mock("@neondatabase/serverless", () => ({ neon: () => ({}) }));
 vi.mock("drizzle-orm/neon-http", () => ({ drizzle: () => ({
@@ -12,6 +13,7 @@ vi.mock("drizzle-orm/neon-http", () => ({ drizzle: () => ({
 }) }));
 vi.mock("next/cache", () => ({ revalidatePath: state.revalidate }));
 vi.mock("@/lib/logger", () => ({ logger: { warn: state.warn } }));
+vi.mock("@/server/grenada-experiences", () => ({ getGrenadaExperiences: state.directory }));
 import sitemap from "@/app/sitemap";
 import { revalidateListing } from "@/lib/revalidate-listing";
 class Query {
@@ -33,6 +35,7 @@ class Query {
 }
 beforeEach(() => {
   vi.clearAllMocks(); state.revalidate.mockReset(); state.islandSlug = "old-island"; state.missing = false; state.lookupError = false; state.queries = 0;
+  state.directory.mockReset();
   vi.stubEnv("DATABASE_URL", "postgresql://synthetic.invalid/test");
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Unexpected network access"); }));
 });
@@ -43,7 +46,7 @@ it("invalidates catalogue metadata after an edit and emits current listing paths
   expect(before.some(item => item.url === "https://vakaygo.com/old-island/moved-listing")).toBe(true);
   state.islandSlug = "new-island";
   await revalidateListing("synthetic-listing");
-  expect(state.revalidate.mock.calls.map(call => call[0])).toEqual(["/sitemap.xml", "/new-island/moved-listing", "/new-island"]);
+  expect(state.revalidate.mock.calls.map(call => call[0])).toEqual(["/sitemap.xml", "/grenada/experiences/[[...segments]]", "/new-island/moved-listing", "/new-island"]);
   const after = await sitemap();
   expect(after.some(item => item.url === "https://vakaygo.com/new-island/moved-listing")).toBe(true);
   expect(after.some(item => item.url === "https://vakaygo.com/old-island/moved-listing")).toBe(false);
@@ -53,7 +56,7 @@ it("invalidates catalogue metadata after an edit and emits current listing paths
 it.each(["missing", "lookupError"] as const)("still invalidates the sitemap when the listing lookup is %s", async reason => {
   state[reason] = true;
   await expect(revalidateListing("synthetic-listing")).resolves.toBeUndefined();
-  expect(state.revalidate).toHaveBeenCalledExactlyOnceWith("/sitemap.xml");
+  expect(state.revalidate.mock.calls).toEqual([["/sitemap.xml"], ["/grenada/experiences/[[...segments]]", "page"]]);
   expect(fetch).not.toHaveBeenCalled();
 });
 it("keeps existing listing and destination invalidation working if sitemap invalidation fails", async () => {
@@ -70,4 +73,20 @@ it("preserves the static-route preview fallback without querying a missing datab
   expect(result.some(item => item.url === "https://vakaygo.com")).toBe(true);
   expect(result.some(item => item.url.includes("/moved-listing"))).toBe(false);
   expect(state.queries).toBe(0); expect(warn).toHaveBeenCalledOnce(); expect(fetch).not.toHaveBeenCalled();
+});
+
+it("discovers the populated Grenada hub and categories while omitting a confirmed empty category", async () => {
+  state.islandSlug = "grenada";
+  state.directory.mockResolvedValue({ totalCount: 4, topics: [{ slug: "boat-trips", count: 4 }, { slug: "jet-ski", count: 0 }] });
+  const result = await sitemap();
+  expect(result.some(item => item.url === "https://vakaygo.com/grenada/experiences")).toBe(true);
+  expect(result.some(item => item.url === "https://vakaygo.com/grenada/experiences/boat-trips")).toBe(true);
+  expect(result.some(item => item.url === "https://vakaygo.com/grenada/experiences/jet-ski")).toBe(false);
+  expect(state.directory).toHaveBeenCalledOnce();
+});
+
+it("does not publish an empty-directory sitemap after a failed data load", async () => {
+  state.islandSlug = "grenada";
+  state.directory.mockRejectedValue(new Error("Synthetic activity data failure"));
+  await expect(sitemap()).rejects.toThrow("Synthetic activity data failure");
 });

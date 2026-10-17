@@ -266,6 +266,14 @@ export default async function IslandPage({ params }: Props) {
         </div>
 
         {/* Island Essentials At-a-Glance Bar + 3D Map & AI Trip Planner Banner */}
+        {islandSlug === "grenada" && (
+          <section className="mx-auto max-w-7xl px-6 pt-8">
+            <Link href="/grenada/experiences" className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-navy-800 p-6 text-white transition hover:bg-navy-700">
+              <div><p className="text-xs font-semibold uppercase tracking-wider text-gold-300">Explore by activity</p><h2 className="mt-2 text-xl font-bold">Find tours, excursions and guides in Grenada</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/75">Browse boat trips, jet skis, Jeep tours, snorkeling, hiking and waterfalls, then check a listing for current details.</p></div>
+              <span className="inline-flex items-center gap-2 font-semibold text-gold-300">Browse experiences <ArrowRight size={18} /></span>
+            </Link>
+          </section>
+        )}
         <section className="mx-auto max-w-7xl px-6 pt-8 pb-2">
           <div className="bg-white rounded-2xl border border-cream-200 shadow-sm p-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
