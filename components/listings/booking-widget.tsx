@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { useCurrency } from "@/lib/currency";
@@ -242,6 +243,9 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
       setBookingId(data.booking.id);
       setBookingNumber(data.booking.bookingNumber);
       if (data.mode === "request" || data.booking?.status === "requested") {
+        if (typeof data.booking?.id === "string" && data.booking.id.trim()) {
+          analytics.bookingRequestSaved({ listingId: listing.id, listingType: listing.type });
+        }
         // Unclaimed / unpriced listing: nothing to pay, nobody on the
         // platform can confirm it. Never show the Stripe step.
         setRequested(true);
@@ -275,6 +279,12 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
         return;
       }
 
+      try {
+        const checkoutUrl = new URL(data.url);
+        if (checkoutUrl.protocol === "https:" && checkoutUrl.hostname === "checkout.stripe.com" && !checkoutUrl.username && !checkoutUrl.password) {
+          analytics.startCheckout({ listingId: listing.id, listingType: listing.type });
+        }
+      } catch { /* A malformed receipt must not become a checkout event. */ }
       window.location.href = data.url;
     } catch {
       setError("Something went wrong. Please try again.");
