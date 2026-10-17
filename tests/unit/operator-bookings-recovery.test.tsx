@@ -7,7 +7,7 @@ vi.mock("@/lib/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => React.createElement("a", props, children) }));
 import OperatorBookingsPage from "@/app/operator/bookings/page";
 
-const booking = (id = "booking-a", title = "Operator A tour") => ({ id, bookingNumber: id, status: "pending", startDate: "2099-12-05T00:00:00.000Z", guestCount: 2, subtotal: "65.00", guestNotes: null, listingTitle: title, listingType: "tour" });
+const booking = (id = "booking-a", title = "Operator A tour") => ({ id, bookingNumber: id, status: "pending", startDate: "2099-12-05T00:00:00.000Z", guestCount: 2, subtotal: "65.00", currency: "USD", guestNotes: null, listingTitle: title, listingType: "tour" });
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 function deferred() { let resolve!: (value: Response) => void; return { promise: new Promise<Response>(accept => { resolve = accept; }), resolve: (value: Response) => resolve(value) }; }
 let container: HTMLDivElement, root: Root, fetchMock: ReturnType<typeof vi.fn>;
@@ -29,7 +29,7 @@ it("keeps a rejected acceptance pending and out of revenue when the API closes b
   expect(fetchMock.mock.calls[1][0]).toBe("/api/bookings/booking-a");
   expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ status: "confirmed" });
   expect(row().textContent).toContain("Pending"); expect(row().textContent).not.toContain("Confirmed");
-  expect(container.textContent?.replace(/\s/g, "")).toContain("Revenue$0.00");
+  expect(container.querySelector('section[aria-label="Revenue by recorded currency"]')?.textContent).toContain("No confirmed revenue");
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("not accepting bookings");
   expect(button("Accept booking booking-a").disabled).toBe(true); expect(button("Reload bookings").disabled).toBe(false);
 });
@@ -88,7 +88,7 @@ it("prevents duplicate or opposing writes while one confirmation is in flight", 
   expect(fetchMock).toHaveBeenCalledTimes(2); expect(row().getAttribute("aria-busy")).toBe("true");
   expect(row().textContent).toContain("Pending");
   await act(async () => receipt.resolve(response({ booking: { id: "booking-a", status: "confirmed" } })));
-  expect(row().textContent).toContain("Confirmed"); expect(container.textContent?.replace(/\s/g, "")).toContain("Revenue$65.00");
+  expect(row().textContent).toContain("Confirmed"); expect(container.querySelector('section[aria-label="Revenue by recorded currency"]')?.textContent).toContain("USD 65.00");
 });
 
 it("does not accept a non-JSON successful response as a confirmed change", async () => {
@@ -135,4 +135,46 @@ it.each(["read", "write"] as const)("bounds a stalled %s and leaves recovery ava
   await act(async () => vi.advanceTimersByTimeAsync(20_000));
   expect(container.querySelector('[role="alert"]')).not.toBeNull(); expect(button("Reload bookings").disabled).toBe(false);
   if (operation === "write") expect(row().textContent).toContain("Pending"); else expect(container.textContent).not.toContain("No bookings yet");
+});
+
+it("preserves each booking's recorded currency and totals confirmed revenue separately by currency", async () => {
+  fetchMock.mockResolvedValueOnce(response({ bookings: [
+    { ...booking(), status: "confirmed", subtotal: "65.10" },
+    { ...booking("usd-completed"), status: "completed", subtotal: "34.90", currency: "usd" },
+    { ...booking("euro"), status: "confirmed", subtotal: "50.00", currency: "EUR" },
+    { ...booking("euro-completed"), status: "completed", subtotal: "10.00", currency: "EUR" },
+    { ...booking("ec-dollar"), status: "completed", subtotal: "270.00", currency: "XCD" },
+    { ...booking("pending-euro"), subtotal: "999.00", currency: "EUR" },
+    { ...booking("cancelled-usd"), status: "cancelled", subtotal: "888.00" },
+  ] }));
+  await render();
+  expect(row().textContent).toContain("USD 65.10");
+  expect(row("euro").textContent).toContain("EUR 50.00");
+  expect(row("ec-dollar").textContent).toContain("XCD 270.00");
+  const totals = Array.from(container.querySelectorAll('section[aria-label="Revenue by recorded currency"] li')).map(item => item.textContent);
+  expect(totals).toEqual(["EUR 60.00", "USD 100.00", "XCD 270.00"]);
+  expect(container.textContent).not.toContain("$430.00");
+  await act(async () => Array.from(container.querySelectorAll("button")).find(item => item.textContent?.trim().startsWith("confirmed"))!.click());
+  expect(Array.from(container.querySelectorAll('section[aria-label="Revenue by recorded currency"] li')).map(item => item.textContent)).toEqual(totals);
+});
+
+it("keeps historical amounts with unknown currencies visible without treating them as USD or adding them together", async () => {
+  const missing = { ...booking("missing-currency"), status: "completed", subtotal: "30.00" };
+  Reflect.deleteProperty(missing, "currency");
+  fetchMock.mockResolvedValueOnce(response({ bookings: [
+    { ...booking(), status: "confirmed", currency: null },
+    { ...booking("blank-currency"), status: "completed", subtotal: "20.00", currency: " " },
+    missing,
+    { ...booking("known-euro"), status: "completed", subtotal: "40.00", currency: "EUR" },
+  ] }));
+  await render();
+  expect(row().textContent).toContain("65.00 (currency unavailable)");
+  expect(row("blank-currency").textContent).toContain("20.00 (currency unavailable)");
+  expect(row("missing-currency").textContent).toContain("30.00 (currency unavailable)");
+  const revenue = container.querySelector('section[aria-label="Revenue by recorded currency"]')!;
+  expect(Array.from(revenue.querySelectorAll("li")).map(item => item.textContent)).toEqual(["EUR 40.00"]);
+  expect(revenue.textContent).toContain("3 bookings are excluded");
+  expect(revenue.textContent).not.toContain("115.00");
+  expect(container.textContent).not.toContain("USD");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
 });

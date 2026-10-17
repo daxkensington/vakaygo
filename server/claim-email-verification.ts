@@ -1,6 +1,7 @@
 import { createHmac, randomInt, randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { sendEmail } from "@/server/mail-client";
+import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
 import { SESSION_SECRET } from "@/lib/env";
 import { requireUser } from "@/server/admin-auth";
@@ -414,14 +415,29 @@ export async function submitManualClaimRequest(
     RETURNING id
   `;
 
-  void sendEmail({
-    from: "VakayGo <support@vakaygo.com>",
-    to: "support@vakaygo.com",
-    subject: `New Business Claim Request: ${row.title}`,
-    html: `<p><strong>${row.operator_name || operatorEmail}</strong> (${operatorEmail}) requested to claim <strong>${row.title}</strong>.</p>
-      <p>Role: ${role}<br/>Phone: ${phone}<br/>Notes: ${notes || "None"}</p>
-      <p><a href="https://vakaygo.com/admin/claims">Review &amp; Approve in Admin Claims →</a></p>`,
-  }).catch(() => {});
+  let notificationWarning: string | undefined;
+  let notificationTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const delivery = sendEmail({
+      from: "VakayGo <support@vakaygo.com>",
+      to: "support@vakaygo.com",
+      subject: `New Business Claim Request: ${row.title}`,
+      html: `<p><strong>${escaped(String(row.operator_name || operatorEmail))}</strong> (${escaped(operatorEmail)}) requested to claim <strong>${escaped(String(row.title))}</strong>.</p>
+        <p>Role: ${escaped(role)}<br/>Phone: ${escaped(phone)}<br/>Notes: ${escaped(notes || "None")}</p>
+        <p><a href="https://vakaygo.com/admin/claims">Review &amp; Approve in Admin Claims →</a></p>`,
+    });
+    await Promise.race([delivery, new Promise<never>((_resolve, reject) => {
+      notificationTimer = setTimeout(() => reject(new Error("Notification confirmation timed out")), 8_000);
+    })]);
+  } catch {
+    // The pending claim is already saved. Report only the notification failure;
+    // never ask the claimant to repeat the write or log provider payloads.
+    logger.error("Manual claim notification unconfirmed", null, { claimId: String(claim.id), listingId, operatorId });
+    notificationWarning = "Your claim was saved for team review, but its email notification could not be confirmed. You do not need to submit again.";
+  } finally {
+    if (notificationTimer !== undefined) clearTimeout(notificationTimer);
+  }
 
-  return { claim: { id: claim.id, status: "pending" }, submitted: true };
+  return { claim: { id: claim.id, status: "pending" }, submitted: true,
+    ...(notificationWarning ? { notificationWarning } : {}) };
 }

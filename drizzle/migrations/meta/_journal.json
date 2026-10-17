@@ -78,6 +78,13 @@
       "when": 1788700000004,
       "tag": "0010_caribbean_payout_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792194999000,
+      "tag": "0011_user_phone_challenges",
+      "breakpoints": true
     }
   ]
 }

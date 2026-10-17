@@ -10,7 +10,7 @@ import {
   X,
   AlertCircle,
   Loader2,
-  DollarSign,
+  Wallet,
 } from "lucide-react";
 
 type Booking = {
@@ -20,6 +20,7 @@ type Booking = {
   startDate: string;
   guestCount: number | null;
   subtotal: string;
+  currency?: string | null;
   guestNotes: string | null;
   listingTitle: string;
   listingType: string;
@@ -52,8 +53,18 @@ function isBooking(value: unknown): value is Booking {
     && typeof value.startDate === "string" && Number.isFinite(Date.parse(value.startDate))
     && (value.guestCount === null || (typeof value.guestCount === "number" && Number.isInteger(value.guestCount) && value.guestCount > 0))
     && typeof value.subtotal === "string" && value.subtotal.trim() !== "" && Number.isFinite(Number(value.subtotal)) && Number(value.subtotal) >= 0
+    && (value.currency === undefined || value.currency === null || typeof value.currency === "string")
     && (value.guestNotes === null || typeof value.guestNotes === "string")
     && typeof value.listingTitle === "string" && typeof value.listingType === "string";
+}
+
+function recordedCurrency(currency: Booking["currency"]): string | null {
+  const code = currency?.trim().toUpperCase();
+  return code && /^[A-Z]{3}$/.test(code) ? code : null;
+}
+
+function formatRecordedAmount(amount: number, currency: string | null): string {
+  return currency ? `${currency} ${amount.toFixed(2)}` : `${amount.toFixed(2)} (currency unavailable)`;
 }
 
 function OperatorBookings({ userId, authLoading }: { userId: string | undefined; authLoading: boolean }) {
@@ -163,13 +174,21 @@ function OperatorBookings({ userId, authLoading }: { userId: string | undefined;
   const filtered =
     filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
-  const totalRevenue = bookings
-    .filter((b) => b.status === "confirmed" || b.status === "completed")
-    .reduce((sum, b) => sum + parseFloat(b.subtotal), 0);
+  // A booking is a recorded financial amount, not a current display-currency
+  // estimate. Keep currencies separate and sum the stored two-decimal cents.
+  const revenueByCurrency = new Map<string, number>();
+  let revenueWithoutCurrency = 0;
+  for (const booking of bookings) {
+    if (booking.status !== "confirmed" && booking.status !== "completed") continue;
+    const currency = recordedCurrency(booking.currency);
+    if (!currency) { revenueWithoutCurrency++; continue; }
+    revenueByCurrency.set(currency, (revenueByCurrency.get(currency) || 0) + Math.round(Number(booking.subtotal) * 100));
+  }
+  const revenueTotals = Array.from(revenueByCurrency).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1
             className="text-3xl font-bold text-navy-700"
@@ -181,17 +200,18 @@ function OperatorBookings({ userId, authLoading }: { userId: string | undefined;
             Manage incoming bookings from travelers
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-4 shadow-[var(--shadow-card)]">
+        <section aria-label="Revenue by recorded currency" className="bg-white rounded-2xl p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-2">
-            <DollarSign size={18} className="text-gold-700" />
+            <Wallet size={18} className="shrink-0 text-gold-700" />
             <div>
               <p className="text-xs text-navy-400">Revenue</p>
-              <p className="font-bold text-navy-700">
-                {hasLoaded ? `$${totalRevenue.toFixed(2)}` : "—"}
-              </p>
+              {!hasLoaded ? <p className="font-bold text-navy-700">—</p> : revenueTotals.length ?
+                <ul className="font-bold text-navy-700">{revenueTotals.map(([currency, cents]) => <li key={currency}>{formatRecordedAmount(cents / 100, currency)}</li>)}</ul> :
+                <p className="font-bold text-navy-700">{revenueWithoutCurrency ? "Total unavailable" : "No confirmed revenue"}</p>}
+              {hasLoaded && revenueWithoutCurrency > 0 && <p className="mt-1 max-w-64 text-xs text-navy-400">Revenue for {revenueWithoutCurrency} booking{revenueWithoutCurrency === 1 ? " is" : "s are"} excluded because their currency is unavailable.</p>}
             </div>
           </div>
-        </div>
+        </section>
       </div>
 
       {error && <div role="alert" className="mb-6 rounded-xl bg-red-50 p-4 text-red-700">
@@ -286,7 +306,7 @@ function OperatorBookings({ userId, authLoading }: { userId: string | undefined;
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-bold text-navy-700 text-lg">
-                        ${parseFloat(booking.subtotal).toFixed(2)}
+                        {formatRecordedAmount(Number(booking.subtotal), recordedCurrency(booking.currency))}
                       </p>
                       <p className="text-xs text-navy-400">your earnings</p>
                     </div>

@@ -1,148 +1,60 @@
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import { users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
-import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import twilio from "twilio";
-
+import { verifyCurrentSessionToken } from "@/server/session-validation";
+import { PhoneVerificationError, consumePhoneCode, finishPhoneSend, phoneStatus, reservePhoneCode, validPhone, type PhoneActor } from "@/server/phone-verification";
 import { logger } from "@/lib/logger";
 
-function getDb() {
-  return drizzle(neon(process.env.DATABASE_URL!));
+const headers = { "Cache-Control": "private, no-store" };
+const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers });
+async function actor(): Promise<PhoneActor> {
+  const token = (await cookies()).get("session")?.value;
+  const session = token ? await verifyCurrentSessionToken(token) : null;
+  if (!session || session.sessionVersion === undefined) throw new PhoneVerificationError("Unauthorized", 401);
+  return { ...session, sessionVersion: session.sessionVersion };
 }
-
-// In-memory verification codes: key = userId, value = { code, expiresAt }
-const verificationCodes = new Map<
-  string,
-  { code: string; phone: string; expiresAt: number }
->();
-
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function failure(error: unknown) {
+  if (error instanceof PhoneVerificationError) return json({ error: error.message }, error.status);
+  logger.error("Phone verification unavailable");
+  return json({ error: "Phone verification is temporarily unavailable. Please try again." }, 503);
 }
-
-/**
- * POST — Send SMS verification code to user's phone
- * Body: { phone: string }
- */
+function fence(value: unknown, current: PhoneActor) {
+  if (value !== undefined && value !== null && value !== current.userId) throw new PhoneVerificationError("Your account changed. Reload before continuing.", 409);
+}
+async function body(request: Request) {
+  const value = await request.json().catch(() => null);
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new PhoneVerificationError("Invalid verification request.");
+  return value as Record<string, unknown>;
+}
+export async function GET(request?: Request) {
+  try {
+    const current = await actor();
+    if (request) fence(new URL(request.url).searchParams.get("expectedUserId"), current);
+    return json(await phoneStatus(current));
+  } catch (error) { return failure(error); }
+}
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const current = await actor(), data = await body(request);
+    fence(data.expectedUserId, current);
+    if (!validPhone(data.phone)) throw new PhoneVerificationError("Enter a phone number in international format, for example +14735551234.");
+    const { TWILIO_ACCOUNT_SID: sid, TWILIO_AUTH_TOKEN: auth, TWILIO_PHONE_NUMBER: from } = process.env;
+    if (!sid || !auth || !from) return json({ error: "SMS service unavailable" }, 503);
+    const challenge = await reservePhoneCode(current, data.phone);
+    try {
+      await twilio(sid, auth, { timeout: 10_000, autoRetry: false }).messages.create({ body: `Your VakayGo verification code is: ${challenge.code}. It expires in 5 minutes.`, from, to: data.phone });
+    } catch {
+      await finishPhoneSend(current, challenge.id, false).catch(() => {});
+      return json({ error: "Could not send the verification code. Please try again later." }, 503);
     }
-
-    const currentSession = await verifyCurrentSessionToken(token);
-    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const payload = { ...currentSession, id: currentSession.userId };
-    const userId = payload.id as string;
-
-    const { phone } = await request.json();
-    if (!phone) {
-      return NextResponse.json({ error: "phone required" }, { status: 400 });
-    }
-
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
-    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
-
-    if (!twilioSid || !twilioAuth || !twilioFrom) {
-      return NextResponse.json(
-        { error: "SMS service unavailable" },
-        { status: 503 }
-      );
-    }
-
-    const code = generateCode();
-
-    // Store code with 5-minute expiry
-    verificationCodes.set(userId, {
-      code,
-      phone,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    });
-
-    // Send SMS via Twilio
-    const client = twilio(twilioSid, twilioAuth);
-    await client.messages.create({
-      body: `Your VakayGo verification code is: ${code}. It expires in 5 minutes.`,
-      from: twilioFrom,
-      to: phone,
-    });
-
-    return NextResponse.json({ sent: true });
-  } catch (error) {
-    logger.error("Phone verify POST error", error);
-    return NextResponse.json(
-      { error: "Failed to send verification code" },
-      { status: 500 }
-    );
-  }
+    await finishPhoneSend(current, challenge.id, true);
+    return json({ sent: true, userId: current.userId });
+  } catch (error) { return failure(error); }
 }
-
-/**
- * PUT — Verify the code and mark phone as verified
- * Body: { code: string }
- */
 export async function PUT(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const currentSession = await verifyCurrentSessionToken(token);
-    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const payload = { ...currentSession, id: currentSession.userId };
-    const userId = payload.id as string;
-
-    const { code } = await request.json();
-    if (!code) {
-      return NextResponse.json({ error: "code required" }, { status: 400 });
-    }
-
-    const stored = verificationCodes.get(userId);
-    if (!stored) {
-      return NextResponse.json(
-        { error: "No pending verification. Send a code first." },
-        { status: 400 }
-      );
-    }
-
-    if (stored.expiresAt < Date.now()) {
-      verificationCodes.delete(userId);
-      return NextResponse.json(
-        { error: "Verification code expired" },
-        { status: 400 }
-      );
-    }
-
-    if (stored.code !== code) {
-      return NextResponse.json(
-        { error: "Invalid verification code" },
-        { status: 400 }
-      );
-    }
-
-    // Mark phone as verified and store the phone number
-    const db = getDb();
-    await db
-      .update(users)
-      .set({ phoneVerified: true, phone: stored.phone })
-      .where(eq(users.id, userId));
-
-    verificationCodes.delete(userId);
-
-    return NextResponse.json({ verified: true });
-  } catch (error) {
-    logger.error("Phone verify PUT error", error);
-    return NextResponse.json(
-      { error: "Failed to verify code" },
-      { status: 500 }
-    );
-  }
+    const current = await actor(), data = await body(request);
+    fence(data.expectedUserId, current);
+    return json(await consumePhoneCode(current, data.code as string, data.phone));
+  } catch (error) { return failure(error); }
 }

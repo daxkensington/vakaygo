@@ -1,14 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { PgDialect } from "drizzle-orm/pg-core";
-import type { SQL } from "drizzle-orm";
-const state = vi.hoisted(() => ({ valid: true, userId: "10000000-0000-4000-8000-000000000001", writes: [] as { values: Record<string, unknown>; sql: string; params: unknown[] }[], accepted: true, dbCalls: 0 }));
-vi.mock("@/server/admin-auth", () => ({ requireUser: async () => state.valid ? ({ ok: true, userId: state.userId, role: "traveler", sessionVersion: 3 }) : ({ ok: false, error: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }) }) }));
+const state = vi.hoisted(() => ({ valid: true, userId: "10000000-0000-4000-8000-000000000001", writes: [] as { values: Record<string, unknown>; actor: Record<string, unknown> }[], accepted: true, dbCalls: 0 }));
+vi.mock("@/server/admin-auth", () => ({ requireUser: async () => state.valid ? ({ ok: true, userId: state.userId, role: "traveler", email: "profile@fixture.invalid", sessionVersion: 3 }) : ({ ok: false, error: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }) }) }));
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 vi.mock("@neondatabase/serverless", () => ({ neon: () => { state.dbCalls++; return {}; } }));
-vi.mock("drizzle-orm/neon-http", () => ({ drizzle: () => ({ update: () => ({ set: (values: Record<string, unknown>) => ({ where: (where: SQL) => {
-  const condition = new PgDialect().sqlToQuery(where); state.writes.push({ values, sql: condition.sql, params: condition.params });
-  return { returning: async () => state.accepted ? [{ id: state.userId, name: values.name, phone: values.phone }] : [] };
-} }) }) }) }));
+vi.mock("@/server/phone-verification", () => ({ PhoneVerificationError: class extends Error {}, updatePhoneAwareProfile: async (actor: Record<string, unknown>, values: Record<string, unknown>) => {
+  state.dbCalls++; state.writes.push({ actor, values }); return state.accepted ? { id: state.userId, ...values } : null;
+} }));
 import { GET, PATCH } from "@/app/api/profile/route";
 import type { NextRequest } from "next/server";
 const request = (body: unknown) => new Request("https://vakaygo.com/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }) as NextRequest;
@@ -30,7 +27,7 @@ it("updates only the pinned current account and session epoch and returns a priv
   const result = await PATCH(request({ expectedUserId: state.userId, name: "  Traveler  ", phone: "  synthetic phone  " }));
   expect(result.status).toBe(200); expect(result.headers.get("cache-control")).toBe("private, no-store");
   expect(state.writes[0].values).toMatchObject({ name: "Traveler", phone: "synthetic phone" });
-  expect(state.writes[0].params).toEqual([state.userId, 3, "traveler"]);
+  expect(state.writes[0].actor).toEqual({ userId: state.userId, sessionVersion: 3, role: "traveler", email: "profile@fixture.invalid" });
   expect((await result.json()).user.id).toBe(state.userId);
 });
 it("reports a write-time identity change without returning success", async () => {
