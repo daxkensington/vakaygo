@@ -201,8 +201,15 @@ export default async function BestHotelsPage({ params }: Props) {
   const priceDistribution: Record<string, number> = {};
   stayListings.forEach((l) => {
     const range = getPriceRange(l.priceAmount);
+    if (range === "Varies") return;
     priceDistribution[range] = (priceDistribution[range] || 0) + 1;
   });
+  const presentPriceTiers = ["Budget", "Mid-Range", "Upscale", "Luxury"].filter(
+    (tier) => priceDistribution[tier] > 0
+  );
+  const priceRangeSummary = presentPriceTiers.length > 1
+    ? `${presentPriceTiers[0]} - ${presentPriceTiers[presentPriceTiers.length - 1]}`
+    : presentPriceTiers[0] || "Varies";
 
   // JSON-LD
   const jsonLd = {
@@ -321,9 +328,7 @@ export default async function BestHotelsPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <p className="text-2xl font-bold text-navy-700">
-                {Object.keys(priceDistribution).length > 0
-                  ? Object.keys(priceDistribution).sort().join(" - ")
-                  : "Varies"}
+                {priceRangeSummary}
               </p>
               <p className="text-xs text-navy-400 mt-1">Price Range</p>
             </div>
