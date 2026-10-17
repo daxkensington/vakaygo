@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AlertTriangle, Search, ChevronDown, ChevronUp, Loader2, Clock, CheckCircle, Eye, Save } from "lucide-react";
 
 type Dispute = {
@@ -116,16 +116,34 @@ export default function AdminDisputesPage() {
   const [formAdminNotes, setFormAdminNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const selectionSeqRef = useRef(0);
+  const listSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      selectionSeqRef.current += 1;
+      listSeqRef.current += 1;
+    };
+  }, []);
 
   const fetchDisputes = useCallback(async () => {
+    if (!mountedRef.current) return;
+    const token = ++listSeqRef.current;
+    const isCurrent = () =>
+      mountedRef.current && token === listSeqRef.current;
     try {
       const res = await fetch("/api/disputes");
+      if (!isCurrent()) return;
       const data = await res.json();
+      if (!isCurrent()) return;
       setDisputes(data.disputes || []);
     } catch {
-      setDisputes([]);
+      if (isCurrent()) setDisputes([]);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, []);
 
@@ -134,49 +152,71 @@ export default function AdminDisputesPage() {
   }, [fetchDisputes]);
 
   async function loadDetail(id: string) {
+    if (!mountedRef.current) return;
+    const token = ++selectionSeqRef.current;
+    const isCurrent = () =>
+      mountedRef.current && token === selectionSeqRef.current;
+    setDetail(null);
+    setFormStatus("");
+    setFormResolution("");
+    setFormAdminNotes("");
+    setSaving(false);
+    setSaveSuccess(false);
     if (expandedId === id) {
       setExpandedId(null);
-      setDetail(null);
+      setDetailLoading(false);
       return;
     }
     setExpandedId(id);
     setDetailLoading(true);
-    setSaveSuccess(false);
     try {
       const res = await fetch(`/api/disputes/${id}`);
+      if (!isCurrent()) return;
+      if (!res.ok) return;
       const data = await res.json();
+      if (!isCurrent()) return;
+      if (data?.dispute?.id !== id) return;
       setDetail(data.dispute);
       setFormStatus(data.dispute.status);
       setFormResolution(data.dispute.resolution || "");
       setFormAdminNotes(data.dispute.adminNotes || "");
     } catch {
-      setDetail(null);
+      if (isCurrent()) setDetail(null);
     } finally {
-      setDetailLoading(false);
+      if (isCurrent()) setDetailLoading(false);
     }
   }
 
   async function handleSave() {
-    if (!detail) return;
+    const targetId = expandedId;
+    const token = selectionSeqRef.current;
+    if (!mountedRef.current || !targetId || !detail || detail.id !== targetId || saving) return;
+    const body = {
+      status: formStatus,
+      resolution: formResolution || null,
+      adminNotes: formAdminNotes || null,
+    };
+    const isCurrent = () =>
+      mountedRef.current && token === selectionSeqRef.current;
     setSaving(true);
     setSaveSuccess(false);
     try {
-      const res = await fetch(`/api/disputes/${detail.id}`, {
+      const res = await fetch(`/api/disputes/${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: formStatus,
-          resolution: formResolution || null,
-          adminNotes: formAdminNotes || null,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
-        setSaveSuccess(true);
-        // Refresh list and detail
+        // The list refresh is independent of the selected dispute.
         fetchDisputes();
-        const data = await fetch(`/api/disputes/${detail.id}`).then((r) =>
-          r.json()
-        );
+        if (!isCurrent()) return;
+        setSaveSuccess(true);
+        const refreshRes = await fetch(`/api/disputes/${targetId}`);
+        if (!isCurrent()) return;
+        if (!refreshRes.ok) return;
+        const data = await refreshRes.json();
+        if (!isCurrent()) return;
+        if (data?.dispute?.id !== targetId) return;
         setDetail(data.dispute);
         setFormStatus(data.dispute.status);
         setFormResolution(data.dispute.resolution || "");
@@ -185,9 +225,11 @@ export default function AdminDisputesPage() {
     } catch {
       // silent
     } finally {
-      setSaving(false);
+      if (isCurrent()) setSaving(false);
     }
   }
+
+  const activeDetail = detail && detail.id === expandedId ? detail : null;
 
   // Filtered disputes
   const filtered = disputes.filter((d) => {
@@ -406,7 +448,7 @@ export default function AdminDisputesPage() {
                           className="animate-spin text-gold-700"
                         />
                       </div>
-                    ) : detail ? (
+                    ) : activeDetail ? (
                       <div className="grid md:grid-cols-2 gap-6">
                         {/* Left: details */}
                         <div className="space-y-4">
@@ -415,7 +457,7 @@ export default function AdminDisputesPage() {
                               Description
                             </h4>
                             <p className="text-sm text-navy-600 leading-relaxed">
-                              {detail.description}
+                              {activeDetail.description}
                             </p>
                           </div>
 
@@ -425,19 +467,19 @@ export default function AdminDisputesPage() {
                                 Booking
                               </h4>
                               <p className="text-sm text-navy-600">
-                                #{detail.bookingNumber}
+                                #{activeDetail.bookingNumber}
                               </p>
                               <p className="text-xs text-navy-400">
-                                {detail.listing?.title} ({detail.listing?.type})
+                                {activeDetail.listing?.title} ({activeDetail.listing?.type})
                               </p>
                               <p className="text-xs text-navy-400">
-                                Status: {detail.bookingStatus} &middot; $
-                                {parseFloat(detail.totalAmount).toFixed(2)}
+                                Status: {activeDetail.bookingStatus} &middot; $
+                                {parseFloat(activeDetail.totalAmount).toFixed(2)}
                               </p>
                               <p className="text-xs text-navy-400">
-                                {new Date(detail.startDate).toLocaleDateString()} &middot;{" "}
-                                {detail.guestCount} guest
-                                {detail.guestCount > 1 ? "s" : ""}
+                                {new Date(activeDetail.startDate).toLocaleDateString()} &middot;{" "}
+                                {activeDetail.guestCount} guest
+                                {activeDetail.guestCount > 1 ? "s" : ""}
                               </p>
                             </div>
                             <div>
@@ -445,36 +487,36 @@ export default function AdminDisputesPage() {
                                 Parties
                               </h4>
                               <p className="text-sm text-navy-600">
-                                {detail.traveler.name || "Unknown"}{" "}
+                                {activeDetail.traveler.name || "Unknown"}{" "}
                                 <span className="text-navy-400">
                                   (traveler)
                                 </span>
                               </p>
                               <p className="text-xs text-navy-400">
-                                {detail.traveler.email}
+                                {activeDetail.traveler.email}
                               </p>
                               <p className="text-sm text-navy-600 mt-1">
-                                {detail.operator.businessName ||
-                                  detail.operator.name ||
+                                {activeDetail.operator.businessName ||
+                                  activeDetail.operator.name ||
                                   "Unknown"}{" "}
                                 <span className="text-navy-400">
                                   (operator)
                                 </span>
                               </p>
                               <p className="text-xs text-navy-400">
-                                {detail.operator.email}
+                                {activeDetail.operator.email}
                               </p>
                             </div>
                           </div>
 
-                          {detail.resolvedAt && (
+                          {activeDetail.resolvedAt && (
                             <div>
                               <h4 className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-1">
                                 Resolved
                               </h4>
                               <p className="text-xs text-navy-400">
                                 {new Date(
-                                  detail.resolvedAt
+                                  activeDetail.resolvedAt
                                 ).toLocaleString()}
                               </p>
                             </div>
@@ -543,7 +585,7 @@ export default function AdminDisputesPage() {
 
                           <button
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || !activeDetail}
                             className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
                           >
                             {saving ? (
@@ -557,7 +599,7 @@ export default function AdminDisputesPage() {
                             {saving ? "Saving..." : "Save Changes"}
                           </button>
 
-                          {saveSuccess && (
+                          {activeDetail && saveSuccess && (
                             <p className="text-sm text-green-600 text-center flex items-center justify-center gap-1">
                               <CheckCircle size={14} /> Saved successfully
                             </p>
