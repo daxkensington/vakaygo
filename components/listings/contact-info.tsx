@@ -52,6 +52,9 @@ export function ContactInfo({ typeData, listingId, bookingEligible = false, uncl
 
       {hoursList.length > 0 && (
         <div className="mt-5 pt-4 border-t border-cream-100">
+          <p className="mb-3 text-xs leading-relaxed text-navy-400">
+            Published hours may be outdated. Confirm current opening hours and visitor access with an official source before going.
+          </p>
           {hoursList.length > 1 ? (
             <details>
               <summary className="flex items-center gap-3 w-full text-left cursor-pointer">

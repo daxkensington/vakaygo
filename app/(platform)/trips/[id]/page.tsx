@@ -2,6 +2,7 @@
 
 import { ImageWithFallback } from "@/components/shared/image-fallback";
 import { getImageUrl } from "@/lib/image-utils";
+import { tripPriceLabel } from "@/lib/trip-price-label";
 
 import { useEffect, useLayoutEffect, useRef, useState, use, type RefObject } from "react";
 import Link from "next/link";
@@ -60,6 +61,7 @@ type TripItem = {
     type: string;
     headline: string | null;
     priceAmount: string | null;
+    bookingEligible?: boolean;
     priceCurrency: string | null;
     priceUnit: string | null;
     avgRating: string | null;
@@ -511,6 +513,7 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                       TIME_SLOT_CONFIG[item.timeSlot] ||
                       TIME_SLOT_CONFIG.morning;
                     const Icon = config.icon;
+                    const priceLabel = item.listing ? tripPriceLabel(item.listing) : null;
 
                     return (
                       <div
@@ -594,15 +597,9 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                                           : ""}
                                       </span>
                                     )}
-                                  {item.listing.priceAmount && (
+                                  {priceLabel && (
                                     <span className="text-xs text-navy-500 font-medium">
-                                      $
-                                      {parseFloat(
-                                        item.listing.priceAmount
-                                      ).toFixed(0)}
-                                      {item.listing.priceUnit
-                                        ? `/${item.listing.priceUnit}`
-                                        : ""}
+                                      {priceLabel}
                                     </span>
                                   )}
                                   {item.listing.parish && (

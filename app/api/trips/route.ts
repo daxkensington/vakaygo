@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { trips, tripItems, listings, islands, media } from "@/drizzle/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, asc, sql } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { requireUser } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { personalItinerary, planningDate, projectLegacyTrip } from "@/server/trip-planner-response";
+import { tripSaveQuery, type TripDraftItem } from "@/server/trip-planner-persistence";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -76,248 +80,117 @@ export async function GET() {
 }
 
 // ─── POST: Create a trip (manual or AI-generated) ──────────────
+const createSchema = z.object({
+  islandId: z.number().int().positive(), startDate: planningDate, endDate: planningDate,
+  title: z.string().trim().min(1).max(256).optional(), guestCount: z.number().int().min(1).max(50).default(1),
+  budget: z.string().max(32).optional(), interests: z.array(z.string().max(80)).max(20).optional(),
+  generateAI: z.boolean().optional(), itineraryData: z.unknown().optional(),
+}).refine(value => { const days = (Date.parse(value.endDate) - Date.parse(value.startDate)) / 86400000; return days > 0 && days <= 30; });
+
 export async function POST(request: Request) {
   try {
-    const userId = await getUser();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const {
-      islandId,
-      title,
-      startDate,
-      endDate,
-      guestCount = 1,
-      budget,
-      interests,
-      generateAI,
-      itineraryData, // Pre-built AI itinerary from /api/trips/generate
-    } = body;
-
-    if (!islandId || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "islandId, startDate, and endDate are required" },
-        { status: 400 }
-      );
-    }
-
+    const auth = await requireUser();
+    if (!auth.ok) return auth.error;
+    const parsed = createSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Choose a destination, valid dates up to 30 days apart, and valid trip preferences." }, { status: 400 });
+    const { islandId, title, startDate, endDate, guestCount, budget, interests, generateAI, itineraryData } = parsed.data;
     const db = getDb();
-
-    // Get island name
-    const [island] = await db
-      .select({ id: islands.id, name: islands.name })
-      .from(islands)
-      .where(eq(islands.id, islandId))
-      .limit(1);
-
-    if (!island) {
-      return NextResponse.json({ error: "Island not found" }, { status: 404 });
-    }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-
-    const tripTitle = title || `${island.name} Trip`;
-
-    if (!generateAI && !itineraryData) {
-      // Manual mode: just create the trip shell
-      const [trip] = await db
-        .insert(trips)
-        .values({
-          userId,
-          islandId,
-          title: tripTitle,
-          startDate: start,
-          endDate: end,
-          guestCount,
-          budget: budget || null,
-          interests: interests || null,
-          isAiGenerated: false,
-          isPublic: false,
-        })
-        .returning();
-
-      return NextResponse.json({ trip, items: [] });
-    }
-
-    // ─── Save pre-built AI itinerary from /api/trips/generate ──
-    if (itineraryData && itineraryData.days) {
-      const [trip] = await db
-        .insert(trips)
-        .values({
-          userId,
-          islandId,
-          title: itineraryData.title || tripTitle,
-          startDate: start,
-          endDate: end,
-          guestCount,
-          budget: budget || null,
-          interests: interests || null,
-          isAiGenerated: true,
-          isPublic: false,
-        })
-        .returning();
-
-      const itemValues: {
-        tripId: string;
-        listingId: string | null;
-        dayNumber: number;
-        timeSlot: string;
-        customTitle: string;
-        customNote: string | null;
-        sortOrder: number;
-      }[] = [];
-
-      for (const day of itineraryData.days) {
-        if (day.items && Array.isArray(day.items)) {
-          for (let i = 0; i < day.items.length; i++) {
-            const item = day.items[i];
-            itemValues.push({
-              tripId: trip.id,
-              listingId: item.listingId || null,
-              dayNumber: day.dayNumber,
-              timeSlot: item.timeSlot || "morning",
-              customTitle: item.title || "Activity",
-              customNote: item.note || null,
-              sortOrder: i,
-            });
-          }
-        }
-      }
-
-      if (itemValues.length > 0) {
-        await db.insert(tripItems).values(itemValues);
-      }
-
-      return NextResponse.json({ trip, items: itemValues });
-    }
-
-    // ─── AI-generated mode ─────────────────────────────────────
-    // Fetch active listings for the island
-    const activeListings = await db
-      .select({
-        id: listings.id,
-        title: listings.title,
-        type: listings.type,
-        priceAmount: listings.priceAmount,
-        avgRating: listings.avgRating,
-        reviewCount: listings.reviewCount,
-        headline: listings.headline,
-      })
-      .from(listings)
-      .where(and(eq(listings.islandId, islandId), eq(listings.status, "active")));
-
-    // Get primary images
-    const listingIds = activeListings.map((l) => l.id);
-    const imageMap = new Map<string, string>();
-    if (listingIds.length > 0) {
-      const images = await db
-        .select({ listingId: media.listingId, url: media.url })
-        .from(media)
-        .where(and(inArray(media.listingId, listingIds), eq(media.isPrimary, true)));
-      images.forEach((img) => imageMap.set(img.listingId, getImageUrl(img.url) || img.url));
-    }
-
-    type ItineraryDay = {
-      day: number;
-      activities: { timeSlot: string; listingId: string | null; title: string; note: string }[];
+    const [island] = await db.select({ id: islands.id, name: islands.name, slug: islands.slug }).from(islands).where(and(eq(islands.id, islandId), eq(islands.isActive, true))).limit(1);
+    if (!island) return NextResponse.json({ error: "Island not found" }, { status: 404 });
+    const start = new Date(startDate), end = new Date(endDate);
+    const days = (end.getTime() - start.getTime()) / 86400000;
+    const tripTitle = title || island.name + " Trip";
+    const save = async (savedTitle: string, isAiGenerated: boolean, items: TripDraftItem[]) => {
+      request.signal.throwIfAborted();
+      const result = await db.execute(tripSaveQuery(auth, { islandId, title: savedTitle, startDate, endDate, guestCount,
+        budget: budget || null, interests: interests || null, isAiGenerated }, items));
+      const trip = result.rows[0];
+      return trip ? { trip, items: items.map(item => ({ ...item, tripId: trip.id })) } : null;
     };
+    const accountChanged = () => NextResponse.json({ error: "Your account changed while planning. Sign in again before creating a trip." }, { status: 409 });
 
-    let itinerary: ItineraryDay[] = [];
+    if (!generateAI && itineraryData == null) {
+      const saved = await save(tripTitle, false, []);
+      return saved ? NextResponse.json(saved) : accountChanged();
+    }
 
-    // Try OpenAI first
+    // This endpoint cannot attest that caller-supplied prose came from our AI.
+    // Keep personal notes, but never label them as generated or verified facts.
+    if (itineraryData != null) {
+      const personal = personalItinerary.safeParse(itineraryData);
+      if (!personal.success || personal.data.days.some(day => day.dayNumber > days)) return NextResponse.json({ error: "Invalid personal itinerary." }, { status: 400 });
+      const ids = [...new Set(personal.data.days.flatMap(day => day.items.flatMap(item => item.listingId ? [item.listingId] : [])))];
+      if (ids.length) {
+        const refs = await db.select({ id: listings.id }).from(listings).innerJoin(islands, eq(listings.islandId, islands.id)).where(and(publicDirectoryListings(), inArray(listings.id, ids)));
+        const known = new Set(refs.map(row => row.id));
+        if (ids.some(id => !known.has(id))) return NextResponse.json({ error: "A selected listing is unavailable." }, { status: 400 });
+      }
+      const items = personal.data.days.flatMap(day => day.items.map((item, sortOrder) => ({
+        listingId: item.listingId ?? null, dayNumber: day.dayNumber, timeSlot: item.timeSlot,
+        customTitle: item.title, customNote: item.note ?? null, sortOrder,
+      })));
+      const saved = await save(personal.data.title || tripTitle, false, items);
+      return saved ? NextResponse.json({ ...saved, contentSource: "personal" }) : accountChanged();
+    }
+
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
+    const activeListings = await db.select({ id: listings.id, title: listings.title, slug: listings.slug,
+      type: listings.type, avgRating: listings.avgRating, reviewCount: listings.reviewCount, islandSlug: islands.slug,
+    }).from(listings).innerJoin(islands, eq(listings.islandId, islands.id))
+      .where(and(eq(listings.islandId, islandId), publicDirectoryListings()))
+      .orderBy(sql`${listings.avgRating} DESC NULLS LAST`, sql`${listings.reviewCount} DESC NULLS LAST`, asc(listings.id))
+      .limit(80);
+    const listingIds = activeListings.map(row => row.id);
+    const imageMap = new Map<string, string>();
+    if (listingIds.length) {
+      const images = await db.select({ listingId: media.listingId, url: media.url }).from(media)
+        .where(and(inArray(media.listingId, listingIds), eq(media.isPrimary, true)));
+      images.forEach(img => imageMap.set(img.listingId, getImageUrl(img.url) || img.url));
+    }
+    let choices: unknown = null;
     const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey && activeListings.length > 0) {
+    if (openaiKey && activeListings.length) {
       try {
-        itinerary = await generateWithOpenAI(
-          openaiKey,
-          days,
-          island.name,
-          guestCount,
-          budget || "Mid-Range",
-          interests || [],
-          activeListings
-        );
-      } catch (e) {
-        logger.error("OpenAI generation failed, falling back to heuristic", e);
+        choices = await whileActive(signal, () => generateWithOpenAI(openaiKey, days, island.name, guestCount,
+          budget || "Mid-Range", interests || [], activeListings, signal));
+      } catch (error) {
+        signal.throwIfAborted();
+        logger.error("OpenAI generation failed, falling back to heuristic", null, { reason: error instanceof Error ? error.name : "UnknownError" });
       }
     }
-
-    // Fallback: smart heuristic
-    if (itinerary.length === 0) {
-      itinerary = generateHeuristic(days, activeListings);
-    }
-
-    // Create the trip
-    const [trip] = await db
-      .insert(trips)
-      .values({
-        userId,
-        islandId,
-        title: tripTitle,
-        startDate: start,
-        endDate: end,
-        guestCount,
-        budget: budget || null,
-        interests: interests || null,
-        isAiGenerated: true,
-        isPublic: false,
-      })
-      .returning();
-
-    // Create trip items
-    const itemValues: {
-      tripId: string;
-      listingId: string | null;
-      dayNumber: number;
-      timeSlot: string;
-      customTitle: string;
-      customNote: string | null;
-      sortOrder: number;
-    }[] = [];
-
-    for (const day of itinerary) {
-      for (let i = 0; i < day.activities.length; i++) {
-        const act = day.activities[i];
-        itemValues.push({
-          tripId: trip.id,
-          listingId: act.listingId || null,
-          dayNumber: day.day,
-          timeSlot: act.timeSlot,
-          customTitle: act.title,
-          customNote: act.note || null,
-          sortOrder: i,
-        });
-      }
-    }
-
-    if (itemValues.length > 0) {
-      await db
-        .insert(tripItems)
-        .values(itemValues);
-    }
-
-    // Attach listing info to items
-    const listingMap = new Map(activeListings.map((l) => [l.id, l]));
-    const itemsWithListings = itemValues.map((item) => ({
-      ...item,
-      listing: item.listingId ? {
-        ...listingMap.get(item.listingId),
-        image: item.listingId ? imageMap.get(item.listingId) || null : null,
-      } : null,
-    }));
-
-    return NextResponse.json({ trip, items: itemsWithListings });
+    if (choices === null) choices = generateHeuristic(days, activeListings);
+    const known = new Map(activeListings.map(listing => [listing.id, { ...listing, image: imageMap.get(listing.id) ?? null }]));
+    const itinerary = projectLegacyTrip(choices, { islandName: island.name, islandSlug: island.slug, startDate, days, listings: known });
+    if (!itinerary) return NextResponse.json({ code: "TRIP_PLANNER_UNAVAILABLE", error: "Trip planning is temporarily unavailable. No trip was saved." }, { status: 503 });
+    signal.throwIfAborted();
+    const items = itinerary.flatMap(day => day.activities.map((item, sortOrder) => ({
+      listingId: item.listingId, dayNumber: day.day, timeSlot: item.timeSlot,
+      customTitle: item.title, customNote: item.note, sortOrder,
+    })));
+    const saved = await save(tripTitle, true, items);
+    if (!saved) return accountChanged();
+    const itemsWithListings = saved.items.map(item => ({ ...item, listing: item.listingId ? {
+      ...known.get(item.listingId), priceAmount: null, bookingEligible: false,
+    } : null }));
+    return NextResponse.json({ trip: saved.trip, items: itemsWithListings });
   } catch (error) {
-    logger.error("Trips POST error", error);
+    logger.error("Trips POST error", null, { reason: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Failed to create trip" }, { status: 500 });
   }
 }
 
-// ─── OpenAI generation ─────────────────────────────────────────
+async function whileActive<T>(signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    Promise.resolve().then(() => { signal.throwIfAborted(); return work(); }).then(
+      value => { signal.removeEventListener("abort", abort); resolve(value); },
+      error => { signal.removeEventListener("abort", abort); reject(error); },
+    );
+  });
+}
+
 async function generateWithOpenAI(
   apiKey: string,
   days: number,
@@ -325,12 +198,13 @@ async function generateWithOpenAI(
   guests: number,
   budget: string,
   interests: string[],
-  availableListings: { id: string; title: string; type: string; priceAmount: string | null; avgRating: string | null }[]
+  availableListings: { id: string; title: string; type: string; avgRating: string | null }[],
+  signal: AbortSignal
 ) {
   const listingSummary = availableListings
     .map(
       (l) =>
-        `- "${l.title}" (type: ${l.type}, price: $${l.priceAmount || "N/A"}, rating: ${l.avgRating || "N/A"}) [id: ${l.id}]`
+        `- "${l.title}" (type: ${l.type}, rating: ${l.avgRating || "N/A"}) [id: ${l.id}]`
     )
     .join("\n");
 
@@ -345,19 +219,19 @@ Return ONLY valid JSON — no markdown, no code fences. The format must be:
   {
     "day": 1,
     "activities": [
-      { "timeSlot": "morning", "listingId": "<listing id or null>", "title": "<activity title>", "note": "<brief description>" },
-      { "timeSlot": "afternoon", "listingId": "<listing id or null>", "title": "<activity title>", "note": "<brief description>" },
-      { "timeSlot": "evening", "listingId": "<listing id or null>", "title": "<activity title>", "note": "<brief description>" }
+      { "timeSlot": "morning", "listingId": "<listing id or null>" },
+      { "timeSlot": "afternoon", "listingId": "<listing id or null>" },
+      { "timeSlot": "evening", "listingId": "<listing id or null>" }
     ]
   }
 ]
 
 Rules:
-- Use real listing IDs from the list above when they match the activity. Use null for free/custom activities.
+- Use real listing IDs from the list above when they match the activity. Use null for unassigned personal planning slots; never infer free admission.
 - Each day must have exactly 3 activities (morning, afternoon, evening).
 - Mix different types of experiences across days.
 - Prioritize highly-rated listings.
-- Keep budget in mind when selecting listings.`;
+- Return choices only. Do not invent admission, prices, access, reservations or venue hours. Slot labels are suggested planning times only.`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -377,6 +251,7 @@ Rules:
       temperature: 0.7,
       max_tokens: 2000,
     }),
+    signal,
   });
 
   if (!res.ok) {
@@ -393,7 +268,7 @@ Rules:
 // ─── Heuristic fallback ────────────────────────────────────────
 function generateHeuristic(
   days: number,
-  availableListings: { id: string; title: string; type: string; priceAmount: string | null; avgRating: string | null }[]
+  availableListings: { id: string; title: string; type: string; avgRating: string | null }[]
 ) {
   const timeSlots = ["morning", "afternoon", "evening"];
 
@@ -450,28 +325,7 @@ function generateHeuristic(
         }
       }
 
-      if (picked) {
-        activities.push({
-          timeSlot: slot,
-          listingId: picked.id,
-          title: picked.title,
-          note: `Enjoy this ${picked.type} experience${picked.priceAmount ? ` (~$${picked.priceAmount})` : ""}.`,
-        });
-      } else {
-        // Free activity when we run out of listings
-        const freeActivities: Record<string, { title: string; note: string }> = {
-          morning: { title: "Beach Morning", note: "Start the day with a relaxing walk on the beach." },
-          afternoon: { title: "Explore Local Area", note: "Wander the streets and discover hidden gems." },
-          evening: { title: "Sunset Viewing", note: "Find a scenic spot and enjoy the Caribbean sunset." },
-        };
-        const free = freeActivities[slot] || freeActivities.morning;
-        activities.push({
-          timeSlot: slot,
-          listingId: null,
-          title: free.title,
-          note: free.note,
-        });
-      }
+      activities.push({ timeSlot: slot, listingId: picked?.id ?? null });
     }
 
     itinerary.push({ day: d, activities });

@@ -19,7 +19,9 @@ beforeEach(() => {
 });
 it("keeps nonbookable directory prices absent after saving and opening the trip", async () => {
   const response = await request(); expect(response.status).toBe(200); expect((await response.json()).items[0].listing.priceAmount).toBeNull();
-  const predicate = new PgDialect().sqlToQuery(state.predicates[2] as Parameters<PgDialect["sqlToQuery"]>[0]); expect(predicate.params).toEqual([listingId, "active"]);
+  const predicate = new PgDialect().sqlToQuery(state.predicates[2] as Parameters<PgDialect["sqlToQuery"]>[0]);
+  expect(predicate.params).toEqual(expect.arrayContaining([listingId, "active", true]));
+  for (const field of ['"listings"."id"', '"listings"."status"', '"islands"."is_active"', '"listings"."title"', '"listings"."slug"']) expect(predicate.sql).toContain(field);
 });
 it("represents a removed or inactive saved listing without creating an undefined listing link", async () => {
   state.rows[2] = []; const response = await request(); expect((await response.json()).items[0]).toMatchObject({ customTitle: "Saved activity", listing: null });

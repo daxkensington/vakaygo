@@ -1230,7 +1230,7 @@ function TripPlanner() {
                                         <span
                                           className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${typeColor}`}
                                         >
-                                          {item.type}
+                                          {item.type === "free" ? "Personal time" : item.type}
                                         </span>
 
                                         {item.rating != null &&
@@ -1241,13 +1241,6 @@ function TripPlanner() {
                                                 fill="currentColor"
                                               />
                                               {Number(item.rating).toFixed(1)}
-                                            </span>
-                                          )}
-
-                                        {item.price != null &&
-                                          item.price > 0 && (
-                                            <span className="text-xs text-navy-400">
-                                              ${Number(item.price).toFixed(0)}
                                             </span>
                                           )}
 
