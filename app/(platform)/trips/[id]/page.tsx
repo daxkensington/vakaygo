@@ -1,5 +1,8 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+
 import { useEffect, useLayoutEffect, useRef, useState, use, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -531,11 +534,13 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                           <div className="flex">
                             {/* Image */}
                             {item.listing?.image && (
-                              <div className="w-32 md:w-40 shrink-0 bg-cream-200">
-                                <img
-                                  src={item.listing.image}
+                              <div className="relative w-32 md:w-40 shrink-0 bg-cream-200">
+                                <ImageWithFallback
+                                  src={getImageUrl(item.listing.image)}
+                                  type={item.listing.type}
                                   alt={item.listing.title}
-                                  className="w-full h-full object-cover"
+                                  sizes="(max-width: 768px) 128px, 160px"
+                                  className="absolute inset-0"
                                 />
                               </div>
                             )}

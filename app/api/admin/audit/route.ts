@@ -3,32 +3,14 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { auditLog, users } from "@/drizzle/schema";
 import { eq, sql, and, gte, lte, count } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function verifyAdmin(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) return null;
-
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return null;
-    return payload.id as string;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: NextRequest) {
   try {
     const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const { searchParams } = new URL(request.url);

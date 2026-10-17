@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ListingCard } from "@/components/listings/listing-card";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 type RecommendedListing = {

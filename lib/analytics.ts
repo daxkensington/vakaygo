@@ -53,11 +53,10 @@ export const analytics = {
     }),
   signUp: (method: string) =>
     trackEvent({ action: "sign_up", category: "auth", label: method }),
-  useConcierge: (query: string) =>
+  useConcierge: () =>
     trackEvent({
       action: "ai_concierge",
       category: "ai",
-      label: query,
     }),
   generateTrip: (island: string) =>
     trackEvent({

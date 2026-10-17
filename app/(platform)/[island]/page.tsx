@@ -4,18 +4,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import {
-  Home,
-  Compass,
-  UtensilsCrossed,
-  Music,
-  Car,
-  Users,
-  Sparkles,
-  Star,
-  MapPin,
-  ArrowRight,
-} from "lucide-react";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import {
   getIslandBySlug,
@@ -23,7 +12,7 @@ import {
   getTopListingsForIsland,
   getAllListingSlugsForIsland,
 } from "@/server/seo-queries";
-import { getImageUrl } from "@/lib/image-utils";
+
 import { FeaturedListingsClient } from "./featured-listings-client";
 
 // ISR: static HTML at the CDN, refreshed hourly in the background.

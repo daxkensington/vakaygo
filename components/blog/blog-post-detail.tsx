@@ -1,13 +1,16 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+
 import { useMemo } from "react";
 import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Calendar,
   MapPin,
   ChevronRight,
-  Share2,
   BookOpen,
   ArrowRight,
   Link2,
@@ -180,10 +183,13 @@ export function BlogPostDetail({
       <section className="relative pt-16">
         <div className="relative h-[50vh] min-h-[400px] max-h-[600px] bg-navy-800 overflow-hidden">
           {post.coverImage ? (
-            <img
-              src={post.coverImage}
+            <ImageWithFallback
+              src={getImageUrl(post.coverImage)}
+              type="guide"
               alt={post.title}
-              className="w-full h-full object-cover opacity-60"
+              className="absolute inset-0 opacity-60"
+              sizes="100vw"
+              priority
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-700 to-navy-800" />
@@ -225,7 +231,10 @@ export function BlogPostDetail({
               <div className="mt-4 flex items-center gap-4 text-sm text-white/70">
                 <div className="flex items-center gap-2">
                   {post.authorAvatar ? (
-                    <img
+                    <Image
+                      unoptimized
+                      width={32}
+                      height={32}
                       src={post.authorAvatar}
                       alt=""
                       className="h-8 w-8 rounded-full object-cover ring-2 ring-white/20"
@@ -431,10 +440,12 @@ export function BlogPostDetail({
                 >
                   <div className="relative aspect-[16/10] bg-navy-100 overflow-hidden">
                     {r.coverImage ? (
-                      <img
-                        src={r.coverImage}
+                      <ImageWithFallback
+                        src={getImageUrl(r.coverImage)}
+                        type="guide"
                         alt={r.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="absolute inset-0 group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500/20 to-navy-500/20">

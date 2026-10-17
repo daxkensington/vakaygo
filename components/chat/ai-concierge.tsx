@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface ListingCard {
@@ -203,14 +204,6 @@ function SparkleIcon({ className }: { className?: string }) {
   );
 }
 
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-    </svg>
-  );
-}
-
 function CloseIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -310,7 +303,7 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
     >
       <div className="relative h-28 overflow-hidden bg-cream-100">
         {listing.image ? (
-          <img src={listing.image} alt={listing.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <ImageWithFallback src={listing.image} type={listing.type} alt={listing.title} sizes="208px" className="w-full h-full transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gold-100 to-teal-100 flex items-center justify-center">
             <SparkleIcon className="w-8 h-8 text-gold-400" />
@@ -375,7 +368,6 @@ export function AIConcierge({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
-  const pendingVoiceTranscriptRef = useRef<string | null>(null);
   const sendMessageRef = useRef<((content: string, isVoice?: boolean) => Promise<void>) | null>(null);
   const router = useRouter();
   const params = useParams();
@@ -665,6 +657,13 @@ export function AIConcierge({
 
   // ─── Send Message ─────────────────────────────────────────────
 
+  // Stable recognition callbacks dispatch through the latest conversation handler.
+  const voiceSend = useCallback((transcript: string) => {
+    if (!transcript.trim()) return;
+    setLastTranscript(transcript);
+    sendMessageRef.current?.(transcript, true);
+  }, []);
+
   const sendMessage = useCallback(
     async (content: string, isVoice = false) => {
       if (!content.trim() || isLoading || requestRef.current) return;
@@ -674,7 +673,7 @@ export function AIConcierge({
       const searchTimer = setTimeout(() => setLoadingLabel("Searching listings..."), 1500);
 
       const userMessage: Message = { role: "user", content: content.trim() };
-      analytics.useConcierge(content.trim());
+      analytics.useConcierge();
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       setInput("");
@@ -728,8 +727,6 @@ export function AIConcierge({
                   setLastTranscript(transcript);
                   // Auto-send in voice mode
                   if (transcript.trim()) {
-                    // We need to call sendMessage but can't recurse directly here
-                    // Instead, set a flag that triggers send
                     voiceSend(transcript);
                   }
                 });
@@ -760,22 +757,13 @@ export function AIConcierge({
         }
       }
     },
-    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening, getUserLocale]
+    [messages, isLoading, isOpen, buildContext, speakText, personality, startListening, getUserLocale, voiceSend]
   );
 
   // Keep sendMessage ref in sync so voice callbacks can call it without stale closures
   useEffect(() => {
     sendMessageRef.current = sendMessage;
   }, [sendMessage]);
-
-  // Voice auto-send: call sendMessage directly via ref (no form hack)
-  const voiceSend = useCallback((transcript: string) => {
-    if (!transcript.trim()) return;
-    setLastTranscript(transcript);
-    // Use ref to avoid stale closure
-    sendMessageRef.current?.(transcript, true);
-  }, []
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

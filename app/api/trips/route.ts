@@ -248,7 +248,7 @@ export async function POST(request: Request) {
 
     // Fallback: smart heuristic
     if (itinerary.length === 0) {
-      itinerary = generateHeuristic(days, activeListings, interests || []);
+      itinerary = generateHeuristic(days, activeListings);
     }
 
     // Create the trip
@@ -393,8 +393,7 @@ Rules:
 // ─── Heuristic fallback ────────────────────────────────────────
 function generateHeuristic(
   days: number,
-  availableListings: { id: string; title: string; type: string; priceAmount: string | null; avgRating: string | null }[],
-  interests: string[]
+  availableListings: { id: string; title: string; type: string; priceAmount: string | null; avgRating: string | null }[]
 ) {
   const timeSlots = ["morning", "afternoon", "evening"];
 

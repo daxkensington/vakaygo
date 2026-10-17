@@ -5,12 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import {
-  getActiveIslands,
-  getIslandBySlug,
-  getTopListingsByType,
-  getIslandStats,
-} from "@/server/seo-queries";
+import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
 import {
   Star,

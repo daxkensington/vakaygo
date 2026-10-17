@@ -4,10 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
-import {
-  MapPin, X, Maximize2, Minimize2, Compass, Play, Pause,
-  Search, Navigation, Layers, Star, ChevronRight, Flame, Sun, Moon, List, Sparkles,
-} from "lucide-react";
+import { MapPin, X, Maximize2, Minimize2, Compass, Play, Pause, Search, Navigation, Star, ChevronRight, Sun, Moon, List, Sparkles } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";

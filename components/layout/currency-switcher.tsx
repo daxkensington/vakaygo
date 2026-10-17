@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  useCurrency,
-  POPULAR_CURRENCIES,
-  CARIBBEAN_CURRENCIES,
-  LATAM_CURRENCIES,
-  CURRENCY_NAMES,
-  CURRENCY_SYMBOLS,
-  CURRENCY_FLAGS,
-} from "@/lib/currency";
+import { useCurrency, POPULAR_CURRENCIES, CARIBBEAN_CURRENCIES, LATAM_CURRENCIES, CURRENCY_SYMBOLS, CURRENCY_FLAGS } from "@/lib/currency";
 
 function timeAgo(timestamp: number): string {
   const diffMs = Date.now() - timestamp;

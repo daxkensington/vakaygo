@@ -4,7 +4,6 @@ import { sendEmail } from "@/server/mail-client";
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
 import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
-import { logger } from "@/lib/logger";
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 const REPLY_TO = "support@vakaygo.com";

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import {
   ShieldCheck,
@@ -8,7 +10,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  User,
   FileText,
   Camera,
   Eye,
@@ -216,12 +217,15 @@ export default function VerificationsPage() {
                     onClick={() => setPreviewUrl(v.documentUrl)}
                     className="relative group rounded-xl overflow-hidden bg-cream-100 aspect-[4/3] flex items-center justify-center"
                   >
-                    <img
+                    <Image
+                      unoptimized
+                      fill
+                      sizes="(max-width: 768px) 50vw, 200px"
                       src={v.documentUrl}
                       alt="ID Document"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                        e.currentTarget.style.display = "none";
                       }}
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -236,12 +240,15 @@ export default function VerificationsPage() {
                     onClick={() => setPreviewUrl(v.selfieUrl)}
                     className="relative group rounded-xl overflow-hidden bg-cream-100 aspect-[4/3] flex items-center justify-center"
                   >
-                    <img
+                    <Image
+                      unoptimized
+                      fill
+                      sizes="(max-width: 768px) 50vw, 200px"
                       src={v.selfieUrl}
                       alt="Selfie"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                        e.currentTarget.style.display = "none";
                       }}
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -388,17 +395,21 @@ export default function VerificationsPage() {
       {previewUrl && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setPreviewUrl(null)} />
-          <div className="relative max-w-3xl w-full">
+          <div className="relative max-w-3xl w-full h-[80vh]">
             <button
               onClick={() => setPreviewUrl(null)}
               className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
             >
               <X size={24} />
             </button>
-            <img
+            <Image
+              unoptimized
+              fill
+              sizes="(max-width: 768px) 100vw, 768px"
+              loading="eager"
               src={previewUrl}
               alt="Preview"
-              className="w-full rounded-2xl shadow-2xl"
+              className="object-contain rounded-2xl shadow-2xl"
             />
           </div>
         </div>

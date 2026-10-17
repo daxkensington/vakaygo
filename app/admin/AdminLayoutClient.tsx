@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -167,7 +169,10 @@ export default function AdminLayoutClient({
         <div className="border-t border-white/10 px-4 py-4">
           <div className="flex items-center gap-3">
             {user.avatarUrl ? (
-              <img
+              <Image
+                unoptimized
+                width={36}
+                height={36}
                 src={user.avatarUrl}
                 alt=""
                 className="h-9 w-9 rounded-full object-cover"
