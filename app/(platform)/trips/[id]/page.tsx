@@ -95,6 +95,30 @@ const TIME_SLOT_CONFIG: Record<
   },
 };
 
+function formatListingPrice(
+  amount: string | null | undefined,
+  currency: string | null | undefined
+): string | null {
+  if (!amount?.trim()) return null;
+  const parsedAmount = parseFloat(amount);
+  if (!Number.isFinite(parsedAmount)) return null;
+
+  const options: Intl.NumberFormatOptions = {
+    style: "currency",
+    currency: currency?.trim().toUpperCase() || "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  };
+  try {
+    return new Intl.NumberFormat("en-US", options).format(parsedAmount);
+  } catch {
+    return new Intl.NumberFormat("en-US", {
+      ...options,
+      currency: "USD",
+    }).format(parsedAmount);
+  }
+}
+
 export default function TripDetailPage({
   params,
 }: {
@@ -508,6 +532,9 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                       TIME_SLOT_CONFIG[item.timeSlot] ||
                       TIME_SLOT_CONFIG.morning;
                     const Icon = config.icon;
+                    const priceText = item.listing
+                      ? formatListingPrice(item.listing.priceAmount, item.listing.priceCurrency)
+                      : null;
 
                     return (
                       <div
@@ -589,12 +616,9 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                                           : ""}
                                       </span>
                                     )}
-                                  {item.listing.priceAmount && (
+                                  {priceText !== null && (
                                     <span className="text-xs text-navy-500 font-medium">
-                                      $
-                                      {parseFloat(
-                                        item.listing.priceAmount
-                                      ).toFixed(0)}
+                                      {priceText}
                                       {item.listing.priceUnit
                                         ? `/${item.listing.priceUnit}`
                                         : ""}
