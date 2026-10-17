@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       authorName: users.name,
     })
     .from(blogPosts)
-    .innerJoin(users, eq(blogPosts.authorId, users.id))
+    .leftJoin(users, eq(blogPosts.authorId, users.id))
     .where(and(eq(blogPosts.slug, slug), eq(blogPosts.status, "published")));
 
   if (!post) {
@@ -100,7 +100,7 @@ export default async function GuidePage({ params }: Props) {
       islandSlug: islands.slug,
     })
     .from(blogPosts)
-    .innerJoin(users, eq(blogPosts.authorId, users.id))
+    .leftJoin(users, eq(blogPosts.authorId, users.id))
     .leftJoin(islands, eq(blogPosts.islandId, islands.id))
     .where(and(eq(blogPosts.slug, slug), eq(blogPosts.status, "published")));
 
@@ -121,7 +121,7 @@ export default async function GuidePage({ params }: Props) {
       authorName: users.name,
     })
     .from(blogPosts)
-    .innerJoin(users, eq(blogPosts.authorId, users.id))
+    .leftJoin(users, eq(blogPosts.authorId, users.id))
     .where(
       and(
         eq(blogPosts.status, "published"),
