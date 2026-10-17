@@ -64,9 +64,17 @@ function formatCurrency(amount: string, currency: string) {
   }).format(parseFloat(amount));
 }
 
+// Error bodies (e.g. { error }) are truthy, so check the shape the page renders.
+function isBookingsResponse(body: unknown): body is BookingsResponse {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as { bookings?: unknown; total?: unknown };
+  return Array.isArray(candidate.bookings) && typeof candidate.total === "number";
+}
+
 export default function AdminBookingsPage() {
   const [data, setData] = useState<BookingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -99,15 +107,23 @@ export default function AdminBookingsPage() {
 
   const fetchBookings = useCallback(() => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page) });
     if (statusFilter) params.set("status", statusFilter);
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
 
     fetch(`/api/admin/bookings?${params}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Bookings request failed (${r.status})`);
+        const body: unknown = await r.json();
+        if (!isBookingsResponse(body)) throw new Error("Unexpected bookings response");
+        setData(body);
+      })
+      .catch(() => {
+        setData(null);
+        setError("Couldn't load bookings. Please try again.");
+      })
       .finally(() => setLoading(false));
   }, [page, statusFilter, dateFrom, dateTo]);
 
@@ -132,7 +148,7 @@ export default function AdminBookingsPage() {
           >
             Bookings
           </h1>
-          {data && (
+          {data && !error && (
             <span className="ml-2 rounded-full bg-cream-100 px-3 py-1 text-sm font-semibold text-navy-500">
               {data.total.toLocaleString()} total
             </span>
@@ -209,6 +225,17 @@ export default function AdminBookingsPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
+          </div>
+        ) : error ? (
+          <div role="alert" className="py-20 text-center">
+            <p className="mb-4 text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={fetchBookings}
+              className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-800"
+            >
+              Retry
+            </button>
           </div>
         ) : !data || data.bookings.length === 0 ? (
           <div className="py-20 text-center">
