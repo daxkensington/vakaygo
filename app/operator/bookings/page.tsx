@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import {
   CalendarCheck,
   Clock,
@@ -17,14 +18,9 @@ type Booking = {
   bookingNumber: string;
   status: string;
   startDate: string;
-  endDate: string | null;
-  guestCount: number;
+  guestCount: number | null;
   subtotal: string;
-  serviceFee: string;
-  totalAmount: string;
-  currency: string;
   guestNotes: string | null;
-  createdAt: string;
   listingTitle: string;
   listingType: string;
 };
@@ -40,37 +36,127 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 export default function OperatorBookingsPage() {
+  const { user, loading } = useAuth();
+  return <OperatorBookings key={`${user?.id || "guest"}:${user?.role || "guest"}`} userId={user?.id} authLoading={loading} />;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isBooking(value: unknown): value is Booking {
+  return isRecord(value)
+    && typeof value.id === "string" && value.id.length > 0
+    && typeof value.bookingNumber === "string"
+    && typeof value.status === "string" && Object.hasOwn(statusConfig, value.status)
+    && typeof value.startDate === "string" && Number.isFinite(Date.parse(value.startDate))
+    && (value.guestCount === null || (typeof value.guestCount === "number" && Number.isInteger(value.guestCount) && value.guestCount > 0))
+    && typeof value.subtotal === "string" && value.subtotal.trim() !== "" && Number.isFinite(Number(value.subtotal)) && Number(value.subtotal) >= 0
+    && (value.guestNotes === null || typeof value.guestNotes === "string")
+    && typeof value.listingTitle === "string" && typeof value.listingType === "string";
+}
+
+function OperatorBookings({ userId, authLoading }: { userId: string | undefined; authLoading: boolean }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [pending, setPending] = useState<string | null>(null);
+  const [needsReload, setNeedsReload] = useState(false);
   const [filter, setFilter] = useState("all");
+  const readRequest = useRef<AbortController | null>(null);
+  const actionRequest = useRef<AbortController | null>(null);
+  const actionsBlocked = useRef(true);
 
-  useEffect(() => {
-    async function fetchBookings() {
-      try {
-        const res = await fetch("/api/bookings?view=operator");
-        const data = await res.json();
-        setBookings(data.bookings || []);
-      } catch {
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchBookings();
+  useEffect(() => () => {
+    const current = actionRequest.current;
+    actionRequest.current = null;
+    current?.abort();
   }, []);
 
+  useEffect(() => {
+    if (authLoading || !userId) return;
+    const controller = new AbortController();
+    readRequest.current = controller;
+    actionsBlocked.current = true;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    setLoading(true);
+    setError("");
+    async function fetchBookings() {
+      try {
+        const res = await fetch("/api/bookings?view=operator", { cache: "no-store", signal: controller.signal });
+        const data: unknown = await res.json().catch(() => null);
+        if (readRequest.current !== controller) return;
+        if (controller.signal.aborted || !res.ok || !isRecord(data) || !Array.isArray(data.bookings) || !data.bookings.every(isBooking)
+          || new Set(data.bookings.map(booking => booking.id)).size !== data.bookings.length) throw new Error("Invalid booking response");
+        setBookings(data.bookings);
+        setHasLoaded(true);
+        setNeedsReload(false);
+        actionsBlocked.current = false;
+      } catch {
+        if (readRequest.current === controller) {
+          setError("Bookings could not be loaded. Reload to check the latest status.");
+          setNeedsReload(true);
+        }
+      } finally {
+        clearTimeout(timeout);
+        if (readRequest.current === controller) { readRequest.current = null; setLoading(false); }
+      }
+    }
+    void fetchBookings();
+    return () => {
+      clearTimeout(timeout);
+      if (readRequest.current === controller) readRequest.current = null;
+      controller.abort();
+    };
+  }, [authLoading, userId, loadAttempt]);
+
+  function reloadBookings() {
+    if (actionRequest.current || readRequest.current) return;
+    actionsBlocked.current = true;
+    setLoading(true);
+    setLoadAttempt(attempt => attempt + 1);
+  }
+
   async function updateStatus(bookingId: string, newStatus: string) {
+    if (!userId || actionsBlocked.current || actionRequest.current || readRequest.current) return;
+    const controller = new AbortController();
+    actionRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    setPending(bookingId);
+    setError("");
     try {
-      await fetch(`/api/bookings/${bookingId}`, {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
+        signal: controller.signal,
       });
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
-      );
+      const data: unknown = await res.json().catch(() => null);
+      if (actionRequest.current !== controller) return;
+      if (controller.signal.aborted || !res.ok || !isRecord(data) || !isRecord(data.booking)
+        || data.booking.id !== bookingId || data.booking.status !== newStatus) {
+        if (isRecord(data) && data.code === "BOOKING_UNAVAILABLE") {
+          setError("This business is not accepting bookings on VakayGo yet. Reload bookings before trying again.");
+        } else {
+          setError("The booking change could not be confirmed. Reload bookings before trying again.");
+        }
+        actionsBlocked.current = true;
+        setNeedsReload(true);
+        return;
+      }
+      const confirmedStatus = data.booking.status;
+      setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: confirmedStatus } : b));
     } catch {
-      // silently fail
+      if (actionRequest.current === controller) {
+        actionsBlocked.current = true;
+        setNeedsReload(true);
+        setError("The booking change could not be confirmed. Reload bookings before trying again.");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (actionRequest.current === controller) { actionRequest.current = null; setPending(null); }
     }
   }
 
@@ -101,12 +187,20 @@ export default function OperatorBookingsPage() {
             <div>
               <p className="text-xs text-navy-400">Revenue</p>
               <p className="font-bold text-navy-700">
-                ${totalRevenue.toFixed(2)}
+                {hasLoaded ? `$${totalRevenue.toFixed(2)}` : "—"}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {error && <div role="alert" className="mb-6 rounded-xl bg-red-50 p-4 text-red-700">
+        <p>{error}</p>
+        {hasLoaded && <p className="mt-1 text-sm">Showing the last loaded booking status.</p>}
+        <button type="button" onClick={reloadBookings} disabled={loading || pending !== null} className="mt-3 font-semibold underline disabled:opacity-50">Reload bookings</button>
+      </div>}
+      {!authLoading && !userId && <p className="rounded-xl bg-white p-5">Sign in to manage your bookings. <Link href="/auth/signin?next=%2Foperator%2Fbookings" className="font-semibold underline">Sign In</Link></p>}
+      {loading && hasLoaded && <p role="status" className="mb-4 text-navy-500">Refreshing bookings…</p>}
 
       {/* Filters */}
       <div className="flex gap-2 mb-6 overflow-x-auto">
@@ -130,11 +224,11 @@ export default function OperatorBookingsPage() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 size={32} className="animate-spin text-gold-700" />
+      {(authLoading || loading) && !hasLoaded && (authLoading || userId) ? (
+        <div role="status" className="flex items-center justify-center py-20">
+          <Loader2 aria-label="Loading bookings" size={32} className="animate-spin text-gold-700" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : !hasLoaded ? null : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 shadow-[var(--shadow-card)] text-center">
           <CalendarCheck size={40} className="text-navy-200 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-navy-700">No bookings yet</h3>
@@ -148,8 +242,10 @@ export default function OperatorBookingsPage() {
             const status = statusConfig[booking.status] || statusConfig.pending;
             const StatusIcon = status.icon;
             return (
-              <div
+              <article
                 key={booking.id}
+                aria-label={`Booking ${booking.bookingNumber}`}
+                aria-busy={pending === booking.id}
                 className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -177,7 +273,7 @@ export default function OperatorBookingsPage() {
                           year: "numeric",
                         })}
                       </span>
-                      <span>{booking.guestCount} guest{booking.guestCount > 1 ? "s" : ""}</span>
+                      <span>{booking.guestCount === null ? "Guest count unavailable" : `${booking.guestCount} guest${booking.guestCount > 1 ? "s" : ""}`}</span>
                       <span className="capitalize">{booking.listingType}</span>
                     </div>
                     {booking.guestNotes && (
@@ -198,14 +294,20 @@ export default function OperatorBookingsPage() {
                     {booking.status === "pending" && (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => updateStatus(booking.id, "confirmed")}
-                          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                          type="button"
+                          onClick={() => void updateStatus(booking.id, "confirmed")}
+                          disabled={pending !== null || loading || needsReload}
+                          aria-label={`Accept booking ${booking.bookingNumber}`}
+                          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
                         >
                           Accept
                         </button>
                         <button
-                          onClick={() => updateStatus(booking.id, "cancelled")}
-                          className="bg-white hover:bg-red-50 text-red-500 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                          type="button"
+                          onClick={() => void updateStatus(booking.id, "cancelled")}
+                          disabled={pending !== null || loading || needsReload}
+                          aria-label={`Decline booking ${booking.bookingNumber}`}
+                          className="bg-white hover:bg-red-50 text-red-500 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
                         >
                           Decline
                         </button>
@@ -213,7 +315,7 @@ export default function OperatorBookingsPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>

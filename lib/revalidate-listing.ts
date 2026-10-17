@@ -13,6 +13,13 @@ import { logger } from "@/lib/logger";
  * write that just succeeded.
  */
 export async function revalidateListing(listingId: string): Promise<void> {
+  // The index also changes when a listing is hidden, moved, or removed. Its
+  // invalidation must not depend on the detail lookup finding a current row.
+  try {
+    revalidatePath("/sitemap.xml");
+  } catch {
+    logger.warn("Sitemap revalidation failed", { listingId });
+  }
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const [row] = await db

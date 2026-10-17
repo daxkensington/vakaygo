@@ -7,6 +7,9 @@ import { publicDirectoryListings, publicDestinations } from "@/server/public-lis
 
 const BASE_URL = "https://vakaygo.com";
 
+// Refresh catalogue metadata without requiring a new application deployment.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
