@@ -115,6 +115,7 @@ const heroImages: Record<string, string> = {
 function getPriceRange(priceAmount: string | null): string {
   if (!priceAmount) return "Varies";
   const p = parseFloat(priceAmount);
+  if (!Number.isFinite(p) || p <= 0) return "Varies";
   if (p < 20) return "$";
   if (p < 50) return "$$";
   if (p < 100) return "$$$";
