@@ -25,6 +25,9 @@ The property contains other business streams and historical local audit traffic.
 The live stream's Enhanced Measurement already tracks browser history changes;
 do not add duplicate manual pageview events.
 
+The connection policy permits Google's analytics endpoint family and tag host,
+including regional collection endpoints, as required by Google's CSP guidance.
+
 Open Traffic acquisition and apply a **report filter** for Hostname matching
 `^(www\.)?vakaygo\.com$`. Choose a window including the pilot's launch on
 2026-10-17 and the property's reporting time zone. Inspect **Session campaign**
@@ -86,3 +89,4 @@ analytics must not be used as the financial ledger.
 References: [GA4 event definitions](https://developers.google.com/analytics/devguides/collection/ga4/reference/events),
 [data freshness](https://support.google.com/analytics/answer/9333790),
 [traffic acquisition](https://support.google.com/analytics/answer/12923437).
+See also [Google's CSP guidance](https://developers.google.com/tag-platform/security/guides/csp).
