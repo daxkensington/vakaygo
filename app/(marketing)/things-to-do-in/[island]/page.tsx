@@ -144,6 +144,7 @@ const sectionConfig = [
   { type: "transfer", label: "Airport Transfers", icon: Car, color: "bg-navy-600" },
   { type: "vip", label: "VIP Experiences", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Local Guides", icon: Users, color: "bg-gold-500" },
+  { type: "spa", label: "Spas & Wellness", icon: Sparkles, color: "bg-teal-500" },
 ] as const;
 
 const typeFallbacks: Record<string, string> = {
