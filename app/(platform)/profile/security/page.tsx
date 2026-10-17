@@ -426,7 +426,7 @@ function SecurityContent() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-navy-700">Phone Verification</h2>
-                <p className="text-sm text-navy-400">Verify your phone for account recovery.</p>
+                <p className="text-sm text-navy-400">Confirm that you can receive verification codes at your phone number.</p>
               </div>
               {phone.verified && (
                 <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
