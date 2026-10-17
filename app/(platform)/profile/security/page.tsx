@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
@@ -35,7 +35,20 @@ type IdVerification = {
 };
 
 export default function SecurityPage() {
+  const { user } = useAuth();
+  return <SecurityContent key={user ? JSON.stringify([user.id, user.email, user.role]) : "signed-out"} />;
+}
+
+function SecurityContent() {
   const { user, loading: authLoading } = useAuth();
+  const mounted = useRef(true);
+  const phoneRequests = useRef(new Set<AbortController>());
+  const phoneRevision = useRef(0);
+  useEffect(() => {
+    mounted.current = true;
+    const requests = phoneRequests.current;
+    return () => { mounted.current = false; for (const request of requests) request.abort(); requests.clear(); };
+  }, []);
 
   // TOTP state
   const [totp, setTotp] = useState<TotpData>({ enabled: false });
@@ -79,16 +92,27 @@ export default function SecurityPage() {
   // Fetch phone verification status
   useEffect(() => {
     if (!user) return;
-    fetch("/api/auth/phone-verify")
-      .then((r) => r.json())
+    const controller = new AbortController(), revision = phoneRevision.current;
+    const requests = phoneRequests.current;
+    requests.add(controller);
+    let active = true;
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    fetch(`/api/auth/phone-verify?expectedUserId=${encodeURIComponent(user.id)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Phone status unavailable");
+        const data = await response.json();
+        if (controller.signal.aborted || data.userId !== user.id || typeof data.verified !== "boolean" || (data.phone !== null && typeof data.phone !== "string")) throw new Error("Invalid phone status");
+        return data;
+      })
       .then((data) => {
-        if (!data.error) {
+        if (active && revision === phoneRevision.current) {
           setPhone(data);
           if (data.phone) setPhoneNumber(data.phone);
         }
       })
-      .catch(() => {})
-      .finally(() => setPhoneLoading(false));
+      .catch(() => { if (active && revision === phoneRevision.current) setPhoneError("Could not load your phone status. Please try again."); })
+      .finally(() => { clearTimeout(timer); requests.delete(controller); if (active) setPhoneLoading(false); });
+    return () => { active = false; clearTimeout(timer); controller.abort(); requests.delete(controller); };
   }, [user]);
 
   // Fetch ID verification status
@@ -152,27 +176,36 @@ export default function SecurityPage() {
   }
 
   // Phone handlers
+  async function phoneRequest(method: "POST" | "PUT", value: Record<string, string>) {
+    if (!user) throw new Error("Sign in required");
+    const controller = new AbortController();
+    phoneRequests.current.add(controller);
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch("/api/auth/phone-verify", { method, signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...value, expectedUserId: user.id }) });
+      const data = await res.json();
+      if (!mounted.current || controller.signal.aborted || (data.userId !== undefined && data.userId !== user.id)) throw new Error("Phone request changed");
+      return { res, data };
+    } finally { clearTimeout(timer); phoneRequests.current.delete(controller); }
+  }
   async function handleSendCode() {
     setPhoneError("");
     setPhoneSuccess("");
     setPhoneSaving(true);
     try {
-      const res = await fetch("/api/auth/phone-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber }),
-      });
-      const data = await res.json();
+      const { res, data } = await phoneRequest("POST", { phone: phoneNumber });
       if (!res.ok) {
         setPhoneError(data.error || "Failed to send code");
         return;
       }
+      if (data.sent !== true) throw new Error("Send not confirmed");
+      phoneRevision.current++;
       setPhoneSent(true);
       setPhoneSuccess("Verification code sent to your phone.");
     } catch {
-      setPhoneError("Something went wrong. Please try again.");
+      if (mounted.current) setPhoneError("Could not send your code. Please try again.");
     } finally {
-      setPhoneSaving(false);
+      if (mounted.current) setPhoneSaving(false);
     }
   }
 
@@ -181,24 +214,21 @@ export default function SecurityPage() {
     setPhoneSuccess("");
     setPhoneSaving(true);
     try {
-      const res = await fetch("/api/auth/phone-verify", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber, code: phoneCode }),
-      });
-      const data = await res.json();
+      const { res, data } = await phoneRequest("PUT", { phone: phoneNumber, code: phoneCode });
       if (!res.ok) {
         setPhoneError(data.error || "Invalid verification code");
         return;
       }
-      setPhone({ verified: true, phone: phoneNumber });
+      if (data.verified !== true || data.phone !== phoneNumber) throw new Error("Verification not confirmed");
+      phoneRevision.current++;
+      setPhone({ verified: true, phone: data.phone });
       setPhoneSent(false);
       setPhoneCode("");
       setPhoneSuccess("Phone number verified successfully.");
     } catch {
-      setPhoneError("Something went wrong. Please try again.");
+      if (mounted.current) setPhoneError("Could not verify your code. Please try again.");
     } finally {
-      setPhoneSaving(false);
+      if (mounted.current) setPhoneSaving(false);
     }
   }
 
@@ -442,10 +472,11 @@ export default function SecurityPage() {
                 {phoneSent && (
                   <div className="flex items-end gap-3">
                     <div className="flex-1 max-w-xs">
-                      <label className="block text-sm font-medium text-navy-600 mb-1.5">
-                        Verification Code
+                      <label htmlFor="phone-verification-code" className="block text-sm font-medium text-navy-600 mb-1.5">
+                        Phone Verification Code
                       </label>
                       <input
+                        id="phone-verification-code"
                         type="text"
                         value={phoneCode}
                         onChange={(e) => setPhoneCode(e.target.value)}

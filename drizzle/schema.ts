@@ -149,6 +149,28 @@ export const users = pgTable(
 );
 
 // ─── AUTH ACCOUNTS (NextAuth adapter) ───────────────────────────
+export const userPhoneChallenges = pgTable("user_phone_challenges", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  challengeId: uuid("challenge_id").notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  codeHash: varchar("code_hash", { length: 64 }),
+  sessionVersion: integer("session_version").notNull(),
+  profilePhoneSnapshot: varchar("profile_phone_snapshot", { length: 20 }),
+  state: varchar("state", { length: 16 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  nextSendAt: timestamp("next_send_at", { withTimezone: true }).notNull(),
+  sendWindowStartedAt: timestamp("send_window_started_at", { withTimezone: true }).notNull(),
+  sendCount: integer("send_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, () => [
+  check("user_phone_challenges_state_check", sql.raw("state IN ('sending','pending','failed','consumed','locked','expired','invalidated')")),
+  check("user_phone_challenges_attempts_check", sql.raw("attempts BETWEEN 0 AND 5")),
+  check("user_phone_challenges_send_count_check", sql.raw("send_count BETWEEN 1 AND 5")),
+  check("user_phone_challenges_phone_check", sql.raw("phone ~ '^\\+[1-9][0-9]{7,14}$'")),
+]);
+
 export const accounts = pgTable("accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
