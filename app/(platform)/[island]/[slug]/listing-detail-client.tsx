@@ -792,7 +792,7 @@ export function ListingDetailClient({
             )}
           </div>
 
-          {/* Similar & Nearby Listings */}
+          {/* Same-destination, same-type directory suggestions */}
           {similar.length > 0 && (
             <div className="mt-16">
               <div className="flex items-center justify-between mb-6">
@@ -800,7 +800,7 @@ export function ListingDetailClient({
                   className="text-2xl font-bold text-navy-700"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Nearby &amp; Similar in {listing.islandName}
+                  Similar {typeLabels[listing.type] || listing.type} listings in {listing.islandName}
                 </h2>
                 <Link
                   href={`/${listing.islandSlug}`}
@@ -811,23 +811,6 @@ export function ListingDetailClient({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {similar.map((item) => {
-                  const oLat = listing.latitude ? parseFloat(listing.latitude) : NaN;
-                  const oLng = listing.longitude ? parseFloat(listing.longitude) : NaN;
-                  const iLat = item.latitude ? parseFloat(item.latitude) : NaN;
-                  const iLng = item.longitude ? parseFloat(item.longitude) : NaN;
-                  let distKm: number | null = null;
-                  if (Number.isFinite(oLat) && Number.isFinite(oLng) && Number.isFinite(iLat) && Number.isFinite(iLng)) {
-                    const R = 6371;
-                    const dLat = ((iLat - oLat) * Math.PI) / 180;
-                    const dLon = ((iLng - oLng) * Math.PI) / 180;
-                    const a =
-                      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos((oLat * Math.PI) / 180) *
-                        Math.cos((iLat * Math.PI) / 180) *
-                        Math.sin(dLon / 2) *
-                        Math.sin(dLon / 2);
-                    distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                  }
                   const hasPrice = item.bookingEligible && item.priceAmount && parseFloat(item.priceAmount) > 0;
 
                   return (
@@ -846,11 +829,7 @@ export function ListingDetailClient({
                           <span className="bg-navy-900/80 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
                             {typeLabels[item.type] || item.type}
                           </span>
-                          {distKm !== null && distKm < 80 && (
-                            <span className="bg-white/95 backdrop-blur-sm text-navy-700 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                              📍 {distKm < 1 ? `${Math.max(100, Math.round(distKm * 1000))}m` : `${distKm.toFixed(1)} km`} away
-                            </span>
-                          )}
+
                         </div>
                       </div>
                       <div className="p-4">

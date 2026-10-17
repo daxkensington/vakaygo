@@ -107,3 +107,28 @@ it("aborts a pending voice request on unmount and ignores its late response", as
   expect(fetchMock.mock.calls.filter(call => call[0] === "/api/tts")).toHaveLength(1);
   expect(Playback.instances).toHaveLength(1);
 });
+
+it("shows currency-labelled positive prices only for explicit current eligibility and keeps directory cards informational", async () => {
+  const base = { title: "Owned option", slug: "owned-option", island: "grenada", type: "tour", price: 41.25, currency: "EUR", priceUnit: "person", bookingEligible: true, rating: null, image: null, url: "/grenada/owned-option" };
+  const cases = [{ ...base, title: "Eligible EUR" }, { ...base, title: "Eligible XCD", currency: " xcd ", price: 270 },
+    { ...base, title: "Missing eligibility", bookingEligible: undefined }, { ...base, title: "Ineligible", bookingEligible: false },
+    { ...base, title: "Nonboolean eligibility", bookingEligible: "true" }, { ...base, title: "Missing currency", currency: undefined },
+    { ...base, title: "Invalid currency", currency: "ZZZ" }, { ...base, title: "Zero amount", price: 0 },
+    { ...base, title: "Negative amount", price: -1 }, { ...base, title: "Unknown amount", price: null }];
+  fetchMock.mockImplementation(async () => Response.json({ message: "Directory options", listings: cases.map((item, index) => ({ ...item, slug: `owned-option-${index}`, url: `/grenada/owned-option-${index}` })) }));
+  await render(); await click("Open concierge chat");
+  await act(async () => {
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Message your AI concierge"]')!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Find directory options");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  const card = (title: string) => [...container.querySelectorAll("h4")].find(node => node.textContent === title)!.closest("button")!;
+  expect(card("Eligible EUR").textContent?.replace(/\s+/g, " ")).toContain("EUR 41.25 / person");
+  expect(card("Eligible XCD").textContent?.replace(/\s+/g, " ")).toContain("XCD 270.00 / person");
+  for (const item of cases.slice(2)) {
+    expect(card(item.title).textContent).toContain("Explore details");
+    expect(card(item.title).textContent).not.toContain("41.25");
+  }
+  expect(container.textContent).not.toContain("Price TBD");
+});

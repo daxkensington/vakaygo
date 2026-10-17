@@ -78,4 +78,24 @@ it("sends a static business onboarding auto-reply to real domains without echoin
   expect(autoReply.html).toContain("vakaygo.com/for-businesses");
   expect(autoReply.html).toContain("vakaygo.com/operator/listings/new");
   expect(autoReply.html).not.toContain("UNTRUSTED_PAYLOAD_MARKER");
+  expect(autoReply.html).toContain("New bookings, payments and payouts are unavailable");
+  expect(autoReply.html).not.toMatch(/Wise|PayPal|Bank Wire|Stripe Connect|Payouts Supported/);
+});
+
+it("uses evergreen directory guidance in the general acknowledgement without inventing an island count", async () => {
+  const response = await POST(request({ ...valid(), email: "visitor@fixture.test", category: "General", subject: "Account question", message: "Please explain the account page." }));
+  expect(response.status).toBe(200); expect(sendEmail).toHaveBeenCalledTimes(2);
+  const acknowledgement = sendEmail.mock.calls[1][0];
+  expect(acknowledgement.to).toBe("visitor@fixture.test");
+  expect(acknowledgement.html).toContain("Explore our travel directory:");
+  expect(acknowledgement.html).not.toMatch(/21 Caribbean islands|Wise|PayPal|Bank Wire|Stripe Connect/);
+});
+
+it("keeps an accepted primary enquiry successful when its optional acknowledgement fails", async () => {
+  sendEmail.mockResolvedValueOnce().mockRejectedValueOnce(new Error("synthetic-acknowledgement-failure"));
+  const response = await POST(request({ ...valid(), email: "visitor@fixture.test" }));
+  expect(response.status).toBe(200); expect(await response.json()).toEqual({ success: true });
+  expect(sendEmail).toHaveBeenCalledTimes(2);
+  expect(sendEmail.mock.calls[0][0].to).toBe("bookings@vakaygo.com");
+  expect(logger.error).toHaveBeenCalledWith("Contact auto-reply failed", expect.any(Error));
 });

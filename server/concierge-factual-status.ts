@@ -2,6 +2,8 @@
 export type ConciergeVisitorFacts = {
   admission: "unconfirmed";
   currentAccess: "unconfirmed";
+  openingHours: "unconfirmed";
+  reservationRequirement: "unconfirmed";
   priceMeaning: "platform_booking_only";
 };
 
@@ -10,6 +12,8 @@ export function unconfirmedVisitorFacts(): ConciergeVisitorFacts {
   return {
     admission: "unconfirmed",
     currentAccess: "unconfirmed",
+    openingHours: "unconfirmed",
+    reservationRequirement: "unconfirmed",
     priceMeaning: "platform_booking_only",
   };
 }

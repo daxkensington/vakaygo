@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     <span style="font-size:24px;font-weight:bold;color:#1C2333">Vakay<span style="color:#C8912E">Go</span></span>
   </div>
   <div style="background:#1C2333;border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:24px">
-    <p style="color:#E8B84B;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Caribbean Business Onboarding</p>
+    <p style="color:#E8B84B;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Business Directory</p>
     <h1 style="color:#FFFFFF;font-size:21px;margin:0">We received your business inquiry</h1>
   </div>
   <div style="background:#FFFFFF;border-radius:16px;padding:26px 24px;border:1px solid #EDE5D5">
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#3A405A">
         <li><strong>Already in our directory?</strong> Search and claim your listing at <a href="https://vakaygo.com/for-businesses" style="color:#C8912E;font-weight:600">vakaygo.com/for-businesses</a>.</li>
         <li><strong>New business not listed yet?</strong> Create your free operator account and add your listing directly at <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new" style="color:#C8912E;font-weight:600">vakaygo.com/operator/listings/new</a>.</li>
-        <li><strong>Caribbean Payouts Supported:</strong> Once verified, you can configure payouts via <strong>Wise, PayPal, Local/International Bank Wire, or Stripe Connect</strong>.</li>
+        <li><strong>Directory launch:</strong> New bookings, payments and payouts are unavailable. Verifying ownership of a listing does not activate them.</li>
       </ol>
     </div>
     <p style="margin:16px 0 0;font-size:13.5px;line-height:1.6;color:#6E7491">
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
     <div style="background:#FAF5E8;border-radius:12px;padding:16px;margin:18px 0;font-size:13.5px;line-height:1.65;color:#3A405A">
       <strong>Helpful quick links:</strong>
       <ul style="margin:8px 0 0;padding-left:18px">
-        <li>Explore 21 Caribbean islands: <a href="https://vakaygo.com/explore" style="color:#C8912E">vakaygo.com/explore</a></li>
+        <li>Explore our travel directory: <a href="https://vakaygo.com/explore" style="color:#C8912E">vakaygo.com/explore</a></li>
         <li>Manage your trips &amp; bookings: <a href="https://vakaygo.com/bookings" style="color:#C8912E">vakaygo.com/bookings</a></li>
         <li>Claim or add a business listing: <a href="https://vakaygo.com/for-businesses" style="color:#C8912E">vakaygo.com/for-businesses</a></li>
       </ul>
