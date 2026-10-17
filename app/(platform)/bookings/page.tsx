@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { formatBookingDateTime } from "@/lib/booking-time";
 import Link from "next/link";
 import {
@@ -141,6 +142,13 @@ function BookingsContent() {
       });
       const data = await res.json();
       if (res.ok && data.url) {
+        try {
+          const checkoutUrl = new URL(data.url);
+          const booking = bookings.find(item => item.id === bookingId);
+          if (booking && checkoutUrl.protocol === "https:" && checkoutUrl.hostname === "checkout.stripe.com" && !checkoutUrl.username && !checkoutUrl.password) {
+            analytics.startCheckout({ listingId: booking.listingId, listingType: booking.listingType });
+          }
+        } catch { /* An invalid receipt must not count as a checkout. */ }
         window.location.href = data.url;
       } else {
         setBookings(previous => previous.map(booking => booking.id === bookingId ? { ...booking, paymentEligible: false } : booking));
@@ -169,6 +177,18 @@ function BookingsContent() {
         if (!res.ok) throw new Error("Booking status unavailable");
         if (refreshSequence.current === request) {
           setBookings(data.bookings || []);
+          const paidBooking = (data.bookings as Booking[] | undefined)?.find(booking => booking.bookingNumber === paidBookingNumber && booking.paidAt && ["confirmed", "completed"].includes(booking.status));
+          if (paidBooking) {
+            analytics.purchaseConfirmed({
+              transactionId: paidBooking.id,
+              listingId: paidBooking.listingId,
+              listingType: paidBooking.listingType,
+              currency: paidBooking.currency,
+              totalAmount: paidBooking.totalAmount,
+              status: paidBooking.status,
+              paidAt: paidBooking.paidAt,
+            });
+          }
           hasLoadedBookings.current = true;
           setLoadError(false);
         }
@@ -194,7 +214,7 @@ function BookingsContent() {
     document.addEventListener("visibilitychange", refresh);
     const interval = window.setInterval(() => { void fetchBookings(); }, 60_000);
     return () => { fetchBookingsRef.current = null; invalidatePendingRefresh(); window.clearInterval(interval); window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, [user, invalidatePendingRefresh]);
+  }, [user, invalidatePendingRefresh, paidBookingNumber]);
 
   const retryLoad = useCallback(() => {
     const fetchCurrent = fetchBookingsRef.current;

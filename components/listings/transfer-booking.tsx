@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { useRouter } from "next/navigation";
 import { Plane, MapPin, Calendar, Users, Car, Check, Loader2, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/pricing";
@@ -82,6 +83,9 @@ function EligibleTransferBooking({ listingId, priceAmount, priceCurrency, unclai
       if (!res.ok) {
         if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listingId); setError(data.error || "Failed"); return; }
       setBooked(true);
+      if ((data.mode === "request" || data.booking?.status === "requested") && typeof data.booking?.id === "string" && data.booking.id.trim()) {
+        analytics.bookingRequestSaved({ listingId, listingType: "transfer" });
+      }
       setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {

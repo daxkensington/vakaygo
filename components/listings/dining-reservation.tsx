@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock, Users, Check, Loader2 } from "lucide-react";
 import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
@@ -75,6 +76,9 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
       }
 
       setReserved(true);
+      if ((data.mode === "request" || data.booking?.status === "requested") && typeof data.booking?.id === "string" && data.booking.id.trim()) {
+        analytics.bookingRequestSaved({ listingId, listingType: "dining" });
+      }
       setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {

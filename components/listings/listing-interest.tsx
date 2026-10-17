@@ -5,6 +5,7 @@ import { Heart, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { INTEREST_NOTICE_VERSION } from "@/lib/listing-interest";
 import { safeAuthNext } from "@/lib/auth-return";
+import { analytics } from "@/lib/analytics";
 
 export function ListingInterest({ listingId, listingPath, operatorId }: { listingId: string; listingPath: string; operatorId: string }) {
   const { user, loading } = useAuth();
@@ -24,11 +25,13 @@ export function ListingInterest({ listingId, listingPath, operatorId }: { listin
     return () => controller.abort();
   }, [user?.id, listingId, retry]); // eslint-disable-line react-hooks/exhaustive-deps
   async function save() {
+    const savingInterest = !interested;
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/listings/interest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listingId, interested: !interested, noticeVersion: INTEREST_NOTICE_VERSION }) });
+      const response = await fetch("/api/listings/interest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listingId, interested: savingInterest, noticeVersion: INTEREST_NOTICE_VERSION }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not save your interest.");
       setInterested(data.interested === true);
+      if (savingInterest && data.interested === true) analytics.listingInterestSaved(listingId);
     } catch (error) { setError(error instanceof Error ? error.message : "Could not save your interest."); }
     finally { setBusy(false); }
   }
