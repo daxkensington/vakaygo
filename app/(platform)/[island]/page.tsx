@@ -384,6 +384,7 @@ export default async function IslandPage({ params }: Props) {
                 image: l.image,
                 parish: l.parish,
                 priceAmount: l.priceAmount,
+                priceCurrency: l.priceCurrency,
                 priceUnit: l.priceUnit,
                 avgRating: l.avgRating,
               }))}
