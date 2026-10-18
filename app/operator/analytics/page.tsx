@@ -48,16 +48,57 @@ const typeLabels: Record<string, string> = {
 export default function OperatorAnalyticsPage() {
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [request, setRequest] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("views30d");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
-    fetch("/api/operator/analytics")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true;
+
+    async function loadAnalytics() {
+      setLoading(true);
+      setError(false);
+      setData(null);
+
+      try {
+        const response = await fetch("/api/operator/analytics");
+        if (!response.ok) throw new Error("Analytics request failed");
+
+        const payload: unknown = await response.json();
+        if (
+          typeof payload !== "object" ||
+          payload === null ||
+          Array.isArray(payload) ||
+          !("listings" in payload) ||
+          !Array.isArray(payload.listings) ||
+          !("aggregate" in payload) ||
+          typeof payload.aggregate !== "object" ||
+          payload.aggregate === null ||
+          Array.isArray(payload.aggregate)
+        ) {
+          throw new Error("Invalid analytics response");
+        }
+
+        if (active) setData(payload as Analytics);
+      } catch {
+        if (active) setError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadAnalytics();
+    return () => {
+      active = false;
+    };
+  }, [request]);
+
+  function retry() {
+    setLoading(true);
+    setError(false);
+    setRequest((current) => current + 1);
+  }
 
   const sortedListings = useMemo(() => {
     if (!data) return [];
@@ -93,13 +134,31 @@ export default function OperatorAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 size={36} className="animate-spin text-gold-700" />
+      <div role="status" className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 size={36} className="animate-spin text-gold-700" aria-hidden="true" />
+        <span className="sr-only">Loading analytics</span>
       </div>
     );
   }
 
-  if (!data || (data.listings.length === 0 && data.aggregate.totalViews === 0)) {
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+        <p role="alert" className="text-navy-700 mb-4">
+          Unable to load analytics. Please try again.
+        </p>
+        <button
+          type="button"
+          onClick={retry}
+          className="rounded-lg bg-navy-700 px-4 py-2 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (data.listings.length === 0 && data.aggregate.totalViews === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
         <div className="w-20 h-20 bg-cream-100 rounded-2xl flex items-center justify-center mb-6">
