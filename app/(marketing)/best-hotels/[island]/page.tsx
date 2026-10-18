@@ -231,12 +231,13 @@ export default async function BestHotelsPage({ params }: Props) {
           addressLocality: listing.parish || island.name,
           addressCountry: island.country,
         },
-        ...(listing.avgRating && parseFloat(listing.avgRating) > 0
+        ...(listing.avgRating && parseFloat(listing.avgRating) > 0 &&
+        typeof listing.reviewCount === "number" && listing.reviewCount > 0
           ? {
               aggregateRating: {
                 "@type": "AggregateRating",
                 ratingValue: listing.avgRating,
-                reviewCount: listing.reviewCount || 1,
+                reviewCount: listing.reviewCount,
               },
             }
           : {}),
