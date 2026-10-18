@@ -212,21 +212,20 @@ export default async function ThingsToDoPage({ params }: Props) {
   const faqs = getFaqs(island.name, slug);
 
   // JSON-LD ItemList
+  const listings = activeSections.flatMap((section) => section.listings);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Things to Do in ${island.name}`,
     description: `Top activities, tours, restaurants, and experiences in ${island.name}.`,
     url: `https://vakaygo.com/things-to-do-in-${slug}`,
-    numberOfItems: stats.totalListings,
-    itemListElement: activeSections.flatMap((section, sIdx) =>
-      section.listings.map((listing, lIdx) => ({
-        "@type": "ListItem",
-        position: sIdx * 6 + lIdx + 1,
-        name: listing.title,
-        url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-      }))
-    ),
+    numberOfItems: listings.length,
+    itemListElement: listings.map((listing, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: listing.title,
+      url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
+    })),
   };
 
   // FAQ JSON-LD
