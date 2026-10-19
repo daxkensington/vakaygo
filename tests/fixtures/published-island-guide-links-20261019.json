@@ -1,0 +1,554 @@
+{
+  "captured_at": "2026-10-19T01:52:30.929414+00:00",
+  "source": "Production GET /api/blog?category=destination-guide&limit=50, complete34-row author-joined published catalog plus exact old/new guide HTTP checks. No bodies/images/authors retained.",
+  "audit_sha256": "0e05e14ae9f4361c8c59c3d83c3968a0e6753c03658537122d796f4911c3ac15",
+  "catalog_response_sha256": [
+    "81c5b733d19c64ce50a094f2bdbc62c27f09800e114e1d2ade1bd23393874907"
+  ],
+  "targets": [
+    {
+      "island": "grenada",
+      "expected_slug": "ultimate-guide-to-grenada-the-spice-isle",
+      "previous_slug": "ultimate-guide-to-grenada-the-spice-isle",
+      "previous_http_status": 200,
+      "expected_http_status": 200,
+      "changed": false,
+      "same_island_published_candidates": [
+        {
+          "slug": "ultimate-guide-to-grenada-the-spice-isle",
+          "title": "Ultimate Guide to Grenada: The Spice Isle",
+          "category": "destination-guide",
+          "islandSlug": "grenada"
+        }
+      ]
+    },
+    {
+      "island": "barbados",
+      "expected_slug": "barbados-travel-guide-sun-rum-and-culture",
+      "previous_slug": "best-beaches-in-barbados-a-locals-guide",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "barbados-travel-guide-sun-rum-and-culture",
+          "title": "Barbados Travel Guide: Sun, Rum, and Culture",
+          "category": "destination-guide",
+          "islandSlug": "barbados"
+        }
+      ]
+    },
+    {
+      "island": "trinidad-and-tobago",
+      "expected_slug": "trinidad-and-tobago-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "trinidad-carnival-2026-everything-you-need-to-know",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "trinidad-and-tobago-travel-guide-best-stays-tours-and-dining",
+          "title": "Trinidad & Tobago Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Trinidad & Tobago",
+          "category": "destination-guide",
+          "islandSlug": "trinidad-and-tobago"
+        }
+      ]
+    },
+    {
+      "island": "st-lucia",
+      "expected_slug": "st-lucia-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "island-hopping-in-the-eastern-caribbean-a-7-day-itinerary",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "st-lucia-travel-guide-best-stays-tours-and-dining",
+          "title": "St. Lucia Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in St. Lucia",
+          "category": "destination-guide",
+          "islandSlug": "st-lucia"
+        }
+      ]
+    },
+    {
+      "island": "jamaica",
+      "expected_slug": "jamaica-beyond-the-resort-authentic-local-experiences",
+      "previous_slug": "jamaica-travel-guide-montego-bay-negril-ocho-rios",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "jamaica-beyond-the-resort-authentic-local-experiences",
+          "title": "Jamaica Beyond the Resort: Authentic Local Experiences",
+          "category": "destination-guide",
+          "islandSlug": "jamaica"
+        }
+      ]
+    },
+    {
+      "island": "bahamas",
+      "expected_slug": "bahamas-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "bahamas-travel-guide-nassau-exumas-harbour-island",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "bahamas-travel-guide-best-stays-tours-and-dining",
+          "title": "The Bahamas Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in The Bahamas",
+          "category": "destination-guide",
+          "islandSlug": "bahamas"
+        }
+      ]
+    },
+    {
+      "island": "aruba",
+      "expected_slug": "aruba-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "aruba-travel-guide-eagle-beach-palm-beach-catamaran-cruises",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "aruba-travel-guide-best-stays-tours-and-dining",
+          "title": "Aruba Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Aruba",
+          "category": "destination-guide",
+          "islandSlug": "aruba"
+        }
+      ]
+    },
+    {
+      "island": "curacao",
+      "expected_slug": "curacao-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "curacao-travel-guide-willemstad-shore-diving-hidden-coves",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "curacao-travel-guide-best-stays-tours-and-dining",
+          "title": "Cura\u00e7ao Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Cura\u00e7ao",
+          "category": "destination-guide",
+          "islandSlug": "curacao"
+        }
+      ]
+    },
+    {
+      "island": "dominican-republic",
+      "expected_slug": "dominican-republic-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "dominican-republic-travel-guide-punta-cana-samana-santo-domingo",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "dominican-republic-travel-guide-best-stays-tours-and-dining",
+          "title": "Dominican Republic Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Dominican Republic",
+          "category": "destination-guide",
+          "islandSlug": "dominican-republic"
+        }
+      ]
+    },
+    {
+      "island": "antigua",
+      "expected_slug": "antigua-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "antigua-travel-guide-365-beaches-english-harbour-sailing",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "antigua-travel-guide-best-stays-tours-and-dining",
+          "title": "Antigua & Barbuda Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Antigua & Barbuda",
+          "category": "destination-guide",
+          "islandSlug": "antigua"
+        }
+      ]
+    },
+    {
+      "island": "st-vincent",
+      "expected_slug": "st-vincent-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "st-vincent-and-the-grenadines-travel-guide-bequia-mustique-tobago-cays",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "st-vincent-travel-guide-best-stays-tours-and-dining",
+          "title": "St. Vincent & the Grenadines Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in St. Vincent & the Grenadines",
+          "category": "destination-guide",
+          "islandSlug": "st-vincent"
+        }
+      ]
+    },
+    {
+      "island": "dominica",
+      "expected_slug": "dominica-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "dominica-travel-guide-the-nature-island-boiling-lake-whale-watching",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "dominica-travel-guide-best-stays-tours-and-dining",
+          "title": "Dominica Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Dominica",
+          "category": "destination-guide",
+          "islandSlug": "dominica"
+        }
+      ]
+    },
+    {
+      "island": "turks-and-caicos",
+      "expected_slug": "turks-and-caicos-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "turks-and-caicos-travel-guide-grace-bay-chalk-sound-private-charters",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "turks-and-caicos-travel-guide-best-stays-tours-and-dining",
+          "title": "Turks & Caicos Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Turks & Caicos",
+          "category": "destination-guide",
+          "islandSlug": "turks-and-caicos"
+        }
+      ]
+    },
+    {
+      "island": "cayman-islands",
+      "expected_slug": "cayman-islands-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "cayman-islands-travel-guide-best-stays-tours-and-dining",
+      "previous_http_status": 200,
+      "expected_http_status": 200,
+      "changed": false,
+      "same_island_published_candidates": [
+        {
+          "slug": "cayman-islands-travel-guide-best-stays-tours-and-dining",
+          "title": "Cayman Islands Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Cayman Islands",
+          "category": "destination-guide",
+          "islandSlug": "cayman-islands"
+        }
+      ]
+    },
+    {
+      "island": "bonaire",
+      "expected_slug": "bonaire-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "bonaire-travel-guide-shore-diving-capital-kralendijk-klein-bonaire",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "bonaire-travel-guide-best-stays-tours-and-dining",
+          "title": "Bonaire Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Bonaire",
+          "category": "destination-guide",
+          "islandSlug": "bonaire"
+        }
+      ]
+    },
+    {
+      "island": "st-kitts",
+      "expected_slug": "st-kitts-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "st-kitts-and-nevis-travel-guide-brimstone-hill-pinneys-beach",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "st-kitts-travel-guide-best-stays-tours-and-dining",
+          "title": "St. Kitts & Nevis Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in St. Kitts & Nevis",
+          "category": "destination-guide",
+          "islandSlug": "st-kitts"
+        }
+      ]
+    },
+    {
+      "island": "martinique",
+      "expected_slug": "martinique-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "martinique-travel-guide-french-caribbean-rum-mount-pelee-beaches",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "martinique-travel-guide-best-stays-tours-and-dining",
+          "title": "Martinique Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Martinique",
+          "category": "destination-guide",
+          "islandSlug": "martinique"
+        }
+      ]
+    },
+    {
+      "island": "guadeloupe",
+      "expected_slug": "guadeloupe-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "guadeloupe-travel-guide-grande-terre-basse-terre-cousteau-reserve",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "guadeloupe-travel-guide-best-stays-tours-and-dining",
+          "title": "Guadeloupe Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Guadeloupe",
+          "category": "destination-guide",
+          "islandSlug": "guadeloupe"
+        }
+      ]
+    },
+    {
+      "island": "us-virgin-islands",
+      "expected_slug": "us-virgin-islands-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "us-virgin-islands-travel-guide-st-thomas-st-john-trunk-bay",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "us-virgin-islands-travel-guide-best-stays-tours-and-dining",
+          "title": "US Virgin Islands Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in US Virgin Islands",
+          "category": "destination-guide",
+          "islandSlug": "us-virgin-islands"
+        }
+      ]
+    },
+    {
+      "island": "british-virgin-islands",
+      "expected_slug": "british-virgin-islands-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "british-virgin-islands-travel-guide-tortola-virgin-gorda-sailing",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "british-virgin-islands-travel-guide-best-stays-tours-and-dining",
+          "title": "British Virgin Islands Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in British Virgin Islands",
+          "category": "destination-guide",
+          "islandSlug": "british-virgin-islands"
+        }
+      ]
+    },
+    {
+      "island": "puerto-rico",
+      "expected_slug": "puerto-rico-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "puerto-rico-travel-guide-old-san-juan-el-yunque-bioluminescent-bays",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "puerto-rico-travel-guide-best-stays-tours-and-dining",
+          "title": "Puerto Rico Travel Guide (2026): Local Stays, Charters, Dining & Hidden Gems in Puerto Rico",
+          "category": "destination-guide",
+          "islandSlug": "puerto-rico"
+        }
+      ]
+    },
+    {
+      "island": "cartagena",
+      "expected_slug": "cartagena-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "cartagena-travel-guide-walled-city-rosario-islands-rooftop-dining",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "cartagena-travel-guide-best-stays-tours-and-dining",
+          "title": "Cartagena & Rosario Islands Travel Guide (2026): Walled City Magic, Rosario Islands & Caribbean Soul",
+          "category": "destination-guide",
+          "islandSlug": "cartagena"
+        }
+      ]
+    },
+    {
+      "island": "medellin",
+      "expected_slug": "medellin-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "medellin-travel-guide-el-poblado-guatape-eternal-spring",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "medellin-travel-guide-best-stays-tours-and-dining",
+          "title": "Medell\u00edn & Guatap\u00e9 Travel Guide (2026): The City of Eternal Spring, El Poblado & Guatap\u00e9 Escapes",
+          "category": "destination-guide",
+          "islandSlug": "medellin"
+        }
+      ]
+    },
+    {
+      "island": "cancun-riviera-maya",
+      "expected_slug": "cancun-riviera-maya-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "cancun-and-riviera-maya-travel-guide-tulum-cenotes-isla-mujeres",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "cancun-riviera-maya-travel-guide-best-stays-tours-and-dining",
+          "title": "Canc\u00fan, Tulum & Riviera Maya Travel Guide (2026): Turquoise Lagoons, Sacred Cenotes & Tulum Beach Clubs",
+          "category": "destination-guide",
+          "islandSlug": "cancun-riviera-maya"
+        }
+      ]
+    },
+    {
+      "island": "los-cabos",
+      "expected_slug": "los-cabos-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "los-cabos-travel-guide-el-arco-whale-watching-baja-dining",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "los-cabos-travel-guide-best-stays-tours-and-dining",
+          "title": "Los Cabos Travel Guide (2026): Where the Desert Meets the Sea of Cortez",
+          "category": "destination-guide",
+          "islandSlug": "los-cabos"
+        }
+      ]
+    },
+    {
+      "island": "guanacaste",
+      "expected_slug": "guanacaste-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "guanacaste-costa-rica-travel-guide-tamarindo-papagayo-surf-eco-luxury",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "guanacaste-travel-guide-best-stays-tours-and-dining",
+          "title": "Guanacaste & Papagayo Travel Guide (2026): Costa Rica's Gold Coast: Surf, Sunset Catamarans & Cloud Forests",
+          "category": "destination-guide",
+          "islandSlug": "guanacaste"
+        }
+      ]
+    },
+    {
+      "island": "ambergris-caye",
+      "expected_slug": "ambergris-caye-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "ambergris-caye-belize-travel-guide-hol-chan-great-blue-hole-san-pedro",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "ambergris-caye-travel-guide-best-stays-tours-and-dining",
+          "title": "Ambergris Caye & Placencia Travel Guide (2026): Belize's Barrier Reef Capital, Hol Chan & Barefoot Luxury",
+          "category": "destination-guide",
+          "islandSlug": "ambergris-caye"
+        }
+      ]
+    },
+    {
+      "island": "santorini",
+      "expected_slug": "santorini-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "santorini-travel-guide-oia-caldera-sunsets-catamaran-cruises",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "santorini-travel-guide-best-stays-tours-and-dining",
+          "title": "Santorini Travel Guide (2026): Aegean Caldera Views, Whitewashed Cliff Suites & Sunset Catamarans",
+          "category": "destination-guide",
+          "islandSlug": "santorini"
+        }
+      ]
+    },
+    {
+      "island": "mykonos",
+      "expected_slug": "mykonos-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "mykonos-travel-guide-beach-clubs-little-venice-delos-yachts",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "mykonos-travel-guide-best-stays-tours-and-dining",
+          "title": "Mykonos Travel Guide (2026): Cycladic Glamour, Windmills, Superyachts & Delos Antiquity",
+          "category": "destination-guide",
+          "islandSlug": "mykonos"
+        }
+      ]
+    },
+    {
+      "island": "crete",
+      "expected_slug": "crete-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "crete-travel-guide-chania-elafonisi-balos-lagoon-minoan-palaces",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "crete-travel-guide-best-stays-tours-and-dining",
+          "title": "Crete Travel Guide (2026): Pink-Sand Lagoons, Venetian Harbors, Minoan Palaces & Cretan Hospitality",
+          "category": "destination-guide",
+          "islandSlug": "crete"
+        }
+      ]
+    },
+    {
+      "island": "ibiza",
+      "expected_slug": "ibiza-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "ibiza-travel-guide-dalt-vila-formentera-yachts-hidden-calas",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "ibiza-travel-guide-best-stays-tours-and-dining",
+          "title": "Ibiza & Formentera Travel Guide (2026): Pine-Clad Coves, Formentera Yacht Charters, Dalt Vila & Balearic Sunsets",
+          "category": "destination-guide",
+          "islandSlug": "ibiza"
+        }
+      ]
+    },
+    {
+      "island": "mallorca",
+      "expected_slug": "mallorca-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "mallorca-travel-guide-palma-tramuntana-deia-private-boat-charters",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "mallorca-travel-guide-best-stays-tours-and-dining",
+          "title": "Mallorca Travel Guide (2026): Serra de Tramuntana Cliffs, Turquoise Calas & Palma Cathedral Elegance",
+          "category": "destination-guide",
+          "islandSlug": "mallorca"
+        }
+      ]
+    },
+    {
+      "island": "amalfi-coast-capri",
+      "expected_slug": "amalfi-coast-capri-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "amalfi-coast-and-capri-travel-guide-positano-ravello-private-gozzo-boats",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "amalfi-coast-capri-travel-guide-best-stays-tours-and-dining",
+          "title": "Amalfi Coast & Capri Travel Guide (2026): Cliffside Lemon Groves, Positano Pastels & Private Gozzo Boats to Capri",
+          "category": "destination-guide",
+          "islandSlug": "amalfi-coast-capri"
+        }
+      ]
+    },
+    {
+      "island": "hvar-split",
+      "expected_slug": "hvar-split-travel-guide-best-stays-tours-and-dining",
+      "previous_slug": "hvar-and-split-travel-guide-dalmatian-coast-pakleni-islands-blue-cave",
+      "previous_http_status": 404,
+      "expected_http_status": 200,
+      "changed": true,
+      "same_island_published_candidates": [
+        {
+          "slug": "hvar-split-travel-guide-best-stays-tours-and-dining",
+          "title": "Hvar, Split & Dalmatian Coast Travel Guide (2026): Dalmatian Palace Walls, Pakleni Islands Sailing & Lavender Hills",
+          "category": "destination-guide",
+          "islandSlug": "hvar-split"
+        }
+      ]
+    }
+  ]
+}
