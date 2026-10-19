@@ -80,84 +80,96 @@ const islandImages: Record<string, string> = {
 
 const defaultImage = "/images/hero/caribbean-hero.jpg";
 
+const featuredSlugs = new Set([
+  "grenada",
+  "st-lucia",
+  "barbados",
+  "cartagena",
+  "santorini",
+  "amalfi-coast-capri",
+]);
+
 export function IslandShowcase() {
+  const featuredIslands = islands.filter((island) => featuredSlugs.has(island.slug));
+  const moreIslands = islands.filter((island) => !featuredSlugs.has(island.slug));
+
   return (
-    <section className="py-24 md:py-32 bg-white">
+    <section id="destinations" className="scroll-mt-28 bg-white py-10 md:py-14">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
-          <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
+        <div className="mb-6 text-center">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gold-700">
             Caribbean · Latin America · Mediterranean
           </p>
           <h2
-            className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
+            className="text-2xl font-bold tracking-tight text-navy-700 md:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Explore 34 Sun &amp; Sea Destinations
+            Explore 34 destinations
           </h2>
-          <p className="mt-4 text-navy-400 max-w-2xl mx-auto text-lg">
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-navy-400">
             From Grenada and St. Lucia to Cartagena, Cancún, Santorini, and the Amalfi Coast — discover local stays, charters, and experiences.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {islands.map((island) => {
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+          {featuredIslands.map((island) => {
             const image = islandImages[island.slug] || defaultImage;
 
             return (
               <Link
                 key={island.slug}
                 href={`/${island.slug}`}
-                className="group relative h-64 rounded-3xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
+                prefetch={false}
+                className="group rounded-2xl border border-cream-200 bg-white transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700 focus-visible:ring-offset-2"
               >
-                <Image
-                  src={image}
-                  alt=""
-                  fill
-                  loading="lazy"
-                  sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                  quality={75}
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy-900/90 via-navy-900/35 to-transparent" />
-                <div className="absolute inset-0 bg-navy-900/10 group-hover:bg-navy-900/0 transition-colors duration-500" />
-
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 pr-16">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{island.flag}</span>
-                    <div className="min-w-0">
-                      <h3 className="text-xl font-bold text-white truncate">
-                        {island.name}
-                      </h3>
-                      <p className="text-white/75 text-xs line-clamp-1 mt-0.5">
-                        {island.tagline}
-                      </p>
-                    </div>
-                  </div>
+                <div className="relative h-20 overflow-hidden rounded-t-2xl md:h-28">
+                  <Image
+                    src={image}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    sizes="(min-width: 1280px) 400px, (min-width: 768px) 33vw, 50vw"
+                    quality={75}
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
-
-                {/* Island count badge */}
-                <div className="absolute top-4 right-4">
-                  <span className="bg-navy-900/70 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1">
-                    <MapPin size={11} className="text-gold-400" />
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold leading-5 text-navy-700">
+                    <span aria-hidden="true">{island.flag}</span>{" "}{island.name}
+                  </h3>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-navy-500">
+                    <MapPin size={12} aria-hidden="true" />
                     {island.count} places
-                  </span>
-                </div>
-
-                {/* Explore arrow */}
-                <div className="absolute bottom-6 right-6 w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                  <ArrowRight size={18} className="text-white" />
+                  </p>
                 </div>
               </Link>
             );
           })}
         </div>
 
-        {/* View all link */}
-        <div className="text-center mt-12">
+        <details className="mt-5 rounded-2xl border border-cream-200 bg-cream-50">
+          <summary className="cursor-pointer rounded-2xl px-4 py-4 text-sm font-semibold text-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700 focus-visible:ring-offset-2">
+            Show {moreIslands.length} more destinations
+          </summary>
+          <div className="grid grid-cols-1 gap-1 px-3 pb-3 sm:grid-cols-2 lg:grid-cols-4">
+            {moreIslands.map((island) => (
+              <Link
+                key={island.slug}
+                href={`/${island.slug}`}
+                prefetch={false}
+                className="rounded-lg px-3 py-3 text-sm font-medium text-navy-600 transition-colors hover:bg-white hover:text-gold-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700"
+              >
+                <span aria-hidden="true">{island.flag}</span>{" "}{island.name}
+              </Link>
+            ))}
+          </div>
+        </details>
+
+        <div className="mt-5 text-center">
           <Link
             href="/islands"
-            className="inline-flex items-center gap-2 bg-gold-700 hover:bg-gold-800 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_4px_20px_rgba(200,145,46,0.4)] group"
+            prefetch={false}
+            className="group inline-flex items-center gap-2 rounded-xl bg-gold-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gold-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700 focus-visible:ring-offset-2"
           >
             Explore all 34 destinations
             <ArrowRight
