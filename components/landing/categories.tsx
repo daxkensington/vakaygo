@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Home, Compass, UtensilsCrossed, Music, Car, Users, ArrowRight, Shield, Plane, Sparkles } from "lucide-react";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, Shield, Plane, Sparkles } from "lucide-react";
 
 const categories = [
   {
@@ -83,66 +82,36 @@ const categories = [
 
 export function Categories() {
   return (
-    <section id="categories" className="py-24 md:py-32 bg-cream-50">
+    <section id="categories" className="scroll-mt-28 bg-cream-50 py-10 md:py-14">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
-          <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
+        <div className="mb-6 text-center">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gold-700">
             All-in-One Platform
           </p>
           <h2
-            className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
+            className="text-2xl font-bold tracking-tight text-navy-700 md:text-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Ten ways to explore
           </h2>
-          <p className="mt-4 text-navy-400 max-w-lg mx-auto text-lg">
+          <p className="mx-auto mt-2 max-w-lg text-sm text-navy-400">
             Everything a traveler needs. Everything a local business can offer.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {categories.map((cat) => (
             <Link
               key={cat.name}
               href={`/explore?type=${cat.slug}`}
-              className="group relative h-72 rounded-3xl overflow-hidden cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all duration-500"
+              prefetch={false}
+              className="rounded-2xl border border-cream-200 bg-white p-3 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700 focus-visible:ring-offset-2 md:p-4"
             >
-              <Image
-                src={cat.image}
-                alt=""
-                fill
-                loading="lazy"
-                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                quality={75}
-                className="object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-navy-900/90 via-navy-900/30 to-transparent" />
-              <div className="absolute inset-0 bg-navy-900/10 group-hover:bg-navy-900/0 transition-colors duration-500" />
-
-              {/* Content */}
-              <div className="absolute bottom-0 left-0 right-0 p-7">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
-                    <cat.icon size={20} className="text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">{cat.name}</h3>
-                </div>
-                <p className="text-white/70 text-sm pl-[52px]">
-                  {cat.description}
-                </p>
+              <div className="flex items-start gap-2">
+                <cat.icon size={20} aria-hidden="true" className="shrink-0 text-gold-700" />
+                <h3 className="text-sm font-semibold leading-5 text-navy-700">{cat.name}</h3>
               </div>
-
-              {/* Category action */}
-              <div className="absolute top-5 right-5 flex items-center gap-2">
-                <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
-                  Explore listings
-                </span>
-              </div>
-
-              {/* Explore arrow */}
-              <div className="absolute bottom-7 right-7 w-10 h-10 bg-gold-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                <ArrowRight size={18} className="text-white" />
-              </div>
+              <p className="mt-2 text-xs leading-5 text-navy-500">{cat.description}</p>
             </Link>
           ))}
         </div>

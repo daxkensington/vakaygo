@@ -1,94 +1,28 @@
-import { Globe, Search, TreePalm } from "lucide-react";
-
-const steps = [
-  {
-    number: "01",
-    icon: Globe,
-    title: "Explore in 3D or Ask AI",
-    description:
-      "Fly over 34 Caribbean, Latin American, and Mediterranean destinations on our 3D satellite map or tell our AI Concierge your travel dates, budget, and vibe.",
-    color: "bg-gold-500",
-  },
-  {
-    number: "02",
-    icon: Search,
-    title: "Discover Local Places",
-    description:
-      "Browse stays, tours, restaurants, and charters with photos, locations, and local travel essentials. Check each listing's ownership and availability details.",
-    color: "bg-teal-500",
-  },
-  {
-    number: "03",
-    icon: TreePalm,
-    title: "Save Your Favorites and Plan",
-    description:
-      "Save places, build an itinerary, and record interest in businesses. Messaging is available for businesses with verified ownership. Neither interest nor messages create a reservation; online bookings and payments are not available yet.",
-    color: "bg-gold-500",
-  },
+﻿const steps = [
+  { title: "Discover", description: "Search by destination or category, or explore places on the 3D map." },
+  { title: "Save and plan", description: "Save your favorites and build an itinerary around the places you want to visit." },
+  { title: "Check the details", description: "Check opening times, ownership verification, and availability with each business before traveling." },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 md:py-32 bg-navy-700 relative overflow-hidden">
-      {/* Background texture */}
-      <div className="absolute inset-0 opacity-5">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "40px 40px",
-          }}
-        />
-      </div>
-
-      <div className="relative mx-auto max-w-7xl px-6">
-        <div className="text-center mb-20">
-          <p className="text-sm font-semibold text-gold-400 uppercase tracking-widest mb-4">
-            Simple as 1-2-3
-          </p>
-          <h2
-            className="text-4xl md:text-5xl font-bold text-white tracking-tight"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Plan your perfect trip
-            <br />
-            <span className="text-gold-400">in minutes</span>
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          {/* Connecting line */}
-          <div className="hidden md:block absolute top-20 left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-gold-500/0 via-gold-500/40 to-gold-500/0" />
-
-          {steps.map((step, i) => (
-            <div
-              key={step.number}
-              className="relative group"
-              style={{ transitionDelay: `${i * 100}ms` }}
-            >
-              <div className="bg-white/[0.05] backdrop-blur-sm rounded-3xl p-10 border border-white/10 hover:bg-white/[0.08] transition-all duration-500 hover:-translate-y-2 text-center h-full">
-                {/* Step number */}
-                <div className="text-6xl font-bold text-white/[0.06] absolute top-6 right-8">
-                  {step.number}
-                </div>
-
-                <div
-                  className={`relative z-10 w-16 h-16 ${step.color} rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg`}
-                >
-                  <step.icon size={30} className="text-white" />
-                </div>
-
-                <h3 className="text-xl font-bold text-white mb-4">
-                  {step.title}
-                </h3>
-                <p className="text-white/60 leading-relaxed">
-                  {step.description}
-                </p>
+    <section id="how-it-works" className="scroll-mt-24 bg-cream-50 py-12 md:py-16" aria-labelledby="how-it-works-title">
+      <div className="mx-auto max-w-7xl px-6">
+        <h2 id="how-it-works-title" className="text-3xl font-bold text-navy-700" style={{ fontFamily: "var(--font-display)" }}>From discovery to a trip plan</h2>
+        <ol className="mt-6 grid gap-5 md:grid-cols-3">
+          {steps.map((step, index) => (
+            <li key={step.title} className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-100 font-bold text-gold-800" aria-hidden="true">{index + 1}</span>
+              <div>
+                <h3 className="font-bold text-navy-700">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-navy-500">{step.description}</p>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
+        <p className="mt-6 border-t border-navy-100 pt-5 text-sm leading-relaxed text-navy-600">
+          Online bookings and payments are not available yet. Recording interest or messaging a business does not create a reservation. Messaging is available for businesses with verified ownership where supported.
+        </p>
       </div>
     </section>
   );
