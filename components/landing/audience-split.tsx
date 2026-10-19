@@ -1,132 +1,23 @@
-import Link from "next/link";
-import { Check, ArrowRight } from "lucide-react";
-
-const travelerBenefits = [
-  "Explore 8,038+ places across 34 Caribbean, Latin American & Mediterranean hubs on our 3D satellite map",
-  "Generate custom day-by-day coastal & island itineraries with our AI Concierge",
-  "Save your favorite places into collections",
-  "Record interest in businesses you would like to visit",
-  "Message businesses with verified ownership where messaging is available; messages do not create bookings",
-];
-
-const businessBenefits = [
-  "Start a free claim for your existing business listing",
-  "Verify ownership through a trusted business contact where supported",
-  "Manage traveler inquiries after ownership verification",
-  "Sync calendars via iCal and manage seasonal pricing & availability",
-  "Claiming does not activate bookings or payments; launch requires separate approval",
-];
+﻿import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 export function AudienceSplit() {
   return (
-    <section id="for-businesses" className="py-24 md:py-32 bg-white">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center mb-16">
-          <p className="text-sm font-semibold text-gold-700 uppercase tracking-widest mb-4">
-            Built for Everyone
-          </p>
-          <h2
-            className="text-4xl md:text-5xl font-bold text-navy-700 tracking-tight"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Two sides. One platform.
-          </h2>
+    <section className="bg-white py-12 md:py-16">
+      <div className="mx-auto grid max-w-7xl gap-6 px-6 md:grid-cols-2">
+        <div id="join" className="scroll-mt-24 rounded-2xl bg-teal-800 p-6 md:p-8">
+          <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Keep your trip ideas together</h2>
+          <p className="mt-3 text-sm leading-relaxed text-white/85">Create a free account to save places and plan your trip. You can browse the directory without signing up.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/auth/signup" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 py-2 font-semibold text-teal-800 hover:bg-cream-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Sign Up Free<ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link href="/explore" className="inline-flex min-h-11 items-center rounded-lg px-3 py-2 font-semibold text-white underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Explore Listings</Link>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* For Travelers */}
-          <div className="relative rounded-3xl overflow-hidden group">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url(/images/sections/traveler.jpg)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-teal-600/90 to-teal-800/95" />
-            <div className="relative p-10 md:p-14">
-              <span className="text-sm font-bold text-teal-200 tracking-wider uppercase">
-                For Travelers
-              </span>
-              <h3
-                className="text-3xl md:text-4xl font-bold text-white mt-4 mb-8 leading-tight"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Your whole trip,
-                <br />
-                sorted.
-              </h3>
-              <ul className="space-y-4">
-                {travelerBenefits.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-3">
-                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <Check size={12} className="text-white" />
-                    </div>
-                    <span className="text-white/90 leading-relaxed">
-                      {benefit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Link prefetch={false}
-                href="/explore"
-                className="inline-flex items-center gap-2 mt-10 bg-white text-teal-700 px-8 py-3.5 rounded-full font-semibold hover:bg-cream-100 transition-colors group"
-              >
-                Start exploring
-                <ArrowRight
-                  size={16}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </Link>
-            </div>
-          </div>
-
-          {/* For Businesses */}
-          <div className="relative rounded-3xl overflow-hidden group">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url(/images/sections/operator.jpg)",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-navy-700/90 to-navy-900/95" />
-            <div className="relative p-10 md:p-14">
-              <span className="text-sm font-bold text-gold-400 tracking-wider uppercase">
-                For Local Businesses
-              </span>
-              <h3
-                className="text-3xl md:text-4xl font-bold text-white mt-4 mb-8 leading-tight"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Your business,
-                <br />
-                represented.
-              </h3>
-              <ul className="space-y-4">
-                {businessBenefits.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-3">
-                    <div className="w-5 h-5 bg-gold-500/30 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <Check size={12} className="text-gold-400" />
-                    </div>
-                    <span className="text-white/90 leading-relaxed">
-                      {benefit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Link prefetch={false}
-                href="/for-businesses"
-                className="inline-flex items-center gap-2 mt-10 bg-gold-700 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-gold-800 transition-colors group"
-              >
-                Claim your listing
-                <ArrowRight
-                  size={16}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </Link>
-            </div>
-          </div>
+        <div id="for-businesses" className="scroll-mt-24 rounded-2xl bg-navy-800 p-6 md:p-8">
+          <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Is your business listed?</h2>
+          <p className="mt-3 text-sm leading-relaxed text-white/85">Start a free claim for your existing listing. Verify ownership through a trusted business contact where supported, then manage traveler inquiries.</p>
+          <p className="mt-2 text-sm leading-relaxed text-white/85">Claiming does not activate bookings or payments; launch requires separate approval.</p>
+          <Link prefetch={false} href="/for-businesses" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 font-semibold text-navy-900 hover:bg-gold-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-300">Claim your listing<ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
       </div>
     </section>
