@@ -139,7 +139,7 @@ const islandGuideSlugs: Record<string, string> = {
   "st-vincent": "st-vincent-and-the-grenadines-travel-guide-bequia-mustique-tobago-cays",
   dominica: "dominica-travel-guide-the-nature-island-boiling-lake-whale-watching",
   "turks-and-caicos": "turks-and-caicos-travel-guide-grace-bay-chalk-sound-private-charters",
-  "cayman-islands": "cayman-islands-travel-guide-seven-mile-beach-stingray-city-diving",
+  "cayman-islands": "cayman-islands-travel-guide-best-stays-tours-and-dining",
   bonaire: "bonaire-travel-guide-shore-diving-capital-kralendijk-klein-bonaire",
   "st-kitts": "st-kitts-and-nevis-travel-guide-brimstone-hill-pinneys-beach",
   martinique: "martinique-travel-guide-french-caribbean-rum-mount-pelee-beaches",
