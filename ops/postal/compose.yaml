@@ -1,0 +1,84 @@
+name: vakaygo-postal
+# Postal commands/config structure follow postalserver/install@451926cc78a1056e9f16dad6ec5c62d4f76d2445 (MIT).
+# Linux dedicated host only. Default startup runs the database; delivery requires its explicit profile.
+x-postal: &postal
+  image: ghcr.io/postalserver/postal:3.3.7@sha256:e54b4a7eb106ee15eda5664311c4b9415546d4196f5c4336d23a78d6ce57b819
+  network_mode: host
+  volumes:
+    - ./runtime/config:/config:ro
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  database:
+    image: mariadb:11.4@sha256:250e1609e93c0e6aecf64bfbab2d84d5e89d2481540fe77447ff6c855c3b1873
+    environment:
+      MARIADB_DATABASE: postal
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/database_password
+    secrets: [database_password]
+    ports: ["127.0.0.1:3306:3306"]
+    volumes:
+      - database:/var/lib/mysql
+    command: ["--innodb-log-file-size=256M"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  web:
+    <<: *postal
+    profiles: [control]
+    command: postal web-server
+    depends_on:
+      database: {condition: service_healthy}
+
+  proxy:
+    image: caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
+    profiles: [control]
+    network_mode: host
+    volumes:
+      - ./runtime/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  smtp:
+    <<: *postal
+    profiles: [delivery]
+    command: postal smtp-server
+    cap_add: [NET_BIND_SERVICE]
+    depends_on:
+      database: {condition: service_healthy}
+
+  worker:
+    <<: *postal
+    profiles: [delivery]
+    command: postal worker
+    depends_on:
+      database: {condition: service_healthy}
+
+  runner:
+    <<: *postal
+    profiles: [tools]
+    command: postal
+    restart: "no"
+
+secrets:
+  database_password:
+    file: ./runtime/database-password
+
+volumes:
+  database:
+  caddy_data:
+  caddy_config:
