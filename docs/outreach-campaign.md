@@ -1,0 +1,93 @@
+# Listing invitation campaign
+
+This release replaces the legacy invitation cron with a dedicated, default-paused
+campaign. It does not activate bookings, approve claims, create availability,
+change prices, or change provider accounts and DNS. All booking and payment paths
+remain on VakayGo. Account and booking notification senders are separate.
+
+## Release and activation
+
+1. Review and apply migrations `0012_outreach_delivery_tracking` and
+   `0013_outreach_campaign_controls` before deploying this source. The singleton
+   control starts paused. Check the actual serving database and migration hashes.
+2. Reconcile historical invitation records and provider suppressions before any
+   enablement or provider migration. This new ledger does not backfill the old
+   mutable outreach notes or treat historical deliveries as current success.
+   Import known bounced, complained, unsubscribed and provider-suppressed
+   recipients into global suppression; reconcile delayed/unknown outcomes and
+   exclude previously contacted recipients. Keep recipient addresses private.
+3. Select a provider whose published policy permits the intended recipient basis.
+   Resend requires explicit opt-in. No consent is inferred from a public email,
+   website, listing, traveler interest or an unrelated inbound inquiry.
+4. Configure a verified VakayGo sender, a real sender postal address, stable
+   `AUTH_SECRET` (at least 32 characters), `RESEND_API_KEY`, and
+   `RESEND_WEBHOOK_SECRET`. `OUTREACH_PROVIDER` defaults to `resend` and
+   `OUTREACH_FROM_ADDRESS` defaults to `hello@vakaygo.com`.
+5. Configure the enabled provider webhook at
+   `https://vakaygo.com/api/webhooks/resend` for sent, delivered, delivery_delayed,
+   bounced, complained, failed and suppressed events. Metadata validation checks
+   the exact endpoint, event set and signing secret. Validate a signed event
+   through the real deployment before enabling; local fixtures do not prove a
+   live provider event reached the site.
+6. Record the exact current listing recipient and permission evidence in the
+   admin outreach panel. Review recipient jurisdiction and required lawful basis.
+   Permissions are scoped to listing, address and provider. Revocation and global
+   suppression always win; granting permission cannot clear a suppression.
+7. Review the fresh health report and deliberately enable the campaign. Changing
+   provider resets stage and health; further stages require separate review.
+
+Mailforge and Infraforge policy records can be prepared while paused, including
+country and documented policy review. This release has no transport or event
+adapter for either provider and cannot enable them. Do not substitute their
+credentials into the Resend adapter. Verify branded sender/DNS coexistence,
+purchase terms, message identity, delivery evidence and reply routing before
+implementing another adapter. Preserve existing inbound mail and website DNS.
+
+## Scheduling and holds
+
+The cron runs every 10 minutes and attempts at most one eligible invitation. Sending
+is limited to known destination time zones, Monday–Friday 09:00–17:00 local time.
+Unknown destinations hold. Both scheduled and administrator sends use the same
+reservation and final dispatch gates; `force` cannot bypass them.
+
+Daily stages are 18, 24, 32, 44 and 60 per rolling 24 hours, with at most 6 per hour and at
+least 10 minutes between reservations. Reservations count even when a later send
+fails. A unique campaign/address and campaign/listing reservation prevents
+duplicates. Provider requests carry a stable idempotency key.
+
+Any complaint in 7 days, bounce rate at least 2%, uncertain transport, reservation
+older than 20 minutes, unresolved delivery older than 24 hours, stale telemetry or
+missing prerequisites holds sending. Recent bounces count even when the original
+acceptance is older than 7 days; zero accepted messages cannot hide a bounce.
+Provider rejection pauses the control. Never blindly retry an uncertain outcome.
+
+Promotion requires at least 72 hours in the stage and at least 50 accepted messages
+from that stage in the last 7 days, each aged 24 hours and delivered or bounced.
+There must be zero complaints, bounce rate below 2%, and complete fresh evidence.
+Promotion is manual and advances only one stage. These are internal cautious
+limits, not a promise of inbox placement or a replacement for provider policy.
+
+## Evidence and opt-out
+
+Attempts, deduplicated signed events, provider observations and sticky recipient
+suppressions are separate records. Poll observations are labeled with their
+observation time; they do not invent historical delivery timestamps. Provider
+acceptance and receiving-server delivery do not prove a human read the message.
+
+Signed invitation links record visits (including scanners) and carry a seven-day
+first-party continuation cookie. An approved claim is associated only after the
+normal authenticated ownership verification. The invitation grants no ownership
+authority. Association does not prove causation or a booking conversion. Replies
+continue to be reviewed in InboxHQ; they are not automatically counted here.
+
+New and legacy opt-out links block the recipient globally and revoke permissions
+across providers, including after listing deletion or address change. Do not
+clear or bypass those blocks during a provider switch.
+
+## Rollback
+
+Pause through the current admin control first and inspect outstanding attempts.
+Retain all evidence and suppression tables. Do not redeploy the legacy invitation
+cron as a rollback while its schedule remains active: that older code does not
+honor this release's campaign pause. Any provider/DNS cutover needs its own
+reviewed rollback plan and preserved original records.
