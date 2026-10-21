@@ -3,6 +3,8 @@ import { neon } from "@neondatabase/serverless";
 import { env } from "@/lib/env";
 import { OUTREACH_CAMPAIGN_KEY, checkCampaignSendingWindow, getOutreachPrerequisites } from "@/lib/outreach-campaign-policy";
 import { normalizeOutreachRecipient, parseResendOutreachEvent, recordOutreachAccepted, recordOutreachFailure, recordOutreachProviderEvent, suppressOutreachRecipient } from "@/server/outreach-tracking";
+import { SendcorexClient, SendcorexError } from "@/server/sendcorex-client";
+import { refreshSendcorexTelemetry } from "@/server/sendcorex-telemetry";
 
 const REQUIRED_EVENTS = ["email.sent", "email.delivered", "email.bounced", "email.complained", "email.delivery_delayed", "email.failed", "email.suppressed"];
 const CAMPAIGN_ORIGIN = "https://vakaygo.com";
@@ -56,6 +58,8 @@ export async function refreshOutreachTelemetry(): Promise<{ ready: boolean; reas
   const signal = AbortSignal.timeout(20_000);
   if (prerequisites.ready) {
     try {
+      if (prerequisites.provider === "sendcorex") await refreshSendcorexTelemetry(prerequisites.from);
+      else {
       const domains = await providerMetadata("/domains", signal);
       const domainName = prerequisites.from.split("@")[1].toLowerCase();
       const domain = domains.find(item => item.name === domainName && item.status === "verified");
@@ -81,6 +85,7 @@ export async function refreshOutreachTelemetry(): Promise<{ ready: boolean; reas
         const event = parseResendOutreachEvent({ type: `email.${status}`, created_at: new Date().toISOString(), data: { email_id: observation.id, to: observation.to } });
         if (event) await recordOutreachProviderEvent(`poll_${observation.id}_${status}`, event, "resend", "provider_poll");
         await sql.query("UPDATE outreach_email_attempts SET last_polled_at=now() WHERE id=$1::uuid AND provider='resend'", [attempt.id]);
+      }
       }
     } catch { reasons.push("provider_telemetry_unavailable"); }
   }
@@ -112,13 +117,15 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
         AND c.health_ready AND c.health_checked_at>now()-interval '20 minutes' AND c.health_checked_at<=now()
         AND l.status='active' AND i.is_active AND i.slug=$2 AND lower(btrim(l.type_data->>'email'))=a.recipient
         AND NOT vakaygo_listing_claim_verified(l.id)
-        AND EXISTS(SELECT 1 FROM outreach_recipient_consents p WHERE p.listing_id=a.listing_id AND p.recipient_email=a.recipient AND p.provider=a.provider AND p.permission_kind='explicit_opt_in' AND p.revoked_at IS NULL AND p.granted_at<=now())
+        AND EXISTS(SELECT 1 FROM outreach_recipient_consents p WHERE p.listing_id=a.listing_id AND p.recipient_email=a.recipient AND p.provider=a.provider AND vakaygo_outreach_permission_allowed(p.provider,p.permission_kind) AND p.revoked_at IS NULL AND p.granted_at<=now())
         AND NOT EXISTS(SELECT 1 FROM outreach_email_suppressions s WHERE s.recipient=a.recipient)
         AND NOT EXISTS(SELECT 1 FROM business_outreach b WHERE b.listing_id=l.id AND (b.status='do_not_contact' OR b.contacted_at IS NOT NULL))
         AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key
           AND (h.state='uncertain' OR (h.state='reserved' AND h.reserved_at<now()-interval '20 minutes')))
         AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
           AND h.complained_at>=now()-interval '7 days')
+        AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
+          AND h.provider='sendcorex' AND h.accepted_at IS NOT NULL AND h.failed_at>=now()-interval '7 days')
         AND NOT EXISTS(SELECT 1 FROM (
           SELECT count(*) FILTER(WHERE h.bounced_at>=now()-interval '7 days') AS bounced,
             count(*) FILTER(WHERE h.accepted_at>=now()-interval '7 days') AS accepted
@@ -134,6 +141,22 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
     const message = input.buildMessage(attemptId);
     const { unsubscribeInvitationUrl } = await import("@/server/outreach-attribution");
     const unsubscribe = unsubscribeInvitationUrl(attemptId);
+    if (prerequisites.provider === "sendcorex") {
+      try {
+        const providerId = await new SendcorexClient(env.SENDCOREX_API_KEY || "", AbortSignal.timeout(20_000)).send({
+          from: prerequisites.from, to: recipient, subject: message.subject, html: message.html, unsubscribe,
+        });
+        if (!await recordOutreachAccepted(attemptId, providerId, "sendcorex")) throw new SendcorexError("sendcorex_acceptance_unconfirmed");
+        return { sent: true, email: recipient, attemptId };
+      } catch (error) {
+        const failure = error instanceof SendcorexError ? error : new SendcorexError("sendcorex_outcome_unconfirmed");
+        await recordOutreachFailure(attemptId, failure.code, { uncertain: failure.uncertain });
+        await sql.query(`UPDATE outreach_campaign_control SET enabled=false,health_ready=false,health_reason='provider_request_rejected',
+          pause_reason='Provider outcome requires review before resuming.',version=version+1,updated_at=now()
+          WHERE id=true AND provider='sendcorex'`);
+        return { sent: false, email: recipient, reason: failure.code, attemptId };
+      }
+    }
     const response = await fetch("https://api.resend.com/emails", { method: "POST", redirect: "error", signal: AbortSignal.timeout(20_000),
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `outreach:${attemptId}` },
       body: JSON.stringify({ from: `VakayGo <${prerequisites.from}>`, to: recipient, reply_to: "support@vakaygo.com",

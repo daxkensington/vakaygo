@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isCountryCode } from "@/lib/countries";
 
-export const OUTREACH_PERMISSION_PROVIDERS = ["resend", "mailforge", "infraforge"] as const;
+export const OUTREACH_PERMISSION_PROVIDERS = ["resend", "sendcorex", "mailforge", "infraforge"] as const;
 export type OutreachPermissionProvider = typeof OUTREACH_PERMISSION_PROVIDERS[number];
 const version = z.number().int().min(0).max(2_147_483_646);
 const uuid = z.string().uuid();

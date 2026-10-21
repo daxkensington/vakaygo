@@ -125,8 +125,9 @@ export async function applyCampaignAdminAction(actor: CampaignAdminActor, action
        SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed`, [...identity, action.consentId, action.reason]));
     } else {
       statements.push(tx.query(`WITH ${ACTOR}, ${HEALTH_CTES}, gate AS (
-       SELECT *,($9::boolean AND provider='resend' AND provider=$10 AND telemetry_healthy=true AND stage BETWEEN 0 AND 4
+       SELECT *,($9::boolean AND provider IN ('resend','sendcorex') AND provider=$10 AND telemetry_healthy=true AND stage BETWEEN 0 AND 4
         AND stage_started_at<=now() AND complained=0 AND uncertain=0 AND overdue=0
+        AND (provider<>'sendcorex' OR failed=0)
         AND (bounced=0 OR (accepted>0 AND bounced::numeric/greatest(accepted,1)<0.02))) AS healthy FROM snapshot),
        changed AS (UPDATE outreach_campaign_control c SET
         enabled=CASE WHEN $5='pause' THEN false WHEN $5='enable' THEN true ELSE c.enabled END,
