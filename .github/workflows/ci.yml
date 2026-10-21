@@ -137,6 +137,11 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Apply migrations to an empty isolated database
         run: |
           for migration in drizzle/migrations/*.sql; do
@@ -144,6 +149,20 @@ jobs:
           done
       - name: Verify email identity and session revocation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/account-bootstrap.sql
+      - name: Verify campaign delivery evidence and irreversible suppression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/outreach-tracking.sql
+      - name: Verify Sendcorex B2B reservations and global unsubscribe
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/sendcorex-outreach.sql
+      - name: Verify campaign administration and health gates
+        run: node tests/sql/render-outreach-controls.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+      - name: Verify campaign reservation and recipient permission gates
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/outreach-reservations.sql
+      - name: Verify final dispatch rechecks
+        run: node tests/sql/render-outreach-dispatch.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+      - name: Verify concurrent campaign limits
+        run: bash tests/sql/concurrency-outreach.sh
+      - name: Verify invitation attribution and global opt-out
+        run: node tests/sql/render-outreach-attribution.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
       - name: Verify directory interest and outreach isolation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/listing-interest.sql
       - name: Verify automated business claim proof

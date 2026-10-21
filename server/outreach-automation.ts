@@ -1,12 +1,10 @@
 import crypto from "crypto";
 import { neon } from "@neondatabase/serverless";
-import { sendEmail } from "@/server/mail-client";
+import { deliverClaimInvitation } from "@/server/outreach-campaign-send";
+import { claimInvitationUrl, unsubscribeInvitationUrl } from "@/server/outreach-attribution";
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
-import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 
-const FROM = "VakayGo <hello@vakaygo.com>";
-const REPLY_TO = "support@vakaygo.com";
 
 const BLOCKED_EMAIL_DOMAINS = new Set([
   "example.com",
@@ -340,237 +338,99 @@ export async function enrichListingContactEmail(listingId: string): Promise<{
   return { email: bestEmail, enriched: true, source: "website" };
 }
 
+/** All callers, including admins and traveler-interest handlers, share the same delivery gates. */
 export async function sendBusinessInterestOutreachEmail(
   listingId: string,
-  options?: {
+  // Kept for existing callers only. No legacy option can bypass campaign policy,
+  // replace a recipient, trigger scraping or force a second invitation.
+  _options?: {
     force?: boolean;
     bypassQuietHours?: boolean;
     triggeredBy?: "traveler_interest" | "admin" | "cron";
     recipientOverride?: string;
     markStatusContacted?: boolean;
   }
-): Promise<{
-  sent: boolean;
-  email?: string;
-  reason?: string;
-  timeZone?: string;
-  localTime?: string;
-}> {
+): Promise<{ sent: boolean; email?: string; reason?: string; attemptId?: string }> {
   if (!isListingId(listingId) || !process.env.DATABASE_URL) {
     return { sent: false, reason: "invalid_listing" };
   }
 
   const db = neon(process.env.DATABASE_URL);
   const [row] = await db.query(
-    `SELECT l.id, l.title, l.slug, l.status AS "listingStatus",
-            l.type_data->>'email' AS email,
-            l.type_data->>'website' AS website,
-            i.slug AS "islandSlug", i.name AS "islandName", i.country AS "islandCountry", i.is_active AS "islandActive",
-            o.status AS "outreachStatus", o.notes AS "outreachNotes", o.contacted_at AS "contactedAt",
-            (coalesce(d.interested_customers, 0) + coalesce(bk.booking_count, 0))::int AS "interestedCustomers",
+    `SELECT l.id, l.title, l.status AS "listingStatus", l.type_data->>'email' AS email,
+            i.slug AS "islandSlug", i.name AS "islandName", i.country AS "islandCountry",
+            i.is_active AS "islandActive", o.status AS "outreachStatus", o.contacted_at AS "contactedAt",
             vakaygo_listing_claim_verified(l.id) AS "claimVerified"
-     FROM listings l
-     JOIN islands i ON i.id = l.island_id
-     LEFT JOIN business_outreach o ON o.listing_id = l.id
-     LEFT JOIN LATERAL (
-       SELECT count(*)::int AS interested_customers
-       FROM listing_interest li
-       JOIN users u ON u.id = li.user_id
-       WHERE li.listing_id = l.id
-         AND li.active = true
-         AND u.email_verified = true
-         AND u.role <> 'admin'
-         AND u.id <> l.operator_id
-     ) d ON true
-     LEFT JOIN LATERAL (
-       SELECT count(*)::int AS booking_count
-       FROM bookings b
-       WHERE b.listing_id = l.id
-     ) bk ON true
-     WHERE l.id = $1
-     LIMIT 1`,
+       FROM listings l
+       JOIN islands i ON i.id=l.island_id
+       LEFT JOIN business_outreach o ON o.listing_id=l.id
+      WHERE l.id=$1 LIMIT 1`,
     [listingId]
   );
-
-  if (!row || row.listingStatus !== "active" || !row.islandActive) {
+  if (!row || row.listingStatus !== "active" || row.islandActive !== true) {
     return { sent: false, reason: "listing_inactive" };
   }
-  if (row.outreachStatus === "do_not_contact") {
-    return { sent: false, reason: "suppressed" };
+  if (row.claimVerified !== false) return { sent: false, reason: "listing_already_claimed" };
+  if (row.outreachStatus === "do_not_contact") return { sent: false, reason: "suppressed" };
+  if (row.contactedAt) return { sent: false, reason: "already_contacted" };
+  if (!isValidBusinessEmail(row.email)) return { sent: false, reason: "no_email_on_file" };
+
+  // Existing contact data is evidence, not permission. The delivery helper
+  // rechecks recipient consent, suppression, caps, local hours and transport
+  // configuration, and atomically reserves the single durable attempt.
+  const recipient = row.email.trim().toLowerCase();
+  if (_options?.recipientOverride && _options.recipientOverride.trim().toLowerCase() !== recipient) {
+    return { sent: false, reason: "recipient_override_not_supported" };
   }
-  if (!options?.force && options?.triggeredBy !== "cron" && row.interestedCustomers < 1) {
-    return { sent: false, reason: "no_active_interest" };
-  }
-  // Never auto-email an unclaimed business more than once unless explicitly forced by an admin
-  if (!options?.force && row.contactedAt) {
-    return { sent: false, reason: "already_contacted" };
-  }
-
-  // Enforce strict global hourly (max 4/hr) and daily (max 18/24h) outreach caps to protect domain reputation
-  if (!options?.force) {
-    const [rateRow] = await db.query(
-      `SELECT
-         count(*) FILTER (WHERE contacted_at > now() - interval '1 hour')::int AS last_hour,
-         count(*) FILTER (WHERE contacted_at > now() - interval '24 hours')::int AS last_day
-       FROM business_outreach
-       WHERE contacted_at IS NOT NULL`
-    );
-    if ((rateRow?.last_hour ?? 0) >= 4) {
-      return { sent: false, reason: "hourly_outreach_cap_reached" };
-    }
-    if ((rateRow?.last_day ?? 0) >= 18) {
-      return { sent: false, reason: "daily_outreach_cap_reached" };
-    }
-  }
-
-  let targetEmail: string | null = null;
-  if (options?.recipientOverride && isValidBusinessEmail(options.recipientOverride)) {
-    targetEmail = options.recipientOverride.trim().toLowerCase();
-    await db.query(
-      `UPDATE listings
-       SET type_data = jsonb_set(coalesce(type_data::jsonb, '{}'::jsonb), '{email}', to_jsonb($2::text), true)::json,
-           updated_at = now()
-       WHERE id = $1`,
-      [listingId, targetEmail]
-    );
-  } else if (isValidBusinessEmail(row.email)) {
-    targetEmail = row.email.trim().toLowerCase();
-  } else {
-    const enriched = await enrichListingContactEmail(listingId);
-    targetEmail = enriched.email;
-  }
-
-  if (!targetEmail) {
-    return { sent: false, reason: "no_email_on_file" };
-  }
-
-  // Enforce recipient local timezone business-hours rule (08:30–19:30 local time)
-  if (!options?.bypassQuietHours) {
-    const windowCheck = checkRecipientSendingWindow({
-      islandSlug: row.islandSlug,
-      country: row.islandCountry,
-      email: targetEmail,
-    });
-    if (!windowCheck.allowed) {
-      return {
-        sent: false,
-        email: targetEmail,
-        reason: `outside_local_business_hours (${windowCheck.localTimeFormatted} in ${windowCheck.timeZone}; allowed ${windowCheck.allowedWindow})`,
-        timeZone: windowCheck.timeZone,
-        localTime: windowCheck.localTimeFormatted,
-      };
-    }
-  }
-
-  if (!process.env.RESEND_API_KEY) {
-    return { sent: false, email: targetEmail, reason: "mail_unconfigured" };
-  }
-
-  const listingUrl = `https://vakaygo.com/${row.islandSlug}/${row.slug}`;
-  const claimUrl = row.claimVerified
-    ? "https://vakaygo.com/operator"
-    : `https://vakaygo.com/auth/signup?role=operator&claim=${row.id}`;
-  const unsubToken = createOutreachUnsubscribeToken(row.id);
-  const unsubUrl = `https://vakaygo.com/api/outreach/unsubscribe?listingId=${encodeURIComponent(row.id)}&token=${unsubToken}`;
-
-  const rawCount = Math.max(0, Number(row.interestedCustomers) || 0);
-  const hasInterest = rawCount >= 1;
-  const countLabel = rawCount === 1 ? "1 verified traveler has" : `${rawCount} verified travelers have`;
-  const eTitle = escapeHtml(row.title);
-  const eIsland = escapeHtml(row.islandName);
-
-  const subject = hasInterest
-    ? `Traveler inquiry for ${row.title} (${row.islandName})`
-    : `Verify your ${row.title} listing on VakayGo (${row.islandName})`;
-
-  const introText = hasInterest
-    ? `${countLabel} expressed interest in your listing in ${row.islandName} on VakayGo (${listingUrl}).`
-    : `Your business is featured in our ${row.islandName} travel guide on VakayGo (${listingUrl}), where travelers discover and book verified local experiences, stays, dining, and charters.`;
-
-  const introHtml = hasInterest
-    ? `<p>${countLabel} expressed interest in your business listing in <strong>${eIsland}</strong> on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>).</p>`
-    : `<p>Your business is featured in our <strong>${eIsland}</strong> travel guide on VakayGo (<a href="${listingUrl}" style="color:#0D9488">${listingUrl}</a>), where travelers discover and book verified local experiences, stays, dining, and charters.</p>`;
-
-  const text = [
-    `Hello ${row.title} team,`,
-    ``,
-    introText,
-    ``,
-    `Claiming your listing is 100% free and lets you:`,
-    `- Update your photos, pricing, WhatsApp/phone contact, and availability`,
-    `- Respond directly to traveler inquiries and booking requests`,
-    `- Keep 85%-90% on direct bookings with a 0% guest booking fee (saving up to 50% compared to legacy 20%-30% OTA commissions)`,
-    `- Receive payouts in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire`,
-    ``,
-    `Verify ownership of your page in 60 seconds here:`,
-    `${claimUrl}`,
-    ``,
-    `If you have any questions or would like us to update your business information for you, simply reply to this email.`,
-    ``,
-    `Best regards,`,
-    `VakayGo Partner Support`,
-    `support@vakaygo.com`,
-    ``,
-    `---`,
-    `To opt out of future listing notifications for ${row.title}, visit: ${unsubUrl}`,
-  ].join("\n");
-
-  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;color:#1C2333;font-size:15px;line-height:1.6">
+  return deliverClaimInvitation({
+    listingId,
+    recipient,
+    islandSlug: String(row.islandSlug || ""),
+    islandCountry: String(row.islandCountry || ""),
+    buildMessage: (attemptId: string) => {
+      const claimUrl = claimInvitationUrl(attemptId, listingId);
+      const unsubscribeUrl = unsubscribeInvitationUrl(attemptId);
+      const postalAddress = process.env.OUTREACH_SENDER_POSTAL_ADDRESS?.trim();
+      if (!postalAddress || postalAddress.length < 8) throw new Error("Sender postal address is required");
+      const title = String(row.title || "").replace(/[\r\n]+/g, " ").trim().slice(0, 160);
+      const island = String(row.islandName || "").replace(/[\r\n]+/g, " ").trim().slice(0, 100);
+      if (!title || !island) throw new Error("Listing name and destination are required");
+      const text = [
+        `Hello ${title} team,`,
+        "",
+        `We are inviting your team to review the existing ${title} listing in ${island} on VakayGo.`,
+        "If you represent this business, you can start a free listing claim and complete ownership verification here:",
+        claimUrl,
+        "",
+        "A listing claim is free. After ownership verification, you can review the business profile and how traveler inquiries are handled.",
+        "An inquiry is not a reservation. Accepting bookings requires separate supplier onboarding and activation; bookings and checkout must take place through VakayGo.",
+        "We are not confirming that booking or payment is enabled for your listing.",
+        "",
+        "If the listing details are incorrect or you need help with the claim, reply to this email.",
+        "",
+        "The VakayGo Team",
+        "support@vakaygo.com",
+        "",
+        "VakayGo",
+        postalAddress,
+        "",
+        `To stop these listing invitations, unsubscribe here: ${unsubscribeUrl}`,
+      ].join("\n");
+      const eTitle = escapeHtml(title);
+      const eIsland = escapeHtml(island);
+      const html = `<div style="font-family:Arial,sans-serif;max-width:560px;line-height:1.6">
   <p>Hello <strong>${eTitle}</strong> team,</p>
-  ${introHtml}
-  <p>Claiming your VakayGo listing is <strong>100% free</strong> and gives you full control:</p>
-  <ul style="padding-left:20px;margin:12px 0">
-    <li><strong>0% Guest Booking Fee:</strong> Travelers pay zero platform markup.</li>
-    <li><strong>Keep 85%&ndash;90% of Every Booking:</strong> Save up to 50% vs. traditional 20%&ndash;30% OTA commissions.</li>
-    <li><strong>Fast Multi-Currency Payouts:</strong> Get paid in USD, EUR, GBP, CAD, MXN, COP, CRC, BBD, XCD, or DOP via Wise, PayPal, or local/international bank wire.</li>
-    <li><strong>Direct Inquiries:</strong> Update your photos, rates, and respond directly to travelers.</li>
-  </ul>
-  <p>Verify ownership of your listing in 60 seconds here:</p>
-  <p><a href="${claimUrl}" style="color:#0D9488;font-weight:600">${claimUrl}</a></p>
-  <p>If you have any questions or would like our team to update any information on your page, just reply to this email.</p>
-  <p>Best regards,<br>VakayGo Partner Support</p>
-  <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0">
-  <p style="font-size:12px;color:#6B7280">If you prefer not to receive partner or inquiry notifications for ${eTitle}, <a href="${unsubUrl}" style="color:#6B7280">unsubscribe here</a> or reply &ldquo;unsubscribe&rdquo;.</p>
+  <p>We are inviting your team to review the existing ${eTitle} listing in ${eIsland} on VakayGo.</p>
+  <p>If you represent this business, you can <a href="${escapeHtml(claimUrl)}">start a free listing claim</a> and complete ownership verification.</p>
+  <p>A listing claim is free. After ownership verification, you can review the business profile and how traveler inquiries are handled.</p>
+  <p>An inquiry is not a reservation. Accepting bookings requires separate supplier onboarding and activation; bookings and checkout must take place through VakayGo. We are not confirming that booking or payment is enabled for your listing.</p>
+  <p>If the listing details are incorrect or you need help with the claim, reply to this email.</p>
+  <p>The VakayGo Team<br>support@vakaygo.com</p>
+  <hr>
+  <p>VakayGo<br>${escapeHtml(postalAddress).replace(/\r?\n/g, "<br>")}</p>
+  <p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from these listing invitations</a></p>
 </div>`;
-
-  await sendEmail({
-    from: FROM,
-    to: targetEmail,
-    replyTo: REPLY_TO,
-    subject,
-    text,
-    html,
-    headers: {
-      "List-Unsubscribe": `<${unsubUrl}>, <mailto:support@vakaygo.com?subject=unsubscribe>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      return { subject: `Review your ${title} listing on VakayGo (${island})`, text, html };
     },
   });
-
-  const stamp = new Date().toISOString().slice(0, 10);
-  const triggerLabel = options?.triggeredBy || "auto";
-  const noteAddition = `[${stamp}] Claim invitation emailed to ${targetEmail} (${triggerLabel}, ${rawCount} interested).`;
-  const nextStatus = options?.markStatusContacted ? "contacted" : row.outreachStatus || "new";
-
-  await db.query(
-    `INSERT INTO business_outreach (listing_id, status, notes, contacted_at, updated_at)
-     VALUES ($1, $2, $3, now(), now())
-     ON CONFLICT (listing_id) DO UPDATE
-     SET status = CASE
-           WHEN business_outreach.status = 'do_not_contact' THEN 'do_not_contact'
-           WHEN $4::boolean = true THEN 'contacted'
-           ELSE business_outreach.status
-         END,
-         contacted_at = now(),
-         updated_at = now(),
-         notes = left(
-           CASE
-             WHEN business_outreach.notes = '' THEN $3
-             ELSE business_outreach.notes || E'\\n' || $3
-           END,
-           4000
-         )`,
-    [listingId, nextStatus, noteAddition, Boolean(options?.markStatusContacted)]
-  );
-
-  return { sent: true, email: targetEmail };
 }
