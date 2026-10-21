@@ -100,11 +100,31 @@ describe("dedicated claim invitation drip cron", () => {
     }
     const candidateSql = mocks.query.mock.calls[1][0];
     expect(candidateSql).toContain("outreach_recipient_consents");
-    expect(candidateSql).toContain("permission_kind='explicit_opt_in'");
+    expect(candidateSql).toContain("vakaygo_outreach_permission_allowed(c.provider,c.permission_kind)");
     expect(candidateSql).toContain("revoked_at IS NULL");
     expect(candidateSql).toContain("outreach_email_suppressions");
     expect(candidateSql).toContain("outreach_email_attempts");
     expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("dispatches one reviewed Sendcorex candidate through the shared sender", async () => {
+    mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), provider: "sendcorex" }])
+      .mockResolvedValue([{ id: id1, island_slug: "grenada" }, { id: id2, island_slug: "barbados" }]);
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ attempted: 1, sent: 1, listingId: id1 });
+    expect(mocks.query.mock.calls[1][1]).toEqual(["sendcorex", "listing-claims-v2"]);
+    expect(mocks.send).toHaveBeenCalledExactlyOnceWith(id1, { triggeredBy: "cron" });
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps Sendcorex paused even when its telemetry passes", async () => {
+    mocks.query.mockReset().mockResolvedValue([{ ...control(), provider: "sendcorex", enabled: false }]);
+    const response = await GET(request({ query: "?force=1" }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ state: "paused", attempted: 0, sent: 0 });
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+    expect(mocks.send).not.toHaveBeenCalled();
   });
 
   it("does not try another recipient when the delivery helper refuses the selected candidate", async () => {

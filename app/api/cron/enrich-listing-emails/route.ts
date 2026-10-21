@@ -37,12 +37,12 @@ export async function GET(request: NextRequest) {
     const checkedAt = new Date(control.health_checked_at).getTime();
     if (!telemetry.ready || control.health_ready !== true || !Number.isFinite(checkedAt) ||
         checkedAt < now.getTime() - OUTREACH_HEALTH_MAX_AGE_MS || checkedAt > now.getTime() + 60_000 ||
-        control.provider !== "resend") {
+        !["resend", "sendcorex"].includes(control.provider)) {
       return NextResponse.json({ error: "Claim invitation campaign is not ready", attempted: 0 }, { status: 503 });
     }
     if (control.enabled !== true) return NextResponse.json({ ok: true, state: "paused", attempted: 0, sent: 0 });
 
-    // Read existing, consented contact data only. Never scrape, seed listings,
+    // Read existing contact data with reviewed provider-bound permission only. Never scrape, seed listings,
     // create outreach rows, alter claims/onboarding or touch booking controls.
     const candidates = await db.query(
       `SELECT DISTINCT l.id, i.slug AS island_slug
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
          JOIN islands i ON i.id=l.island_id AND i.is_active=true
          JOIN outreach_recipient_consents c ON c.listing_id=l.id
            AND c.recipient_email=lower(btrim(l.type_data->>'email'))
-           AND c.provider=$1 AND c.permission_kind='explicit_opt_in'
+           AND c.provider=$1 AND vakaygo_outreach_permission_allowed(c.provider,c.permission_kind)
            AND c.revoked_at IS NULL AND c.granted_at<=now()
         WHERE l.status='active' AND NOT vakaygo_listing_claim_verified(l.id)
           AND coalesce(l.type_data->>'email','')<>''

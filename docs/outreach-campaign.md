@@ -55,8 +55,8 @@ country's legal requirements. Resend still requires explicit opt-in.
 
 Configure server-only `SENDCOREX_API_KEY`, `SENDCOREX_WEBHOOK_SECRET` (at least
 32 characters) and `SENDCOREX_WEBHOOK_ID`. The key needs the six evaluation
-scopes plus **View Webhooks & Deliveries** for readiness inspection. The existing
-six-scope evaluation key has not been expanded or installed in production.
+scopes plus **View Webhooks & Deliveries** for readiness inspection. Store the key
+only in server-side configuration and the credential vault.
 Register `https://vakaygo.com/api/webhooks/sendcorex` for all events, then verify
 a real signed event against the deployed receiver before enabling the campaign.
 The receiver checks the HMAC-SHA256 of the original body, bounds the payload,
@@ -85,6 +85,9 @@ The send adapter never retries an uncertain result or switches to Resend/SMTP.
 It records one returned ID only after confirming its exact recipient, and
 includes VakayGo's own visible opt-out and RFC8058 one-click headers. A 5xx,
 network failure or malformed success pauses the campaign for reconciliation.
+The scheduled sender uses the same provider-specific permission helper as manual
+reservation and final dispatch: reviewed B2B records are supported for Sendcorex,
+while Resend candidates still require explicit opt-in.
 Migration 0014 also pauses existing campaign controls, preserves stages and
 permissions, and adds no prospect permissions or send jobs.
 
