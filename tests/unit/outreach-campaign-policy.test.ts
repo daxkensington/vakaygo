@@ -14,6 +14,7 @@ describe("measured campaign growth", () => {
   });
   it("does not transfer business-outreach permission to an opt-in provider", () => {
     expect(providerAllowsPermission("resend", "business_outreach_permission")).toBe(false);
+    expect(providerAllowsPermission("sendcorex", "business_outreach_permission")).toBe(true);
     expect(providerAllowsPermission("mailforge", "business_outreach_permission")).toBe(true);
     expect(providerAllowsPermission("unknown", "explicit_opt_in")).toBe(false);
   });

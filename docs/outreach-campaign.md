@@ -8,7 +8,7 @@ remain on VakayGo. Account and booking notification senders are separate.
 ## Release and activation
 
 1. Review and apply migrations `0012_outreach_delivery_tracking` and
-   `0013_outreach_campaign_controls` before deploying this source. The singleton
+   `0013_outreach_campaign_controls` and `0014_sendcorex_outreach` before deploying this source. The singleton
    control starts paused. Check the actual serving database and migration hashes.
 2. Reconcile historical invitation records and provider suppressions before any
    enablement or provider migration. This new ledger does not backfill the old
@@ -42,6 +42,56 @@ adapter for either provider and cannot enable them. Do not substitute their
 credentials into the Resend adapter. Verify branded sender/DNS coexistence,
 purchase terms, message identity, delivery evidence and reply routing before
 implementing another adapter. Preserve existing inbound mail and website DNS.
+
+### Sendcorex managed B2B transport
+
+`OUTREACH_PROVIDER=sendcorex` selects a separate HTTPS marketing transport.
+Sendcorex's published AUP permits unsolicited B2B, including selected public
+business sources, subject to applicable law and prompt opt-out handling:
+https://sendcorex.com/terms-condition#opt_aup . Record the relevant business,
+source, recipient country, lawful basis and dated policy reference using
+`business_outreach_permission`. A public address does not establish every
+country's legal requirements. Resend still requires explicit opt-in.
+
+Configure server-only `SENDCOREX_API_KEY`, `SENDCOREX_WEBHOOK_SECRET` (at least
+32 characters) and `SENDCOREX_WEBHOOK_ID`. The key needs the six evaluation
+scopes plus **View Webhooks & Deliveries** for readiness inspection. The existing
+six-scope evaluation key has not been expanded or installed in production.
+Register `https://vakaygo.com/api/webhooks/sendcorex` for all events, then verify
+a real signed event against the deployed receiver before enabling the campaign.
+The receiver checks the HMAC-SHA256 of the original body, bounds the payload,
+deduplicates events and binds their recipient hash and provider ID to an attempt.
+Do not reuse a Resend signing secret or log any API/signing secret.
+
+Readiness requires a verified 2048-bit sender domain and an exact, active,
+all-event webhook without failed deliveries. Current vendor docs use
+`https://g.sendcorex.com/v1/domain`, `/v1/logs`, `/v1/feedback` and the older
+`https://graph.sendcorex.com/v3.0/webhooks` metadata endpoint. The latter must
+pass live acceptance; an unavailable/deprecated endpoint fails closed. Never
+guess an alternative or treat an HTTP-200 command error as success.
+
+Delivery logs reconcile accepted IDs and recipients. The feedback feed starts
+at its 90-day retention boundary and pages through hard/soft bounces, blocks,
+drops and complaints. Its database cursor advances with a compare-and-swap
+only after all events are durable; interruptions replay safely. Five pages
+per refresh bound work and hold sending while a backlog remains. Soft failures
+and message policy blocks hold review without globally blacklisting a valid
+address. Hard bounces, complaints and unsubscribes remain recipient-wide blocks
+across provider changes. Historical suppressions still require reconciliation.
+
+The send adapter never retries an uncertain result or switches to Resend/SMTP.
+It records one returned ID only after confirming its exact recipient, and
+includes VakayGo's own visible opt-out and RFC8058 one-click headers. A 5xx,
+network failure or malformed success pauses the campaign for reconciliation.
+Migration 0014 also pauses existing campaign controls, preserves stages and
+permissions, and adds no prospect permissions or send jobs.
+
+The owned-inbox test on 2026-10-21 reached Gmail Inbox with SPF, exact-domain
+DKIM and strict DMARC passing. Its provider ID was
+`12c5aa7d-d1f7-430f-ba47-ad98e5d3ee6c`. This proves that test's authentication
+and placement; it does not validate live application callbacks, production
+configuration, historical suppressions or a campaign audience. Keep sending
+paused until those checks and a reviewed release are complete.
 
 ## Scheduling and holds
 

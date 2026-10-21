@@ -66,9 +66,15 @@ export function getOutreachPrerequisites() {
   const provider = process.env.OUTREACH_PROVIDER || "resend";
   // Alternate providers require a separately validated transport and event
   // adapter. An arbitrary SMTP hostname is never a policy bypass.
-  if (provider !== "resend") reasons.push("provider_adapter_not_configured");
-  if (!process.env.RESEND_API_KEY) reasons.push("mail_unconfigured");
-  if (!process.env.RESEND_WEBHOOK_SECRET) reasons.push("webhook_secret_missing");
+  if (!["resend", "sendcorex"].includes(provider)) reasons.push("provider_adapter_not_configured");
+  if (provider === "sendcorex") {
+    if (!process.env.SENDCOREX_API_KEY) reasons.push("mail_unconfigured");
+    if ((process.env.SENDCOREX_WEBHOOK_SECRET?.length || 0) < 32) reasons.push("webhook_secret_missing");
+    if (!process.env.SENDCOREX_WEBHOOK_ID) reasons.push("webhook_id_missing");
+  } else {
+    if (!process.env.RESEND_API_KEY) reasons.push("mail_unconfigured");
+    if (!process.env.RESEND_WEBHOOK_SECRET) reasons.push("webhook_secret_missing");
+  }
   if ((process.env.AUTH_SECRET?.length || 0) < 32) reasons.push("signing_secret_missing");
   if ((process.env.OUTREACH_SENDER_POSTAL_ADDRESS?.trim().length || 0) < 8) reasons.push("sender_postal_address_missing");
   const from = process.env.OUTREACH_FROM_ADDRESS || "hello@vakaygo.com";
@@ -77,6 +83,6 @@ export function getOutreachPrerequisites() {
 }
 
 export function providerAllowsPermission(provider: string, kind: string): boolean {
-  if (kind === "explicit_opt_in") return ["resend", "mailforge", "infraforge"].includes(provider);
-  return kind === "business_outreach_permission" && ["mailforge", "infraforge"].includes(provider);
+  if (kind === "explicit_opt_in") return ["resend", "sendcorex", "mailforge", "infraforge"].includes(provider);
+  return kind === "business_outreach_permission" && ["sendcorex", "mailforge", "infraforge"].includes(provider);
 }

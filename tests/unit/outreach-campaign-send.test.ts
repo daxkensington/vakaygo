@@ -51,6 +51,26 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("claim campaign dispatch", () => {
+  it("uses the Sendcorex marketing adapter while preserving the shared reservation and dispatch gate", async () => {
+    mocks.prerequisites.mockReturnValue({ ...ready(), provider: "sendcorex" });
+    vi.stubEnv("SENDCOREX_API_KEY", "fixture-sendcorex-no-network");
+    mocks.unsubscribe.mockReturnValue("https://vakaygo.com/api/outreach/unsubscribe?token=fixture");
+    mocks.fetch.mockResolvedValueOnce(response({ success: true, code: "EMAIL_QUEUED_SUCCESS", id: "sendcorex-1", ids: [{ id: "sendcorex-1", recipient: "business@audit.invalid" }], recipients: 1 }));
+    expect((await deliverClaimInvitation(invitation())).sent).toBe(true);
+    expect(mocks.fetch.mock.calls[0][0]).toBe("https://mail.sendcorex.com/v3.0/send");
+    expect(mocks.accepted).toHaveBeenCalledWith(attemptId, "sendcorex-1", "sendcorex");
+    expect(mocks.query.mock.calls.some(([text]) => text.startsWith("SELECT * FROM vakaygo_reserve"))).toBe(true);
+  });
+  it("holds and pauses Sendcorex after a gateway failure without retry or Resend fallback", async () => {
+    mocks.prerequisites.mockReturnValue({ ...ready(), provider: "sendcorex" });
+    vi.stubEnv("SENDCOREX_API_KEY", "fixture-sendcorex-no-network");
+    mocks.unsubscribe.mockReturnValue("https://vakaygo.com/api/outreach/unsubscribe?token=fixture");
+    mocks.fetch.mockResolvedValueOnce(response({}, 502));
+    expect((await deliverClaimInvitation(invitation())).sent).toBe(false);
+    expect(mocks.failure).toHaveBeenCalledWith(attemptId, "sendcorex_request_rejected", { uncertain: true });
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.query.mock.calls.some(([text]) => text.includes("WHERE id=true AND provider='sendcorex'"))).toBe(true);
+  });
   it("does not reserve or contact a provider when prerequisites fail", async () => {
     mocks.prerequisites.mockReturnValue({ ...ready(), ready: false, reasons: ["recipient_permission_missing"] });
     const input = invitation();

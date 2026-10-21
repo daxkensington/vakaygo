@@ -6,7 +6,7 @@ import { getMailClient } from "@/server/mail-client";
 const EMAIL_EVENTS = new Set([
   "email.sent", "email.scheduled", "email.delivered", "email.delivery_delayed",
   "email.bounced", "email.complained", "email.suppressed", "email.failed",
-  "email.opened", "email.clicked",
+  "email.opened", "email.clicked", "email.unsubscribed",
 ]);
 const OPAQUE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const EVENT_ID = /^[A-Za-z0-9_.:-]{1,256}$/;

@@ -151,6 +151,8 @@ jobs:
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/account-bootstrap.sql
       - name: Verify campaign delivery evidence and irreversible suppression
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/outreach-tracking.sql
+      - name: Verify Sendcorex B2B reservations and global unsubscribe
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/sendcorex-outreach.sql
       - name: Verify campaign administration and health gates
         run: node tests/sql/render-outreach-controls.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
       - name: Verify campaign reservation and recipient permission gates

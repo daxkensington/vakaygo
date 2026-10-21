@@ -54,7 +54,7 @@ export const outreachCampaignControl = pgTable("outreach_campaign_control", {
   healthReason: text("health_reason").notNull().default("not_checked"),
 }, t => [check("outreach_campaign_singleton", sql`${t.id}=true`),
   check("outreach_campaign_stage", sql`${t.stage} BETWEEN 0 AND 4`),
-  check("outreach_campaign_provider", sql`${t.provider} IN ('resend','mailforge','infraforge')`)]);
+  check("outreach_campaign_provider", sql`${t.provider} IN ('resend','sendcorex','mailforge','infraforge')`)]);
 
 export const outreachRecipientConsents = pgTable("outreach_recipient_consents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1262,3 +1262,9 @@ export const operatorPayoutProfiles = pgTable("operator_payout_profiles", {
   check("operator_payout_profiles_status_check", sql.raw("status in ('pending_review','verified','rejected')")),
 ]);
 
+
+export const outreachProviderCursors = pgTable("outreach_provider_cursors", {
+  provider: varchar("provider", { length: 32 }).primaryKey(),
+  cursor: text("cursor").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
