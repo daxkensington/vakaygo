@@ -53,7 +53,7 @@ export class SendcorexClient {
     try { url = new URL(input.unsubscribe); } catch { throw new SendcorexError("sendcorex_invalid_unsubscribe", false); }
     if (!to || !/^[a-z0-9._%+-]+@vakaygo\.com$/i.test(input.from) || url.protocol !== "https:" || url.hostname !== "vakaygo.com" || url.username || url.password || /[\r\n<>]/.test(input.unsubscribe)) throw new SendcorexError("sendcorex_invalid_envelope", false);
     const result = await this.request("https://mail.sendcorex.com/v3.0/send", {
-      from: input.from, to, replyTo: "support@vakaygo.com", senderName: "VakayGo", subject: input.subject, body: input.html, transactional: false,
+      from: input.from, to, replyTo: "support@vakaygo.com", senderName: "Vakaygo", subject: input.subject, body: input.html, transactional: false,
       headers: { "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
     });
     if (result.success !== true || result.code !== "EMAIL_QUEUED_SUCCESS" || typeof result.id !== "string" || !EMAIL_ID.test(result.id) ||

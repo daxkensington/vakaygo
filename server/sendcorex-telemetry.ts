@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { createHash } from "node:crypto";
 import { env } from "@/lib/env";
 import { OUTREACH_CAMPAIGN_KEY } from "@/lib/outreach-campaign-policy";
 import { recordOutreachProviderEvent } from "@/server/outreach-tracking";
@@ -8,6 +9,10 @@ export async function refreshSendcorexTelemetry(from: string): Promise<void> {
   const sql = neon(env.DATABASE_URL);
   const client = new SendcorexClient(env.SENDCOREX_API_KEY || "", AbortSignal.timeout(20_000));
   await client.verifySetup(from, env.SENDCOREX_WEBHOOK_ID || "");
+  const proofs = await sql.query(`SELECT provider FROM outreach_webhook_proofs
+    WHERE provider='sendcorex' AND webhook_id=$1 AND secret_hash=$2`,
+  [env.SENDCOREX_WEBHOOK_ID, createHash("sha256").update(env.SENDCOREX_WEBHOOK_SECRET || "").digest("hex")]);
+  if (proofs.length !== 1) throw new SendcorexError("sendcorex_live_webhook_unverified");
   const pending = await sql.query(`SELECT id,recipient,provider_email_id FROM outreach_email_attempts
     WHERE provider='sendcorex' AND campaign_key=$1 AND provider_email_id IS NOT NULL AND accepted_at>now()-interval '7 days'
     ORDER BY last_polled_at ASC NULLS FIRST,id LIMIT 5`, [OUTREACH_CAMPAIGN_KEY]);

@@ -22,7 +22,7 @@ describe("Sendcorex transport", () => {
     expect(options.redirect).toBe("error");
     expect(options.headers.Authorization).toBe("fixture-secret");
     const body = JSON.parse(options.body);
-    expect(body).toMatchObject({ to: recipient, from: "hello@vakaygo.com", senderName: "VakayGo", replyTo: "support@vakaygo.com", transactional: false });
+    expect(body).toMatchObject({ to: recipient, from: "hello@vakaygo.com", senderName: "Vakaygo", replyTo: "support@vakaygo.com", transactional: false });
     expect(body.headers).toEqual({ "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" });
     expect(body.cc).toBeUndefined(); expect(body.bcc).toBeUndefined();
   });

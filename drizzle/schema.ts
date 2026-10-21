@@ -1268,3 +1268,10 @@ export const outreachProviderCursors = pgTable("outreach_provider_cursors", {
   cursor: text("cursor").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const outreachWebhookProofs = pgTable("outreach_webhook_proofs", {
+  provider: varchar("provider", { length: 32 }).primaryKey(),
+  webhookId: varchar("webhook_id", { length: 128 }).notNull(),
+  secretHash: varchar("secret_hash", { length: 64 }).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -64,7 +64,9 @@ deduplicates events and binds their recipient hash and provider ID to an attempt
 Do not reuse a Resend signing secret or log any API/signing secret.
 
 Readiness requires a verified 2048-bit sender domain and an exact, active,
-all-event webhook without failed deliveries. Current vendor docs use
+all-event webhook without failed deliveries, plus a durable signed-callback
+proof for the configured webhook ID and signing-key hash. A configured secret
+alone cannot enable sending. Current vendor docs use
 `https://g.sendcorex.com/v1/domain`, `/v1/logs`, `/v1/feedback` and the older
 `https://graph.sendcorex.com/v3.0/webhooks` metadata endpoint. The latter must
 pass live acceptance; an unavailable/deprecated endpoint fails closed. Never

@@ -20,6 +20,7 @@ beforeEach(() => {
   mocks.command.mockResolvedValue({ events: [], next_cursor: "new", has_more: false });
   mocks.event.mockResolvedValue({ recorded: true, applied: 1 });
   mocks.query.mockImplementation((text: string) => {
+    if (text.startsWith("SELECT provider FROM outreach_webhook_proofs")) return [{ provider: "sendcorex" }];
     if (text.startsWith("SELECT id,recipient")) return [{ id, recipient, provider_email_id: id }];
     if (text.startsWith("SELECT cursor")) return [{ cursor: "old" }];
     if (text.startsWith("UPDATE outreach_provider_cursors")) return [{ provider: "sendcorex" }];
@@ -55,7 +56,7 @@ describe("Sendcorex reconciliation", () => {
   it("holds repeated cursors and concurrent cursor changes", async () => {
     mocks.command.mockResolvedValueOnce({ events: [], next_cursor: "old", has_more: true });
     await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).rejects.toThrow("sendcorex_feedback_incomplete");
-    mocks.query.mockImplementation((text: string) => text.startsWith("SELECT cursor") ? [{ cursor: "old" }] : []);
+    mocks.query.mockImplementation((text: string) => text.startsWith("SELECT provider FROM outreach_webhook_proofs") ? [{ provider: "sendcorex" }] : text.startsWith("SELECT cursor") ? [{ cursor: "old" }] : []);
     mocks.logs.mockResolvedValue([]);
     await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).rejects.toThrow("sendcorex_feedback_poll_conflict");
   });
@@ -66,7 +67,7 @@ describe("Sendcorex reconciliation", () => {
     expect(mocks.query.mock.calls.some(([q]) => q.startsWith("UPDATE outreach_provider_cursors"))).toBe(false);
   });
   it("accepts the live empty-account null cursor without inventing or skipping a boundary", async () => {
-    mocks.query.mockImplementation(() => []);
+    mocks.query.mockImplementation((text: string) => text.startsWith("SELECT provider FROM outreach_webhook_proofs") ? [{ provider: "sendcorex" }] : []);
     mocks.logs.mockResolvedValue([]);
     mocks.command.mockResolvedValue({ events: [], next_cursor: null, has_more: false });
     await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).resolves.toBeUndefined();
@@ -79,6 +80,11 @@ describe("Sendcorex reconciliation", () => {
     await refreshSendcorexTelemetry("hello@vakaygo.com");
     expect(mocks.event.mock.calls.map(call => call[1].eventType)).toEqual(["email.bounced", "email.complained", "email.failed", "email.failed"]);
     expect(mocks.event.mock.calls.every(call => call[2] === "sendcorex" && call[3] === "provider_poll")).toBe(true);
+  });
+  it("holds sending until a real signed callback is recorded for the configured ID and secret", async () => {
+    mocks.query.mockImplementation(() => []);
+    await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).rejects.toThrow("sendcorex_live_webhook_unverified");
+    expect(mocks.logs).not.toHaveBeenCalled(); expect(mocks.command).not.toHaveBeenCalled();
   });
 });
 

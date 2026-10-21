@@ -6,6 +6,12 @@ ALTER TABLE outreach_recipient_consents ADD CONSTRAINT outreach_recipient_consen
 ALTER TABLE outreach_recipient_consents DROP CONSTRAINT outreach_recipient_consents_check;
 ALTER TABLE outreach_recipient_consents ADD CONSTRAINT outreach_recipient_policy_check CHECK(permission_kind='explicit_opt_in' OR (provider IN ('sendcorex','mailforge','infraforge') AND recipient_country IS NOT NULL AND recipient_country ~ '^[A-Z]{2}$' AND policy_reference IS NOT NULL AND length(btrim(policy_reference))>=CASE WHEN provider='sendcorex' THEN 20 ELSE 10 END));
 CREATE TABLE outreach_provider_cursors (provider varchar(32) PRIMARY KEY, cursor text NOT NULL CHECK(length(cursor) BETWEEN 1 AND 2048), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE outreach_webhook_proofs (
+ provider varchar(32) PRIMARY KEY,
+ webhook_id varchar(128) NOT NULL,
+ secret_hash varchar(64) NOT NULL CHECK(secret_hash ~ '^[a-f0-9]{64}$'),
+ verified_at timestamptz NOT NULL DEFAULT now()
+);
 --> statement-breakpoint
 CREATE FUNCTION vakaygo_outreach_permission_allowed(p_provider text,p_kind text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
  SELECT (p_provider IN ('resend','sendcorex') AND p_kind='explicit_opt_in') OR (p_provider='sendcorex' AND p_kind='business_outreach_permission')
@@ -19,8 +25,7 @@ BEGIN
  SELECT * INTO c FROM outreach_campaign_control WHERE id=true;
  IF NOT FOUND OR NOT c.enabled THEN RETURN QUERY SELECT NULL::uuid,'campaign_paused'::text; RETURN; END IF;
  IF p_campaign<>'listing-claims-v2' OR p_recipient<>lower(btrim(p_recipient)) OR length(p_recipient)>254 THEN RETURN QUERY SELECT NULL::uuid,'invalid_request'::text; RETURN; END IF;
- -- This release has only the Resend transport; recording an alternative policy
- -- does not silently enable an unconfigured provider.
+ -- Only implemented transports can reserve an attempt.
  IF c.provider NOT IN ('resend','sendcorex') THEN RETURN QUERY SELECT NULL::uuid,'provider_adapter_not_configured'::text; RETURN; END IF;
  IF NOT c.health_ready OR c.health_checked_at IS NULL OR c.health_checked_at<now()-interval '20 minutes' OR c.health_checked_at>now()+interval '1 minute' THEN RETURN QUERY SELECT NULL::uuid,'telemetry_unavailable'::text; RETURN; END IF;
  IF NOT EXISTS(SELECT 1 FROM listings l JOIN islands i ON i.id=l.island_id WHERE l.id=p_listing AND l.status='active' AND i.is_active=true AND lower(btrim(l.type_data->>'email'))=p_recipient AND NOT vakaygo_listing_claim_verified(l.id)) THEN RETURN QUERY SELECT NULL::uuid,'listing_not_eligible'::text; RETURN; END IF;
