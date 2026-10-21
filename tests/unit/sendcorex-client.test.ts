@@ -91,6 +91,9 @@ describe("Sendcorex delivery evidence", () => {
     expect(() => parseSendcorexLog({ id, to: "wrong@audit.invalid", status: "delivered" }, recipient)).toThrow();
     expect(() => parseSendcorexLog({ id, to: recipient, status: "queued" }, recipient)).toThrow();
   });
+  it.each(["bounced", "spam"])("holds a generic %s log without inferring a hard bounce or complaint", status => {
+    expect(parseSendcorexLog({ id, to: recipient, status }, recipient).eventType).toBe("email.failed");
+  });
   it("records unsubscribe and stable bounded event identity while stripping private content", () => {
     const event = parseSendcorexWebhook({ event: "unsubscribe", emailId: id, timestamp, data: { recipientEmail: recipient, private: "secret body" } })!;
     expect(event.eventType).toBe("email.unsubscribed"); expect(event.recipientHash).toBe(hash);

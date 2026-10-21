@@ -85,7 +85,9 @@ export function sendcorexEvidence(emailId: unknown, recipient: unknown, type: st
 
 export function parseSendcorexLog(log: Json, recipient: string, now = new Date()): OutreachProviderEvent {
   if (normalizeOutreachRecipient(log.to) !== recipient) throw new InvalidOutreachEvent();
-  const types: Record<string, string> = { delivered: "email.delivered", bounced: "email.bounced", spam: "email.failed", rate_limited: "email.failed" };
+  // A generic bounced log does not distinguish hard and soft bounces. Only
+  // explicit hard-bounce feedback establishes a recipient-wide bounce block.
+  const types: Record<string, string> = { delivered: "email.delivered", bounced: "email.failed", spam: "email.failed", rate_limited: "email.failed" };
   const type = types[String(log.status)];
   if (!type) throw new InvalidOutreachEvent();
   // Polling is an observation, not an invented historical delivery timestamp.
