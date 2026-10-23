@@ -24,17 +24,20 @@ export async function GET(request: Request) {
       const salesMessage = ["requested", "received", "request_confirmed"].includes(job.kind)
         || (job.kind === "confirmed" && !b.paid_at);
       const salesClosed = salesMessage && (process.env.BOOKINGS_ENABLED !== "true" || b.booking_eligible !== true);
-      const stale = salesClosed || (job.kind === "refunded" && (b.status !== "refunded" || refundFailed))
+      // Retired zero-price acceptance is not a paid platform booking. Never
+      // release its old off-platform confirmation, even after launch resumes.
+      const unconfirmedPayment = job.kind === "confirmed" && !(b.paid_at && b.payment_id);
+      const stale = salesClosed || job.kind === "request_confirmed" || unconfirmedPayment
+        || (job.kind === "refunded" && (b.status !== "refunded" || refundFailed))
         || (job.kind === "refund_failed" && !refundFailed)
         || (job.kind === "cancelled" && (b.status !== "cancelled" || refundFailed))
         || (job.kind === "requested" && b.status !== "requested")
-        || (job.kind === "request_confirmed" && !["confirmed","completed"].includes(b.status))
         || (job.kind === "received" && b.status !== "pending")
         || (job.kind === "confirmed" && !["confirmed","completed"].includes(b.status));
       const recipient = job.recipient === "team" ? "bookings@vakaygo.com" : job.recipient === "operator" ? b.operator_email : b.email;
       if (!stale && !(job.recipient === "operator" && recipient.includes("unclaimed"))) {
-        const request = ["requested","request_confirmed"].includes(job.kind);
-        const heading = job.kind === "refund_failed" ? "Refund could not be completed — support review needed" : job.kind === "requested" ? "Request received — nothing confirmed or charged" : job.kind === "request_confirmed" ? "Business confirmed your request — arrange price and payment with the business" : job.kind === "confirmed" ? "Booking confirmed" : job.kind === "received" ? "Booking received — complete payment" : "Booking "+job.kind;
+        const request = job.kind === "requested";
+        const heading = job.kind === "refund_failed" ? "Refund could not be completed — support review needed" : job.kind === "requested" ? "Inquiry received — nothing confirmed or charged" : job.kind === "confirmed" ? "Booking confirmed" : job.kind === "received" ? "Booking received — complete payment" : "Booking "+job.kind;
         const refundAmount = (b.cancellation_refund_cents/100).toFixed(2)+" "+b.currency;
         const refundUpdate = b.cancellation_refund_cents > 0
           ? refundFailed
@@ -44,7 +47,7 @@ export async function GET(request: Request) {
               : "Refund requested: "+refundAmount+". The refund is being processed and has not been confirmed as completed."
           : "";
         const text = [heading, b.title, "Reference: "+b.booking_number, "When: "+formatBookingDateTime(b.start_date), "Guests: "+b.guest_count,
-          request ? "VakayGo does not collect payment for this request." : "Booking total: "+b.total_amount+" "+b.currency,
+          request ? "This inquiry does not reserve a service. Any booking and payment must be completed through VakayGo after price and availability are confirmed. Nothing has been charged." : "Booking total: "+b.total_amount+" "+b.currency,
           !request ? CANCELLATION_POLICIES[cancellationPolicyKey(b.cancellation_policy_snapshot)].summary : "",
           job.recipient === "team" ? "Traveler: "+b.name+" / "+b.email+" / "+(b.phone||"")+"\nNotes: "+(b.guest_notes||"")+"\nBusiness phone: "+(b.type_data?.phone||"") : "",
           b.cancellation_reason || "",

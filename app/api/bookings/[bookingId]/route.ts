@@ -168,6 +168,13 @@ export async function PATCH(
     if (status && ["cancelled", "refunded", "completed", "no_show"].includes(existing.status)) return NextResponse.json({ error: "This booking is closed" }, { status: 409 });
     if (status === "completed" && existing.status !== "confirmed") return NextResponse.json({ error: "Only confirmed bookings can be completed" }, { status: 409 });
 
+    if (status === "confirmed" && existing.status === "requested" && !(existing.paymentId && existing.paidAt)) {
+      return NextResponse.json({
+        error: "This inquiry stays unconfirmed. A priced VakayGo booking and payment through VakayGo checkout are required before confirmation.",
+        code: "PLATFORM_PAYMENT_REQUIRED",
+      }, { status: 409 });
+    }
+
     if (status === "confirmed" && existing.status !== "confirmed") {
       const eligibility = await getListingBookingEligibility(existing.listingId, { refreshProvider: true });
       if (!eligibility.eligible || eligibility.operatorId !== existing.operatorId) {
@@ -180,17 +187,7 @@ export async function PATCH(
     // "completed", which the escrow-release + payouts crons then turn into a
     // real payout-ledger credit. Only allow these transitions once payment
     // is on record (the webhook stamps paymentId + paidAt).
-    // Exception: an onboarded business can accept a zero-price request.
-    // Its ownership, onboarding and payment readiness are checked above.
-    // Never "completed" — that path feeds the payout ledger.
-    const isRequestOutcome =
-      existing.status === "requested" &&
-      (isAdmin || isOperator) &&
-      (status === "confirmed" || status === "cancelled") &&
-      !existing.paymentId && !existing.paidAt;
-
     if (
-      !isRequestOutcome &&
       (status === "confirmed" || status === "completed") &&
       !(existing.paymentId && existing.paidAt)
     ) {
@@ -202,7 +199,6 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (status) updateData.status = status;
-    if (isRequestOutcome) Object.assign(updateData, { totalAmount: "0.00", subtotal: "0.00", serviceFee: "0.00", paymentMethod: "none" });
     if (operatorNotes !== undefined) updateData.operatorNotes = operatorNotes;
     if (status === "cancelled" && typeof reason === "string" && reason.trim()) {
       updateData.cancellationReason = reason.trim().slice(0, 500);

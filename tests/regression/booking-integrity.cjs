@@ -116,11 +116,12 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    const db=dbFor({bookings:[pending()]});const service=load("server/cancel-booking.ts",mocksFor(db,{"@/server/stripe":{}}));
    assert.equal((await service.cancelBooking(bookingId,{id:"stranger",role:"traveler"})).httpStatus,403);assert.equal(db.writes.length,0);
  });
- await check("Priced legacy requests can be confirmed without a fabricated payment",async()=>{
+ await check("Legacy price requests stay open until paid through VakayGo",async()=>{
    const rows={bookings:[{...pending(),status:"requested",checkoutSessionId:null}]};const db=dbFor(rows);
    const h=load("app/api/bookings/[bookingId]/route.ts",mocksFor(db,{"@/server/session-validation":{verifyCurrentSessionToken:async()=>({userId:"operator",role:"operator",email:"operator@example.invalid",sessionVersion:1,emailVerified:true})}}));
-   assert.equal((await h.PATCH(request({status:"confirmed"},"PATCH"),{params:Promise.resolve({bookingId})})).status,200);
-   assert.equal(rows.bookings[0].totalAmount,"0.00");assert.equal(rows.bookings[0].paymentMethod,"none");
+   const response=await h.PATCH(request({status:"confirmed"},"PATCH"),{params:Promise.resolve({bookingId})});
+   assert.equal(response.status,409);assert.equal((await response.json()).code,"PLATFORM_PAYMENT_REQUIRED");
+   assert.equal(rows.bookings[0].status,"requested");assert.equal(rows.bookings[0].totalAmount,"71.50");assert.equal(db.writes.length,0);
  });
  const listing={id:listingId,operatorId:"operator",status:"active",timezone:"America/Grenada",priceAmount:"65.00",priceCurrency:"USD",priceUnit:"person",type:"tour",title:"Synthetic",typeData:{},advanceNotice:0,maxGuests:12,operatorEmail:"operator@example.invalid"};
  for(const invalid of [{guestCount:0},{guestCount:-1},{guestCount:1.5},{guestCount:"2"},{startDate:"2020-01-01"},{startDate:"2099-02-30"},{paymentType:"deposit"},{giftCardCode:"TEST"},{includeInsurance:true},{endDate:"2099-11-30"}]) await check("Reject invalid or unsupported booking: "+JSON.stringify(invalid),async()=>{
