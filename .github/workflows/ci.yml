@@ -19,6 +19,7 @@ jobs:
       - run: node scripts/check-lint.mjs
       - run: npm run typecheck
       - run: npm run check:i18n
+      - run: node --test ops/postal/prepare.test.mjs
       - run: npm test -- --run
         env:
           NODE_ENV: test
