@@ -1,5 +1,6 @@
 import { sendEmail } from "@/server/mail-client";
 import { TEAM_INBOX } from "@/lib/booking-request";
+import { NUDGE_MAX_PER_STAGE, type NextStepContent } from "@/lib/onboarding-nudges";
 
 /**
  * Emails for booking REQUESTS and listing CLAIMS.
@@ -327,6 +328,83 @@ export async function sendDisputeToTeam(params: {
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6;white-space:pre-wrap">${esc(p.description)}</p>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Reply-to is the traveler. Resolve in ${link("https://vakaygo.com/admin/disputes", "admin → disputes")}.</p>`,
       { eyebrow: "Dispute filed", title: p.bookingNumber, tone: "gold" }
+    ),
+  });
+}
+
+// ─── Operator onboarding reminders ────────────────────────────────
+
+/** Operator: the one next step to finish onboarding. lib/onboarding-nudges.ts decides which. */
+export async function sendOnboardingNudge(params: {
+  to: string;
+  operatorName: string | null;
+  listingTitle: string;
+  islandName: string;
+  next: NextStepContent;
+  checklist: { label: string; done: boolean }[];
+  completed: number;
+  total: number;
+  nudgeNumber: number;
+  final: boolean;
+  actionUrl: string;
+  stopUrl: string;
+}) {
+  const p = params;
+  const name = p.operatorName?.trim();
+  const greeting = name ? `Hi ${esc(name)},` : "Hello,";
+  const steps = p.checklist
+    .map(step => `<li style="margin:0 0 6px;color:${step.done ? "#1A6B6A" : "#4A4F73"}">${step.done ? "&#10003;" : "&#9675;"} ${esc(step.label)}</li>`)
+    .join("");
+  const closing = p.final
+    ? "This is our last reminder about this step; we will not email you about it again."
+    : "If this step is still open in a week, we will check in once more.";
+  return sendEmail({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `${p.next.title} — ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${greeting}</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">You claimed <strong>${esc(p.listingTitle)}</strong> in ${esc(p.islandName)} on VakayGo. ${esc(p.next.detail)}</p>
+    <p style="text-align:center;margin:24px 0"><a href="${esc(p.actionUrl)}" style="display:inline-block;background:#C8912E;color:#FFFFFF;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600">${esc(p.next.actionLabel)}</a></p>
+    <p style="color:#1C2333;font-weight:600;margin:0 0 8px">${p.completed} of ${p.total} steps done</p>
+    <ul style="list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:1.5">${steps}</ul>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Stuck or unsure? Reply to this email and a person on our team will help.</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Reminder ${p.nudgeNumber} of ${NUDGE_MAX_PER_STAGE}. ${esc(closing)} Finishing setup ends these reminders, or you can ${link(p.stopUrl, "stop setup reminders")}.</p>`,
+      { eyebrow: "Finish setting up", title: p.next.title, tone: "gold" }
+    ),
+  });
+}
+
+/** Team inbox: payout profiles and listings that have waited on VakayGo's own review. */
+export async function sendOnboardingReviewReminderToTeam(params: {
+  items: { kind: "payout_profile" | "listing"; title: string; islandName: string; waitingSince: string; detail: string | null }[];
+  payoutUrl: string;
+  listingsUrl: string;
+}) {
+  const p = params;
+  const now = Date.now();
+  const rows = p.items.map(item => {
+    const days = Math.max(0, Math.floor((now - new Date(item.waitingSince).getTime()) / 86_400_000));
+    const label = item.kind === "payout_profile" ? "Payout profile" : "Listing";
+    return row(`${label}: ${esc(item.title)}`, `${esc(item.islandName)}${item.detail ? ` · ${esc(item.detail)}` : ""} · waiting ${days} day${days === 1 ? "" : "s"}`);
+  }).join("");
+  const payouts = p.items.filter(item => item.kind === "payout_profile").length;
+  const listings = p.items.length - payouts;
+  return sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    subject: `ACTION: ${p.items.length} onboarding review${p.items.length === 1 ? "" : "s"} waiting on VakayGo`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">These businesses finished their part. Each item below has waited more than two days for our review, and until it is reviewed the business cannot take bookings.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">${rows}</table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${payouts ? link(p.payoutUrl, "Review payout profiles") : ""}${payouts && listings ? " · " : ""}${listings ? link(p.listingsUrl, "Review listings") : ""}</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Sent at most once a week per item while it waits.</p>`,
+      { eyebrow: "Onboarding review", title: `${p.items.length} waiting on VakayGo`, tone: "gold" }
     ),
   });
 }
