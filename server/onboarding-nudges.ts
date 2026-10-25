@@ -68,7 +68,7 @@ export function verifyNudgeStopToken(token: string | null | undefined): string |
   return operatorId.toLowerCase();
 }
 export function nudgeStopUrl(operatorId: string, origin = appOrigin()) {
-  return `${origin}/api/operator/onboarding-nudges/stop?token=${encodeURIComponent(nudgeStopToken(operatorId))}`;
+  return `${origin}/api/onboarding-nudges/stop?token=${encodeURIComponent(nudgeStopToken(operatorId))}`;
 }
 export async function recordNudgeOptOut(operatorId: string, source = "email_link"): Promise<boolean> {
   if (!UUID.test(operatorId)) return false;
