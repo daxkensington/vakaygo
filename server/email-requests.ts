@@ -239,42 +239,7 @@ export async function sendClaimDecision(params: {
   });
 }
 
-// ─── Request outcomes (after the team phoned the business) ────────
-
-export async function sendRequestConfirmed(params: {
-  to: string;
-  travelerName: string;
-  bookingNumber: string;
-  listingTitle: string;
-  whenText: string;
-  guestCount: number;
-  businessPhone: string | null;
-  note: string | null;
-}) {
-  const p = params;
-  await sendEmail({
-    from: FROM,
-    to: p.to,
-    replyTo: TEAM_INBOX,
-    subject: `Confirmed by the business — ${p.listingTitle}`,
-    html: shell(
-      `
-    <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.travelerName)},</p>
-    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Good news: <strong>${esc(p.listingTitle)}</strong> has confirmed your request directly with us. You are booked. Nothing was charged through VakayGo${p.businessPhone ? " — any payment is settled with the business on the day" : ""}.</p>
-    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
-      <table style="width:100%;font-size:14px;color:#4A4F73">
-        ${row("Reference", esc(p.bookingNumber))}
-        ${row("When", esc(p.whenText))}
-        ${row("Guests", String(p.guestCount))}
-        ${p.businessPhone ? row("Business phone", esc(p.businessPhone)) : ""}
-      </table>
-    </div>
-    ${p.note ? `<p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${esc(p.note)}</p>` : ""}
-    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Plans changed? Reply to this email and we will let the business know.</p>`,
-      { eyebrow: "Confirmed", title: p.listingTitle, tone: "teal" }
-    ),
-  });
-}
+// ─── Inquiry outcomes — confirmation requires paid platform checkout ────────
 
 export async function sendRequestDeclined(params: {
   to: string;

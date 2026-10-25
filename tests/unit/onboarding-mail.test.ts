@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  send: vi.fn(async () => ({ error: null })),
+  send: vi.fn<(message: { subject: string; text: string }, options?: unknown) => Promise<{ error: null }>>(async () => ({ error: null })),
   query: vi.fn(),
   neon: vi.fn(),
   booking: {} as Record<string, unknown>,
@@ -58,10 +58,43 @@ describe("booking offers in automated mail", () => {
   });
   it("preserves the confirmation of a historical paid booking", async () => {
     state.kind = "confirmed";
-    Object.assign(state.booking, { status: "confirmed", paid_at: new Date(), booking_eligible: false });
+    Object.assign(state.booking, { status: "confirmed", paid_at: new Date(), payment_id: "pi_synthetic", booking_eligible: false });
     const response = await bookingMail(request());
     expect(await response.json()).toMatchObject({ delivered: 1, suppressed: 0 });
     expect(state.send).toHaveBeenCalledTimes(1);
+  });
+  it("suppresses legacy zero-price request confirmations even when the company is eligible", async () => {
+    state.kind = "request_confirmed";
+    Object.assign(state.booking, { status: "confirmed", booking_eligible: true, paid_at: null, payment_id: null });
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 0, failed: 0, suppressed: 1 });
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it.each([{ paid_at: new Date() }, { payment_id: "pi_synthetic" }, {}])("does not mail an unpaid or incomplete confirmation: %j", async receipt => {
+    state.kind = "confirmed";
+    Object.assign(state.booking, { status: "confirmed", booking_eligible: true }, receipt);
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 0, suppressed: 1 });
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it("keeps an inquiry unreserved and requires booking and payment through VakayGo", async () => {
+    state.booking.booking_eligible = true;
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 1, suppressed: 0 });
+    const message = state.send.mock.calls[0][0] as { subject: string; text: string };
+    expect(message.subject).toContain("Inquiry received");
+    expect(message.text).toContain("does not reserve a service");
+    expect(message.text).toContain("Any booking and payment must be completed through VakayGo");
+    expect(message.text).not.toMatch(/arrange price and payment with the business|does not collect payment/);
+  });
+  it("preserves the payment reminder for a priced pending platform booking", async () => {
+    state.kind = "received";
+    Object.assign(state.booking, { status: "pending", booking_eligible: true });
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 1, suppressed: 0 });
+    const message = state.send.mock.calls[0][0] as { subject: string; text: string };
+    expect(message.subject).toContain("complete payment");
+    expect(message.text).toContain("Booking total: 71.50 USD");
   });
   it("does not query or offer price-drop bookings while launch is disabled", async () => {
     vi.stubEnv("BOOKINGS_ENABLED", "false");
