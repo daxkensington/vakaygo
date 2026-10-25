@@ -28,6 +28,29 @@ import { createNotification } from "@/server/notifications";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const NUDGE_FEATURE_FLAG = "operator_onboarding_nudges_enabled";
 
+/**
+ * Resend allows 10 requests a second. The first production run fired 13 sends
+ * inside one second and lost two of them (plus the team digest) to 429s, so
+ * every send is spaced out and a rate-limited one is retried once after a beat.
+ */
+export const SEND_SPACING_MS = 250;
+const RATE_LIMIT_RETRY_MS = 1_200;
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+function isRateLimited(error: unknown) {
+  return /too many requests|rate limit|429/i.test(error instanceof Error ? error.message : String(error));
+}
+async function paced<T>(send: () => Promise<T>): Promise<T> {
+  try {
+    return await send();
+  } catch (error) {
+    if (!isRateLimited(error)) throw error;
+    await sleep(RATE_LIMIT_RETRY_MS);
+    return await send();
+  } finally {
+    await sleep(SEND_SPACING_MS);
+  }
+}
+
 function db() {
   if (!process.env.DATABASE_URL) throw new Error("Onboarding nudges are unavailable without a database");
   return neon(process.env.DATABASE_URL);
@@ -195,7 +218,7 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
     if (!claimed.length) { skip("claimed_elsewhere"); continue; }
     nudgedOperators.set(row.operator_id, now.getTime());
     try {
-      const delivery = await sendOnboardingNudge({
+      const delivery = await paced(() => sendOnboardingNudge({
         to,
         operatorName: row.operator_name || row.business_name,
         listingTitle: row.title,
@@ -208,7 +231,7 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
         final: decision.final,
         actionUrl: origin + content.href,
         stopUrl: nudgeStopUrl(row.operator_id, origin),
-      });
+      }));
       const messageId = delivery?.data?.id;
       if (messageId) await query("UPDATE operator_onboarding_nudges SET provider_message_id=$2 WHERE id=$1::uuid", [claimed[0].id, String(messageId).slice(0, 128)]);
       result.sent.push({ listingId: row.listing_id, title: row.title, stage: decision.stage, to, nudgeNumber: decision.nudgeNumber });
@@ -264,11 +287,11 @@ async function remindTeamAboutReviews(now: Date, dryRun: boolean, origin: string
   }
   if (!claimed.length) return team; // another run already reminded the team today
   try {
-    await sendOnboardingReviewReminderToTeam({
+    await paced(() => sendOnboardingReviewReminderToTeam({
       items: due.map(row => ({ kind: row.kind, title: row.title, islandName: row.island_name, waitingSince: row.waiting_since, detail: row.detail })),
       payoutUrl: origin + "/admin/payout-profiles",
       listingsUrl: origin + "/admin/listings",
-    });
+    }));
     team.sent = true;
   } catch (error) {
     await query(`DELETE FROM operator_onboarding_nudges WHERE id = ANY($1::uuid[])`, [claimed]).catch(() => undefined);
