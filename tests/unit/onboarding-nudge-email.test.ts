@@ -21,7 +21,7 @@ it("renders the operator reminder as text-safe HTML with the action, the checkli
     nudgeNumber: 1,
     final: false,
     actionUrl: "https://vakaygo.com" + next.href,
-    stopUrl: "https://vakaygo.com/api/operator/onboarding-nudges/stop?token=abc.def",
+    stopUrl: "https://vakaygo.com/api/onboarding-nudges/stop?token=abc.def",
   });
   expect(result.data.id).toBe("synthetic-mail");
   const [message] = sendEmail.mock.calls[0];
@@ -37,7 +37,7 @@ it("renders the operator reminder as text-safe HTML with the action, the checkli
   expect(message.html).toContain("&#9675; Price, capacity, policy and open dates");
   expect(message.html).toContain("Reminder 1 of 3");
   expect(message.html).toContain("check in once more");
-  expect(message.html).toContain('href="https://vakaygo.com/api/operator/onboarding-nudges/stop?token=abc.def"');
+  expect(message.html).toContain('href="https://vakaygo.com/api/onboarding-nudges/stop?token=abc.def"');
 });
 
 it("says goodbye on the final reminder and greets without a name when none is known", async () => {
