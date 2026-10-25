@@ -45,7 +45,7 @@ test("listing gallery supports keyboard entry, navigation, Escape and focus rest
   await expect(opener).toBeFocused();
 });
 
-test("operator cannot accept an old booking request while new bookings are paused",async({request})=>{
+test("operator cannot accept a booking request that was never paid through VakayGo, even while new bookings are paused",async({request})=>{
   const token=await new SignJWT({id:"10000000-0000-4000-8000-000000000001",role:"operator",email:"audit-operator@example.invalid",sessionVersion:0}).setProtectedHeader({alg:"HS256"}).setExpirationTime("1h").sign(new TextEncoder().encode(process.env.AUTH_SECRET));
   const headers={Cookie:"session="+token};
   const bookings=await request.get("/api/bookings?view=operator",{headers});
@@ -54,5 +54,6 @@ test("operator cannot accept an old booking request while new bookings are pause
   expect(booking).toBeTruthy();
   const response=await request.patch("/api/bookings/"+booking.id,{headers,data:{status:"confirmed"}});
   expect(response.status()).toBe(409);
-  expect((await response.json()).code).toBe("BOOKING_UNAVAILABLE");
+  // An unpaid request is refused for want of VakayGo payment evidence before listing eligibility is even consulted.
+  expect((await response.json()).code).toBe("PLATFORM_PAYMENT_REQUIRED");
 });
