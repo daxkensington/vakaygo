@@ -6,6 +6,66 @@ import { eq, sql, desc, and } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireOperator } from "@/server/admin-auth";
+import { getOnboardingStatus } from "@/server/business-onboarding";
+import { completedSteps, describeNextStep, describeWaiting, nextOnboardingStep, ONBOARDING_CHECKLIST } from "@/lib/onboarding-nudges";
+
+type OnboardingTask = {
+  listingId: string;
+  title: string;
+  islandSlug: string;
+  completed: number;
+  total: number;
+  next: { title: string; detail: string; actionLabel: string; href: string } | null;
+  waiting: string | null;
+};
+
+/**
+ * Claimed listings still short of activation, with the next step in the same
+ * words as the reminder emails (lib/onboarding-nudges.ts). Travelers can see
+ * these listings but cannot book them, which the rest of the dashboard hides.
+ */
+async function onboardingTasks(userId: string): Promise<OnboardingTask[]> {
+  const sql = neon(process.env.DATABASE_URL!);
+  const rows = await sql.query(
+    `SELECT l.id,l.title,l.status,i.slug island_slug
+       FROM listing_onboarding n
+       JOIN listings l ON l.id=n.listing_id AND l.operator_id=n.operator_id
+       JOIN islands i ON i.id=l.island_id
+      WHERE n.operator_id=$1::uuid AND (n.activated_at IS NULL OR n.suspended_at IS NOT NULL)
+      ORDER BY n.created_at ASC LIMIT 10`,
+    [userId]
+  ) as { id: string; title: string; status: string; island_slug: string }[];
+  const tasks: OnboardingTask[] = [];
+  for (const row of rows) {
+    try {
+      const status = await getOnboardingStatus(row.id, userId);
+      const directReady = status.payoutProfile?.status === "verified" && status.payoutProfile.w8benCertified === true && !status.payoutProfile.revoked;
+      const requirements = { ...status.requirements, payments: status.requirements.payments || directReady };
+      const step = nextOnboardingStep({
+        requirements,
+        listingStatus: row.status,
+        payoutProfileStatus: status.payoutProfile?.status ?? null,
+        payoutProfileRevoked: status.payoutProfile?.revoked === true,
+        stripeConnected: status.stripe.connected,
+        suspended: status.reason === "suspended",
+      });
+      if (step.kind === "done" || step.kind === "blocked") continue;
+      tasks.push({
+        listingId: row.id,
+        title: row.title,
+        islandSlug: row.island_slug,
+        completed: completedSteps(requirements),
+        total: ONBOARDING_CHECKLIST.length,
+        next: describeNextStep(step, { listingId: row.id, stripeConnected: status.stripe.connected }),
+        waiting: describeWaiting(step),
+      });
+    } catch (error) {
+      logger.warn("Operator onboarding task unavailable", { listingId: row.id, error });
+    }
+  }
+  return tasks;
+}
+
 export async function GET() {
   try {
     const __auth = await requireOperator();
@@ -101,7 +161,10 @@ export async function GET() {
       .groupBy(sql`date_trunc('month', ${bookings.createdAt})`)
       .orderBy(sql`date_trunc('month', ${bookings.createdAt})`);
 
+    const onboarding = await onboardingTasks(userId);
+
     return NextResponse.json({
+      onboarding,
       totalRevenue: parseFloat(revenueResult.total) || 0,
       bookingsThisMonth: monthBookings.count,
       totalBookings: totalBookingsResult.count,

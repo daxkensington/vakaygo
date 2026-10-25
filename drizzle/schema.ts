@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   decimal,
+  date,
   json,
   uuid,
   index,
@@ -1274,4 +1275,27 @@ export const outreachWebhookProofs = pgTable("outreach_webhook_proofs", {
   webhookId: varchar("webhook_id", { length: 128 }).notNull(),
   secretHash: varchar("secret_hash", { length: 64 }).notNull(),
   verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── OPERATOR ONBOARDING NUDGES ───────────────────────────────
+// Reminders to claimed businesses that stalled before activation (lib/onboarding-nudges.ts).
+export const operatorOnboardingNudges = pgTable("operator_onboarding_nudges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 32 }).notNull(), // business_details, listing_setup, payout_setup, payout_rejected, activate, admin_review
+  recipient: varchar("recipient", { length: 320 }).notNull(),
+  sentOn: date("sent_on").notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  providerMessageId: varchar("provider_message_id", { length: 128 }),
+}, t => [
+  uniqueIndex("operator_onboarding_nudges_daily_unique").on(t.listingId, t.stage, t.sentOn),
+  index("operator_onboarding_nudges_listing_idx").on(t.listingId, t.sentAt),
+  check("operator_onboarding_nudges_stage_check", sql.raw("stage in ('business_details','listing_setup','payout_setup','payout_rejected','activate','admin_review')")),
+]);
+
+export const operatorOnboardingNudgeOptouts = pgTable("operator_onboarding_nudge_optouts", {
+  operatorId: uuid("operator_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  source: varchar("source", { length: 32 }).notNull().default("email_link"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

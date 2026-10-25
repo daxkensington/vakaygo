@@ -39,6 +39,15 @@ type Stats = {
     revenue: number;
     count: number;
   }[];
+  onboarding?: {
+    listingId: string;
+    title: string;
+    islandSlug: string;
+    completed: number;
+    total: number;
+    next: { title: string; detail: string; actionLabel: string; href: string } | null;
+    waiting: string | null;
+  }[];
 };
 
 const statusColors: Record<string, string> = {
@@ -117,6 +126,60 @@ export default function OperatorDashboard() {
           Here&apos;s how your business is performing
         </p>
       </div>
+
+      {/* Finish setting up — claimed listings travelers can see but not book yet */}
+      {stats?.onboarding && stats.onboarding.length > 0 && (
+        <section
+          aria-labelledby="finish-setup-heading"
+          className="mb-6 rounded-2xl border border-gold-200 bg-gold-50/70 p-6 shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gold-700 text-white shrink-0">
+              <CalendarCheck size={20} />
+            </div>
+            <div>
+              <h2 id="finish-setup-heading" className="text-lg font-bold text-navy-700">
+                Finish setting up
+              </h2>
+              <p className="text-sm text-navy-500">
+                Travelers can see {stats.onboarding.length === 1 ? "this listing" : "these listings"} but cannot book yet.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-4 space-y-3">
+            {stats.onboarding.map((task) => (
+              <li
+                key={task.listingId}
+                className="flex flex-col gap-3 rounded-xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-navy-700 truncate">{task.title}</p>
+                  <p className="text-xs text-navy-400 mt-0.5">
+                    {task.completed} of {task.total} steps done
+                    {task.next ? ` · Next: ${task.next.title}` : ""}
+                  </p>
+                  <div className="mt-2 h-1.5 w-full max-w-xs rounded-full bg-cream-200" aria-hidden="true">
+                    <div
+                      className="h-1.5 rounded-full bg-gold-600"
+                      style={{ width: `${Math.round((task.completed / Math.max(task.total, 1)) * 100)}%` }}
+                    />
+                  </div>
+                  {task.waiting && <p className="text-sm text-teal-700 mt-2">{task.waiting}</p>}
+                  {task.next && <p className="text-sm text-navy-500 mt-2">{task.next.detail}</p>}
+                </div>
+                {task.next && (
+                  <Link
+                    href={task.next.href}
+                    className="shrink-0 rounded-xl bg-gold-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gold-600 transition-colors"
+                  >
+                    {task.next.actionLabel} &rarr;
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

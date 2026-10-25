@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/enrich-listing-emails",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/onboarding-nudges",
+      "schedule": "15 */4 * * *"
     }
   ]
 }
