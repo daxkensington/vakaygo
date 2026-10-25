@@ -238,13 +238,13 @@ type ReviewRow = {
 
 async function remindTeamAboutReviews(now: Date, dryRun: boolean, origin: string): Promise<NudgeRunResult["team"]> {
   const rows = await query<ReviewRow>(`
-    SELECT 'payout_profile' kind,p.listing_id,l.operator_id,l.title,i.name island_name,p.created_at waiting_since,
-      p.payout_method||' · '||p.payout_currency detail,
+    SELECT 'payout_profile'::text kind,p.listing_id,l.operator_id,l.title,i.name island_name,p.created_at::timestamptz waiting_since,
+      (p.payout_method||' · '||p.payout_currency)::text detail,
       (SELECT max(x.sent_at) FROM operator_onboarding_nudges x WHERE x.listing_id=p.listing_id AND x.stage='admin_review') last_reminder_at
     FROM operator_payout_profiles p JOIN listings l ON l.id=p.listing_id JOIN islands i ON i.id=l.island_id
     WHERE p.status='pending_review' AND p.revoked_at IS NULL
     UNION ALL
-    SELECT 'listing',l.id,l.operator_id,l.title,i.name,l.updated_at,l.type,
+    SELECT 'listing'::text,l.id,l.operator_id,l.title,i.name,l.updated_at::timestamptz,l.type::text,
       (SELECT max(x.sent_at) FROM operator_onboarding_nudges x WHERE x.listing_id=l.id AND x.stage='admin_review')
     FROM listings l JOIN islands i ON i.id=l.island_id JOIN users u ON u.id=l.operator_id
     WHERE l.status='pending_review' AND lower(u.email) NOT IN ('unclaimed@vakaygo.com','demo@vakaygo.com')
