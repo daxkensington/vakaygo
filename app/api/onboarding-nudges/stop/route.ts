@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 /**
  * "Stop setup reminders" link from onboarding nudge emails.
  *
+ * Lives outside /api/operator on purpose: proxy.ts answers 401 to any
+ * anonymous request under that prefix, and the business clicking this link
+ * is almost never signed in.
+ *
  * GET shows a confirmation with one button; POST records the opt-out. Mail
  * scanners and link previews follow GET, so a GET alone never changes state.
  */
