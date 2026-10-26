@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { OPERATED_BY } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
@@ -10,7 +11,8 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-bold text-navy-700 mb-2" style={{ fontFamily: "var(--font-display)" }}>
             Privacy Policy
           </h1>
-          <p className="text-navy-400 mb-10">Last updated: October 20, 2026</p>
+          <p className="text-navy-400 mb-2">Last updated: October 20, 2026</p>
+          <p className="text-navy-500 mb-10">{OPERATED_BY} Questions about this policy: hello@vakaygo.com.</p>
 
           <div className="bg-white rounded-2xl p-8 md:p-10 shadow-[var(--shadow-card)] prose-navy">
             <div className="space-y-8 text-navy-600 leading-relaxed text-[15px]">

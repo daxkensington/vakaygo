@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OPERATED_BY } from "@/lib/brand";
 
 const fees = [
   ["Stays", "3%", "9%"], ["Tours and excursions", "5%", "10%"], ["Dining", "0%", "0%"],
@@ -12,7 +13,7 @@ export default function OperatorTermsPage() {
     <Link href="/operator/listings" className="font-semibold text-gold-700">Back to your listings</Link>
     <h1 className="text-3xl font-bold">Operator terms — review draft</h1>
     <p className="font-semibold">Version 2026-09-06</p>
-    <p className="rounded-xl border border-gold-200 bg-gold-50 p-4">Draft awaiting business and legal review. Online bookings and payments remain disabled. Completing onboarding or recording acceptance of this draft does not launch payment services or authorize bookings.</p>
+    <p className="rounded-xl border border-gold-200 bg-gold-50 p-4">Draft awaiting business and legal review. {OPERATED_BY} Online bookings and payments remain disabled. Completing onboarding or recording acceptance of this draft does not launch payment services or authorize bookings.</p>
     <section className="space-y-2"><h2 className="text-xl font-bold">Company authority and listing information</h2>
       <p>You must have authority to represent the company and offer the services described. Claim verification uses a trusted business contact. Provide accurate legal company, representative and payout information, and maintain the listing&apos;s prices, service description, guest limits, location and cancellation policy.</p>
       <p>Publish the dates and capacity your company can fulfill. Unpublished or blocked dates are unavailable. Business ownership, onboarding and payment verification must remain valid; a restriction or ownership change can pause new bookings.</p>

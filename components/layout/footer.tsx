@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Globe, Mail, MessageCircle } from "lucide-react";
+import { BUSINESS_MAILING_ADDRESS, OPERATING_BUSINESS } from "@/lib/brand";
 
 export function Footer() {
   return (
@@ -78,7 +79,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-navy-600 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-cream-400">
-            &copy; {new Date().getFullYear()} VakayGo. All rights reserved.
+            &copy; {new Date().getFullYear()} VakayGo, operated by {OPERATING_BUSINESS}. All rights reserved. {BUSINESS_MAILING_ADDRESS}
           </p>
           <p className="text-sm text-cream-400">
             Born in the Caribbean · Live across 34 Global Sun &amp; Sea Destinations

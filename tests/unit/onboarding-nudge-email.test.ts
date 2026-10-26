@@ -37,6 +37,8 @@ it("renders the operator reminder as text-safe HTML with the action, the checkli
   expect(message.html).toContain("&#9675; Price, capacity, policy and open dates");
   expect(message.html).toContain("Reminder 1 of 3");
   expect(message.html).toContain("check in once more");
+  // Every transactional email names the operating business and its mailing address.
+  expect(message.html).toContain("VakayGo · operated by Avmere · 240 Richmond St W, Toronto, ON M5V 1V6, Canada");
   expect(message.html).toContain('href="https://vakaygo.com/api/onboarding-nudges/stop?token=abc.def"');
 });
 
