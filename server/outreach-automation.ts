@@ -4,6 +4,7 @@ import { deliverClaimInvitation } from "@/server/outreach-campaign-send";
 import { claimInvitationUrl, unsubscribeInvitationUrl } from "@/server/outreach-attribution";
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
+import { OPERATING_BUSINESS } from "@/lib/brand";
 
 
 const BLOCKED_EMAIL_DOMAINS = new Set([
@@ -411,7 +412,7 @@ export async function sendBusinessInterestOutreachEmail(
         "The VakayGo Team",
         "support@vakaygo.com",
         "",
-        "VakayGo",
+        OPERATING_BUSINESS + " · VakayGo",
         postalAddress,
         "",
         `To stop these listing invitations, unsubscribe here: ${unsubscribeUrl}`,
@@ -427,7 +428,7 @@ export async function sendBusinessInterestOutreachEmail(
   <p>If the listing details are incorrect or you need help with the claim, reply to this email.</p>
   <p>The VakayGo Team<br>support@vakaygo.com</p>
   <hr>
-  <p>VakayGo<br>${escapeHtml(postalAddress).replace(/\r?\n/g, "<br>")}</p>
+  <p>${escapeHtml(OPERATING_BUSINESS)} · VakayGo<br>${escapeHtml(postalAddress).replace(/\r?\n/g, "<br>")}</p>
   <p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from these listing invitations</a></p>
 </div>`;
       return { subject: `Review your ${title} listing on VakayGo (${island})`, text, html };

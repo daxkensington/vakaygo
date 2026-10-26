@@ -1,6 +1,7 @@
 import { sendEmail } from "@/server/mail-client";
 import { TEAM_INBOX } from "@/lib/booking-request";
 import { NUDGE_MAX_PER_STAGE, type NextStepContent } from "@/lib/onboarding-nudges";
+import { EMAIL_FOOTER_LINE } from "@/lib/brand";
 
 /**
  * Emails for booking REQUESTS and listing CLAIMS.
@@ -33,7 +34,7 @@ function shell(inner: string, header: { eyebrow: string; title: string; tone?: "
   <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
     ${inner}
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim();
 }

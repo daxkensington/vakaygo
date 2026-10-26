@@ -1,6 +1,7 @@
 import { sendEmail } from "@/server/mail-client";
 import { formatBookingDateTime } from "@/lib/booking-time";
 import { verificationUrl } from "@/lib/claim-return";
+import { EMAIL_FOOTER_LINE } from "@/lib/brand";
 
 const FROM = "VakayGo <hello@vakaygo.com>";
 // hello@ is send-only — replies must land in a real mailbox.
@@ -48,7 +49,7 @@ export async function sendBookingConfirmation(params: {
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Refund eligibility follows the cancellation policy saved with your booking. Manage your booking at <a href="https://vakaygo.com/bookings" style="color:#C8912E">vakaygo.com/bookings</a></p>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -103,7 +104,7 @@ export async function sendBookingReceived(params: {
       <a href="https://vakaygo.com/bookings" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Complete payment</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -141,7 +142,7 @@ export async function sendBookingExpired(params: {
       <a href="${listingUrl}" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Book again</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -191,7 +192,7 @@ export async function sendBookingNotificationToOperator(params: {
       <a href="https://vakaygo.com/operator/bookings" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Booking</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -231,7 +232,7 @@ export async function sendBookingCancellation(params: {
       <a href="https://vakaygo.com/explore" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">Explore More</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -264,7 +265,7 @@ export async function sendReviewRequest(params: {
     <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Hi ${travelerName}, we'd love to hear about your time at <strong>${listingTitle}</strong>. Your review helps other travelers and supports local businesses.</p>
     <a href="https://vakaygo.com/${islandSlug}/${listingSlug}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Leave a Review</a>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -309,7 +310,7 @@ export async function sendNewReviewNotification(params: {
       <a href="https://vakaygo.com/operator/reviews" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View & Reply</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -347,7 +348,7 @@ export async function sendWelcomeEmail(params: {
       <a href="https://vakaygo.com/explore" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Start Exploring</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -391,7 +392,7 @@ export async function sendVerificationEmail(params: {
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 24 hours. If you didn't create an account on VakayGo, you can safely ignore this email.</p>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -429,7 +430,7 @@ export async function sendMagicLinkEmail(params: {
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">This link expires in 15 minutes and can be used once. If you didn't request it, you can safely ignore this email.</p>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -477,7 +478,7 @@ export async function sendPayoutNotification(params: {
       <a href="https://vakaygo.com/operator/payouts" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Payouts</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -515,7 +516,7 @@ export async function sendRefundConfirmation(params: {
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Refunds typically appear within 5-10 business days depending on your bank.</p>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim(),
   });
@@ -551,7 +552,7 @@ export async function sendPriceDropAlert(params: {
     <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Hi ${travelerName}, a listing you saved just dropped in price!</p>
     <a href="${listingUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Book Now</a>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -585,7 +586,7 @@ export async function sendAbandonedBookingRecovery(params: {
     <p style="color:#4A4F73;margin:0 0 24px;line-height:1.6">Your spot is being held — complete your booking before it's gone.</p>
     <a href="${paymentUrl}" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Complete Booking</a>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -629,7 +630,7 @@ export async function sendGiftCardEmail(params: {
       <a href="https://vakaygo.com/gift-cards" style="display:inline-block;background:#C8912E;color:white;padding:14px 40px;border-radius:12px;font-weight:600;text-decoration:none">Redeem Now</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -662,7 +663,7 @@ export async function sendTaxDocumentReady(params: {
     </div>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">This is a summary for your records. Please consult a tax professional for filing.</p>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
@@ -714,7 +715,7 @@ export async function sendWeeklyAdminReport(params: {
       <a href="https://vakaygo.com/admin" style="display:inline-block;background:#C8912E;color:white;padding:12px 32px;border-radius:12px;font-weight:600;text-decoration:none">View Dashboard</a>
     </div>
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform</p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE}</p>
 </div>
 </body></html>`.trim(),
   });
