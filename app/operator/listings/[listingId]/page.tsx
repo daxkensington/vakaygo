@@ -271,7 +271,10 @@ export default function EditListingPage() {
       </div>
 
       {error && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{error} Your changes are still in the form.</p>}
-      <Link href={`/operator/onboarding/${listing.id}`} className="mb-5 inline-block font-semibold text-gold-700">Continue business onboarding</Link>
+      <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2">
+        <Link href={`/operator/onboarding/${listing.id}`} className="inline-block font-semibold text-gold-700">Continue business onboarding</Link>
+        <Link href={`/operator/listings/${listing.id}/calendar`} className="inline-block font-semibold text-gold-700">Open dates and calendar</Link>
+      </div>
       <form onSubmit={handleSave} className="space-y-6">
         <fieldset disabled={saving} className="space-y-6 min-w-0">
         {/* Status */}

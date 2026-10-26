@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
-  adminReviewDue, completedSteps, decideNudge, describeNextStep, describeWaiting, nextOnboardingStep, snapshotFromOnboardingRow,
+  adminReviewDue, completedSteps, decideNudge, describeNextStep, describeWaiting, listingGapsFromFlags, nextOnboardingStep, onlyDatesMissing, snapshotFromOnboardingRow,
   NUDGE_FIRST_AFTER_MS, NUDGE_MAX_PER_STAGE, NUDGE_MIN_GAP_MS, NUDGE_OPERATOR_GAP_MS, NUDGE_REPEAT_AFTER_MS,
   ADMIN_REVIEW_REMIND_AFTER_MS, ADMIN_REVIEW_REPEAT_MS,
   type OnboardingRowLike, type OnboardingSnapshot,
@@ -121,6 +121,26 @@ describe("describeNextStep", () => {
   });
   it("escapes the listing id inside links", () => {
     expect(describeNextStep({ kind: "stage", stage: "payout_setup" }, { listingId: "a b&c", stripeConnected: false })?.href).toBe("/operator/payouts?listingId=a%20b%26c");
+  });
+  it("sends a business whose only gap is open dates to the calendar, and names the other gaps otherwise", () => {
+    const step = { kind: "stage" as const, stage: "listing_setup" as const };
+    const datesOnly = describeNextStep(step, { listingId: id, stripeConnected: false, listingGaps: { price: false, capacity: false, policy: false, openDates: true } });
+    expect(datesOnly?.title).toBe("Open your dates");
+    expect(datesOnly?.href).toBe(`/operator/listings/${id}/calendar`);
+    const priceAndDates = describeNextStep(step, { listingId: id, stripeConnected: false, listingGaps: { price: true, capacity: false, policy: false, openDates: true } });
+    expect(priceAndDates?.href).toBe(`/operator/listings/${id}`);
+    expect(priceAndDates?.detail).toContain("Still missing: a price and open dates.");
+    const capacityOnly = describeNextStep(step, { listingId: id, stripeConnected: false, listingGaps: { price: false, capacity: true, policy: false, openDates: false } });
+    expect(capacityOnly?.detail).toContain("Still missing: guest capacity.");
+    // Unknown gaps keep the generic copy.
+    expect(describeNextStep(step, { listingId: id, stripeConnected: false })?.detail).toContain("Still missing: a price, guest capacity, a cancellation policy and open dates.");
+    expect(onlyDatesMissing(null)).toBe(false);
+    expect(onlyDatesMissing({ price: false, capacity: false, policy: false, openDates: false })).toBe(false);
+  });
+  it("derives gaps only when every flag is known", () => {
+    expect(listingGapsFromFlags({ hasPrice: true, hasCapacity: false, hasPolicy: true, hasOpenDates: false })).toEqual({ price: false, capacity: true, policy: false, openDates: true });
+    expect(listingGapsFromFlags({ hasPrice: true, hasCapacity: undefined, hasPolicy: true, hasOpenDates: false })).toBeNull();
+    expect(listingGapsFromFlags(null)).toBeNull();
   });
   it("counts completed checklist steps", () => {
     expect(completedSteps(snapshot().requirements)).toBe(6);

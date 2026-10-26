@@ -8,6 +8,7 @@ import {
   Loader2,
   Eye,
   Edit,
+  CalendarDays,
   Star,
   Home,
   Compass,
@@ -191,6 +192,14 @@ export default function ListingsPage() {
                     <Eye size={16} />
                   </Link>}
                   <Link href={`/operator/onboarding/${listing.id}`} className="rounded-lg border border-gold-200 px-3 py-2 text-sm font-semibold text-gold-700">Business onboarding</Link>
+                  <Link
+                    href={`/operator/listings/${listing.id}/calendar`}
+                    className="w-9 h-9 bg-cream-50 rounded-lg flex items-center justify-center text-navy-400 hover:text-navy-600 hover:bg-cream-100 transition-colors"
+                    title="Open dates and calendar"
+                    aria-label={`Open dates and calendar for ${listing.title}`}
+                  >
+                    <CalendarDays size={16} />
+                  </Link>
                   <Link
                     href={`/operator/listings/${listing.id}`}
                     className="w-9 h-9 bg-cream-50 rounded-lg flex items-center justify-center text-navy-400 hover:text-navy-600 hover:bg-cream-100 transition-colors"

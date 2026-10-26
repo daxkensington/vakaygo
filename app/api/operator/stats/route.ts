@@ -56,7 +56,7 @@ async function onboardingTasks(userId: string): Promise<OnboardingTask[]> {
         islandSlug: row.island_slug,
         completed: completedSteps(requirements),
         total: ONBOARDING_CHECKLIST.length,
-        next: describeNextStep(step, { listingId: row.id, stripeConnected: status.stripe.connected }),
+        next: describeNextStep(step, { listingId: row.id, stripeConnected: status.stripe.connected, listingGaps: status.listingGaps }),
         waiting: describeWaiting(step),
       });
     } catch (error) {

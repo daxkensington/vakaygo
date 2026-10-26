@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { TEAM_INBOX } from "@/lib/booking-request";
 import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import {
-  adminReviewDue, completedSteps, decideNudge, describeNextStep, nextOnboardingStep, snapshotFromOnboardingRow,
+  adminReviewDue, completedSteps, decideNudge, describeNextStep, listingGapsFromFlags, nextOnboardingStep, snapshotFromOnboardingRow,
   ONBOARDING_CHECKLIST, type NudgeSkipReason, type OnboardingStage,
 } from "@/lib/onboarding-nudges";
 import { OPERATOR_TERMS_VERSION } from "@/server/business-onboarding";
@@ -120,6 +120,7 @@ type CandidateRow = {
   charges_enabled: boolean; payouts_enabled: boolean; details_submitted: boolean; card_payments_active: boolean; transfers_active: boolean;
   activated_at: string | null; suspended_at: string | null; progress_at: string;
   claim_valid: boolean; listing_valid: boolean;
+  has_price: boolean; has_capacity: boolean; has_policy: boolean; has_open_dates: boolean;
   payout_status: string | null; payout_revoked_at: string | null; w8ben_certified: boolean | null; w8ben_signed_at: string | null;
   opted_out: boolean; operator_last_nudged_at: string | null;
   history: { stage: string; sentAt: string }[];
@@ -136,6 +137,10 @@ async function candidates(): Promise<CandidateRow[]> {
       n.charges_enabled,n.payouts_enabled,n.details_submitted,n.card_payments_active,n.transfers_active,
       n.activated_at,n.suspended_at,n.updated_at progress_at,
       vakaygo_listing_claim_verified(l.id) claim_valid,vakaygo_listing_setup_valid(l.id) listing_valid,
+      coalesce(l.price_amount>0,false) has_price,coalesce(l.max_guests>0,false) has_capacity,
+      l.cancellation_policy IN ('flexible','moderate','strict','non_refundable') has_policy,
+      EXISTS(SELECT 1 FROM availability a WHERE a.listing_id=l.id AND a.date>=current_date AND a.is_blocked=false
+        AND a.spots>0 AND a.spots_remaining>0 AND a.spots_remaining<=a.spots AND (a.price_override IS NULL OR a.price_override>0)) has_open_dates,
       p.status payout_status,p.revoked_at payout_revoked_at,p.w8ben_certified,p.w8ben_signed_at,
       EXISTS(SELECT 1 FROM operator_onboarding_nudge_optouts o WHERE o.operator_id=l.operator_id) opted_out,
       (SELECT max(x.sent_at) FROM operator_onboarding_nudges x WHERE x.operator_id=l.operator_id AND x.stage<>'admin_review') operator_last_nudged_at,
@@ -193,7 +198,10 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
       history: Array.isArray(row.history) ? row.history : [], operatorLastNudgedAt: operatorLast === null ? null : new Date(operatorLast),
     }, now);
     if (!decision.send) { skip(decision.reason); continue; }
-    const content = describeNextStep(step, { listingId: row.listing_id, stripeConnected: snapshot.stripeConnected });
+    const content = describeNextStep(step, {
+      listingId: row.listing_id, stripeConnected: snapshot.stripeConnected,
+      listingGaps: listingGapsFromFlags({ hasPrice: row.has_price, hasCapacity: row.has_capacity, hasPolicy: row.has_policy, hasOpenDates: row.has_open_dates }),
+    });
     if (!content) { skip("not_actionable"); continue; }
 
     // Daytime where the business is: the destination's zone first, then its registered country.

@@ -74,10 +74,16 @@ type Context = {
   listing_id: string; operator_id: string; title: string; slug: string; island_slug: string; listing_status: string;
   onboarding: Onboarding | null; payout_profile?: PayoutProfile | null; claim_valid: boolean; listing_valid: boolean; db_bookable: boolean; launch_enabled: boolean;
   config_environment: string | null; config_platform: string | null; config_countries: string[];
+  /** Which parts of vakaygo_listing_setup_valid hold, so the operator is told exactly what is missing. */
+  has_price?: boolean | null; has_capacity?: boolean | null; has_policy?: boolean | null; has_open_dates?: boolean | null;
 };
 async function context(listingId: string): Promise<Context | undefined> {
   const [row] = await query<Context>(`SELECT l.id listing_id,l.operator_id,l.title,l.slug,i.slug island_slug,l.status listing_status,
    row_to_json(n) onboarding,row_to_json(p) payout_profile,
+   coalesce(l.price_amount>0,false) has_price,coalesce(l.max_guests>0,false) has_capacity,
+   l.cancellation_policy IN ('flexible','moderate','strict','non_refundable') has_policy,
+   EXISTS(SELECT 1 FROM availability a WHERE a.listing_id=l.id AND a.date>=current_date AND a.is_blocked=false
+     AND a.spots>0 AND a.spots_remaining>0 AND a.spots_remaining<=a.spots AND (a.price_override IS NULL OR a.price_override>0)) has_open_dates,
    EXISTS(SELECT 1 FROM listing_claim_verifications v
      JOIN listing_claims cl ON cl.id=v.claim_id AND cl.listing_id=l.id AND cl.operator_id=l.operator_id AND cl.status='approved'
      JOIN listing_trusted_contacts tc ON tc.listing_id=l.id AND tc.phone=v.target_phone
@@ -207,6 +213,9 @@ export async function getOnboardingStatus(listingId: string, operatorId: string,
   const r = requirements(ctx);
   return {
     listingId, listing: { title: ctx.title, slug: ctx.slug, islandSlug: ctx.island_slug, status: ctx.listing_status }, canManage: true,
+    // Same shape as lib/onboarding-nudges.ts#listingGapsFromFlags, inlined so this audited module keeps its dependency list.
+    listingGaps: [ctx.has_price, ctx.has_capacity, ctx.has_policy, ctx.has_open_dates].every(value => typeof value === "boolean")
+      ? { price: !ctx.has_price, capacity: !ctx.has_capacity, policy: !ctx.has_policy, openDates: !ctx.has_open_dates } : null,
     state: reason === "ready" ? "ready" : !r.claim ? "unclaimed" : !r.business || !r.terms || !r.representative ? "onboarding_incomplete" : "onboarding_pending",
     eligible: reason === "ready", reason, requirements: r,
     bookingsEnabled: process.env.BOOKINGS_ENABLED === "true" && ctx.launch_enabled && deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries),

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { COUNTRIES } from "@/lib/countries";
-import { describeNextStep, describeWaiting, nextOnboardingStep, type OnboardingStage } from "@/lib/onboarding-nudges";
+import { describeNextStep, describeWaiting, nextOnboardingStep, onlyDatesMissing, type ListingGaps, type OnboardingStage } from "@/lib/onboarding-nudges";
 
 type Business = { legalName: string; country: string; address: string; representativeName: string };
 type Step = "claim" | "business" | "representative" | "terms" | "listing" | "payments" | "activation";
@@ -20,7 +20,7 @@ type Onboarding = {
   listingId: string; state: string; eligible: boolean; reason: string; bookingsEnabled: boolean; canManage: boolean;
   listing: { title: string; slug: string; islandSlug: string; status?: string }; requirements: Record<Step, boolean>;
   business: Business; termsVersion: string; allowedPaymentCountries: string[]; stripe: { connected: boolean };
-  payoutProfile?: PayoutProfileSummary; activatedAt: string | null;
+  payoutProfile?: PayoutProfileSummary; activatedAt: string | null; listingGaps?: ListingGaps | null;
 };
 const steps: { key: Step; label: string }[] = [
   { key: "claim", label: "Business claim verified" }, { key: "business", label: "Legal business details" },
@@ -32,22 +32,22 @@ const emptyBusiness: Business = { legalName: "", country: "", address: "", repre
 const PAYOUT_METHODS = "Wise, PayPal or bank transfer";
 
 /** Where on this page (or elsewhere) a stage is completed. */
-function stageHref(stage: OnboardingStage, listingId: string, directPayouts: boolean) {
+function stageHref(stage: OnboardingStage, listingId: string, directPayouts: boolean, gaps?: ListingGaps | null) {
   const id = encodeURIComponent(listingId);
   switch (stage) {
     case "business_details": return "#company-details";
-    case "listing_setup": return `/operator/listings/${id}`;
+    case "listing_setup": return onlyDatesMissing(gaps) ? `/operator/listings/${id}/calendar` : `/operator/listings/${id}`;
     case "payout_setup": return directPayouts ? `/operator/payouts?listingId=${id}` : "#payments";
     case "payout_rejected": return `/operator/payouts?listingId=${id}`;
     case "activate": return "#finalize";
   }
 }
-function stepHref(step: Step, listingId: string, directPayouts: boolean) {
+function stepHref(step: Step, listingId: string, directPayouts: boolean, gaps?: ListingGaps | null) {
   const id = encodeURIComponent(listingId);
   switch (step) {
     case "claim": return `/operator/claim/${id}`;
     case "business": case "representative": case "terms": return "#company-details";
-    case "listing": return `/operator/listings/${id}`;
+    case "listing": return onlyDatesMissing(gaps) ? `/operator/listings/${id}/calendar` : `/operator/listings/${id}`;
     case "payments": return directPayouts ? `/operator/payouts?listingId=${id}` : "#payments";
     case "activation": return "#finalize";
   }
@@ -153,7 +153,8 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
     stripeConnected: status.stripe.connected,
     suspended: status.reason === "suspended",
   }) : null;
-  const nextContent = nextStep ? describeNextStep(nextStep, { listingId, stripeConnected: !!status?.stripe.connected }) : null;
+  const gaps = status?.listingGaps ?? null;
+  const nextContent = nextStep ? describeNextStep(nextStep, { listingId, stripeConnected: !!status?.stripe.connected, listingGaps: gaps }) : null;
   const waitingText = nextStep ? describeWaiting(nextStep) : null;
   const inputClass = "mt-1 w-full rounded-xl border border-cream-300 bg-white p-3 text-navy-700";
   const buttonClass = "rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white disabled:opacity-50";
@@ -174,7 +175,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
           const done = status.requirements[step.key] === true;
           return <li key={step.key} className="flex items-center gap-2 text-sm text-navy-700">
             {done ? <CheckCircle2 size={18} className="shrink-0 text-teal-700" aria-label="Complete" /> : <Circle size={18} className="shrink-0 text-navy-300" aria-label="Incomplete" />}
-            {done || step.key === "activation" ? step.label : <a href={stepHref(step.key, listingId, directPayouts)} className="font-medium text-gold-800 underline-offset-2 hover:underline">{step.label}</a>}
+            {done || step.key === "activation" ? step.label : <a href={stepHref(step.key, listingId, directPayouts, gaps)} className="font-medium text-gold-800 underline-offset-2 hover:underline">{step.label}</a>}
           </li>;
         })}</ul>
         {statusCurrent && nextContent && nextStep?.kind === "stage" && (
@@ -184,7 +185,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
               <p className="mt-1 font-semibold text-navy-700">{nextContent.title}</p>
               <p className="mt-1 text-sm text-navy-600">{nextContent.detail}</p>
             </div>
-            <a href={stageHref(nextStep.stage, listingId, directPayouts)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gold-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gold-600">{nextContent.actionLabel}<ArrowRight size={16} aria-hidden="true" /></a>
+            <a href={stageHref(nextStep.stage, listingId, directPayouts, gaps)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gold-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gold-600">{nextContent.actionLabel}<ArrowRight size={16} aria-hidden="true" /></a>
           </div>
         )}
         {statusCurrent && waitingText && (
@@ -215,7 +216,8 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
             ? `Companies registered in ${savedCountryName || savedCountry} are paid directly by VakayGo: after each completed booking we send your earnings by ${PAYOUT_METHODS}, in USD, EUR or a supported local currency. Submit your payout details and sign the W-8BEN form once; we verify them within two business days. No Stripe account is needed.`
             : "Complete the listing information and Stripe's company, identity and payout checks. Eligibility is verified automatically; returning from Stripe alone does not complete onboarding."}</p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href={`/operator/listings/${listingId}`} className={status.requirements.listing ? secondaryClass : buttonClass}>{status.requirements.listing ? "Review listing details" : "Set price, capacity and open dates"}</Link>
+          <Link href={`/operator/listings/${listingId}`} className={status.requirements.listing || onlyDatesMissing(gaps) ? secondaryClass : buttonClass}>{status.requirements.listing || onlyDatesMissing(gaps) ? "Review listing details" : "Set price, capacity and open dates"}</Link>
+          <Link href={`/operator/listings/${encodeURIComponent(listingId)}/calendar`} className={!status.requirements.listing && onlyDatesMissing(gaps) ? buttonClass : secondaryClass}>{!status.requirements.listing && onlyDatesMissing(gaps) ? "Open your dates in the calendar" : "Open dates and calendar"}</Link>
           {directPayouts && (
             <Link href={payoutsHref} className={payoutVerified ? secondaryClass : buttonClass}>{payout ? "Review payout details" : `Set up payouts (${PAYOUT_METHODS})`}</Link>
           )}
