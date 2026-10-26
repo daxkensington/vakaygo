@@ -103,6 +103,19 @@ it("points a business that never accepted the terms at the company form first", 
   expect(container.textContent).toContain("Set price, capacity and open dates");
 });
 
+it("points a listing whose only gap is open dates at the calendar", async () => {
+  const datesOnly = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, listing: false }, listingGaps: { price: false, capacity: false, policy: false, openDates: true } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(datesOnly)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Open your dates");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe(`/operator/listings/${listingId}/calendar`);
+  const listingStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Listing information complete");
+  expect(listingStep?.getAttribute("href")).toBe(`/operator/listings/${listingId}/calendar`);
+  expect(container.textContent).toContain("Open your dates in the calendar");
+  expect(container.textContent).not.toContain("Set price, capacity and open dates");
+});
+
 it("offers Stripe first for a supported country while keeping direct payouts one click away", async () => {
   const supported = { ...status, stripe: { connected: false }, business: { ...status.business, country: "CA" }, allowedPaymentCountries: ["CA"] };
   fetchMock.mockImplementation(async () => new Response(JSON.stringify(supported)));

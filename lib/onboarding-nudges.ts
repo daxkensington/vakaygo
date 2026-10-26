@@ -137,8 +137,25 @@ export interface NextStepContent {
   href: string;
 }
 
+/** What `vakaygo_listing_setup_valid` is still missing; `true` means missing. Unknown when not loaded. */
+export interface ListingGaps { price: boolean; capacity: boolean; policy: boolean; openDates: boolean }
+
+export function listingGapsFromFlags(flags: { hasPrice?: boolean | null; hasCapacity?: boolean | null; hasPolicy?: boolean | null; hasOpenDates?: boolean | null } | null | undefined): ListingGaps | null {
+  if (!flags) return null;
+  const known = [flags.hasPrice, flags.hasCapacity, flags.hasPolicy, flags.hasOpenDates].every(value => typeof value === "boolean");
+  if (!known) return null;
+  return { price: !flags.hasPrice, capacity: !flags.hasCapacity, policy: !flags.hasPolicy, openDates: !flags.hasOpenDates };
+}
+
+/** Only the calendar is left: price, capacity and policy are all set. */
+export function onlyDatesMissing(gaps: ListingGaps | null | undefined): boolean {
+  return !!gaps && gaps.openDates && !gaps.price && !gaps.capacity && !gaps.policy;
+}
+
+export interface NextStepContext { listingId: string; stripeConnected: boolean; listingGaps?: ListingGaps | null }
+
 /** Copy and link for a stage. `null` for waiting/done/blocked — nothing for the operator to do. */
-export function describeNextStep(step: OnboardingNextStep, ctx: { listingId: string; stripeConnected: boolean }): NextStepContent | null {
+export function describeNextStep(step: OnboardingNextStep, ctx: NextStepContext): NextStepContent | null {
   if (step.kind !== "stage") return null;
   const id = encodeURIComponent(ctx.listingId);
   switch (step.stage) {
@@ -149,13 +166,27 @@ export function describeNextStep(step: OnboardingNextStep, ctx: { listingId: str
         actionLabel: "Complete company details",
         href: `/operator/onboarding/${id}`,
       };
-    case "listing_setup":
+    case "listing_setup": {
+      if (onlyDatesMissing(ctx.listingGaps)) {
+        return {
+          title: "Open your dates",
+          detail: "Your price, capacity and cancellation policy are set. Mark the dates you can take guests in the calendar; travelers can only book open dates.",
+          actionLabel: "Open the calendar",
+          href: `/operator/listings/${id}/calendar`,
+        };
+      }
+      const gaps = ctx.listingGaps;
+      const missing = gaps
+        ? [gaps.price && "a price", gaps.capacity && "guest capacity", gaps.policy && "a cancellation policy", gaps.openDates && "open dates"].filter((item): item is string => typeof item === "string")
+        : ["a price", "guest capacity", "a cancellation policy", "open dates"];
+      const list = missing.length <= 1 ? missing.join("") : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
       return {
         title: "Set your price and open dates",
-        detail: "Travelers can see your page but cannot book it yet. Set a price, guest capacity, a cancellation policy and the dates you are open.",
+        detail: `Travelers can see your page but cannot book it yet. Still missing: ${list || "listing details"}. Price, capacity and policy live on the listing page; open dates live in its calendar.`,
         actionLabel: "Set price and availability",
         href: `/operator/listings/${id}`,
       };
+    }
     case "payout_setup":
       return ctx.stripeConnected
         ? {

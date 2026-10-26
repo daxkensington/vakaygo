@@ -213,15 +213,28 @@ export async function sendClaimDecision(params: {
   to: string;
   contactName: string;
   listingTitle: string;
+  /** Required for an approval: the welcome links straight to this listing's onboarding. */
+  listingId?: string;
   approved: boolean;
   adminNotes: string | null;
+  /** Days of availability opened by default at approval (0 when the listing already had dates). */
+  openedDays?: number;
 }) {
   const p = params;
+  const onboardingUrl = p.listingId ? `https://vakaygo.com/operator/onboarding/${encodeURIComponent(p.listingId)}` : "https://vakaygo.com/operator/listings";
+  const stepStyle = "color:#4A4F73;margin:0 0 10px;line-height:1.6";
   const body = p.approved
     ? `
     <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.contactName)},</p>
-    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your claim is approved. <strong>${esc(p.listingTitle)}</strong> now lives in your dashboard. Add photos, set prices and availability, and every booking will come to you.</p>
-    <p style="margin:24px 0 0;text-align:center"><a href="https://vakaygo.com/operator/listings" style="background:#C8912E;color:white;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600">Open my listing</a></p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your claim is approved: <strong>${esc(p.listingTitle)}</strong> is now yours on VakayGo.${p.openedDays ? ` We opened the next ${p.openedDays} days for bookings; block any dates you cannot take in your calendar.` : ""}</p>
+    <p style="color:#1C2333;font-weight:600;margin:0 0 8px">Three steps stand between you and your first booking:</p>
+    <ol style="padding-left:20px;margin:0 0 16px">
+      <li style="${stepStyle}">Confirm your company details and accept the operator terms (about three minutes).</li>
+      <li style="${stepStyle}">Set your price, guest capacity and cancellation policy, and check your open dates.</li>
+      <li style="${stepStyle}">Tell us how you want to be paid: Wise, PayPal or bank transfer, or Stripe where supported.</li>
+    </ol>
+    <p style="margin:24px 0 0;text-align:center"><a href="${esc(onboardingUrl)}" style="background:#C8912E;color:white;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600">Start onboarding</a></p>
+    <p style="color:#4A4F73;margin:16px 0 0;line-height:1.6;font-size:14px">Stuck on any step? Reply to this email and a person on our team will help.</p>
     ${p.adminNotes ? `<p style="color:#9A9DB0;font-size:12px;margin:16px 0 0">${esc(p.adminNotes)}</p>` : ""}`
     : `
     <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.contactName)},</p>
