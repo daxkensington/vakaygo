@@ -206,7 +206,7 @@ export async function getOnboardingStatus(listingId: string, operatorId: string,
   const reason = reasonFor(ctx);
   const r = requirements(ctx);
   return {
-    listingId, listing: { title: ctx.title, slug: ctx.slug, islandSlug: ctx.island_slug }, canManage: true,
+    listingId, listing: { title: ctx.title, slug: ctx.slug, islandSlug: ctx.island_slug, status: ctx.listing_status }, canManage: true,
     state: reason === "ready" ? "ready" : !r.claim ? "unclaimed" : !r.business || !r.terms || !r.representative ? "onboarding_incomplete" : "onboarding_pending",
     eligible: reason === "ready", reason, requirements: r,
     bookingsEnabled: process.env.BOOKINGS_ENABLED === "true" && ctx.launch_enabled && deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries),

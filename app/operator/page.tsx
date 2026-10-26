@@ -374,38 +374,38 @@ export default function OperatorDashboard() {
             {[
               {
                 step: "1",
-                title: "Create your first listing",
+                title: "Add your business",
                 description:
-                  "Add your stay, tour, restaurant, event, or service to start reaching travelers.",
+                  "Already listed on VakayGo? Open your business page and choose “Claim this business”. Otherwise create a new stay, tour, restaurant, event, or service listing.",
                 action: "Create Listing",
                 href: "/operator/listings/new",
                 icon: ListPlus,
               },
               {
                 step: "2",
-                title: "Add photos",
+                title: "Complete business onboarding",
                 description:
-                  "High-quality photos are the #1 factor in getting bookings. Add at least 5.",
-                action: "Upload Photos",
+                  "Confirm your company details, an authorized representative, and the operator terms. Takes about three minutes.",
+                action: "Open Listings",
                 href: "/operator/listings",
                 icon: Eye,
               },
               {
                 step: "3",
-                title: "Set your pricing",
+                title: "Set price, capacity and open dates",
                 description:
-                  "Configure your rates, availability, and cancellation policy.",
+                  "Travelers can only book when a price, guest capacity, cancellation policy, and open dates are set. Add at least 5 photos while you are there.",
                 action: "Set Pricing",
                 href: "/operator/listings",
                 icon: DollarSign,
               },
               {
                 step: "4",
-                title: "Go live",
+                title: "Choose how you get paid",
                 description:
-                  "Open a listing and submit it for review. Publication and online bookings require the relevant checks.",
-                action: "Submit",
-                href: "/operator/listings",
+                  "Wise, PayPal, or bank transfer anywhere in the world; Stripe where supported. Submit once, we verify within two business days, then finalize setup to go live.",
+                action: "Set Up Payouts",
+                href: "/operator/payouts",
                 icon: CalendarCheck,
               },
             ].map((item) => (

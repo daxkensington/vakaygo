@@ -53,10 +53,64 @@ it("accepts worldwide registration countries without implying payment availabili
     expect(select.querySelector(`option[value="${code}"]`)?.textContent).toBe(name);
   }
   expect(container.textContent).toContain("Choose where your company is legally registered");
-  expect(container.textContent).toContain("Payment setup is not available for companies registered in Grenada yet");
+  // A country Stripe does not support is not a dead end: direct payouts are the path, and nothing says "not available".
+  expect(container.textContent).not.toContain("not available for companies registered");
+  expect(container.textContent).toContain("Companies registered in Grenada are paid directly by VakayGo");
+  const payoutLinks = Array.from(container.querySelectorAll(`a[href="/operator/payouts?listingId=${listingId}"]`)).map(item => item.textContent);
+  expect(payoutLinks).toContain("Set up payouts (Wise, PayPal or bank transfer)");
+  expect(payoutLinks).toContain("Payments and payouts verified");
+  expect(container.textContent).toContain("Next: add your payout details");
   expect(button("Save company details").disabled).toBe(false);
+  // An already-connected Stripe account stays visible but cannot continue for an unsupported country.
   expect(button("Continue secure payment setup").disabled).toBe(true);
   expect(button("Refresh verification status").disabled).toBe(false);
+});
+
+it("hides Stripe entirely for an unsupported country without a connected account and names the next step", async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...status, stripe: { connected: false } })));
+  await renderPage();
+  expect(Array.from(container.querySelectorAll("button")).some(item => /secure payment setup/.test(item.textContent || ""))).toBe(false);
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Next step");
+  expect(next.textContent).toContain("Tell us how you want to be paid");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe(`/operator/payouts?listingId=${listingId}`);
+  expect(container.querySelector('a[href="/operator/payouts?listingId=' + listingId + '"]')).not.toBeNull();
+});
+
+it("shows the waiting state while a payout profile is under review", async () => {
+  const pending = { ...status, stripe: { connected: false }, payoutProfile: { method: "bank_wire", currency: "USD", status: "pending_review", w8benCertified: true, revoked: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(pending)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Waiting on VakayGo");
+  expect(next.textContent).toContain("with our team for verification");
+  expect(container.textContent).toContain("Review payout details");
+  expect(container.textContent).toContain("Bank transfer · USD");
+  expect(container.textContent).not.toContain("Next: add your payout details");
+});
+
+it("points a business that never accepted the terms at the company form first", async () => {
+  const stalled = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, representative: false, terms: false, listing: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(stalled)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Finish your company details");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe("#company-details");
+  const termsStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Terms accepted");
+  expect(termsStep?.getAttribute("href")).toBe("#company-details");
+  const listingStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Listing information complete");
+  expect(listingStep?.getAttribute("href")).toBe(`/operator/listings/${listingId}`);
+  expect(container.textContent).toContain("Set price, capacity and open dates");
+});
+
+it("offers Stripe first for a supported country while keeping direct payouts one click away", async () => {
+  const supported = { ...status, stripe: { connected: false }, business: { ...status.business, country: "CA" }, allowedPaymentCountries: ["CA"] };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(supported)));
+  await renderPage();
+  expect(button("Start secure payment setup").disabled).toBe(false);
+  expect(container.textContent).not.toContain("paid directly by VakayGo");
+  expect(container.querySelector(`a[href="/operator/payouts?listingId=${listingId}"]`)?.textContent).toBe("Prefer Wise, PayPal or bank transfer?");
+  expect(container.textContent).toContain("Payment setup is available for your saved country of registration");
 });
 
 it("requires saved company details before connecting even when both countries are enabled", async () => {
