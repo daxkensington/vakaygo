@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { useEffect, useState } from "react";
 import { Star, MessageSquare, Clock, Send, X, Sparkles, Loader2 } from "lucide-react";
 

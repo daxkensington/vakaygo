@@ -1,8 +1,9 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { COUNTRIES } from "@/lib/countries";
 import { describeNextStep, describeWaiting, nextOnboardingStep, onlyDatesMissing, type ListingGaps, type OnboardingStage } from "@/lib/onboarding-nudges";
@@ -55,7 +56,6 @@ function stepHref(step: Step, listingId: string, directPayouts: boolean, gaps?: 
 
 export default function BusinessOnboardingPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = use(params);
-  const router = useRouter();
   const [status, setStatus] = useState<Onboarding | null>(null);
   const [business, setBusiness] = useState<Business>(emptyBusiness);
   const [authority, setAuthority] = useState(false);
@@ -78,7 +78,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
     try {
       const response = await fetch(endpoint + (refreshProvider ? "?refresh=1" : ""), { cache: "no-store", signal: controller.signal });
       if (controller.signal.aborted || request !== requestSequence.current) return false;
-      if (response.status === 401) { setStatus(null); router.replace(`/auth/signin?next=/operator/onboarding/${listingId}`); return false; }
+      if (response.status === 401) { setStatus(null); return false; }
       const data = await response.json();
       if (controller.signal.aborted || request !== requestSequence.current) return false;
       if (!response.ok || data.canManage !== true) {
@@ -93,7 +93,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
       if (request === requestSequence.current && !controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not load onboarding.");
       return false;
     } finally { if (!controller.signal.aborted && request === requestSequence.current) { setLoading(false); setRefreshing(false); } }
-  }, [endpoint, listingId, router]);
+  }, [endpoint, listingId]);
   useEffect(() => {
     formInitialized.current = false; setLoading(true); setStatus(null);
     // A return URL never proves completion. Read the provider state again.
@@ -113,7 +113,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         body: JSON.stringify(action === "save" ? { business, authorityAccepted: authority, termsAccepted: terms, termsVersion: status.termsVersion } : action === "connect" ? { listingId } : { action: "activate" }),
       });
       const data = await response.json();
-      if (response.status === 401) { setStatus(null); setStatusCurrent(false); router.replace(`/auth/signin?next=/operator/onboarding/${listingId}`); return; }
+      if (response.status === 401) { setStatus(null); setStatusCurrent(false); return; }
       if (response.status === 403) { setStatus(null); setStatusCurrent(false); }
       if (!response.ok) throw new Error(data.error || "This step could not be completed.");
       if (action === "connect") {
