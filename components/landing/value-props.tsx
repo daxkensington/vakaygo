@@ -20,7 +20,7 @@ const props = [
     icon: ShieldCheck,
     title: "Local Discovery, Clear Listing Details",
     description:
-      "See where a business is located and whether its ownership has been verified. Save places and show your interest while online bookings and payments are unavailable.",
+      "See where a business is located and whether its ownership has been verified. Save places and check each listing for current booking options and availability. An inquiry is not a reservation.",
     gradient: "from-teal-500 to-teal-600",
     iconBg: "bg-teal-500",
     image: "/images/sections/value-travel.jpg",

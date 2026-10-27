@@ -37,6 +37,29 @@ it("rechecks provider state after onboarding return without automatically activa
   expect(container.querySelector('a[href="/operator/onboarding/terms"]')?.textContent).toBe("operator terms review draft");
 });
 
+it.each([false, true])("distinguishes current listing eligibility %s from an enabled platform launch", async eligible => {
+  const current = {
+    ...status, bookingsEnabled: true, eligible,
+    state: eligible ? "ready" : "onboarding_pending",
+    reason: eligible ? "ready" : "payments_unavailable",
+    requirements: { ...status.requirements, payments: eligible, activation: eligible },
+  };
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(current)));
+  await renderPage();
+  const listingSection = Array.from(container.querySelectorAll("section"))
+    .find(section => section.querySelector("h2")?.textContent === status.listing.title)!;
+  expect(listingSection.textContent).not.toContain("Online bookings and payments are currently disabled");
+  if (eligible) {
+    expect(listingSection.textContent).toContain("This listing is eligible for online bookings");
+    expect(button("Check and finalize setup").disabled).toBe(false);
+  } else {
+    expect(listingSection.textContent).toContain("until every required check is complete");
+    expect(listingSection.textContent).not.toContain("This listing is eligible for online bookings");
+    expect(button("Check and finalize setup").disabled).toBe(true);
+  }
+  expect(fetchMock.mock.calls.every(call => !call[1]?.method || call[1].method === "GET")).toBe(true);
+});
+
 it("does not expose business setup forms when the API rejects ownership", async () => {
   fetchMock.mockImplementation(async () => new Response(JSON.stringify({ error: "Only the current owner can manage onboarding" }), { status: 403 }));
   await renderPage();

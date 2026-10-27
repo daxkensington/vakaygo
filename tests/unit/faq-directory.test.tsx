@@ -18,10 +18,10 @@ type Question = { name: string; acceptedAnswer: { text: string } };
 const questions = () => JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!).mainEntity as Question[];
 const answer = (name: string) => questions().find(question => question.name === name)!.acceptedAnswer.text;
 
-it("publishes directory guidance in structured answers without offering checkout, guest reservations, protection or launch deadlines", async () => {
+it("publishes conditional booking guidance in structured answers without promising universal eligibility, protection or review deadlines", async () => {
   await render();
-  expect(answer("How do I book an experience?")).toContain("Online bookings and payments are disabled");
-  expect(answer("Can I book as a guest without an account?")).toContain("bookings are currently unavailable");
+  expect(answer("How do I book an experience?")).toContain("Online booking requires an eligible listing and available dates and capacity");
+  expect(answer("Can I book as a guest without an account?")).toContain("only the account or guest options shown in its booking flow");
   expect(answer("How does trip protection work?")).toContain("not currently available");
   expect(answer("How do I list my business?")).toContain("does not enable bookings or payments");
   expect(answer("How does VakayGo verify operators?")).toContain("not a guarantee of service quality");
