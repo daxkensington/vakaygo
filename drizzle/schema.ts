@@ -29,6 +29,29 @@ export const listingInterest = pgTable("listing_interest", {
 }, t => [primaryKey({ columns: [t.listingId, t.userId] }),
   index("listing_interest_user_updated_idx").on(t.userId, t.updatedAt),
   index("listing_interest_active_listing_idx").on(t.listingId).where(sql`${t.active}=true`)]);
+
+export const listingInquiries = pgTable("listing_inquiries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  travelerEmail: varchar("traveler_email", { length: 254 }).notNull(),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  partySize: integer("party_size").notNull().default(1),
+  message: text("message").notNull().default(""),
+  status: varchar("status", { length: 16 }).notNull().default("new"),
+  teamNotifiedAt: timestamp("team_notified_at", { withTimezone: true }),
+  travelerNotifiedAt: timestamp("traveler_notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  index("listing_inquiries_listing_created_idx").on(t.listingId, t.createdAt),
+  index("listing_inquiries_email_created_idx").on(t.travelerEmail, t.createdAt),
+  index("listing_inquiries_status_created_idx").on(t.status, t.createdAt),
+  check("listing_inquiries_dates_check", sql`${t.endDate} IS NULL OR ${t.startDate} IS NULL OR ${t.endDate} >= ${t.startDate}`),
+  check("listing_inquiries_party_size_check", sql`${t.partySize} BETWEEN 1 AND 100`),
+  check("listing_inquiries_message_check", sql`length(${t.message}) <= 2000`),
+  check("listing_inquiries_status_check", sql`${t.status} IN ('new','reviewing','closed')`),
+]);
+
 export const businessOutreach = pgTable("business_outreach", {
   listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 24 }).notNull().default("new"),
@@ -489,6 +512,8 @@ export const bookings = pgTable(
     // booking" email goes out; the claim that stops it repeating.
     recoveryEmailSentAt: timestamp("recovery_email_sent_at"),
     guestNotes: text("guest_notes"),
+    transferVehicleType: varchar("transfer_vehicle_type", { length: 16 }),
+    transferRoundTrip: boolean("transfer_round_trip"),
     operatorNotes: text("operator_notes"),
     cancellationReason: text("cancellation_reason"),
     verificationToken: varchar("verification_token", { length: 128 }),

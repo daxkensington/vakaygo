@@ -113,6 +113,20 @@
       "when": 1792965600000,
       "tag": "0015_operator_onboarding_nudges",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793059167539,
+      "tag": "0016_listing_inquiries",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793059853965,
+      "tag": "0017_specialty_booking_pricing",
+      "breakpoints": true
     }
   ]
 }
