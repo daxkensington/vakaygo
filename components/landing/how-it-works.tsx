@@ -21,7 +21,7 @@ export function HowItWorks() {
           ))}
         </ol>
         <p className="mt-6 border-t border-navy-100 pt-5 text-sm leading-relaxed text-navy-600">
-          Online bookings and payments are not available yet. Recording interest or messaging a business does not create a reservation. Messaging is available for businesses with verified ownership where supported.
+          Booking options depend on current verification, setup, and date availability for each listing. Saving a place, recording interest, sending an inquiry, or messaging a business does not create a reservation. Messaging is available for businesses with verified ownership where supported.
         </p>
       </div>
     </section>

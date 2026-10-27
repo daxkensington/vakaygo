@@ -123,16 +123,16 @@ describe("compact homepage discovery", () => {
     }
   });
 
-  it("publishes the current booking and messaging limits without a closed disclosure", () => {
+  it("publishes per-listing booking requirements and non-reserving actions without a closed disclosure", () => {
     const guidance = section("how-it-works");
-    expectPublishedText(guidance, "Online bookings and payments are not available yet.");
-    expectPublishedText(guidance, "Recording interest or messaging a business does not create a reservation.");
+    expectPublishedText(guidance, "Booking options depend on current verification, setup, and date availability for each listing.");
+    expectPublishedText(guidance, "Saving a place, recording interest, sending an inquiry, or messaging a business does not create a reservation.");
     expectPublishedText(guidance, "Messaging is available for businesses with verified ownership where supported.");
   });
 
   it("keeps the separate approval requirement beside the business claim action", () => {
     const business = section("for-businesses");
-    expectPublishedText(business, "Claiming does not activate bookings or payments; launch requires separate approval.");
+    expectPublishedText(business, "Claiming alone does not activate bookings or payments. Complete business setup and an approved payment route before requesting activation.");
     expect(business.querySelector('a[href="/for-businesses"]')?.textContent).toContain("Claim your listing");
     expectPublishedText(section("join"), "You can browse the directory without signing up.");
   });
