@@ -38,7 +38,7 @@ it.skipIf(process.env.VAKAYGO_DISCOVERY_DB_TESTS !== "true")("matches canonical 
     INSERT INTO listing_onboarding(listing_id,operator_id,verified_claim_id,business_legal_name,business_country,business_address,representative_name,
       authority_accepted_at,terms_version,terms_accepted_at,stripe_account_id,provider_environment,platform_account_id,provider_country,
       charges_enabled,payouts_enabled,details_submitted,card_payments_active,transfers_active,provider_checked_at)
-      VALUES(target,actor,proof,'Synthetic guard company','CA','123 Synthetic Road','Synthetic owner',now(),'2026-09-06',now(),
+      VALUES(target,actor,proof,'Synthetic guard company','CA','123 Synthetic Road','Synthetic owner',now(),'2026-10-27',now(),
         'acct_guardoperator','test','acct_guardplatform','CA',true,true,true,true,true,now());
     INSERT INTO availability(listing_id,date,spots,spots_remaining,is_blocked) VALUES(target,current_date+100,4,4,false);
     UPDATE booking_provider_config SET environment='test',platform_account_id='acct_guardplatform',allowed_countries='["CA"]';

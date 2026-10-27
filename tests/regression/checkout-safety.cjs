@@ -1,6 +1,91 @@
 const assert = require('node:assert/strict');
 
 module.exports = async function checkoutSafetyRegressions({load,dbFor,mocksFor,check,pending,bookingId,listingId}) {
+  function reuseSetup(options={}) {
+    const row={...pending(),checkoutExpiresAt:new Date(Date.now()+3600000)};
+    const eligibility={eligible:true,reason:'ready',operatorId:'operator',stripeAccountId:'acct_eligible'};
+    const session={id:'cs_test',status:'open',payment_status:'unpaid',livemode:false,url:'https://checkout.stripe.com/synthetic',metadata:{bookingId},...options.session};
+    const db=dbFor({bookings:[row]});
+    const conditions=[];
+    const select=db.select.bind(db);
+    db.select=cols=>{
+      const query=select(cols),where=query.where.bind(query),limit=query.limit.bind(query);
+      query.where=condition=>{conditions.push(condition);return where(condition);};
+      query.limit=(...args)=>{
+        if(cols&&Object.keys(cols).join(',')==='id') {
+          options.beforeFinalRead?.({row,eligibility,session});
+          if(options.finalGuardRejects)return Promise.resolve([]);
+        }
+        return limit(...args);
+      };
+      return query;
+    };
+    let reads=0,expired=0,created=0,eligibilityReads=0;
+    const mock=mocksFor(db,{
+      '@/server/business-onboarding':{getListingBookingEligibility:async(id,opts)=>{
+        assert.equal(id,listingId);assert.equal(opts.refreshProvider,true);eligibilityReads++;
+        return {...eligibility};
+      }},
+      '@/server/stripe':{
+        retrieveCheckoutSession:async id=>{assert.equal(id,'cs_test');reads++;if(reads===1)options.duringRead?.({row,eligibility,session});return {...session};},
+        expireCheckoutSession:async id=>{assert.equal(id,'cs_test');expired++;if(options.failExpiry)throw Error('Synthetic provider expiry failure');session.status='expired';},
+        createCheckoutSession:async()=>{created++;throw Error('Reused checkout must not create a provider session');},
+      },
+    });
+    const route=load('app/api/payments/create-checkout/route.ts',mock);
+    return {row,session,eligibility,db,conditions,counts:()=>({reads,expired,created,eligibilityReads}),run:()=>route.POST(new Request('https://audit.invalid/api/payments/create-checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({bookingId})}))};
+  }
+  await check('Healthy Checkout reuse returns the same provider URL without creating or expiring a session',async()=>{
+    const t=reuseSetup();const response=await t.run();assert.equal(response.status,200);assert.equal((await response.json()).url,t.session.url);
+    assert.deepEqual(t.counts(),{reads:1,expired:0,created:0,eligibilityReads:2});assert.equal(t.db.writes.length,0);
+    const sql=[];const visit=condition=>{if(condition?.op==='sql')sql.push(condition.text);for(const child of condition?.args||[])visit(child);};visit(t.conditions.at(-1));
+    assert.ok(sql.some(text=>text.includes('vakaygo_listing_bookable')));
+    assert.ok(sql.some(text=>text.includes('vakaygo_booking_dates_available')));
+    assert.ok(sql.some(text=>text.includes('current_listing.operator_id')&&text.includes('current_onboarding.stripe_account_id')&&text.includes('platform_account_id')));
+  });
+  for(const [name,mutate] of [
+    ['outdated operator terms',({eligibility})=>{eligibility.eligible=false;eligibility.reason='terms_outdated';}],
+    ['revoked ownership',({eligibility})=>{eligibility.operatorId='new_operator';}],
+    ['a changed payment rail',({eligibility})=>{eligibility.paymentMode='platform';}],
+    ['a changed provider account',({eligibility})=>{eligibility.stripeAccountId='acct_replacement';}],
+    ['a blocked booking calendar',({row})=>{row.datesAvailable=false;}],
+    ['a cancellation request',({row})=>{row.cancellationRequestedAt=new Date();}],
+    ['a cancelled status',({row})=>{row.status='cancelled';}],
+    ['an already paid booking',({row})=>{row.paidAt=new Date();row.paymentId='pi_preserved';}],
+    ['a replaced persisted session',({row})=>{row.checkoutSessionId='cs_replacement';}],
+    ['a changed booking owner',({row})=>{row.travelerId='other_traveler';}],
+    ['a changed booking operator',({row})=>{row.operatorId='other_operator';}],
+    ['a changed booking listing',({row})=>{row.listingId='other_listing';}],
+    ['a changed persisted payment rail',({row})=>{row.paymentMode='platform';}],
+    ['a changed persisted payment account',({row})=>{row.checkoutStripeAccountId='acct_replacement';}],
+  ])await check('Reuse closes the original payment link when provider retrieval races '+name,async()=>{
+    const t=reuseSetup({duringRead:mutate});const response=await t.run();assert.equal(response.status,409);assert.equal((await response.json()).url,undefined);
+    assert.equal(t.counts().expired,1);assert.equal(t.counts().created,0);
+    assert.ok(t.db.writes.every(write=>Object.keys(write.values).join(',')==='checkoutExpiresAt'));
+    assert.equal(t.row.totalAmount,'71.50');assert.equal(t.row.currency,'USD');
+    if(name==='an already paid booking'){assert.ok(t.row.paidAt);assert.equal(t.row.paymentId,'pi_preserved');assert.equal(t.db.writes[0].count,0);}
+    if(name==='a cancellation request')assert.ok(t.row.cancellationRequestedAt);
+    if(name==='a replaced persisted session'){assert.equal(t.row.checkoutSessionId,'cs_replacement');assert.ok(t.row.checkoutExpiresAt>Date.now());assert.equal(t.db.writes[0].count,0);}
+  });
+  await check('The final booking read rejects cancellation occurring after the refreshed eligibility check',async()=>{
+    const t=reuseSetup({beforeFinalRead:({row})=>{row.cancellationRequestedAt=new Date();}});
+    const response=await t.run();assert.equal(response.status,409);assert.equal((await response.json()).url,undefined);assert.equal(t.counts().expired,1);assert.ok(t.row.cancellationRequestedAt);
+  });
+  await check('A terms cutover rejected by the final SQL guard cannot release the earlier payment URL',async()=>{
+    const t=reuseSetup({finalGuardRejects:true});const response=await t.run();assert.equal(response.status,409);assert.equal((await response.json()).url,undefined);
+    assert.equal(t.counts().eligibilityReads,2);assert.equal(t.counts().expired,1);assert.equal(t.row.status,'pending');assert.equal(t.row.paidAt,null);
+  });
+  await check('Failed provider expiry truthfully reports cleanup as unconfirmed and leaves the retry marker open',async()=>{
+    const t=reuseSetup({duringRead:({eligibility})=>{eligibility.eligible=false;},failExpiry:true});const original=t.row.checkoutExpiresAt;
+    const response=await t.run(),body=await response.json();assert.equal(response.status,503);assert.equal(body.code,'CHECKOUT_EXPIRY_PENDING');assert.match(body.error,/could not be confirmed/);assert.equal(body.url,undefined);
+    assert.equal(t.session.status,'open');assert.equal(t.row.checkoutExpiresAt,original);assert.equal(t.db.writes.length,0);assert.equal(t.counts().created,0);
+  });
+  for(const session of [{id:'cs_foreign'},{metadata:{bookingId:'other_booking'}}])await check('Reuse refuses a foreign provider identity without expiring another booking session: '+JSON.stringify(session),async()=>{
+    const t=reuseSetup({session});const response=await t.run();assert.equal(response.status,503);assert.equal((await response.json()).url,undefined);assert.equal(t.counts().expired,0);assert.equal(t.db.writes.length,0);
+  });
+  for(const session of [{status:'expired',url:null},{url:null}])await check('A closed or missing provider URL is never returned as a successful reused Checkout: '+JSON.stringify(session),async()=>{
+    const t=reuseSetup({session});const response=await t.run();assert.equal(response.status,409);assert.equal((await response.json()).url,undefined);assert.equal(t.counts().expired,0);assert.equal(t.db.writes.length,0);
+  });
   function setup(options={}) {
     const row={...pending(),checkoutExpiresAt:new Date(Date.now()+3600000),...options.booking};
     const db=dbFor({bookings:[row]},options.beforeUpdate?(_table,values)=>options.beforeUpdate(row,values):undefined);

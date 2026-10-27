@@ -8,7 +8,8 @@ import { expireListingPendingCheckouts } from "@/server/booking-checkout-safety"
 import { revalidateListing } from "@/lib/revalidate-listing";
 import { isCountryCode } from "@/lib/countries";
 
-export const OPERATOR_TERMS_VERSION = "2026-09-06";
+import { OPERATOR_TERMS_VERSION } from "@/lib/operator-terms";
+export { OPERATOR_TERMS_VERSION };
 export const PROVIDER_READINESS_TTL_MS = 15 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

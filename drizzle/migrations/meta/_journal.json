@@ -127,6 +127,13 @@
       "when": 1793059853965,
       "tag": "0017_specialty_booking_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793081795247,
+      "tag": "0018_operator_terms_revision",
+      "breakpoints": true
     }
   ]
 }

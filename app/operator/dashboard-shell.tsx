@@ -17,6 +17,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import { useAuth } from "@/lib/auth-context";
+import { isPublicOperatorTermsPath } from "@/lib/operator-terms";
 import { invalidateOperatorRequests, OPERATOR_SESSION_EXPIRED, operatorSignInHref } from "@/lib/operator-session";
 
 const navItems = [
@@ -38,7 +39,7 @@ export default function OperatorLayout({
   const router = useRouter();
   const { user, loading } = useAuth();
   const [expired, setExpired] = useState(false);
-  const publicPage = pathname === "/operator/onboarding/terms";
+  const publicPage = isPublicOperatorTermsPath(pathname);
 
   useLayoutEffect(() => {
     invalidateOperatorRequests();

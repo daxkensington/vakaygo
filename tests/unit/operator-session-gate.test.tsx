@@ -121,9 +121,9 @@ describe("operator authentication gate", () => {
     expect(router.replace).toHaveBeenCalledWith(`/auth/signin?next=${encodeURIComponent("/operator/bookings?status=pending#booking-123")}`);
   });
 
-  it.each([true, false])("keeps the operator terms public while session loading is %s", async loading => {
+  it.each(["/operator/onboarding/terms", "/operator/onboarding/terms/2026-09-06"].flatMap(pathname => [true, false].map(loading => ({ pathname, loading }))))("keeps $pathname public while session loading is $loading", async ({ pathname, loading }) => {
     auth.loading = loading;
-    location("/operator/onboarding/terms");
+    location(pathname);
     await render();
     expect(mounted).toHaveBeenCalledOnce();
     expect(router.replace).not.toHaveBeenCalled();

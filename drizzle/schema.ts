@@ -1324,3 +1324,22 @@ export const operatorOnboardingNudgeOptouts = pgTable("operator_onboarding_nudge
   source: varchar("source", { length: 32 }).notNull().default("email_link"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Exact consent receipts survive replacement of the current onboarding version.
+export const operatorTermsAcceptances = pgTable("operator_terms_acceptances", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  termsVersion: varchar("terms_version", { length: 32 }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  authorityAcceptedAt: timestamp("authority_accepted_at", { withTimezone: true }),
+  businessLegalName: varchar("business_legal_name", { length: 256 }),
+  businessCountry: varchar("business_country", { length: 2 }),
+  businessAddress: text("business_address"),
+  representativeName: varchar("representative_name", { length: 256 }),
+  recordOrigin: varchar("record_origin", { length: 24 }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("operator_terms_acceptances_receipt_idx").on(t.listingId, t.operatorId, t.termsVersion, t.acceptedAt),
+  check("operator_terms_acceptances_origin_check", sql.raw("record_origin in ('observed_existing','explicit_acceptance')")),
+]);
