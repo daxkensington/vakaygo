@@ -7,7 +7,7 @@ INSERT INTO availability(listing_id,date,spots,is_blocked) VALUES('20000000-0000
 -- Synthetic positive evidence for inventory/refund tests; never use this fixture to onboard a real company.
 INSERT INTO availability(listing_id,date,spots,spots_remaining,is_blocked)
  SELECT '20000000-0000-4000-8000-000000000001',d,2,2,false FROM generate_series(date '2099-12-02',date '2099-12-31',interval '1 day') d;
-INSERT INTO users(id,email,role) VALUES('10000000-0000-4000-8000-000000000003','unclaimed@vakaygo.com','operator');
+INSERT INTO users(id,email,role) VALUES('10000000-0000-4000-8000-000000000003','audit-unclaimed@vakaygo.com','operator');
 INSERT INTO listing_trusted_contacts(listing_id,original_operator_id,phone,source,source_reference)
  VALUES('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000003','+14735550100','google-places','synthetic-independent-source');
 INSERT INTO listing_claims(id,listing_id,operator_id,status,contact_name,contact_phone)
@@ -155,4 +155,48 @@ BEGIN
  UPDATE bookings SET payment_id='pi_mail_untracked',refund_id='re_mail_untracked',refund_status='failed' WHERE id=target_booking;
  IF EXISTS(SELECT 1 FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='refund_failed')
  THEN RAISE EXCEPTION 'Untracked manual refunds must not create canonical cancellation notifications'; END IF;
+END $$;
+
+INSERT INTO listings(id,operator_id,island_id,type,title,slug,status,price_amount,price_currency,price_unit,max_guests,cancellation_policy)
+ VALUES('20000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000001',900001,'transfer','Audit transfer','audit-transfer','active',100,'USD','trip',8,'moderate'),
+       ('20000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000001',900001,'dining','Audit dining','audit-dining','active',65,'USD','person',8,'moderate');
+INSERT INTO listing_trusted_contacts(listing_id,original_operator_id,phone,source,source_reference)
+ SELECT id,'10000000-0000-4000-8000-000000000003','+14735550100','google-places','synthetic-independent-source' FROM listings WHERE id IN ('20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000011');
+INSERT INTO listing_claims(id,listing_id,operator_id,status,contact_name,contact_phone)
+ SELECT ('30000000-0000-4000-8000-0000000000'||right(id::text,2))::uuid,id,'10000000-0000-4000-8000-000000000001','approved','Synthetic operator','+14735550100' FROM listings WHERE id IN ('20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000011');
+INSERT INTO listing_claim_verifications(id,listing_id,operator_id,claim_id,target_phone,service_sid,provider_account_id,provider_verification_id,status,provider_approved_at,verified_at)
+ SELECT ('40000000-0000-4000-8000-0000000000'||right(l.id::text,2))::uuid,l.id,'10000000-0000-4000-8000-000000000001',c.id,'+14735550100','VA_sql_fixture','AC_sql_fixture','VE_sql_'||right(l.id::text,2),'verified',now(),now() FROM listings l JOIN listing_claims c ON c.listing_id=l.id WHERE l.id IN ('20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000011');
+INSERT INTO listing_onboarding(listing_id,operator_id,verified_claim_id,business_legal_name,business_country,business_address,representative_name,authority_accepted_at,terms_version,terms_accepted_at,stripe_account_id,provider_environment,platform_account_id,provider_country,charges_enabled,payouts_enabled,details_submitted,card_payments_active,transfers_active,provider_checked_at,activated_at)
+ SELECT l.id,'10000000-0000-4000-8000-000000000001',v.id,'Synthetic company','CA','Synthetic address for database tests','Synthetic representative',now(),'2026-09-06',now(),'acct_sqloperator','test','acct_sqlplatform','CA',true,true,true,true,true,now(),now() FROM listings l JOIN listing_claim_verifications v ON v.listing_id=l.id WHERE l.id IN ('20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000011');
+INSERT INTO availability(listing_id,date,spots,spots_remaining,is_blocked)
+ SELECT l.id,'2099-12-09',8,8,false FROM listings l WHERE l.id IN ('20000000-0000-4000-8000-000000000010','20000000-0000-4000-8000-000000000011');
+
+DO $$ BEGIN
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,service_fee,total_amount,currency,payment_method,transfer_vehicle_type,transfer_round_trip)
+ VALUES('audit-transfer','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000010','2099-12-09',2,252,0,252,'USD','card','suv',true);
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-transfer' AND subtotal=252 AND total_amount=252 AND transfer_vehicle_type='suv' AND transfer_round_trip)
+ THEN RAISE EXCEPTION 'Transfer options and server price were not preserved'; END IF;
+ BEGIN
+  INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method,transfer_vehicle_type,transfer_round_trip)
+  VALUES('audit-transfer-price','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000010','2099-12-09',1,140,140,'USD','card','suv',true);
+  RAISE EXCEPTION 'Expected transfer price rejection';
+ EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%price%' THEN RAISE; END IF; END;
+ BEGIN
+  INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method,transfer_vehicle_type,transfer_round_trip)
+  VALUES('audit-transfer-vehicle','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000010','2099-12-09',1,100,100,'USD','card','hovercraft',false);
+  RAISE EXCEPTION 'Expected transfer vehicle rejection';
+ EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%vehicle%' THEN RAISE; END IF; END;
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,status,start_date,guest_count,subtotal,total_amount,payment_method)
+ VALUES('audit-table-request','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','requested','2099-12-09',2,130,130,'card');
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-table-request' AND subtotal=0 AND total_amount=0 AND payment_method='none')
+ THEN RAISE EXCEPTION 'Dining table request was not zeroed'; END IF;
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method)
+ VALUES('audit-paid-dining','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-09',2,130,130,'USD','card');
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-paid-dining' AND status='pending' AND total_amount=130 AND payment_method='card')
+ THEN RAISE EXCEPTION 'Ordinary dining experience did not remain paid'; END IF;
+ BEGIN
+  INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method,transfer_vehicle_type,transfer_round_trip)
+  VALUES('audit-dining-transfer','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-09',1,65,65,'USD','card','sedan',false);
+  RAISE EXCEPTION 'Expected non-transfer options rejection';
+ EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%Transfer options%' THEN RAISE; END IF; END;
 END $$;

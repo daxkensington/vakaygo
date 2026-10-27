@@ -70,6 +70,44 @@ describe("saved request receipts", () => {
   });
 });
 
+describe("specialty booking payment states", () => {
+  it("uses the server transfer total and selected options for checkout", async () => {
+    await prepareForm("transfer");
+    await click("SUV");
+    await act(async () => { (container.querySelector('input[type="checkbox"]') as HTMLInputElement).click(); });
+    fetchMock.mockResolvedValueOnce(Response.json({ booking: { id: "transfer-1", bookingNumber: "VG-TRANSFER", status: "pending", totalAmount: "252.00" } }, { status: 201 }));
+    await submit("transfer");
+    expect(JSON.parse(fetchMock.mock.calls.find(call => call[0] === "/api/bookings")![1].body)).toMatchObject({ vehicleType: "suv", roundTrip: true });
+    expect(container.textContent).toContain("Total: $252.00");
+    expect(container.textContent).not.toContain("Transfer Booked!");
+    fetchMock.mockResolvedValueOnce(Response.json({ url: "https://checkout.stripe.com/c/pay/transfer" }));
+    vi.spyOn(window, "location", "get").mockReturnValue({ href: "" } as Location);
+    await click("Pay Now");
+    expect(JSON.parse(fetchMock.mock.calls.find(call => call[0] === "/api/payments/create-checkout")![1].body)).toEqual({ bookingId: "transfer-1" });
+    expect(events("begin_checkout")).toHaveLength(1);
+  });
+
+  it("marks an unpaid transfer as unconfirmed when Pay Later is chosen", async () => {
+    await prepareForm("transfer");
+    fetchMock.mockResolvedValueOnce(Response.json({ booking: { id: "transfer-1", bookingNumber: "VG-TRANSFER", status: "pending", totalAmount: "100.00" } }, { status: 201 }));
+    await submit("transfer");
+    await click("Pay Later");
+    expect(container.textContent).toContain("Not confirmed until paid.");
+    expect(container.querySelector('a[href="/bookings"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("Transfer Booked!");
+  });
+
+  it("never confirms a dining table request from a non-request response", async () => {
+    await prepareForm("dining");
+    fetchMock.mockResolvedValueOnce(Response.json({ mode: "booking", booking: { id: "dining-1", bookingNumber: "VG-DINING", status: "pending", totalAmount: "100.00" } }, { status: 201 }));
+    await submit("dining");
+    expect(JSON.parse(fetchMock.mock.calls.find(call => call[0] === "/api/bookings")![1].body)).toMatchObject({ reservationType: "table" });
+    expect(container.textContent).toContain("We couldn't submit a table request.");
+    expect(container.textContent).not.toMatch(/Request received|Reservation Confirmed!/);
+    expect(events("booking_request_saved")).toEqual([]);
+  });
+});
+
 describe("validated checkout receipts", () => {
   it.each([200, 503])("measures resumed checkout only after a successful booking-page receipt (HTTP %s)", async status => {
     fetchMock.mockResolvedValueOnce(Response.json({ bookings: [{ ...booking, status: "pending", paidAt: null, paymentEligible: true }] }));

@@ -46,6 +46,12 @@ export default function PrivacyPage() {
                 <p className="mt-3">For business listing invitations, we record send attempts, email provider message identifiers and provider-reported delivery status, including bounces and complaints. We also record visits to invitation links. Automated email security scanners can create these visits, so a visit alone does not show that a person read an email. If you follow an invitation and complete our normal listing-ownership verification, we may associate the approved claim with that invitation.</p>
               </section>
 
+              <section id="listing-inquiries" className="scroll-mt-24">
+                <h2 className="text-xl font-bold text-navy-700 mb-3">Availability inquiries</h2>
+                <p>When you ask VakayGo about an unclaimed listing, we store your email address, requested dates, party size, optional message, the listing and the time of your inquiry. VakayGo staff use these details to try to contact the business, respond to you, manage the request and prevent abuse. This does not create a booking, reserve dates or add you to marketing.</p>
+                <p className="mt-3">We do not share your contact details or message with the unclaimed business through this feature. We retain inquiry and notification records while responding and as needed for support, security and legal obligations. Contact hello@vakaygo.com to ask about or delete your inquiry.</p>
+              </section>
+
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">5. Your Rights</h2>
                 <p>You can access, update, or delete your account information at any time. To request data deletion, contact us at hello@vakaygo.com. We will respond within 30 days.</p>

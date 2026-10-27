@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useCurrentBookingEligibility } from "@/components/listings/booking-eligibility";
 import { ListingInterest } from "@/components/listings/listing-interest";
+import { ListingInquiry } from "@/components/listings/listing-inquiry";
 import { BookingWidget } from "@/components/listings/booking-widget";
 import { DiningReservation } from "@/components/listings/dining-reservation";
 import { TransferBooking } from "@/components/listings/transfer-booking";
@@ -423,6 +424,9 @@ export function ListingDetailClient({
 
               {/* Traveler contact comes before business-owner actions. */}
               <ContactInfo typeData={listing.typeData} listingId={listing.id} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
+              {!bookingEligible && !listing.claimVerified && (
+                <div className="mt-6 lg:hidden"><ListingInquiry listingId={listing.id} listingTitle={listing.title} /></div>
+              )}
 
               {/* Operator / Claim Banner */}
               {!listing.claimVerified ? (
@@ -767,7 +771,15 @@ export function ListingDetailClient({
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
             {!bookingEligible ? (
-              <aside aria-label="Listing interest" className="lg:col-span-1"><div className="sticky top-24"><ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} /></div></aside>
+              <aside aria-label={!listing.claimVerified ? "Listing inquiry" : "Listing interest"} className={!listing.claimVerified ? "hidden lg:block lg:col-span-1" : "lg:col-span-1"}>
+                <div className="sticky top-24">
+                  {!listing.claimVerified ? (
+                    <ListingInquiry listingId={listing.id} listingTitle={listing.title} />
+                  ) : (
+                    <ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} />
+                  )}
+                </div>
+              </aside>
             ) : listing.type === "dining" ? (
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
