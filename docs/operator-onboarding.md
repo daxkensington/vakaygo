@@ -38,10 +38,11 @@ A material final revision needs a new terms version and renewed acceptance. Upda
 
 ## Workers, events, and pausing
 
-All four workers below run every five minutes in `vercel.json` and require `Authorization: Bearer CRON_SECRET`. Confirm scheduler delivery in the deployed environment; a local mock or a configured schedule is not evidence that the worker ran.
+The workers below use the schedules in `vercel.json` and require `Authorization: Bearer CRON_SECRET`. Confirm scheduler delivery in the deployed environment; a local mock or a configured schedule is not evidence that the worker ran.
 
 | Worker | Responsibility | Investigate |
 |---|---|---|
+| `/api/cron/availability` | Daily, append missing tail dates through the next 90 days for claimed listings without changing existing calendar choices. | HTTP 500, stale listing horizons, or an inserted count that remains unexpectedly high. |
 | `/api/cron/onboarding-readiness` | Refresh up to 50 activated provider accounts per run. Stale readiness closes the gate after 15 minutes. | Refresh failures, oldest check age approaching expiry, sustained backlog. |
 | `/api/cron/checkout-safety` | Independently retry closure of persisted unpaid hosted links for ineligible, changed, or cancelled bookings, even while the global launch switch is off. | `failed > 0`, HTTP 503, or old open links. A missing/mismatched platform identity blocks expiry and must be corrected. |
 | `/api/cron/booking-refunds` | Retry canonical cancellations and the separate rejected-payment refund ledger. | Pending age and `needsReview > 0`; failed/canceled refunds require support review. |

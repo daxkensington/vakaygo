@@ -49,6 +49,10 @@
       "schedule": "0 */2 * * *"
     },
     {
+      "path": "/api/cron/availability",
+      "schedule": "17 5 * * *"
+    },
+    {
       "path": "/api/cron/checkout-safety",
       "schedule": "0 * * * *"
     },
