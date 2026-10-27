@@ -20,6 +20,7 @@ import {
 type Payout = {
   id: string;
   amount: number;
+  currency: string | null;
   status: string;
   periodStart: string;
   periodEnd: string;
@@ -33,7 +34,8 @@ type Earning = {
   listingTitle: string;
   totalAmount: number;
   serviceFee: number;
-  netAmount: number;
+  netAmount: number | null;
+  currency: string | null;
   completedAt: string;
 };
 
@@ -69,9 +71,12 @@ type PayoutListing = {
 };
 
 type PayoutData = {
-  availableBalance: number;
-  totalEarned: number;
-  pendingAmount: number;
+  availableBalance: number | null;
+  totalEarned: number | null;
+  pendingAmount: number | null;
+  summaryCurrency: string | null;
+  currencyReviewRequired: boolean;
+  missingEarnings: { completed: number; confirmed: number };
   payouts: Payout[];
   recentEarnings: Earning[];
   listings?: PayoutListing[];
@@ -95,10 +100,16 @@ const payoutStatusConfig: Record<
   failed: { label: "Failed", bg: "bg-red-50", text: "text-red-600" },
 };
 
-function formatCurrency(amount: number) {
+function formatCurrency(amount: number | null, currency: string | null) {
+  if (amount === null) return "Needs review";
+  if (!currency) {
+    return `${amount.toFixed(2)} (currency not recorded)`;
+  }
+  if (!/^[A-Za-z]{3}$/.test(currency)) return `${currency} ${amount.toFixed(2)}`;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
+    currencyDisplay: "code",
     minimumFractionDigits: 2,
   }).format(amount);
 }
@@ -202,6 +213,9 @@ export default function OperatorPayoutsPage() {
     availableBalance = 0,
     totalEarned = 0,
     pendingAmount = 0,
+    summaryCurrency = null,
+    currencyReviewRequired = false,
+    missingEarnings = { completed: 0, confirmed: 0 },
     payouts: payoutList = [],
     recentEarnings = [],
     listings: listingItems = [],
@@ -257,13 +271,14 @@ export default function OperatorPayoutsPage() {
 
   function handleExportCsv() {
     const rows = [
-      ["Booking Number", "Listing", "Gross USD", "Platform Fee USD", "Net USD", "Completed Date"],
+      ["Booking Number", "Listing", "Currency", "Traveler Total", "Traveler Service Fee", "Recorded Operator Earnings", "Completed Date"],
       ...recentEarnings.map((e) => [
         e.bookingNumber,
         `"${(e.listingTitle || "").replace(/"/g, '""')}"`,
+        e.currency || "Not recorded",
         e.totalAmount.toFixed(2),
         e.serviceFee.toFixed(2),
-        e.netAmount.toFixed(2),
+        e.netAmount === null ? "Not recorded" : e.netAmount.toFixed(2),
         e.completedAt,
       ]),
     ];
@@ -308,10 +323,10 @@ export default function OperatorPayoutsPage() {
             <div className="w-10 h-10 bg-gold-50 rounded-xl flex items-center justify-center">
               <DollarSign size={20} className="text-gold-700" />
             </div>
-            <p className="text-sm text-navy-400">Available Balance</p>
+            <p className="text-sm text-navy-400">Unsettled Recorded Earnings</p>
           </div>
           <p className="text-3xl font-bold text-navy-700">
-            {formatCurrency(availableBalance)}
+            {summaryCurrency === null && availableBalance === 0 ? "0.00" : formatCurrency(availableBalance, summaryCurrency)}
           </p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
@@ -319,10 +334,10 @@ export default function OperatorPayoutsPage() {
             <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
               <ArrowUpRight size={20} className="text-teal-600" />
             </div>
-            <p className="text-sm text-navy-400">Total Earned</p>
+            <p className="text-sm text-navy-400">Completed Booking Earnings</p>
           </div>
           <p className="text-3xl font-bold text-navy-700">
-            {formatCurrency(totalEarned)}
+            {summaryCurrency === null && totalEarned === 0 ? "0.00" : formatCurrency(totalEarned, summaryCurrency)}
           </p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)]">
@@ -330,13 +345,25 @@ export default function OperatorPayoutsPage() {
             <div className="w-10 h-10 bg-navy-50 rounded-xl flex items-center justify-center">
               <Clock size={20} className="text-navy-600" />
             </div>
-            <p className="text-sm text-navy-400">Pending</p>
+            <p className="text-sm text-navy-400">Confirmed Booking Earnings</p>
           </div>
           <p className="text-3xl font-bold text-navy-700">
-            {formatCurrency(pendingAmount)}
+            {summaryCurrency === null && pendingAmount === 0 ? "0.00" : formatCurrency(pendingAmount, summaryCurrency)}
           </p>
         </div>
       </div>
+
+      <p className="text-sm text-navy-400 mb-8">
+        Earnings use the amounts recorded at checkout. Unsettled earnings subtract completed payout ledger entries; they do not confirm funds are available for withdrawal or have arrived in your account.
+      </p>
+      {(missingEarnings.completed > 0 || missingEarnings.confirmed > 0 || currencyReviewRequired) && (
+        <div role="status" className="bg-amber-50 text-amber-800 rounded-xl p-4 text-sm mb-8">
+          {(missingEarnings.completed > 0 || missingEarnings.confirmed > 0) && (
+            <p>{missingEarnings.completed} completed and {missingEarnings.confirmed} confirmed bookings do not have recorded operator earnings. Affected totals need review; missing amounts are not estimated using current fees.</p>
+          )}
+          {currencyReviewRequired && <p>These records have different or unrecorded currencies. Summary totals need review; currencies have not been combined or converted.</p>}
+        </div>
+      )}
 
       {/* Payout Method & Global Sun & Sea Multi-Rail Settlement Setup */}
       <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-card)] mb-8">
@@ -347,7 +374,7 @@ export default function OperatorPayoutsPage() {
               Global Sun &amp; Sea Multi-Rail Payout Setup
             </h2>
             <p className="text-sm text-navy-400 mt-1">
-              Operators across all 34 Caribbean, Latin American, and Mediterranean destinations can receive 48h post-trip escrow payouts in USD, EUR, or local currency via Wise, PayPal, or Bank Wire (SWIFT / IBAN / ACH).
+              Payment routes, currencies, and settlement timing depend on business verification, country, and provider approval. Saving payout details does not activate bookings or release funds.
             </p>
           </div>
           <Link
@@ -644,13 +671,13 @@ export default function OperatorPayoutsPage() {
                     Listing
                   </th>
                   <th className="text-right text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-3">
-                    Gross
+                    Traveler Total
                   </th>
                   <th className="text-right text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-3">
-                    Platform Fee
+                    Traveler Service Fee
                   </th>
                   <th className="text-right text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-3">
-                    Net Amount
+                    Recorded Operator Earnings
                   </th>
                   <th className="text-right text-xs font-semibold text-navy-400 uppercase tracking-wider px-6 py-3">
                     Completed
@@ -675,17 +702,17 @@ export default function OperatorPayoutsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-sm text-navy-700">
-                        {formatCurrency(earning.totalAmount)}
+                        {formatCurrency(earning.totalAmount, earning.currency)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-sm text-red-500">
-                        -{formatCurrency(earning.serviceFee)}
+                        {formatCurrency(earning.serviceFee, earning.currency)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-sm font-semibold text-teal-700">
-                        {formatCurrency(earning.netAmount)}
+                        {earning.netAmount === null ? "Not recorded" : formatCurrency(earning.netAmount, earning.currency)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -751,7 +778,7 @@ export default function OperatorPayoutsPage() {
                     >
                       <td className="px-6 py-4">
                         <span className="text-sm font-semibold text-navy-700">
-                          {formatCurrency(payout.amount)}
+                          {formatCurrency(payout.amount, payout.currency)}
                         </span>
                       </td>
                       <td className="px-6 py-4">

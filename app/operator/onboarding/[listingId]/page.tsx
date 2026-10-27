@@ -59,7 +59,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
   const [status, setStatus] = useState<Onboarding | null>(null);
   const [business, setBusiness] = useState<Business>(emptyBusiness);
   const [authority, setAuthority] = useState(false);
-  const [terms, setTerms] = useState(false);
+  const [acceptedTermsVersion, setAcceptedTermsVersion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -69,6 +69,8 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
   const requestSequence = useRef(0);
   const requestController = useRef<AbortController | null>(null);
   const formInitialized = useRef(false);
+  const displayedTermsVersion = useRef<string | null>(null);
+  const terms = !!status && acceptedTermsVersion === status.termsVersion;
   const endpoint = `/api/operator/onboarding/${encodeURIComponent(listingId)}`;
   const load = useCallback(async (refreshProvider = false, fillForm = false) => {
     const request = ++requestSequence.current;
@@ -86,8 +88,16 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         throw new Error(data.error || "Only the verified business owner can manage onboarding.");
       }
       if (data.listingId !== listingId || !data.business || !data.requirements || !data.listing || !data.stripe) throw new Error("Current verification status is unavailable. Please try again.");
+      const termsChanged = displayedTermsVersion.current !== null && displayedTermsVersion.current !== data.termsVersion;
+      displayedTermsVersion.current = data.termsVersion;
       setStatus(data); setStatusCurrent(true); setError("");
-      if (fillForm || !formInitialized.current) { setBusiness({ ...emptyBusiness, ...data.business }); setAuthority(data.requirements?.representative === true); setTerms(data.requirements?.terms === true); formInitialized.current = true; }
+      if (termsChanged) setAcceptedTermsVersion(null);
+      if (fillForm || !formInitialized.current) {
+        setBusiness({ ...emptyBusiness, ...data.business });
+        setAuthority(data.requirements?.representative === true);
+        if (!termsChanged) setAcceptedTermsVersion(data.requirements?.terms === true ? data.termsVersion : null);
+        formInitialized.current = true;
+      }
       return true;
     } catch (cause) {
       if (request === requestSequence.current && !controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not load onboarding.");
@@ -95,7 +105,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
     } finally { if (!controller.signal.aborted && request === requestSequence.current) { setLoading(false); setRefreshing(false); } }
   }, [endpoint, listingId]);
   useEffect(() => {
-    formInitialized.current = false; setLoading(true); setStatus(null);
+    formInitialized.current = false; displayedTermsVersion.current = null; setAcceptedTermsVersion(null); setLoading(true); setStatus(null);
     // A return URL never proves completion. Read the provider state again.
     void load(true, true);
     const refresh = () => { void load(true); };
@@ -105,17 +115,26 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
 
   async function perform(action: "save" | "connect" | "activate" | "refresh") {
     if (!status?.canManage || !statusCurrent || busy || refreshing) return;
+    const requestTermsVersion = status.termsVersion;
+    if (action === "save" && (!authority || acceptedTermsVersion !== requestTermsVersion)) {
+      setError("Confirm your authority and accept the current operator terms before saving.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       if (action === "refresh") { if (await load(true)) setMessage("Verification status refreshed."); return; }
       const response = await fetch(action === "connect" ? "/api/payments/connect" : endpoint, {
         method: action === "save" ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "save" ? { business, authorityAccepted: authority, termsAccepted: terms, termsVersion: status.termsVersion } : action === "connect" ? { listingId } : { action: "activate" }),
+        body: JSON.stringify(action === "save" ? { business, authorityAccepted: authority, termsAccepted: acceptedTermsVersion === requestTermsVersion, termsVersion: requestTermsVersion } : action === "connect" ? { listingId } : { action: "activate" }),
       });
       const data = await response.json();
       if (response.status === 401) { setStatus(null); setStatusCurrent(false); return; }
       if (response.status === 403) { setStatus(null); setStatusCurrent(false); }
       if (!response.ok) throw new Error(data.error || "This step could not be completed.");
+      if (action === "save" && displayedTermsVersion.current !== requestTermsVersion) {
+        setError("The operator terms changed. Review the current version and accept it before saving again.");
+        return;
+      }
       if (action === "connect") {
         const url = new URL(data.url);
         if (url.protocol !== "https:" || url.hostname !== "connect.stripe.com") throw new Error("The secure onboarding link is unavailable.");
@@ -205,7 +224,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         <label className="block text-sm font-semibold text-navy-600">Registered business address<textarea disabled={busy} required maxLength={1000} value={business.address || ""} onChange={event => setBusiness({ ...business, address: event.target.value })} className={inputClass} rows={3} /></label>
         <label className="block text-sm font-semibold text-navy-600">Authorized representative&apos;s full name<input disabled={busy} required maxLength={200} value={business.representativeName || ""} onChange={event => setBusiness({ ...business, representativeName: event.target.value })} className={inputClass} /></label>
         <label className="flex items-start gap-3 text-sm text-navy-600"><input disabled={busy} type="checkbox" required checked={authority} onChange={event => setAuthority(event.target.checked)} className="mt-1" />I am authorized to represent this company and manage this listing.</label>
-        <label className="flex items-start gap-3 text-sm text-navy-600"><input disabled={busy} type="checkbox" required checked={terms} onChange={event => setTerms(event.target.checked)} className="mt-1" /><span>I have read and accept the <Link href="/operator/onboarding/terms" target="_blank" className="font-semibold text-gold-700 underline">operator terms review draft</Link> (version {status.termsVersion}).</span></label>
+        <label className="flex items-start gap-3 text-sm text-navy-600"><input disabled={busy} type="checkbox" required checked={terms} onChange={event => setAcceptedTermsVersion(event.target.checked ? status.termsVersion : null)} className="mt-1" /><span>I have read and accept the <Link href="/operator/onboarding/terms" target="_blank" className="font-semibold text-gold-700 underline">operator terms</Link> (version {status.termsVersion}).</span></label>
         <button disabled={busy || refreshing || !statusCurrent || !status.requirements.claim} className={buttonClass}>Save company details</button>
       </form>
       <section id="payments" className="mt-6 rounded-2xl border border-cream-200 bg-white p-6">

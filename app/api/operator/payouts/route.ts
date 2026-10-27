@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, payouts, listings } from "@/drizzle/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireOperator } from "@/server/admin-auth";
-import { CATEGORY_RATES } from "@/lib/pricing";
 import { getOperatorPayoutListings } from "@/server/payout-profiles";
 export async function GET() {
   try {
@@ -16,37 +15,32 @@ export async function GET() {
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
-    // Operator earnings are NET: subtotal minus the type-specific
-    // commission (lib/pricing.ts) — what actually lands in their Stripe
-    // account via the destination charge. The old version showed gross
-    // totalAmount (which includes the traveler service fee).
-    const netEarnings = (rows: { subtotal: string | null; listingType: string }[]) =>
-      rows.reduce((sum, r) => {
-        const rates = CATEGORY_RATES[r.listingType] || CATEGORY_RATES.tour;
-        const subtotal = parseFloat(r.subtotal || "0");
-        return sum + subtotal * (1 - rates.operatorFee);
-      }, 0);
+    // Checkout records earnings after discounts. Never reprice historical
+    // bookings using today's category rates or infer missing legacy earnings.
+    const recordedEarnings = (rows: { operatorEarningsCents: number | null }[]) =>
+      rows.some((row) => row.operatorEarningsCents === null)
+        ? null
+        : rows.reduce((sum, row) => sum + row.operatorEarningsCents!, 0) / 100;
 
     const completedRows = await db
-      .select({ subtotal: bookings.subtotal, listingType: listings.type })
+      .select({ operatorEarningsCents: bookings.operatorEarningsCents, currency: bookings.currency })
       .from(bookings)
-      .innerJoin(listings, eq(bookings.listingId, listings.id))
       .where(
         and(eq(bookings.operatorId, userId), eq(bookings.status, "completed"))
       );
 
     const confirmedRows = await db
-      .select({ subtotal: bookings.subtotal, listingType: listings.type })
+      .select({ operatorEarningsCents: bookings.operatorEarningsCents, currency: bookings.currency })
       .from(bookings)
-      .innerJoin(listings, eq(bookings.listingId, listings.id))
       .where(
         and(eq(bookings.operatorId, userId), eq(bookings.status, "confirmed"))
       );
 
     // Total recorded on payout ledger entries
-    const [paidOutResult] = await db
+    const paidOutRows = await db
       .select({
-        total: sql<string>`coalesce(sum(${payouts.amount}), 0)`,
+        amount: payouts.amount,
+        currency: payouts.currency,
       })
       .from(payouts)
       .where(
@@ -56,16 +50,22 @@ export async function GET() {
         )
       );
 
-    const totalEarned = Math.round(netEarnings(completedRows) * 100) / 100;
-    const totalPaidOut = parseFloat(paidOutResult.total) || 0;
-    const availableBalance = Math.round((totalEarned - totalPaidOut) * 100) / 100;
-    const pendingAmount = Math.round(netEarnings(confirmedRows) * 100) / 100;
+    const summaryRows = [...completedRows, ...confirmedRows, ...paidOutRows];
+    const currencies = new Set(summaryRows.map((row) => row.currency?.toUpperCase()));
+    const currencyReviewRequired = [...currencies].some((currency) => !currency || !/^[A-Z]{3}$/.test(currency)) || currencies.size > 1;
+    // With no monetary records there is no currency to infer or convert.
+    const summaryCurrency = currencyReviewRequired ? null : [...currencies][0] ?? null;
+    const totalEarned = currencyReviewRequired ? null : recordedEarnings(completedRows);
+    const pendingAmount = currencyReviewRequired ? null : recordedEarnings(confirmedRows);
+    const totalPaidOutCents = paidOutRows.reduce((sum, row) => sum + Math.round(Number(row.amount) * 100), 0);
+    const availableBalance = totalEarned === null ? null : Math.round(totalEarned * 100 - totalPaidOutCents) / 100;
 
     // Payout history
     const payoutHistory = await db
       .select({
         id: payouts.id,
         amount: payouts.amount,
+        currency: payouts.currency,
         status: payouts.status,
         periodStart: payouts.periodStart,
         periodEnd: payouts.periodEnd,
@@ -83,10 +83,10 @@ export async function GET() {
       .select({
         bookingNumber: bookings.bookingNumber,
         listingTitle: listings.title,
-        listingType: listings.type,
         totalAmount: bookings.totalAmount,
         serviceFee: bookings.serviceFee,
-        subtotal: bookings.subtotal,
+        operatorEarningsCents: bookings.operatorEarningsCents,
+        currency: bookings.currency,
         updatedAt: bookings.updatedAt,
       })
       .from(bookings)
@@ -108,6 +108,12 @@ export async function GET() {
       availableBalance,
       totalEarned,
       pendingAmount,
+      summaryCurrency,
+      currencyReviewRequired,
+      missingEarnings: {
+        completed: completedRows.filter((row) => row.operatorEarningsCents === null).length,
+        confirmed: confirmedRows.filter((row) => row.operatorEarningsCents === null).length,
+      },
       listings: operatorListings,
       payouts: payoutHistory.map((p) => ({
         ...p,
@@ -115,18 +121,17 @@ export async function GET() {
       })),
       recentEarnings: recentEarnings.map((e) => {
         const gross = parseFloat(e.totalAmount);
-        const rates = CATEGORY_RATES[e.listingType] || CATEGORY_RATES.tour;
-        const subtotal = parseFloat(e.subtotal || "0");
         return {
           bookingNumber: e.bookingNumber,
           listingTitle: e.listingTitle,
           totalAmount: gross,
           serviceFee: parseFloat(e.serviceFee || "0"),
-          netAmount: Math.round(subtotal * (1 - rates.operatorFee) * 100) / 100,
+          netAmount: e.operatorEarningsCents === null ? null : e.operatorEarningsCents / 100,
+          currency: e.currency,
           completedAt: e.updatedAt,
         };
       }),
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     logger.error("Operator payouts error", error);
     return NextResponse.json(

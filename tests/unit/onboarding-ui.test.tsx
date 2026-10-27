@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => React.createElement("a", props, children) }));
 import BusinessOnboardingPage from "@/app/operator/onboarding/[listingId]/page";
 import OperatorTermsPage from "@/app/operator/onboarding/terms/page";
+import { OPERATOR_TERMS_VERSION, PREVIOUS_OPERATOR_TERMS_PATH } from "@/lib/operator-terms";
 
 const listingId = "20000000-0000-4000-8000-000000000001";
 const status = {
@@ -14,7 +15,7 @@ const status = {
   listing: { title: "Verified company listing", slug: "verified-company", islandSlug: "grenada" },
   requirements: { claim: true, business: true, representative: true, terms: true, listing: true, payments: false, activation: false },
   business: { legalName: "Example Company", country: "GD", address: "Example business address", representativeName: "Example Representative" },
-  allowedPaymentCountries: [], stripe: { connected: true }, termsVersion: "2026-09-06", activatedAt: null,
+  allowedPaymentCountries: [], stripe: { connected: true }, termsVersion: OPERATOR_TERMS_VERSION, activatedAt: null,
 };
 let container: HTMLDivElement; let root: Root; let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -34,7 +35,7 @@ it("rechecks provider state after onboarding return without automatically activa
   expect(container.textContent).not.toContain("This listing is eligible for online bookings");
   const finalize = Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Check and finalize setup");
   expect(finalize?.disabled).toBe(true);
-  expect(container.querySelector('a[href="/operator/onboarding/terms"]')?.textContent).toBe("operator terms review draft");
+  expect(container.querySelector('a[href="/operator/onboarding/terms"]')?.textContent).toBe("operator terms");
 });
 
 it.each([false, true])("distinguishes current listing eligibility %s from an enabled platform launch", async eligible => {
@@ -174,10 +175,11 @@ it("keeps payment setup closed when country configuration is missing while allow
   expect(container.textContent).toContain("Verification status refreshed");
 });
 
-it("renders the exact operator terms draft version with fee, payout and refund responsibilities", async () => {
+it("renders the exact operator terms revision with its prior draft archive and fee, payout and refund responsibilities", async () => {
   await act(async () => root.render(<OperatorTermsPage />));
-  expect(container.textContent).toContain("Version 2026-09-06");
-  expect(container.textContent).toContain("Draft awaiting business and legal review");
+  expect(container.textContent).toContain(`Version ${OPERATOR_TERMS_VERSION}`);
+  expect(container.querySelector(`a[href="${PREVIOUS_OPERATOR_TERMS_PATH}"]`)).not.toBeNull();
+  expect(container.textContent).toContain("A previous acceptance does not count as acceptance of this revision");
   expect(container.textContent).toContain("Operator commission");
   expect(container.textContent).toContain("Payments and payouts");
   expect(container.textContent).toContain("Cancellations and refunds");
@@ -215,4 +217,43 @@ it("offers recovery when onboarding status cannot load initially", async () => {
   await act(async () => button("Try loading status again").click());
   expect(container.querySelector("input")!.value).toBe("Example Company");
   expect(button("Save company details").disabled).toBe(false);
+});
+
+it("clears consent for a refreshed terms version while preserving the company draft and requiring the new checkbox", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, termsVersion: "2026-09-06" }));
+  await renderPage();
+  const legalName = container.querySelector("input")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(legalName, "Unsaved Company Draft");
+    legalName.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(true);
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, requirements: { ...status.requirements, terms: false } }));
+  await act(async () => { window.dispatchEvent(new Event("focus")); });
+  expect(container.querySelector("input")!.value).toBe("Unsaved Company Draft");
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(false);
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("accept the current operator terms");
+
+  await act(async () => { container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].click(); });
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  const saved = fetchMock.mock.calls.find(call => call[1]?.method === "PATCH")!;
+  expect(JSON.parse(saved[1].body)).toMatchObject({ termsAccepted: true, termsVersion: OPERATOR_TERMS_VERSION, business: { legalName: "Unsaved Company Draft" } });
+});
+
+it("never treats an older pending save as acceptance of a newly refreshed terms version", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, termsVersion: "2026-09-06" }));
+  await renderPage();
+  let resolveSave!: (response: Response) => void;
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { resolveSave = resolve; }));
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ termsAccepted: true, termsVersion: "2026-09-06" });
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, requirements: { ...status.requirements, terms: false } }));
+  await act(async () => { window.dispatchEvent(new Event("pageshow")); });
+  await act(async () => { resolveSave(Response.json({ ...status, termsVersion: "2026-09-06" })); });
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(false);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("operator terms changed");
+  expect(container.textContent).not.toContain("Business information saved");
 });

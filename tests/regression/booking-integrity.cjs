@@ -179,7 +179,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  });
  await check("Repeated checkout calls reuse the saved Stripe session",async()=>{
    const db=dbFor({bookings:[pending()]});let created=0;
-   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({status:"open",url:"https://checkout.stripe.com/test",metadata:{bookingId}}),createCheckoutSession:async()=>{created++;}}}));
+   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({id:"cs_test",status:"open",url:"https://checkout.stripe.com/test",metadata:{bookingId}}),createCheckoutSession:async()=>{created++;}}}));
    for(let i=0;i<2;i++)assert.equal((await h.POST(request({bookingId}))).status,200);
    assert.equal(created,0);
  });
