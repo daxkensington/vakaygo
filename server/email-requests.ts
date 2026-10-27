@@ -422,3 +422,74 @@ export async function sendOnboardingReviewReminderToTeam(params: {
     ),
   });
 }
+
+export async function sendListingInquiryToTeam(params: {
+  inquiryId: string;
+  listingTitle: string;
+  listingUrl: string;
+  islandName: string;
+  businessPhone: string | null;
+  businessWebsite: string | null;
+  whenText: string;
+  partySize: number;
+  message: string;
+  travelerEmail: string;
+}) {
+  const p = params;
+  await sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    replyTo: p.travelerEmail,
+    subject: `ACTION: availability inquiry — ${p.listingTitle} (${p.islandName})`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">A traveler asked about an <strong>unclaimed</strong> listing. This is not a booking. Try to reach the business, then reply to the traveler. The business has not received the traveler's details.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Business", link(p.listingUrl, p.listingTitle))}
+        ${row("Island", esc(p.islandName))}
+        ${row("Business phone", p.businessPhone ? esc(p.businessPhone) : "<em>none on file</em>")}
+        ${row("Website", p.businessWebsite ? esc(p.businessWebsite) : "—")}
+        ${row("Requested dates", esc(p.whenText))}
+        ${row("Party size", String(p.partySize))}
+        ${row("Message", p.message ? esc(p.message) : "—")}
+      </table>
+    </div>
+    <div style="background:#EAF4F4;border-radius:12px;padding:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Traveler email", link(`mailto:${p.travelerEmail}`, p.travelerEmail))}
+        ${row("Inquiry id", esc(p.inquiryId))}
+      </table>
+    </div>`,
+      { eyebrow: "Availability inquiry", title: p.listingTitle, tone: "gold" }
+    ),
+  });
+}
+
+export async function sendListingInquiryReceived(params: {
+  to: string;
+  listingTitle: string;
+  listingUrl: string;
+  whenText: string;
+  partySize: number;
+}) {
+  const p = params;
+  await sendEmail({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `Inquiry received — ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">We received your availability inquiry for <strong>${esc(p.listingTitle)}</strong>. <strong>This is not a booking, nothing is reserved, and no payment was taken.</strong></p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Requested dates", esc(p.whenText))}
+        ${row("Party size", String(p.partySize))}
+      </table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Our team will try to contact the business and reply by email. We cannot guarantee that the business will respond or that your dates will be available. You can return to ${link(p.listingUrl, "the listing")} or reply to this email if your plans change.</p>`,
+      { eyebrow: "Inquiry received — not a booking", title: p.listingTitle, tone: "gold" }
+    ),
+  });
+}

@@ -1,4 +1,5 @@
 import { toWallClockDate } from "./booking-time";
+import { isTransferVehicleType } from "./transfer-pricing";
 export const DEMO_OPERATOR_ID = "197d8586-7fd3-4999-91de-a50ad7d70e23";
 export function isDemoListing(operatorId: string, typeData?: unknown): boolean {
   return operatorId === DEMO_OPERATOR_ID || (!!typeData && typeof typeData === "object" && (typeData as Record<string, unknown>).demo === true);
@@ -18,6 +19,9 @@ export function bookingInputError(body: Record<string, unknown>): string | null 
   if (body.includeInsurance || body.giftCardCode || (body.paymentType && body.paymentType !== "full")) return "Trip protection, deposits and gift card checkout are currently unavailable";
   if (body.paymentMethod && body.paymentMethod !== "card") return "Only card checkout is currently available";
   if (body.promoCode != null && typeof body.promoCode !== "string") return "Invalid promo code";
+  if (body.vehicleType != null && !isTransferVehicleType(body.vehicleType)) return "Choose a valid transfer vehicle";
+  if (body.roundTrip != null && typeof body.roundTrip !== "boolean") return "Choose a valid transfer trip type";
+  if (body.reservationType != null && body.reservationType !== "table") return "Choose a valid dining reservation type";
   return null;
 }
 export function localBookingNow(timezone: string | null, now = new Date()): Date {

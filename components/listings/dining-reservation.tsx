@@ -65,6 +65,7 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
           startDate: dateTime,
           guestCount: guests,
           guestNotes: notes || `Reservation for ${guests} at ${time}`,
+          reservationType: "table",
         }),
       });
 
@@ -75,11 +76,16 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
         return;
       }
 
-      setReserved(true);
-      if ((data.mode === "request" || data.booking?.status === "requested") && typeof data.booking?.id === "string" && data.booking.id.trim()) {
+      const isRequest = data.mode === "request" || data.booking?.status === "requested";
+      if (!isRequest) {
+        setError("We couldn't submit a table request. Please try again.");
+        return;
+      }
+      if (typeof data.booking?.id === "string" && data.booking.id.trim()) {
         analytics.bookingRequestSaved({ listingId, listingType: "dining" });
       }
-      setRequested(data.mode === "request" || data.booking?.status === "requested");
+      setRequested(true);
+      setReserved(true);
       setBookingNumber(data.booking.bookingNumber);
     } catch {
       setError("Something went wrong");

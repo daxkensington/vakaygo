@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { analytics } from "@/lib/analytics";
 import { useRouter } from "next/navigation";
-import { Plane, MapPin, Calendar, Users, Car, Check, Loader2, ArrowRight } from "lucide-react";
+import { Plane, MapPin, Calendar, Users, Car, Check, Loader2, ArrowRight, Shield } from "lucide-react";
 import { formatCurrency } from "@/lib/pricing";
+import { calculateTransferUnitPrice, TRANSFER_VEHICLE_TYPES, type TransferVehicleType } from "@/lib/transfer-pricing";
 import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
 
 type TransferBookingProps = {
@@ -22,12 +24,10 @@ type TransferBookingProps = {
   operatorId?: string;
 };
 
-const vehicleTypes = [
-  { id: "sedan", label: "Sedan", capacity: "1-3 passengers", multiplier: 1.0 },
-  { id: "suv", label: "SUV", capacity: "1-5 passengers", multiplier: 1.4 },
-  { id: "minivan", label: "Minivan", capacity: "1-7 passengers", multiplier: 1.7 },
-  { id: "luxury", label: "Luxury", capacity: "1-3 passengers", multiplier: 2.2 },
-];
+const vehicleTypes = (Object.keys(TRANSFER_VEHICLE_TYPES) as TransferVehicleType[]).map(id => ({
+  id,
+  ...TRANSFER_VEHICLE_TYPES[id],
+}));
 
 export function TransferBooking(props: TransferBookingProps) {
   return <BookingEligibilityGate bookingEligible={props.bookingEligible} listingId={props.listingId} operatorId={props.operatorId} unclaimed={props.unclaimed}>
@@ -44,20 +44,25 @@ function EligibleTransferBooking({ listingId, priceAmount, priceCurrency, unclai
   const [time, setTime] = useState("");
   const [passengers, setPassengers] = useState(2);
   const [flightNumber, setFlightNumber] = useState("");
-  const [vehicle, setVehicle] = useState("sedan");
+  const [vehicle, setVehicle] = useState<TransferVehicleType>("sedan");
   const [roundTrip, setRoundTrip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [payLater, setPayLater] = useState(false);
+  const [paymentStep, setPaymentStep] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [bookingId, setBookingId] = useState("");
   const [bookingNumber, setBookingNumber] = useState("");
+  const [totalAmount, setTotalAmount] = useState(0);
   const [error, setError] = useState("");
 
   // No listing price ⇒ we cannot quote. The old default of "30" showed a
   // made-up fare on 473 of 500 transfer listings.
   const hasPrice = !!priceAmount && parseFloat(priceAmount) > 0;
   const basePrice = hasPrice ? parseFloat(priceAmount as string) : 0;
-  const selectedVehicle = vehicleTypes.find(v => v.id === vehicle) || vehicleTypes[0];
-  const price = basePrice * selectedVehicle.multiplier * (roundTrip ? 1.8 : 1);
+  const selectedVehicle = TRANSFER_VEHICLE_TYPES[vehicle];
+  const price = calculateTransferUnitPrice(basePrice, vehicle, roundTrip);
 
   async function handleBook(e: React.FormEvent) {
     e.preventDefault();
@@ -76,23 +81,84 @@ function EligibleTransferBooking({ listingId, priceAmount, priceCurrency, unclai
           startDate: `${date}T${time || "12:00"}:00`,
           guestCount: passengers,
           guestNotes: `Transfer: ${pickup === "airport" ? "Airport" : pickup} → ${dropoff} | Vehicle: ${selectedVehicle.label} | Flight: ${flightNumber || "N/A"} | ${roundTrip ? "Round trip" : "One way"}`,
+          vehicleType: vehicle,
+          roundTrip,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listingId); setError(data.error || "Failed"); return; }
-      setBooked(true);
-      if ((data.mode === "request" || data.booking?.status === "requested") && typeof data.booking?.id === "string" && data.booking.id.trim()) {
-        analytics.bookingRequestSaved({ listingId, listingType: "transfer" });
+        if (data.code === "BOOKING_UNAVAILABLE") invalidateBookingControls(listingId);
+        setError(data.error || "Failed");
+        return;
       }
-      setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
+      if (data.mode === "request" || data.booking?.status === "requested") {
+        if (typeof data.booking?.id === "string" && data.booking.id.trim()) {
+          analytics.bookingRequestSaved({ listingId, listingType: "transfer" });
+        }
+        setRequested(true);
+        setBooked(true);
+        return;
+      }
+      setBookingId(data.booking.id);
+      setTotalAmount(Number(data.booking.totalAmount));
+      setPaymentStep(true);
     } catch {
       setError("Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handlePayNow() {
+    setPaymentLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/payments/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (!res.ok || typeof data.url !== "string") {
+        invalidateBookingControls(listingId);
+        setError(data.error || "Payment setup failed");
+        return;
+      }
+      try {
+        const checkoutUrl = new URL(data.url);
+        if (checkoutUrl.protocol === "https:" && checkoutUrl.hostname === "checkout.stripe.com" && !checkoutUrl.username && !checkoutUrl.password) {
+          analytics.startCheckout({ listingId, listingType: "transfer" });
+        }
+      } catch { /* A malformed receipt must not become a checkout event. */ }
+      window.location.href = data.url;
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  if (paymentStep) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-[var(--shadow-elevated)] text-center">
+        <div className="w-14 h-14 bg-gold-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Shield size={28} className="text-white" />
+        </div>
+        <h3 className="text-xl font-bold text-navy-700">Complete Your Booking</h3>
+        <p className="text-navy-400 mt-2">Booking #{bookingNumber}</p>
+        <p className="text-lg font-semibold text-navy-700 mt-4">Total: {formatCurrency(totalAmount, priceCurrency || "USD")}</p>
+        {error && <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl mt-4">{error}</div>}
+        <button onClick={handlePayNow} disabled={paymentLoading} className="w-full mt-6 bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2">
+          {paymentLoading ? <Loader2 size={18} className="animate-spin" /> : <><Shield size={18} />Pay Now</>}
+        </button>
+        <button onClick={() => { setPaymentStep(false); setPayLater(true); setBooked(true); }} disabled={paymentLoading} className="w-full mt-3 text-navy-400 hover:text-navy-600 py-3 rounded-xl font-medium text-sm">
+          Pay Later
+        </button>
+        <p className="text-center text-navy-300 text-xs mt-3">Secure checkout powered by Stripe</p>
+      </div>
+    );
   }
 
   if (booked) {
@@ -101,13 +167,15 @@ function EligibleTransferBooking({ listingId, priceAmount, priceCurrency, unclai
         <div className="w-14 h-14 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check size={28} className="text-white" />
         </div>
-        <h3 className="text-xl font-bold text-navy-700">{requested ? "Request received" : "Transfer Booked!"}</h3>
+        <h3 className="text-xl font-bold text-navy-700">{requested ? "Request received" : "Booking received"}</h3>
         <p className="text-navy-400 mt-2">#{bookingNumber}</p>
-        <p className="text-sm text-navy-500 mt-3">
-          {requested
-            ? "Nothing is confirmed or charged yet. We'll confirm availability and the exact price with the operator and email you, usually within 24 hours."
-            : "Your driver will meet you with a name sign."}
-        </p>
+        {requested ? (
+          <p className="text-sm text-navy-500 mt-3">Nothing is confirmed or charged yet. We&apos;ll confirm availability and the exact price with the operator and email you, usually within 24 hours.</p>
+        ) : payLater ? (
+          <p className="text-sm text-navy-500 mt-3 leading-relaxed">
+            <strong>Not confirmed until paid.</strong> Complete payment from <Link href="/bookings" className="text-gold-700 font-semibold">My Bookings</Link> while checkout is open. Unpaid bookings expire after 48 hours; checkout links can close sooner.
+          </p>
+        ) : null}
       </div>
     );
   }

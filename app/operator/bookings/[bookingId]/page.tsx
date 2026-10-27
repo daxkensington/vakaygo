@@ -1,6 +1,7 @@
 "use client";
 
 import { formatBookingDateTime } from "@/lib/booking-time";
+import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
@@ -37,6 +38,8 @@ type Booking = {
   guestNotes: string | null;
   operatorNotes: string | null;
   cancellationReason: string | null;
+  cancellationPolicy: string | null;
+  listingTimezone: string | null;
   checkedIn: boolean | null;
   checkedInAt: string | null;
   depositAmount: string | null;
@@ -102,6 +105,7 @@ export default function OperatorBookingDetailPage({
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [notes, setNotes] = useState("");
+  const [cancellationNotice, setCancellationNotice] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -227,35 +231,47 @@ export default function OperatorBookingDetailPage({
             </Link>
           </div>
 
-          {booking.status === "pending" && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => updateStatus("confirmed")}
-                disabled={saving}
-                className="bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-              >
-                Accept
-              </button>
-              <button
-                onClick={() => updateStatus("cancelled")}
-                disabled={saving}
-                className="bg-white hover:bg-red-50 text-red-500 border border-red-200 disabled:opacity-50 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-              >
-                Decline
-              </button>
+          {(canCancelBooking(booking.status) || booking.status === "confirmed") && (
+            <div className="flex flex-wrap gap-2 self-start">
+              {booking.status === "pending" && (
+                <button
+                  onClick={() => updateStatus("confirmed")}
+                  disabled={saving}
+                  className="bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Accept
+                </button>
+              )}
+              {booking.status === "confirmed" && (
+                <button
+                  onClick={() => updateStatus("completed")}
+                  disabled={saving}
+                  className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Mark Completed
+                </button>
+              )}
+              <CancelBookingControl
+                bookingId={booking.id}
+                bookingNumber={booking.bookingNumber}
+                status={booking.status}
+                totalAmount={booking.totalAmount}
+                currency={booking.currency}
+                paidAt={booking.paidAt}
+                startDate={booking.startDate}
+                cancellationPolicy={booking.cancellationPolicy}
+                listingTimezone={booking.listingTimezone}
+                actor="business"
+                className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50"
+                onComplete={receipt => {
+                  setBooking({ ...booking, status: receipt.status });
+                  setCancellationNotice(receipt.message || (receipt.status === "refunded" ? "Booking cancelled and refunded." : "Booking cancelled."));
+                }}
+              />
             </div>
           )}
-
-          {booking.status === "confirmed" && (
-            <button
-              onClick={() => updateStatus("completed")}
-              disabled={saving}
-              className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors self-start"
-            >
-              Mark Completed
-            </button>
-          )}
         </div>
+        {cancellationNotice && <p role="status" className="mt-4 border-t border-cream-200 pt-4 text-sm text-teal-700">{cancellationNotice}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

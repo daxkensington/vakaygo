@@ -127,6 +127,27 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    const rows={listings:[listing],users:[],bookings:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
    const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1,...invalid}));assert.equal(r.status,400);assert.equal(rows.bookings.length,0);
  });
+ await check("Transfer options are priced and persisted by the booking API",async()=>{
+   const rows={listings:[{...listing,type:"transfer",priceAmount:"100.00",priceUnit:"trip"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2,vehicleType:"suv",roundTrip:true}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.pricing.subtotal,252);assert.equal(data.booking.totalAmount,"252.00");
+   assert.equal(rows.bookings[0].subtotal,"252.00");assert.equal(rows.bookings[0].transferVehicleType,"suv");assert.equal(rows.bookings[0].transferRoundTrip,true);
+ });
+ await check("An invalid transfer vehicle is rejected",async()=>{
+   const rows={listings:[{...listing,type:"transfer",priceAmount:"100.00",priceUnit:"trip"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1,vehicleType:"hovercraft"}));assert.equal(r.status,400);assert.equal(rows.bookings.length,0);
+ });
+ await check("A priced dining table request is free and requires no payment",async()=>{
+   const rows={listings:[{...listing,type:"dining"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2,reservationType:"table"}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.mode,"request");assert.equal(data.booking.status,"requested");assert.equal(data.booking.totalAmount,"0.00");assert.equal(rows.bookings[0].paymentMethod,"none");
+ });
+ await check("An ordinary priced dining experience remains paid",async()=>{
+   const rows={listings:[{...listing,type:"dining"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.mode,"booking");assert.equal(data.booking.status,"pending");assert.equal(data.booking.totalAmount,"130.00");assert.equal(rows.bookings[0].paymentMethod,"card");
+   assert.equal(rows.bookings[0].transferVehicleType,null);assert.equal(rows.bookings[0].transferRoundTrip,null);
+ });
  for(const change of [{status:"paused"},{operatorId:"197d8586-7fd3-4999-91de-a50ad7d70e23"}]) await check("Reject unavailable inventory: "+JSON.stringify(change),async()=>{
    const db=dbFor({listings:[{...listing,...change}],bookings:[]});const h=load("app/api/bookings/route.ts",mocksFor(db));
    assert.equal((await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1}))).status,409);
