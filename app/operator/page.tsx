@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";

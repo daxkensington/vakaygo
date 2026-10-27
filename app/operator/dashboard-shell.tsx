@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   ListPlus,
@@ -14,9 +14,10 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
 import { useAuth } from "@/lib/auth-context";
+import { invalidateOperatorRequests, OPERATOR_SESSION_EXPIRED, operatorSignInHref } from "@/lib/operator-session";
 
 const navItems = [
   { label: "Dashboard", href: "/operator", icon: LayoutDashboard },
@@ -34,8 +35,49 @@ export default function OperatorLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const [expired, setExpired] = useState(false);
+  const publicPage = pathname === "/operator/onboarding/terms";
+
+  useLayoutEffect(() => {
+    invalidateOperatorRequests();
+    return invalidateOperatorRequests;
+  }, [user?.id, user?.role, loading, publicPage]);
+
+  useEffect(() => {
+    const expire = () => { if (!publicPage) setExpired(true); };
+    window.addEventListener(OPERATOR_SESSION_EXPIRED, expire);
+    return () => window.removeEventListener(OPERATOR_SESSION_EXPIRED, expire);
+  }, [publicPage]);
+
+  useEffect(() => {
+    if (!publicPage && !loading && (!user || expired)) {
+      router.replace(operatorSignInHref(pathname));
+    }
+  }, [publicPage, loading, user, expired, pathname, router]);
+
+  if (!publicPage && loading) {
+    return <main className="min-h-screen bg-cream-50 p-8" role="status">Checking your sign-in…</main>;
+  }
+  if (!publicPage && (!user || expired)) {
+    return (
+      <main className="min-h-screen bg-cream-50 p-8">
+        <h1 className="text-2xl font-bold text-navy-700">Sign in to your business dashboard</h1>
+        <p className="mt-3">Sign in to continue to this page.</p>
+        <Link href={operatorSignInHref(pathname)} className="mt-4 inline-block font-semibold underline">Sign In</Link>
+      </main>
+    );
+  }
+  return <DashboardShell>{children}</DashboardShell>;
+}
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   useFocusTrap(sidebarRef, sidebarOpen);
@@ -117,13 +159,20 @@ export default function OperatorLayout({
 
           {/* Sign out */}
           <div className="p-3">
-            <button
-              onClick={signOut}
+            {user ? <button
+              disabled={signingOut}
+              onClick={async () => {
+                setSigningOut(true); setSignOutError("");
+                try { await signOut(); }
+                catch { setSignOutError("Sign-out could not be confirmed. Please try again."); }
+                finally { setSigningOut(false); }
+              }}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-navy-400 hover:bg-cream-50 hover:text-navy-700 w-full transition-colors"
             >
               <LogOut size={18} />
               Sign Out
-            </button>
+            </button> : <Link href={operatorSignInHref(pathname)} className="block px-3 py-2.5 text-sm font-semibold underline">Sign In</Link>}
+            {signOutError && <p role="alert" className="px-3 text-sm text-red-700">{signOutError}</p>}
           </div>
         </div>
       </aside>

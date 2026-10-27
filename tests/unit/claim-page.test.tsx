@@ -206,5 +206,5 @@ it("waits for account initialization and sends a signed-out visitor to sign-in w
   auth.loading = true; await render(); expect(fetchMock).not.toHaveBeenCalled();
   auth.loading = false; auth.user = null; await render();
   expect(fetchMock).not.toHaveBeenCalled();
-  expect(router.replace).toHaveBeenCalledExactlyOnceWith(`/auth/signin?next=/operator/claim/${listingId}`);
+  expect(router.replace).toHaveBeenCalledExactlyOnceWith(`/auth/signin?next=${encodeURIComponent(`/operator/claim/${listingId}`)}`);
 });

@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { formatBookingDateTime } from "@/lib/booking-time";
 import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
