@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Flag,
   Plus,
@@ -25,6 +25,8 @@ export default function FeatureFlagsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const togglesInFlight = useRef(new Set<string>());
+  const [pendingToggleIds, setPendingToggleIds] = useState<Set<string>>(new Set());
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -82,23 +84,36 @@ export default function FeatureFlagsPage() {
   }
 
   async function handleToggle(flag: FeatureFlag) {
+    if (togglesInFlight.current.has(flag.id)) return;
+
+    togglesInFlight.current.add(flag.id);
+    setPendingToggleIds((prev) => new Set(prev).add(flag.id));
+    const requestedEnabled = !flag.enabled;
+
     try {
       const res = await fetch(`/api/admin/feature-flags/${flag.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !flag.enabled }),
+        body: JSON.stringify({ enabled: requestedEnabled }),
       });
       const data = await res.json();
       if (res.ok) {
         setFlags((prev) =>
-          prev.map((f) => (f.id === flag.id ? { ...f, enabled: !f.enabled } : f))
+          prev.map((f) => (f.id === flag.id ? { ...f, enabled: requestedEnabled } : f))
         );
-        setSuccess(`Flag "${flag.key}" ${!flag.enabled ? "enabled" : "disabled"}.`);
+        setSuccess(`Flag "${flag.key}" ${requestedEnabled ? "enabled" : "disabled"}.`);
       } else {
         setError(data.error || "Failed to toggle flag");
       }
     } catch {
       setError("Failed to toggle flag.");
+    } finally {
+      togglesInFlight.current.delete(flag.id);
+      setPendingToggleIds((prev) => {
+        const next = new Set(prev);
+        next.delete(flag.id);
+        return next;
+      });
     }
   }
 
@@ -274,6 +289,7 @@ export default function FeatureFlagsPage() {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleToggle(flag)}
+                        disabled={pendingToggleIds.has(flag.id)}
                         className="inline-flex items-center gap-1.5 transition-colors"
                       >
                         {flag.enabled ? (
