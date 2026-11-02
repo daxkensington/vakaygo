@@ -9,17 +9,23 @@ export function EmailVerificationBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Don't show if loading, no user, already verified, or dismissed
   if (loading || !user || user.emailVerified || dismissed) return null;
 
   async function handleResend() {
     setSending(true);
+    setError(null);
     try {
       const res = await fetch("/api/auth/verify-email", { method: "POST" });
-      if (res.ok) setSent(true);
+      if (res.ok) {
+        setSent(true);
+      } else {
+        setError("We couldn't send the verification email. Please try again.");
+      }
     } catch {
-      // silent fail
+      setError("We couldn't send the verification email. Please try again.");
     } finally {
       setSending(false);
     }
@@ -44,6 +50,11 @@ export function EmailVerificationBanner() {
             </button>
           )}
         </p>
+        {error && (
+          <p role="status" className="text-sm text-white font-medium">
+            {error}
+          </p>
+        )}
         <button
           onClick={() => setDismissed(true)}
           aria-label="Dismiss verification banner"
