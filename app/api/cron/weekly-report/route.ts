@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings } from "@/drizzle/schema";
-import { gt, sql, eq, desc } from "drizzle-orm";
+import { gt, sql, eq, desc, inArray } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const [bookingStats] = await db
       .select({
         bookingCount: sql<number>`count(*)`,
-        totalRevenue: sql<string>`COALESCE(SUM(${bookings.totalAmount}::numeric), 0)`,
+        totalRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${inArray(bookings.status, ["confirmed", "completed"])} THEN ${bookings.totalAmount}::numeric ELSE 0 END), 0)`,
       })
       .from(bookings)
       .where(gt(bookings.createdAt, oneWeekAgo));
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
         listingId: bookings.listingId,
         listingTitle: listings.title,
         bookingCount: sql<number>`count(*)`,
-        revenue: sql<string>`COALESCE(SUM(${bookings.totalAmount}::numeric), 0)`,
+        revenue: sql<string>`COALESCE(SUM(CASE WHEN ${inArray(bookings.status, ["confirmed", "completed"])} THEN ${bookings.totalAmount}::numeric ELSE 0 END), 0)`,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))
