@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AlertTriangle, Search, ChevronDown, ChevronUp, Loader2, Clock, CheckCircle, Eye, Save } from "lucide-react";
 
 type Dispute = {
@@ -116,6 +116,13 @@ export default function AdminDisputesPage() {
   const [formAdminNotes, setFormAdminNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Tracks the latest detail request so stale responses can't overwrite state
+  const detailRequestRef = useRef<{ id: string | null; controller: AbortController | null }>({
+    id: null,
+    controller: null,
+  });
 
   const fetchDisputes = useCallback(async () => {
     try {
@@ -133,35 +140,68 @@ export default function AdminDisputesPage() {
     fetchDisputes();
   }, [fetchDisputes]);
 
+  useEffect(() => {
+    const request = detailRequestRef.current;
+    return () => request.controller?.abort();
+  }, []);
+
   async function loadDetail(id: string) {
+    detailRequestRef.current.controller?.abort();
+
     if (expandedId === id) {
+      detailRequestRef.current.id = null;
+      detailRequestRef.current.controller = null;
+      setDetailLoading(false);
       setExpandedId(null);
       setDetail(null);
       return;
     }
+
+    const controller = new AbortController();
+    detailRequestRef.current.id = id;
+    detailRequestRef.current.controller = controller;
     setExpandedId(id);
+    setDetail(null);
     setDetailLoading(true);
     setSaveSuccess(false);
+    setSaveError(null);
+
+    const isCurrent = () =>
+      !controller.signal.aborted && detailRequestRef.current.id === id;
+
     try {
-      const res = await fetch(`/api/disputes/${id}`);
+      const res = await fetch(`/api/disputes/${id}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        if (isCurrent()) setDetail(null);
+        return;
+      }
       const data = await res.json();
+      if (!isCurrent()) return;
+      if (data?.dispute?.id !== id) {
+        setDetail(null);
+        return;
+      }
       setDetail(data.dispute);
       setFormStatus(data.dispute.status);
       setFormResolution(data.dispute.resolution || "");
       setFormAdminNotes(data.dispute.adminNotes || "");
     } catch {
-      setDetail(null);
+      if (isCurrent()) setDetail(null);
     } finally {
-      setDetailLoading(false);
+      if (isCurrent()) setDetailLoading(false);
     }
   }
 
   async function handleSave() {
     if (!detail) return;
+    const targetId = detail.id;
     setSaving(true);
     setSaveSuccess(false);
+    setSaveError(null);
     try {
-      const res = await fetch(`/api/disputes/${detail.id}`, {
+      const res = await fetch(`/api/disputes/${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -170,20 +210,43 @@ export default function AdminDisputesPage() {
           adminNotes: formAdminNotes || null,
         }),
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (detailRequestRef.current.id === targetId) {
+          setSaveError(
+            (body && typeof body.error === "string" && body.error) ||
+              "Changes could not be saved. Please try again."
+          );
+        }
+        return;
+      }
+
+      if (detailRequestRef.current.id === targetId) {
         setSaveSuccess(true);
-        // Refresh list and detail
-        fetchDisputes();
-        const data = await fetch(`/api/disputes/${detail.id}`).then((r) =>
-          r.json()
-        );
+      }
+
+      // Refresh list and detail
+      fetchDisputes();
+
+      try {
+        const refresh = await fetch(`/api/disputes/${targetId}`);
+        if (!refresh.ok) return;
+        const data = await refresh.json();
+        if (data?.dispute?.id !== targetId) return;
+        if (detailRequestRef.current.id !== targetId) return;
         setDetail(data.dispute);
         setFormStatus(data.dispute.status);
         setFormResolution(data.dispute.resolution || "");
         setFormAdminNotes(data.dispute.adminNotes || "");
+      } catch {
+        // Keep saveSuccess and leave the form unchanged when the refresh fails
       }
     } catch {
-      // silent
+      if (detailRequestRef.current.id === targetId) {
+        setSaveError(
+          "Network error: changes could not be saved. Check your connection and try again."
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -556,6 +619,12 @@ export default function AdminDisputesPage() {
                             )}
                             {saving ? "Saving..." : "Save Changes"}
                           </button>
+
+                          {saveError && (
+                            <p role="alert" className="text-sm text-red-600 text-center">
+                              {saveError}
+                            </p>
+                          )}
 
                           {saveSuccess && (
                             <p className="text-sm text-green-600 text-center flex items-center justify-center gap-1">
