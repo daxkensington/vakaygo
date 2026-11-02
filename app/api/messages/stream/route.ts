@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messages, users } from "@/drizzle/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
+import { eq, and, or, gt, asc, desc } from "drizzle-orm";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
@@ -50,7 +50,8 @@ export async function GET() {
       send("connected", { userId: user.id, timestamp: Date.now() });
 
       const db = drizzle(neon(process.env.DATABASE_URL!));
-      let lastChecked = new Date();
+      const startupCutoff = new Date();
+      let cursor: { createdAt: Date; id: string } | null = null;
       let heartbeatCounter = 0;
       const reportedRead = new Set<string>();
       const POLL_INTERVAL = 3000; // 3 seconds
@@ -79,10 +80,18 @@ export async function GET() {
             .where(
               and(
                 eq(messages.receiverId, user.id),
-                gt(messages.createdAt, lastChecked)
+                cursor
+                  ? or(
+                      gt(messages.createdAt, cursor.createdAt),
+                      and(
+                        eq(messages.createdAt, cursor.createdAt),
+                        gt(messages.id, cursor.id)
+                      )
+                    )
+                  : gt(messages.createdAt, startupCutoff)
               )
             )
-            .orderBy(messages.createdAt)
+            .orderBy(asc(messages.createdAt), asc(messages.id))
             .limit(50);
 
           // Read receipts include older inquiries opened by their recipient today.
@@ -107,18 +116,12 @@ export async function GET() {
 
           for (const msg of newMessages) {
             send("message", { type: "new_message", message: msg });
+            if (closed) break;
+            cursor = { createdAt: msg.createdAt, id: msg.id };
           }
 
           for (const msg of readMessages) {
             if (!reportedRead.has(msg.id)) { send("message", { type: "message_read", messageId: msg.id }); reportedRead.add(msg.id); }
-          }
-
-          if (newMessages.length > 0) {
-            lastChecked = new Date(
-              Math.max(
-                ...newMessages.map((m) => new Date(m.createdAt).getTime())
-              )
-            );
           }
 
           // Heartbeat
@@ -127,6 +130,9 @@ export async function GET() {
             send("heartbeat", { timestamp: Date.now() });
             heartbeatCounter = 0;
           }
+
+          // Drain full batches before waiting, including timestamp ties.
+          if (newMessages.length === 50) continue;
         } catch (err) {
           logger.error("SSE poll error", err);
         }
