@@ -46,11 +46,19 @@ type AvailabilityDay = {
   isBlocked: boolean | null;
 };
 
+type PanelFieldFlags = {
+  isBlocked: boolean;
+  spots: boolean;
+  priceOverride: boolean;
+};
+
 type PanelData = {
   dates: string[];
   spots: string;
   priceOverride: string;
   isBlocked: boolean;
+  touched: PanelFieldFlags;
+  mixed: PanelFieldFlags;
 };
 
 /* ── Helpers ── */
@@ -60,6 +68,8 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const MIXED_VALUES_HINT = "Mixed values — leave unchanged to keep each date's current setting";
 
 function formatMonth(year: number, month: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
@@ -86,6 +96,15 @@ function formatDateDisplay(dateStr: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// Dates without a record use the same defaults the save would send
+function currentValues(day: AvailabilityDay | undefined) {
+  return {
+    isBlocked: day?.isBlocked ?? false,
+    spots: day?.spots ?? null,
+    priceOverride: day?.priceOverride ?? null,
+  };
 }
 
 /* ── Component ── */
@@ -121,6 +140,7 @@ export default function OperatorCalendarPage() {
   const [panel, setPanel] = useState<PanelData | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   /* iCal sync */
   const [icalToken, setIcalToken] = useState<string | null>(null);
@@ -275,6 +295,7 @@ export default function OperatorCalendarPage() {
     else setMonth(month - 1);
     setSelectedDates(new Set());
     setPanel(null);
+    setSaveError("");
   }
 
   function nextMonth() {
@@ -282,6 +303,7 @@ export default function OperatorCalendarPage() {
     else setMonth(month + 1);
     setSelectedDates(new Set());
     setPanel(null);
+    setSaveError("");
   }
 
   /* ── Day click / multi-select ── */
@@ -324,6 +346,7 @@ export default function OperatorCalendarPage() {
       openPanelForDates(newSet);
     } else {
       setPanel(null);
+      setSaveError("");
     }
   }
 
@@ -366,43 +389,66 @@ export default function OperatorCalendarPage() {
     const arr = Array.from(dates).sort();
     if (arr.length === 0) { setPanel(null); return; }
 
-    // Pre-fill from first selected date's existing data
-    const first = availMap[arr[0]];
+    // Pre-fill fields that are the same on every selected date; leave mixed ones empty
+    const values = arr.map((d) => currentValues(availMap[d]));
+    const first = values[0];
+    const mixed = {
+      isBlocked: values.some((v) => v.isBlocked !== first.isBlocked),
+      spots: values.some((v) => v.spots !== first.spots),
+      priceOverride: values.some((v) => v.priceOverride !== first.priceOverride),
+    };
     setPanel({
       dates: arr,
-      spots: first?.spots?.toString() || "",
-      priceOverride: first?.priceOverride?.toString() || "",
-      isBlocked: first?.isBlocked || false,
+      spots: mixed.spots ? "" : first.spots?.toString() || "",
+      priceOverride: mixed.priceOverride ? "" : first.priceOverride?.toString() || "",
+      isBlocked: mixed.isBlocked ? false : first.isBlocked,
+      touched: { isBlocked: false, spots: false, priceOverride: false },
+      mixed,
     });
     setSaveSuccess(false);
+    setSaveError("");
   }
 
   async function savePanel() {
     if (!panel || panel.dates.length === 0) return;
     setSaving(true);
     setSaveSuccess(false);
+    setSaveError("");
     try {
-      const dates = panel.dates.map((d) => ({
-        date: d,
-        spots: panel.spots ? parseInt(panel.spots) : null,
-        priceOverride: panel.priceOverride || null,
-        isBlocked: panel.isBlocked,
-      }));
+      // Only fields the operator changed replace each date's existing values
+      const dates = panel.dates.map((d) => {
+        const current = currentValues(availMap[d]);
+        return {
+          date: d,
+          spots: panel.touched.spots
+            ? (panel.spots ? parseInt(panel.spots) : null)
+            : current.spots,
+          priceOverride: panel.touched.priceOverride
+            ? (panel.priceOverride || null)
+            : current.priceOverride,
+          isBlocked: panel.touched.isBlocked ? panel.isBlocked : current.isBlocked,
+        };
+      });
       const res = await fetch("/api/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ listingId, dates }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save");
+        const data = await res.json().catch(() => null);
+        setSaveError(
+          typeof data?.error === "string" && data.error
+            ? data.error
+            : "Availability could not be saved. Try again."
+        );
+        return;
       }
       setSaveSuccess(true);
       await fetchAvailability();
       // Keep panel open so user sees the confirmation
       setTimeout(() => setSaveSuccess(false), 2000);
-    } catch (err) {
-      console.error("Save error:", err);
+    } catch {
+      setSaveError("Availability could not be saved. Check your connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -411,6 +457,7 @@ export default function OperatorCalendarPage() {
   function clearSelection() {
     setSelectedDates(new Set());
     setPanel(null);
+    setSaveError("");
   }
 
   /* ── Build grid cells ── */
@@ -451,6 +498,10 @@ export default function OperatorCalendarPage() {
   const basePrice = listing.priceAmount
     ? `$${parseFloat(listing.priceAmount).toFixed(2)}`
     : "Not set";
+
+  const statusMixed = panel ? panel.mixed.isBlocked && !panel.touched.isBlocked : false;
+  const priceMixed = panel ? panel.mixed.priceOverride && !panel.touched.priceOverride : false;
+  const spotsMixed = panel ? panel.mixed.spots && !panel.touched.spots : false;
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -969,9 +1020,15 @@ export default function OperatorCalendarPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => setPanel({ ...panel, isBlocked: false })}
+                    onClick={() =>
+                      setPanel({
+                        ...panel,
+                        isBlocked: false,
+                        touched: { ...panel.touched, isBlocked: true },
+                      })
+                    }
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      !panel.isBlocked
+                      !statusMixed && !panel.isBlocked
                         ? "bg-teal-50 text-teal-700 ring-2 ring-teal-400"
                         : "bg-cream-100 text-navy-500 hover:bg-cream-200"
                     }`}
@@ -980,9 +1037,15 @@ export default function OperatorCalendarPage() {
                     Available
                   </button>
                   <button
-                    onClick={() => setPanel({ ...panel, isBlocked: true })}
+                    onClick={() =>
+                      setPanel({
+                        ...panel,
+                        isBlocked: true,
+                        touched: { ...panel.touched, isBlocked: true },
+                      })
+                    }
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      panel.isBlocked
+                      !statusMixed && panel.isBlocked
                         ? "bg-red-50 text-red-600 ring-2 ring-red-400"
                         : "bg-cream-100 text-navy-500 hover:bg-cream-200"
                     }`}
@@ -991,6 +1054,11 @@ export default function OperatorCalendarPage() {
                     Blocked
                   </button>
                 </div>
+                {statusMixed && (
+                  <p className="text-[11px] text-navy-400 mt-1">
+                    {MIXED_VALUES_HINT}
+                  </p>
+                )}
               </div>
 
               {/* Price override */}
@@ -1011,14 +1079,18 @@ export default function OperatorCalendarPage() {
                         step="0.01"
                         value={panel.priceOverride}
                         onChange={(e) =>
-                          setPanel({ ...panel, priceOverride: e.target.value })
+                          setPanel({
+                            ...panel,
+                            priceOverride: e.target.value,
+                            touched: { ...panel.touched, priceOverride: true },
+                          })
                         }
                         placeholder={`Base: ${basePrice}`}
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-cream-300 text-sm text-navy-700 focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none transition-all"
                       />
                     </div>
                     <p className="text-[11px] text-navy-400 mt-1">
-                      Leave empty to use base price
+                      {priceMixed ? MIXED_VALUES_HINT : "Leave empty to use base price"}
                     </p>
                   </div>
 
@@ -1037,14 +1109,18 @@ export default function OperatorCalendarPage() {
                         min="0"
                         value={panel.spots}
                         onChange={(e) =>
-                          setPanel({ ...panel, spots: e.target.value })
+                          setPanel({
+                            ...panel,
+                            spots: e.target.value,
+                            touched: { ...panel.touched, spots: true },
+                          })
                         }
                         placeholder="Unlimited"
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-cream-300 text-sm text-navy-700 focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none transition-all"
                       />
                     </div>
                     <p className="text-[11px] text-navy-400 mt-1">
-                      Leave empty for unlimited capacity
+                      {spotsMixed ? MIXED_VALUES_HINT : "Leave empty for unlimited capacity"}
                     </p>
                   </div>
                 </>
@@ -1062,6 +1138,13 @@ export default function OperatorCalendarPage() {
                     <p className="text-[11px] text-blue-500">on this date</p>
                   </div>
                 </div>
+              )}
+
+              {/* Save error */}
+              {saveError && (
+                <p role="alert" className="text-xs text-red-500 mb-3">
+                  {saveError}
+                </p>
               )}
 
               {/* Save button */}
