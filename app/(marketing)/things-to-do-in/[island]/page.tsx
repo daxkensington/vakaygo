@@ -163,7 +163,7 @@ function getFaqs(name: string, slug: string) {
   return [
     {
       q: `What are the top things to do in ${name}?`,
-      a: `${name} offers a wide range of activities including guided tours, snorkeling, hiking, fine dining, cultural events, and beach excursions. Use VakayGo to discover and book the best local experiences rated by real travelers.`,
+      a: `${name} offers a wide range of activities including guided tours, snorkeling, hiking, fine dining, cultural events, and beach excursions. Browse and compare local experiences on VakayGo. Directory information may come from public sources; check ownership labels and confirm current details with the business. Use only the booking options shown on an eligible listing for your selected dates and group size.`,
     },
     ...(caribbeanSeasonFaqSlugs.has(slug)
       ? [{
@@ -173,11 +173,11 @@ function getFaqs(name: string, slug: string) {
       : []),
     {
       q: `How do I get around ${name}?`,
-      a: `You can explore ${name} by taxi, rental car, local minibus, or private transfer. VakayGo offers transport and transfer options so you can book rides directly from verified local operators.`,
+      a: `You can explore ${name} by taxi, rental car, local minibus, or private transfer. Browse transport and transfer listings on VakayGo. Booking options depend on each listing's current eligibility and available dates. Saving a listing or sending an inquiry does not create a reservation.`,
     },
     {
       q: `Is ${name} safe for tourists?`,
-      a: `${name} is generally a safe destination for tourists. Like any travel destination, use common sense, stay in well-traveled areas, and book with verified operators on VakayGo for a safe, authentic experience.`,
+      a: `${name} is generally a safe destination for tourists. Like any travel destination, use common sense, stay in well-traveled areas, check ownership labels on VakayGo listings, and confirm details with the business before traveling.`,
     },
     {
       q: `What is the local currency in ${name}?`,
@@ -286,7 +286,7 @@ export default async function ThingsToDoPage({ params }: Props) {
             </h1>
             <p className="text-white/70 mt-3 max-w-2xl text-lg">
               {island.description ||
-                `Discover the best activities, tours, dining, and experiences in ${island.name}. Book directly with local operators on VakayGo.`}
+                `Discover the best activities, tours, dining, and experiences in ${island.name}. Browse local listings on VakayGo.`}
             </p>
             <div className="flex items-center gap-6 mt-5 text-sm text-white/60">
               <span className="flex items-center gap-1.5">
@@ -327,7 +327,7 @@ export default async function ThingsToDoPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <Sparkles size={20} className="text-gold-700 mx-auto mb-1" />
-              <p className="text-xs text-navy-400 mt-1">Verified Operators</p>
+              <p className="text-xs text-navy-400 mt-1">Directory Listings</p>
             </div>
           </div>
         </div>
@@ -548,7 +548,8 @@ export default async function ThingsToDoPage({ params }: Props) {
               Ready to explore {island.name}?
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
-              Book directly with verified local operators. Lowest commissions in
+              Booking options depend on each listing&apos;s current eligibility
+              and your selected dates and group size. Lowest commissions in
               the travel industry — more money stays in {island.name}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
