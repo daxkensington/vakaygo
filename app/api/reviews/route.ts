@@ -116,16 +116,80 @@ export async function POST(request: Request) {
     const payload = { ...currentSession, id: currentSession.userId };
     const travelerId = payload.id as string;
 
-    // listingId is intentionally NOT taken from the client — it is derived
-    // from the verified booking below.
-    const { bookingId, rating, title, comment, photoUrls } = await request.json();
-
-    if (!bookingId || !rating) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
+    }
+    if (body === null || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
     }
 
-    if (rating < 1 || rating > 5) {
-      return NextResponse.json({ error: "Rating must be 1-5" }, { status: 400 });
+    // listingId is intentionally NOT taken from the client — it is derived
+    // from the verified booking below.
+    const { bookingId, rating, title: rawTitle, comment: rawComment, photoUrls } = body as Record<string, unknown>;
+
+    if (typeof bookingId !== "string" || bookingId.trim().length === 0) {
+      return NextResponse.json({ error: "bookingId must be a non-empty string" }, { status: 400 });
+    }
+
+    if (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return NextResponse.json({ error: "Rating must be an integer from 1 to 5" }, { status: 400 });
+    }
+
+    if (rawTitle !== undefined && rawTitle !== null && typeof rawTitle !== "string") {
+      return NextResponse.json({ error: "title must be a string or null" }, { status: 400 });
+    }
+    if (rawComment !== undefined && rawComment !== null && typeof rawComment !== "string") {
+      return NextResponse.json({ error: "comment must be a string or null" }, { status: 400 });
+    }
+    const title = typeof rawTitle === "string" ? rawTitle.trim() || null : null;
+    const comment = typeof rawComment === "string" ? rawComment.trim() || null : null;
+    if (title && title.length > 200) {
+      return NextResponse.json({ error: "title must be at most 200 characters" }, { status: 400 });
+    }
+    if (comment && comment.length > 5000) {
+      return NextResponse.json({ error: "comment must be at most 5000 characters" }, { status: 400 });
+    }
+
+    const validatedPhotos: { url: string; alt: string | null; width: number | null; height: number | null }[] = [];
+    if (photoUrls !== undefined) {
+      if (!Array.isArray(photoUrls) || photoUrls.length > 5) {
+        return NextResponse.json({ error: "photoUrls must be an array of at most 5 photos" }, { status: 400 });
+      }
+      for (let i = 0; i < photoUrls.length; i++) {
+        const photo: unknown = photoUrls[i];
+        if (photo === null || typeof photo !== "object" || Array.isArray(photo)) {
+          return NextResponse.json({ error: `photoUrls[${i}] must be an object` }, { status: 400 });
+        }
+        const { url, alt, width, height } = photo as Record<string, unknown>;
+        if (typeof url !== "string") {
+          return NextResponse.json({ error: `photoUrls[${i}].url must be a valid HTTPS URL` }, { status: 400 });
+        }
+        try {
+          if (new URL(url).protocol !== "https:") {
+            return NextResponse.json({ error: `photoUrls[${i}].url must use HTTPS` }, { status: 400 });
+          }
+        } catch {
+          return NextResponse.json({ error: `photoUrls[${i}].url must be a valid HTTPS URL` }, { status: 400 });
+        }
+        if (alt !== undefined && (typeof alt !== "string" || alt.length > 300)) {
+          return NextResponse.json({ error: `photoUrls[${i}].alt must be a string of at most 300 characters` }, { status: 400 });
+        }
+        if (width !== undefined && (typeof width !== "number" || !Number.isFinite(width) || !Number.isInteger(width) || width <= 0)) {
+          return NextResponse.json({ error: `photoUrls[${i}].width must be a finite positive integer` }, { status: 400 });
+        }
+        if (height !== undefined && (typeof height !== "number" || !Number.isFinite(height) || !Number.isInteger(height) || height <= 0)) {
+          return NextResponse.json({ error: `photoUrls[${i}].height must be a finite positive integer` }, { status: 400 });
+        }
+        validatedPhotos.push({
+          url,
+          alt: typeof alt === "string" ? alt || null : null,
+          width: typeof width === "number" ? width : null,
+          height: typeof height === "number" ? height : null,
+        });
+      }
     }
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -186,13 +250,10 @@ export async function POST(request: Request) {
       .returning({ id: reviews.id });
 
     // Insert review photos if provided
-    if (Array.isArray(photoUrls) && photoUrls.length > 0) {
-      const photoRecords = photoUrls.slice(0, 5).map((p: { url: string; alt?: string; width?: number; height?: number }) => ({
+    if (validatedPhotos.length > 0) {
+      const photoRecords = validatedPhotos.map((photo) => ({
         reviewId: review.id,
-        url: p.url,
-        alt: p.alt || null,
-        width: p.width || null,
-        height: p.height || null,
+        ...photo,
       }));
       await db.insert(reviewPhotos).values(photoRecords);
     }
