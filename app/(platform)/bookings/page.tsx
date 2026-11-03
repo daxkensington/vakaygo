@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ReviewModal } from "@/components/listings/review-modal";
 import { DisputeModal } from "@/components/disputes/dispute-modal";
+import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
 type Booking = {
   id: string;
@@ -42,6 +43,8 @@ type Booking = {
   paidAt: string | null;
   listingId: string;
   paymentEligible?: boolean;
+  cancellationPolicy: string | null;
+  listingTimezone: string | null;
 };
 
 function formatBookingAmount(amount: string, currency: string | null | undefined) {
@@ -92,6 +95,7 @@ function BookingsContent() {
     listingTitle: string;
   } | null>(null);
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+  const [cancellationNotice, setCancellationNotice] = useState<{ bookingId: string; message: string } | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -497,6 +501,29 @@ function BookingsContent() {
                         <p className="text-sm text-navy-400">
                           Paid — waiting for operator confirmation
                         </p>
+                      </div>
+                    )}
+                    {cancellationNotice?.bookingId === booking.id && (
+                      <p role="status" className="mt-4 border-t border-cream-200 pt-4 text-sm text-teal-700">{cancellationNotice.message}</p>
+                    )}
+                    {!isPast && canCancelBooking(booking.status) && (
+                      <div className="mt-4 flex justify-end border-t border-cream-200 pt-4">
+                        <CancelBookingControl
+                          bookingId={booking.id}
+                          bookingNumber={booking.bookingNumber}
+                          status={booking.status}
+                          totalAmount={booking.totalAmount}
+                          currency={booking.currency}
+                          paidAt={booking.paidAt}
+                          startDate={booking.startDate}
+                          cancellationPolicy={booking.cancellationPolicy}
+                          listingTimezone={booking.listingTimezone}
+                          actor="traveler"
+                          onComplete={receipt => {
+                            setBookings(previous => previous.map(item => item.id === booking.id ? { ...item, status: receipt.status, paymentEligible: false } : item));
+                            setCancellationNotice({ bookingId: booking.id, message: receipt.message || (receipt.status === "refunded" ? "Booking cancelled and refunded." : "Booking cancelled.") });
+                          }}
+                        />
                       </div>
                     )}
                   </div>
