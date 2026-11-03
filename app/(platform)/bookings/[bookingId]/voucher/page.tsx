@@ -84,7 +84,12 @@ function escapeICSText(value: string): string {
 
 function getGoogleCalendarUrl(data: VoucherData) {
   const start = new Date(data.date);
-  const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  if (!Number.isFinite(start.getTime())) return undefined;
+  let end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  if (!Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) {
+    end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  }
+  if (!Number.isFinite(end.getTime())) return undefined;
   // Booking timestamps are wall-clock values stored in UTC digits; omit trailing Z
   // so Google Calendar treats them as floating local island time.
   const formatGCal = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
@@ -100,7 +105,15 @@ function getGoogleCalendarUrl(data: VoucherData) {
 
 function getICSContent(data: VoucherData) {
   const start = new Date(data.date);
-  const end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  if (!Number.isFinite(start.getTime())) return null;
+  let end = data.endDate ? new Date(data.endDate) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  if (!Number.isFinite(end.getTime()) || end.getTime() <= start.getTime()) {
+    end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  }
+  if (!Number.isFinite(end.getTime())) return null;
+  const generatedAt = new Date();
+  if (!Number.isFinite(generatedAt.getTime())) return null;
+  const dtstamp = generatedAt.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const formatICS = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
   const description = [
     `Booking #${escapeICSText(data.bookingNumber)}`,
@@ -112,6 +125,8 @@ function getICSContent(data: VoucherData) {
     "VERSION:2.0",
     "PRODID:-//VakayGo//Booking//EN",
     "BEGIN:VEVENT",
+    `UID:booking-${escapeICSText(data.bookingNumber)}@vakaygo.com`,
+    `DTSTAMP:${dtstamp}`,
     `DTSTART:${formatICS(start)}`,
     `DTEND:${formatICS(end)}`,
     `SUMMARY:${escapeICSText(data.listingTitle)}`,
@@ -124,6 +139,7 @@ function getICSContent(data: VoucherData) {
 
 function downloadICS(data: VoucherData) {
   const content = getICSContent(data);
+  if (content === null) return;
   const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
