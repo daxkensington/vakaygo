@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings } from "@/drizzle/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
 
 import { logger } from "@/lib/logger";
 export async function GET() {
@@ -18,8 +19,8 @@ export async function GET() {
         listingCount: sql<number>`count(${listings.id})::int`,
       })
       .from(islands)
-      .leftJoin(listings, eq(islands.id, listings.islandId))
-      .where(eq(islands.isActive, true))
+      .leftJoin(listings, and(eq(islands.id, listings.islandId), publicDirectoryListings()))
+      .where(publicDestinations())
       .groupBy(islands.id)
       .orderBy(desc(sql`count(${listings.id})`));
 

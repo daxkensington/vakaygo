@@ -1,6 +1,5 @@
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   searchListings,
   getListingDetails,
@@ -9,36 +8,29 @@ import {
   compareListings,
 } from "@/server/concierge-tools";
 import { createDb } from "@/server/db";
-import { conciergeMemory } from "@/drizzle/schema";
-import { eq, desc, sql } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { sql } from "drizzle-orm";
+import { verifySession, type SessionPayload } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
+import { RESPONSE_PLAN_TOOL, hasConciergeActionResult, renderConciergeResponse, type ConciergeToolResult } from "@/server/concierge-response";
 
 const unavailable = () => NextResponse.json({
   error: "The concierge is temporarily unavailable. Please retry or contact hello@vakaygo.com.",
   code: "CONCIERGE_UNAVAILABLE",
 }, { status: 503 });
 // ─── Auth Helper ───────────────────────────────────────────────
-async function getUserId(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value || cookieStore.get("session")?.value;
-    if (!token) return null;
-    const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
-    const { payload } = await jwtVerify(token, secret);
-    return (payload.id as string) || (payload.userId as string) || null;
-  } catch {
-    return null;
-  }
+function memoryActorQuery(actor: SessionPayload) {
+  return sql`SELECT id FROM users WHERE id=${actor.userId}::uuid
+    AND session_version=${actor.sessionVersion} AND role=${actor.role} AND email=${actor.email}
+    AND coalesce(email_verified,false)=${actor.emailVerified === true} FOR SHARE`;
 }
 
 // ─── Platform Knowledge Base ───────────────────────────────────
 const PLATFORM_KNOWLEDGE = `
 ## VakayGo Platform Knowledge
 
-You are embedded in VakayGo (vakaygo.com) — a global sun & sea travel super-app covering 34 destinations across the Caribbean, Latin America, and the Mediterranean with 8,000+ listings.
+You are embedded in VakayGo (vakaygo.com), a travel platform covering 34 destinations across the Caribbean, Latin America, and the Mediterranean. Booking options depend on the current platform launch state and each listing's verified eligibility, setup and availability. Follow the current launch state appended below and the exact listing eligibility returned by tools; never assume a directory listing is bookable.
 
 ### What You Can Help With:
 - **Stays** — Hotels, villas, guesthouses, hostels. Search by island, price, rating, amenities (pool, beach, WiFi, kitchen, AC, pet-friendly).
@@ -52,16 +44,15 @@ You are embedded in VakayGo (vakaygo.com) — a global sun & sea travel super-ap
 
 ### Platform Features You Should Mention When Relevant:
 - **AI Trip Planner** (/trips/new) — builds full day-by-day itineraries from real listings. Suggest this for multi-day trips.
-- **Loyalty Program** — Explorer → Adventurer (2% off) → Voyager (5% off) → Captain (10% off). Earn 10 points per dollar. Users earn points on bookings, reviews, and referrals.
-- **Promo Codes** — Users can apply promo codes at checkout for discounts.
+- **Booking rewards and promo codes** — Do not promise points, cash back, discounts or credit redemption unless the current application explicitly offers them for the eligible booking. Browsing, messages, inquiries or future reservations do not establish a reward or discount.
 - **Wishlist** (/saved) — Users can save listings to plan their trip.
-- **Currency Converter** — Prices display in user's preferred currency (USD, EUR, CAD, GBP, XCD, etc.) with live exchange rates.
+- **Currency Converter** — Displayed currency conversions are estimates. Use the eligible listing's current VakayGo booking controls for payable prices and checkout currency.
 - **Business verification** — Listings are information only until the company has verified its claim, completed onboarding, and remains eligible.
 - **Cancellation policies** — Existing bookings retain their recorded cancellation policy; never promise free cancellation without checking the actual policy.
-- **Reviews** — Verified reviews from guests who completed bookings. AI-powered review summaries available.
-- **Messaging** (/messages) — Direct chat with operators/hosts before and after booking.
-- **QR Vouchers** — Digital tickets/vouchers with QR codes for tours and events.
-- **Multi-Language** — Site available in English, Spanish, French, Portuguese, Dutch, and German.
+- **Reviews** — Use only the review information returned by tools; do not describe imported ratings as verified VakayGo bookings.
+- **Messaging** (/messages) — Available only for listings with current verified ownership and requires a signed-in, email-verified account. Unclaimed listings do not support in-app messaging. A message does not reserve a service.
+- **Existing bookings** — Users with a VakayGo booking can review its recorded details, cancellation policy and any existing voucher in their account. Do not promise a new voucher, protection, refund or benefit unless current application data explicitly supports it.
+- **Language** — The website interface is currently English. You may converse in the visitor's requested language; this does not mean the website itself is translated.
 
 ### 34 Active Destinations:
 - **Caribbean (21):** Grenada, Trinidad & Tobago, Barbados, St. Lucia, Jamaica, Bahamas, Antigua, Aruba, Dominican Republic, Puerto Rico, Curaçao, Cayman Islands, USVI, Dominica, St. Vincent, St. Kitts, Turks & Caicos, Bonaire, Martinique, Guadeloupe, BVI.
@@ -77,21 +68,27 @@ You are embedded in VakayGo (vakaygo.com) — a global sun & sea travel super-ap
 - Do not infer eligibility for one listing from another, or promise automatic activation after claiming or returning from payment onboarding.
 - Only an explicitly eligible listing may direct the traveler to its current booking controls. A booking is confirmed only after the application reports confirmation; never claim to have created a reservation or accepted payment yourself.
 
+### Visitor Admission and Access (Separate from Platform Bookings):
+- Tool visitorFacts.admission and visitorFacts.currentAccess describe visitor fees and access, not VakayGo booking eligibility. When either is "unconfirmed", label the corresponding current admission fees or visitor access as unconfirmed if relevant to the request.
+- Missing, null, hidden, or zero platform prices never prove free entry, no admission charge, public access, or that a place is open now. bookingEligible=false does not mean free; bookingEligible=true and available=true are not proof of visitor opening hours or admission terms. A known platform booking price is not a venue admission fee.
+- Only assert "free", "free entry", "open now", or current visitor access when explicit, current authoritative evidence for the exact place supports that claim. Imported descriptions/hours, reviews, general model knowledge, browser context, memories and booking calendars do not establish those facts.
+- These rules apply to all answers, including answers without tool calls. If current admission/access is unconfirmed, say so; do not present a place as satisfying a free-entry request. You may describe a grounded place without claiming it is free or currently accessible, and suggest checking the official visitor source before going.
+
 ### Customer Support & Business Onboarding:
 - Human support is available by email at hello@vakaygo.com or the contact form at /contact.
-- If a visitor or business owner wants to open a support ticket, get help with a claim, or add their business to VakayGo right here in chat, ask for their email address and details (if not already provided) and call the \`submit_support_or_business_inquiry\` tool to send their ticket to the VakayGo team and email them an instant confirmation with their reference number.
-- For business owners: Existing listings can be claimed free at /for-businesses. Brand-new businesses not yet in the directory can be added free at /auth/signup?role=operator&next=/operator/listings/new. VakayGo supports Caribbean payouts via Wise, PayPal, Local/International Bank Wire, and Stripe Connect.
-- Never claim a live real-time human agent has taken over the chat window; explain that \`submit_support_or_business_inquiry\` sends an email ticket to the VakayGo team with an instant email confirmation.
+- Direct support and business inquiries to /contact, where the visitor can review and send the form themselves. Do not claim to submit a ticket or send an email in chat.
+- For business owners: Existing listings can be claimed free at /for-businesses. Brand-new businesses not yet in the directory can be added free at /auth/signup?role=operator&next=/operator/listings/new. A verified claim alone does not activate bookings or payments. Owners must complete company details, listing setup, an approved payment route and listing activation. Payment and payout options depend on the approved company country, verification and platform configuration; follow the current setup steps in the business dashboard. Do not guarantee activation, payout availability, timing or earnings.
+- Never claim a live human agent has taken over the chat window. Direct support inquiries to /contact for the visitor to review and send; chat does not send tickets or confirmation emails.
 - Do not invent a /help page, a phone number, or office hours. /messages is for conversations with listing operators; it is not VakayGo customer support.
 
 ### Important Rules:
 - ALWAYS use your search tools to find real listings — never make up listing names, prices, or details.
 - Include specific names, ratings and island from search results. Quote prices only when the current result includes a price and bookingEligible=true.
 - Keep responses concise: 2-4 sentences of personality-flavored commentary, then the data.
-- If a user asks about something outside Caribbean travel, gently redirect.
+- Help with travel across all supported Caribbean, Latin American and Mediterranean destinations. For unrelated requests, gently redirect to travel discovery and trip planning on VakayGo.
 - When users mention dates, check availability with the check_availability tool. A false or missing result must never be described as available.
 - For complex multi-day trips, suggest the AI Trip Planner at /trips/new.
-- If users ask about their bookings, loyalty points, or account, direct them to the relevant page.
+- If users ask about an existing booking or account, direct them to the relevant account page or support. Explain booking availability using the current launch state and exact listing eligibility; never imply that rewards or redemption are available without current application evidence.
 `;
 
 // ─── Personality Definitions ───────────────────────────────────
@@ -129,15 +126,21 @@ const PERSONALITIES: Record<string, { name: string; prompt: string; voiceHint: s
 };
 
 // ─── Memory System ─────────────────────────────────────────────
-async function loadMemories(userId: string): Promise<string> {
+async function loadMemories(actor: SessionPayload): Promise<string> {
+  if (actor.sessionVersion === undefined) return "";
   const db = createDb();
   try {
-    const memories = await db
-      .select({ category: conciergeMemory.category, fact: conciergeMemory.fact })
-      .from(conciergeMemory)
-      .where(eq(conciergeMemory.userId, userId))
-      .orderBy(desc(conciergeMemory.lastUsedAt))
-      .limit(20);
+    // The actor lock keeps revocation and this memory read/touch in one statement.
+    const result = await db.execute(sql`
+      WITH actor AS (${memoryActorQuery(actor)}), remembered AS (
+        SELECT id,category,fact FROM concierge_memory
+        WHERE user_id IN (SELECT id FROM actor) ORDER BY last_used_at DESC LIMIT 20
+      ), touched AS (
+        UPDATE concierge_memory SET last_used_at=now()
+        WHERE id IN (SELECT id FROM remembered) RETURNING id
+      ) SELECT category,fact FROM remembered
+    `);
+    const memories = result.rows as { category: string; fact: string }[];
 
     if (memories.length === 0) return "";
 
@@ -153,12 +156,6 @@ async function loadMemories(userId: string): Promise<string> {
     if (grouped.trip_history) memoryPrompt += `**Past Trips:** ${grouped.trip_history.join(". ")}.\n`;
     if (grouped.interaction) memoryPrompt += `**Past Interactions:** ${grouped.interaction.join(". ")}.\n`;
     memoryPrompt += "\nUse this knowledge naturally — reference what you know when relevant but don't dump it all at once. Build on past conversations.\n";
-
-    // Touch lastUsedAt for this user's memories (non-blocking)
-    db.update(conciergeMemory)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(conciergeMemory.userId, userId))
-      .catch((e) => logger.error("Memory touch error", e));
 
     return memoryPrompt;
   } catch (e) {
@@ -188,39 +185,24 @@ const MEMORY_TOOL = {
   },
 };
 
-async function saveMemory(userId: string, category: string, fact: string, source?: string): Promise<{ saved: boolean }> {
+async function saveMemory(actor: SessionPayload, category: string, fact: string, source?: string): Promise<{ saved: boolean }> {
+  if (actor.sessionVersion === undefined || !["preference", "personal", "trip_history", "interaction"].includes(category) ||
+    typeof fact !== "string" || !fact.trim() || fact.length > 4000 || (source !== undefined && (typeof source !== "string" || source.length > 4000))) return { saved: false };
+  fact = fact.trim();
   const db = createDb();
   try {
-    // Check for duplicate/similar memory
-    // Check for duplicates within the same category
-    const existing = await db
-      .select({ fact: conciergeMemory.fact })
-      .from(conciergeMemory)
-      .where(
-        sql`${conciergeMemory.userId} = ${userId} AND ${conciergeMemory.category} = ${category}`
-      )
-      .limit(20);
-
-    const factLower = fact.toLowerCase();
-    const isDuplicate = existing.some(m => {
-      const existingLower = m.fact.toLowerCase();
-      return existingLower === factLower ||
-        existingLower.includes(factLower.slice(0, 40)) ||
-        factLower.includes(existingLower.slice(0, 40));
-    });
-
-    if (isDuplicate) {
-      return { saved: false };
-    }
-
-    await db.insert(conciergeMemory).values({
-      userId,
-      category,
-      fact,
-      source,
-    });
-
-    return { saved: true };
+    // Recheck the same actor after the provider call; never save under a revoked session.
+    const result = await db.execute(sql`
+      WITH actor AS (${memoryActorQuery(actor)})
+      INSERT INTO concierge_memory (user_id,category,fact,source)
+      SELECT actor.id,${category},${fact},${source ?? null} FROM actor
+      WHERE NOT EXISTS (
+        SELECT 1 FROM concierge_memory m WHERE m.user_id=actor.id AND m.category=${category}
+          AND (position(left(lower(${fact}),40) in lower(m.fact))>0
+            OR position(left(lower(m.fact),40) in lower(${fact}))>0)
+      ) RETURNING id
+    `);
+    return { saved: result.rows.length > 0 };
   } catch (e) {
     logger.error("Memory save error", e);
     return { saved: false };
@@ -250,12 +232,14 @@ function buildSystemPrompt(personality: string, locale: string, memoryContext: s
 
   // Concise output for voice
   prompt += `\n\nKeep responses concise: 2-4 sentences of commentary + listing data. This is critical for voice mode where long responses are tedious to listen to.`;
+  prompt += `\n\n## Final response contract\nFinish with respond_with_plan. Select only exact island/slug references returned by tools in this request and the provided topic enums. Free-form prose is not shown to visitors. Use kind=clarify with a clarification topic if you need more information, or kind=platform for VakayGo guidance. Set the optional supported language enum when the visitor requests a different response language; otherwise omit it to use their current locale. Current visitor admission, access, opening hours and reservation requirements are unconfirmed. Never encode narrative or claims in reference fields. Saved-memory receipts are rendered from their actual tool results. Chat cannot submit or email support/business inquiries; use support, claim_business or add_business topics to direct the visitor to review and send an inquiry at /contact.`;
 
   return prompt;
 }
 
 // ─── Tool Definitions ───────────────────────────────────────────
 const TOOLS = [
+  RESPONSE_PLAN_TOOL,
   {
     name: "search_listings",
     description: "Search VakayGo's 7,200+ real listings by type, island, price range, rating. Use this to find stays, tours, restaurants, events, transport, guides, etc.",
@@ -323,129 +307,12 @@ const TOOLS = [
       required: ["slugs", "island"],
     },
   },
-  {
-    name: "submit_support_or_business_inquiry",
-    description: "Submit a customer support ticket or a Caribbean business claim/onboarding request directly to the VakayGo team on behalf of the visitor, and send an instant confirmation email to the visitor. Use this when a visitor or business owner provides their email address and wants to add/claim their business, get help with a booking or account issue, or have the VakayGo team follow up by email.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        name: { type: "string", description: "Visitor or business contact name" },
-        email: { type: "string", description: "Visitor or business email address for reply" },
-        category: {
-          type: "string",
-          enum: ["General", "Booking Help", "Operator Support", "Technical Issue", "Partnership"],
-          description: "Inquiry category",
-        },
-        subject: { type: "string", description: "Short summary of the request or business name" },
-        message: { type: "string", description: "Detailed message, question, or business details (island, website, phone, offering)" },
-      },
-      required: ["email", "category", "subject", "message"],
-    },
-  },
+
 ];
-
-function escapeChatHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-async function submitSupportOrBusinessInquiry(input: {
-  name?: string;
-  email?: string;
-  category?: string;
-  subject?: string;
-  message?: string;
-}) {
-  const email = typeof input?.email === "string" ? input.email.trim() : "";
-  const name = typeof input?.name === "string" && input.name.trim() ? input.name.trim().slice(0, 120) : "VakayGo Visitor";
-  const category = typeof input?.category === "string" && input.category.trim() ? input.category.trim().slice(0, 80) : "General";
-  const subject = typeof input?.subject === "string" && input.subject.trim() ? input.subject.trim().slice(0, 200) : "Chat Concierge Inquiry";
-  const message = typeof input?.message === "string" ? input.message.trim().slice(0, 5000) : "";
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { submitted: false, error: "Please provide a valid email address so our team can reply." };
-  }
-  if (!message) {
-    return { submitted: false, error: "Please include the details of your question or business." };
-  }
-
-  const refId = `VG-CHAT-${Date.now().toString(36).toUpperCase()}`;
-  const eName = escapeChatHtml(name);
-  const eEmail = escapeChatHtml(email);
-  const eCategory = escapeChatHtml(category);
-  const eSubject = escapeChatHtml(subject);
-  const eMessage = escapeChatHtml(message);
-
-  try {
-    const { sendEmail } = await import("@/server/mail-client");
-    await sendEmail({
-      from: "VakayGo <hello@vakaygo.com>",
-      to: "bookings@vakaygo.com",
-      replyTo: email,
-      subject: `[Chat ${eCategory}] ${eSubject} (${refId})`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
-        <h2 style="margin:0 0 12px">[Chat Concierge · ${eCategory}] ${eSubject}</h2>
-        <p style="margin:0 0 8px"><strong>Reference:</strong> ${refId}</p>
-        <p style="margin:0 0 8px"><strong>From:</strong> ${eName} (${eEmail})</p>
-        <div style="background:#FAF5E8;padding:16px;border-radius:10px;white-space:pre-wrap;margin-top:12px">${eMessage}</div>
-      </div>`,
-    });
-
-    const lower = email.toLowerCase();
-    if (!lower.endsWith(".invalid") && !lower.endsWith(".example")) {
-      const isBusiness =
-        category === "Partnership" ||
-        category === "Operator Support" ||
-        /\b(claim|listing|business|operator|partner|charter|tour|hotel|villa|restaurant|rental)\b/i.test(`${subject} ${message}`);
-      await sendEmail({
-        from: "VakayGo <hello@vakaygo.com>",
-        to: email,
-        replyTo: "support@vakaygo.com",
-        subject: `We received your VakayGo inquiry (${refId})`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C2333">
-          <h2 style="margin:0 0 12px">Your VakayGo request is logged (${refId})</h2>
-          <p style="line-height:1.6">Hi ${eName},</p>
-          <p style="line-height:1.6">Our team has received your ${eCategory.toLowerCase()} inquiry via the VakayGo AI Concierge and will follow up by email shortly.</p>
-          ${
-            isBusiness
-              ? `<div style="background:#FAF5E8;padding:16px;border-radius:10px;margin:16px 0">
-                  <p style="margin:0 0 8px;font-weight:bold">Get started right away (100% Free):</p>
-                  <ul style="margin:0;padding-left:18px;line-height:1.6">
-                    <li>Claim an existing listing: <a href="https://vakaygo.com/for-businesses">vakaygo.com/for-businesses</a></li>
-                    <li>Add a brand-new business listing: <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new">vakaygo.com/operator/listings/new</a></li>
-                  </ul>
-                </div>`
-              : ""
-          }
-          <p style="font-size:13px;color:#6E7491">Need to add anything? Just reply to this email.</p>
-        </div>`,
-      }).catch(() => {});
-    }
-
-    return {
-      submitted: true,
-      referenceId: refId,
-      selfServiceLinks: {
-        claimExistingBusiness: "https://vakaygo.com/for-businesses",
-        addNewBusiness: "https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new",
-      },
-    };
-  } catch (err) {
-    logger.error("Chat inquiry submission failed", err);
-    return {
-      submitted: false,
-      error: "Could not send the ticket right now. Please email hello@vakaygo.com or use /contact.",
-    };
-  }
-}
 
 // ─── Tool Executor ──────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function executeTool(name: string, input: any, userId: string | null): Promise<unknown> {
+async function executeTool(name: string, input: any, actor: SessionPayload | null): Promise<unknown> {
   switch (name) {
     case "search_listings":
       return searchListings(input);
@@ -457,73 +324,35 @@ async function executeTool(name: string, input: any, userId: string | null): Pro
       return getIslandInfo(input);
     case "compare_listings":
       return compareListings(input);
-    case "submit_support_or_business_inquiry":
-      return submitSupportOrBusinessInquiry(input);
     case "save_memory":
-      if (!userId) return { saved: false, reason: "User not logged in" };
-      return saveMemory(userId, input.category, input.fact, input.source);
+      if (!actor) return { saved: false, reason: "User not logged in" };
+      return saveMemory(actor, input.category, input.fact, input.source);
     default:
       return { error: `Unknown tool: ${name}` };
   }
 }
 
-// ─── Extract listing cards from tool results ────────────────────
-type ListingCard = {
-  title: string;
-  slug: string;
-  island: string;
-  type: string;
-  price: number | null;
-  rating: number | null;
-  image: string | null;
-  url: string;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractListings(toolResults: { name: string; result: any }[]): ListingCard[] {
-  const cards: ListingCard[] = [];
-  const seen = new Set<string>();
-
-  for (const { name, result } of toolResults) {
-    if (name === "search_listings" && Array.isArray(result)) {
-      for (const item of result) {
-        if (!seen.has(item.slug)) {
-          seen.add(item.slug);
-          cards.push({
-            title: item.title, slug: item.slug, island: item.island,
-            type: item.type, price: item.price, rating: item.rating,
-            image: item.image, url: item.url,
-          });
-        }
-      }
-    } else if (name === "get_listing_details" && result && !result.error) {
-      if (!seen.has(result.slug)) {
-        seen.add(result.slug);
-        cards.push({
-          title: result.title, slug: result.slug, island: result.island,
-          type: result.type, price: result.price, rating: result.rating,
-          image: result.images?.[0] || null, url: result.url,
-        });
-      }
-    } else if (name === "compare_listings" && Array.isArray(result)) {
-      for (const item of result) {
-        if (!seen.has(item.slug)) {
-          seen.add(item.slug);
-          cards.push({
-            title: item.title, slug: item.slug, island: item.island,
-            type: item.type, price: item.price, rating: item.rating,
-            image: null, url: item.url,
-          });
-        }
-      }
-    }
-  }
-
-  return cards;
+/** Bound tool waits to the existing request deadline; an interrupted write stays unconfirmed. */
+async function withinDeadline<T>(operation: () => Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try { return await Promise.race([operation(), interrupted]); }
+  finally { signal.removeEventListener("abort", onAbort); }
 }
 
 // ─── POST Handler ───────────────────────────────────────────────
 export async function POST(request: Request) {
+  const allToolResults: ConciergeToolResult[] = [];
+  let responseLocale: unknown = "en";
+  let responseVoiceMode = false;
+  let bookingsEnabled = false;
+  const actionReceipt = () => hasConciergeActionResult(allToolResults)
+    ? NextResponse.json(renderConciergeResponse({ results: allToolResults, locale: responseLocale, voiceMode: responseVoiceMode, bookingsEnabled }))
+    : null;
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
@@ -571,6 +400,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    responseLocale = locale;
+    responseVoiceMode = voiceMode === true;
 
     const apiKey = env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -581,14 +412,14 @@ export async function POST(request: Request) {
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(35000)]);
 
     // Get authenticated user for memory
-    const userId = await getUserId();
+    const actor = await verifySession();
 
     // Load user memories if logged in
-    const memoryContext = userId ? await loadMemories(userId) : "";
+    const memoryContext = actor ? await loadMemories(actor) : "";
 
     // Build the full system prompt with personality + platform knowledge + memory + language
     let systemPrompt = buildSystemPrompt(personality || "coral", locale || "en", memoryContext);
-    const bookingsEnabled = await bookingLaunchEnabled();
+    bookingsEnabled = await bookingLaunchEnabled();
     systemPrompt += bookingsEnabled
       ? "\n\nBooking launch is enabled, but every listing still requires explicit current tool eligibility."
       : "\n\nOnline bookings, reservation requests and payments are disabled platform-wide. Offer directory browsing and trip planning only. Do not invite the user to book, reserve, request a booking, pay, or redeem booking credit.";
@@ -613,7 +444,7 @@ export async function POST(request: Request) {
     }
 
     // Build tool list — include memory tool only for logged-in users
-    const tools = userId ? [...TOOLS, MEMORY_TOOL] : TOOLS;
+    const tools = actor ? [...TOOLS, MEMORY_TOOL] : TOOLS;
 
     // Prepare conversation messages for Claude
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -622,8 +453,9 @@ export async function POST(request: Request) {
       content: m.content,
     }));
 
-    const allToolResults: { name: string; result: unknown }[] = [];
-    let finalText = "";
+    let responsePlan: unknown;
+    let receivedPlan = false;
+    let receivedText = false;
     const MAX_ITERATIONS = 4;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -650,7 +482,7 @@ export async function POST(request: Request) {
           status: res.status,
           requestId: res.headers.get("request-id"),
         });
-        return unavailable();
+        return actionReceipt() ?? unavailable();
       }
 
       const data = await res.json();
@@ -662,7 +494,7 @@ export async function POST(request: Request) {
 
       if (textBlocks.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        finalText = textBlocks.map((b: any) => b.text).join("\n");
+        receivedText ||= textBlocks.some((b: any) => typeof b.text === "string" && b.text.trim());
       }
 
       if (toolUseBlocks.length === 0 || data.stop_reason === "end_turn") {
@@ -672,17 +504,26 @@ export async function POST(request: Request) {
       // Execute all tool calls
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolResults: any[] = [];
+      const plans: unknown[] = [];
       for (const block of toolUseBlocks) {
         signal.throwIfAborted();
+        if (block.name === RESPONSE_PLAN_TOOL.name) {
+          plans.push(block.input);
+          toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify({ received: true }) });
+          continue;
+        }
+        const resultSlot = { name: block.name, result: { unconfirmed: true } as unknown };
+        allToolResults.push(resultSlot);
         try {
-          const result = await executeTool(block.name, block.input, userId);
-          allToolResults.push({ name: block.name, result });
+          const result = await withinDeadline(() => executeTool(block.name, block.input, actor), signal);
+          resultSlot.result = result;
           toolResults.push({
             type: "tool_result",
             tool_use_id: block.id,
             content: JSON.stringify(result),
           });
         } catch (err) {
+          if (signal.aborted) throw err;
           logger.error("Chat tool execution failed", err, { tool: block.name });
           toolResults.push({
             type: "tool_result",
@@ -691,6 +532,11 @@ export async function POST(request: Request) {
             is_error: true,
           });
         }
+      }
+      if (plans.length) {
+        receivedPlan = true;
+        responsePlan = plans.length === 1 ? plans[0] : null;
+        break;
       }
 
       apiMessages = [
@@ -704,15 +550,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const listingCards = extractListings(allToolResults);
-    if (!finalText.trim()) return unavailable();
-
-    return NextResponse.json({
-      message: finalText,
-      ...(listingCards.length > 0 ? { listings: listingCards } : {}),
-    });
+    if (!receivedPlan && !receivedText && allToolResults.length === 0) return unavailable();
+    return NextResponse.json(renderConciergeResponse({ plan: responsePlan, results: allToolResults, locale: responseLocale, voiceMode: responseVoiceMode, bookingsEnabled }));
   } catch (error) {
     logger.error("Chat API error", error);
-    return unavailable();
+    return actionReceipt() ?? unavailable();
   }
 }

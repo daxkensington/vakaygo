@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 
@@ -14,26 +14,22 @@ export function MessageBadge({
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
 
-  const fetchUnread = useCallback(async () => {
-    try {
-      const res = await fetch("/api/messages");
-      if (!res.ok) return;
-      const data = await res.json();
-      const total = (data.conversations || []).reduce(
-        (sum: number, c: { unread: number }) => sum + c.unread,
-        0
-      );
-      setUnreadCount(total);
-    } catch {
-      // silent
-    }
-  }, []);
-
   useEffect(() => {
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
-    return () => clearInterval(interval);
-  }, [fetchUnread]);
+    let current = true;
+    const controller = new AbortController();
+    const refresh = () => {
+      fetch("/api/messages", { signal: controller.signal })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (!current || !data) return;
+          const total = (data.conversations || []).reduce((sum: number, conversation: { unread: number }) => sum + conversation.unread, 0);
+          setUnreadCount(total);
+        }).catch(() => {});
+    };
+    refresh();
+    const interval = setInterval(refresh, 15000);
+    return () => { current = false; controller.abort(); clearInterval(interval); };
+  }, []);
 
   // Listen for SSE-driven unread updates
   useEffect(() => {

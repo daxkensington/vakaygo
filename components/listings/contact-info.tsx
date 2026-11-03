@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { claimStartHref } from "@/lib/claim-return";
 import {
   Clock,
-  ShieldCheck,
+  Info,
 } from "lucide-react";
 
 type ContactInfoProps = {
@@ -31,27 +31,30 @@ export function ContactInfo({ typeData, listingId, bookingEligible = false, uncl
   return (
     <section
       id="business-contact"
-      aria-label="Booking protection and hours"
+      aria-label="Contact details and business hours"
       className="mt-8 p-6 bg-white rounded-2xl border border-cream-200 shadow-[var(--shadow-card)]"
     >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 bg-teal-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-          <ShieldCheck size={18} className="text-teal-600" />
+          <Info size={18} className="text-teal-600" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-navy-700">
-            Protected by VakayGo
+            Contact details and hours
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-navy-500">
             {bookingEligible
-              ? "To protect your reservation under the VakayGo Guarantee, direct operator contact details and check-in instructions are shared automatically after your booking is confirmed and paid. Have a question first? Message the operator in-app or ask our AI Concierge."
-              : "Direct operator contact details are protected until a booking is confirmed on VakayGo. Online bookings and payments are currently unavailable for this listing—register your interest and we will notify you as soon as this operator enables instant booking."}
+              ? "Direct operator contact details and check-in instructions are shared after your booking is confirmed and paid. Have a question first? Message the operator in-app or ask our AI Concierge."
+              : "This listing is information only. Online bookings and payments are currently unavailable. Direct operator contact details remain restricted to confirmed, paid VakayGo bookings. Browse the published information or ask our AI Concierge for trip-planning help."}
           </p>
         </div>
       </div>
 
       {hoursList.length > 0 && (
         <div className="mt-5 pt-4 border-t border-cream-100">
+          <p className="mb-3 text-xs leading-relaxed text-navy-400">
+            Published hours may be outdated. Confirm current opening hours and visitor access with an official source before going.
+          </p>
           {hoursList.length > 1 ? (
             <details>
               <summary className="flex items-center gap-3 w-full text-left cursor-pointer">
@@ -89,7 +92,7 @@ export function ContactInfo({ typeData, listingId, bookingEligible = false, uncl
           >
             Claim this listing for free
           </a>{" "}
-          to manage your profile and accept protected bookings on VakayGo.
+          to manage your business information on VakayGo. Claiming a listing does not enable bookings or payments.
         </p>
       )}
     </section>

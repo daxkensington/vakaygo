@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock, Users, Check, Loader2 } from "lucide-react";
 import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
@@ -64,6 +65,7 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
           startDate: dateTime,
           guestCount: guests,
           guestNotes: notes || `Reservation for ${guests} at ${time}`,
+          reservationType: "table",
         }),
       });
 
@@ -74,8 +76,16 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
         return;
       }
 
+      const isRequest = data.mode === "request" || data.booking?.status === "requested";
+      if (!isRequest) {
+        setError("We couldn't submit a table request. Please try again.");
+        return;
+      }
+      if (typeof data.booking?.id === "string" && data.booking.id.trim()) {
+        analytics.bookingRequestSaved({ listingId, listingType: "dining" });
+      }
+      setRequested(true);
       setReserved(true);
-      setRequested(data.mode === "request" || data.booking?.status === "requested");
       setBookingNumber(data.booking.bookingNumber);
     } catch {
       setError("Something went wrong");

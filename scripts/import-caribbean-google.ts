@@ -12,9 +12,11 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, users } from "../drizzle/schema";
 import { eq, ne } from "drizzle-orm";
+import { placeSearchArea, placeWithinSearchArea } from "./lib/place-geography";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
+const SEARCH_RADIUS = 30000;
 
 const TYPE_MAP: Record<string, { type: string }> = {
   lodging: { type: "stay" }, hotel: { type: "stay" }, resort: { type: "stay" },
@@ -59,7 +61,7 @@ function determineType(types: string[]): string {
 }
 
 async function searchPlaces(query: string, lat: number, lng: number) {
-  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=30000&key=${GOOGLE_API_KEY}`;
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=${SEARCH_RADIUS}&key=${GOOGLE_API_KEY}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
@@ -74,8 +76,9 @@ async function importIsland(
   island: { id: number; slug: string; name: string; latitude: string | null; longitude: string | null },
   operatorId: string
 ) {
-  const lat = parseFloat(island.latitude || "0");
-  const lng = parseFloat(island.longitude || "0");
+  const area = placeSearchArea(island.latitude, island.longitude, SEARCH_RADIUS);
+  if (!area) return { imported: 0, found: 0 };
+  const { latitude: lat, longitude: lng } = area;
   const queries = getSearchQueries(island.name);
   const seen = new Set<string>();
   let imported = 0;
@@ -85,6 +88,7 @@ async function importIsland(
     const results = await searchPlaces(query, lat, lng);
 
     for (const place of results) {
+      if (!placeWithinSearchArea(place, area)) continue;
       if (seen.has(place.place_id)) continue;
       seen.add(place.place_id);
 

@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { OPERATED_BY } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
@@ -10,7 +11,8 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-bold text-navy-700 mb-2" style={{ fontFamily: "var(--font-display)" }}>
             Privacy Policy
           </h1>
-          <p className="text-navy-400 mb-10">Last updated: September 6, 2026</p>
+          <p className="text-navy-400 mb-2">Last updated: October 20, 2026</p>
+          <p className="text-navy-500 mb-10">{OPERATED_BY} Questions about this policy: hello@vakaygo.com.</p>
 
           <div className="bg-white rounded-2xl p-8 md:p-10 shadow-[var(--shadow-card)] prose-navy">
             <div className="space-y-8 text-navy-600 leading-relaxed text-[15px]">
@@ -41,6 +43,13 @@ export default function PrivacyPage() {
                 <p className="mt-3">VakayGo staff can review aggregate interest counts. The business outreach feature does not share your name, email address or phone number with the business. We may tell the business how many verified accounts have recorded interest.</p>
                 <p className="mt-3">You can withdraw interest using “Remove my interest” on the listing. Withdrawn interest is excluded from demand counts. We retain the withdrawal record to prevent duplicate counts and limit misuse; account deletion removes the associated interest records. Contact hello@vakaygo.com if a listing is no longer accessible or you need help removing your data.</p>
                 <p className="mt-3">For business outreach, we retain business contact sources, review notes and contact or opt-out status. If you represent a business and do not want further outreach, tell us at hello@vakaygo.com so we can record that preference.</p>
+                <p className="mt-3">For business listing invitations, we record send attempts, email provider message identifiers and provider-reported delivery status, including bounces and complaints. We also record visits to invitation links. Automated email security scanners can create these visits, so a visit alone does not show that a person read an email. If you follow an invitation and complete our normal listing-ownership verification, we may associate the approved claim with that invitation.</p>
+              </section>
+
+              <section id="listing-inquiries" className="scroll-mt-24">
+                <h2 className="text-xl font-bold text-navy-700 mb-3">Availability inquiries</h2>
+                <p>When you ask VakayGo about an unclaimed listing, we store your email address, requested dates, party size, optional message, the listing and the time of your inquiry. VakayGo staff use these details to try to contact the business, respond to you, manage the request and prevent abuse. This does not create a booking, reserve dates or add you to marketing.</p>
+                <p className="mt-3">We do not share your contact details or message with the unclaimed business through this feature. We retain inquiry and notification records while responding and as needed for support, security and legal obligations. Contact hello@vakaygo.com to ask about or delete your inquiry.</p>
               </section>
 
               <section>
@@ -51,6 +60,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">6. Cookies</h2>
                 <p>We use essential cookies for authentication and session management. We use analytics cookies to understand how visitors use our platform. You can control cookie preferences in your browser settings.</p>
+                <p className="mt-3">Following a business listing invitation can set a first-party continuation cookie for up to seven days. It contains signed invitation and listing identifiers, without your email address, to connect the invitation to a later approved claim. You still sign in and verify business ownership through our normal process.</p>
               </section>
 
               <section>

@@ -77,20 +77,16 @@ export async function PATCH(request: Request) {
         LIMIT 1
       `;
       const claim = claimRows[0];
-      if (!claim || claim.status !== "pending") {
+      if (!claim || !["pending", "approved"].includes(claim.status)) {
         return NextResponse.json({ error: "Claim is no longer pending" }, { status: 409 });
       }
       await finalizeVerifiedClaimInDb(
         claim.listing_id,
         claim.operator_id,
-        notes || "Approved by admin review",
-        "admin-approved"
+        auth,
+        { kind: "admin", claimId: claim.id },
+        notes || "Approved by admin review"
       );
-      await sqlClient`
-        UPDATE listing_claims
-        SET reviewed_by = ${auth.userId}, reviewed_at = now()
-        WHERE id = ${body.id}
-      `;
       return NextResponse.json({ ok: true, status: "approved" });
     }
 

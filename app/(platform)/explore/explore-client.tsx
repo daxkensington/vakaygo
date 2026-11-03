@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { analytics } from "@/lib/analytics";
+import { useSearchHistory } from "@/lib/use-search-history";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { RecentlyViewed } from "@/components/listings/recently-viewed";
@@ -35,7 +36,6 @@ import {
   Calendar,
   X,
   Star,
-  DollarSign,
   Sparkles,
   Minus,
   Plus,
@@ -185,7 +185,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   const [selectedDuration, setSelectedDuration] = useState(f.duration ?? "");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [cuisineType, setCuisineType] = useState(f.cuisine ?? "");
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const { searchHistory, saveSearchHistory, clearSearchHistory } = useSearchHistory();
   const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [aiSearchActive, setAiSearchActive] = useState(false);
@@ -213,6 +213,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   currentFilterKey.current = listKey;
   const smartRequest = useRef(0);
   const smartController = useRef<AbortController | null>(null);
+  const smartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const smartFilterKey = useRef<string | null>(null);
   const islandName = activeIsland
     ? activeIsland === f.island && initial.islandName
@@ -232,6 +233,10 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
   function cancelSmartSearch() {
     smartRequest.current += 1;
+    if (smartTimer.current !== null) {
+      clearTimeout(smartTimer.current);
+      smartTimer.current = null;
+    }
     smartController.current?.abort();
     smartFilterKey.current = null;
     setAiSearchLoading(false);
@@ -245,44 +250,13 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     if (smartFilterKey.current !== null && smartFilterKey.current !== listKey) cancelSmartSearch();
   }, [listKey]);
 
-  useEffect(() => () => { smartController.current?.abort(); }, []);
+  useEffect(() => () => {
+    smartController.current?.abort();
+    if (smartTimer.current !== null) clearTimeout(smartTimer.current);
+  }, []);
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
-
-  // Fetch search history on mount
-  useEffect(() => {
-    fetch("/api/search-history")
-      .then((r) => r.json())
-      .then((d) => setSearchHistory(d.history || []))
-      .catch(() => {});
-  }, []);
-
-  async function saveSearchHistory(query: string) {
-    if (!query.trim()) return;
-    try {
-      await fetch("/api/search-history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
-      });
-      setSearchHistory((prev) => {
-        const filtered = prev.filter((h) => h !== query.trim());
-        return [query.trim(), ...filtered].slice(0, 10);
-      });
-    } catch {
-      // silently fail
-    }
-  }
-
-  async function clearSearchHistory() {
-    try {
-      await fetch("/api/search-history", { method: "DELETE" });
-      setSearchHistory([]);
-    } catch {
-      // silently fail
-    }
-  }
 
   function isNaturalLanguageQuery(q: string): boolean {
     if (q.length > 20) return true;
@@ -290,9 +264,24 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     return AI_TRIGGER_WORDS.some((word) => lower.includes(word));
   }
 
-  async function handleSmartSearch(query: string) {
+  function queueSmartSearch(query: string, nextFilters: FilterState, force = false) {
     cancelSmartSearch();
-    if (!isNaturalLanguageQuery(query)) {
+    if (!force && !isNaturalLanguageQuery(query)) return;
+    const request = smartRequest.current;
+    const filterKey = stateToParams(nextFilters, { includeSort: true }).toString();
+    smartFilterKey.current = filterKey;
+    // Wait for the controlled input/filter update, but never start an old
+    // suggestion after a newer edit, filter change or unmount.
+    smartTimer.current = setTimeout(() => {
+      smartTimer.current = null;
+      if (request !== smartRequest.current || filterKey !== currentFilterKey.current) return;
+      void handleSmartSearch(query, force);
+    }, 50);
+  }
+
+  async function handleSmartSearch(query: string, force = false) {
+    cancelSmartSearch();
+    if (!force && !isNaturalLanguageQuery(query)) {
       return;
     }
 
@@ -336,7 +325,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
       if (Array.isArray(filters.amenities) && filters.amenities.length > 0)
         setSelectedAmenities(filters.amenities);
       if (filters.duration) setSelectedDuration(filters.duration);
-      if (filters.q) setSearchQuery(filters.q);
+      setSearchQuery(filters.q ?? "");
     } catch {
       // Fall back to normal search
       if (request === smartRequest.current) cancelSmartSearch();
@@ -542,7 +531,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         onClick={() => {
                           setSearchQuery(term);
                           setShowSearchHistory(false);
-                          handleSmartSearch(term);
+                          queueSmartSearch(term, { ...filterState, searchQuery: term });
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-cream-50 transition-colors text-left"
                       >
@@ -625,11 +614,11 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               </select>
               {/* Price Range */}
               <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
-                <DollarSign size={16} className="text-navy-300 shrink-0" />
+                <span className="text-xs font-semibold text-navy-500">USD</span>
                 <input
                   type="number"
-                  placeholder="Min"
-                  aria-label="Minimum price"
+                  placeholder="Min USD"
+                  aria-label="Minimum price in USD"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -638,8 +627,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <span className="text-navy-300 text-sm">-</span>
                 <input
                   type="number"
-                  placeholder="Max"
-                  aria-label="Maximum price"
+                  placeholder="Max USD"
+                  aria-label="Maximum price in USD"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -718,6 +707,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               </div>
             </div>
 
+            <p className="mt-2 text-xs text-navy-500">Price filters and sorting use USD estimates. Confirm the current price and price unit with the business.</p>
+
             {/* Active Filters Pills */}
             {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration || cuisineType) && (
               <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -763,7 +754,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     onClick={() => setMinPrice("")}
                     className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
                   >
-                    Min ${minPrice}
+                    Min USD ${minPrice}
                     <X size={12} />
                   </button>
                 )}
@@ -772,7 +763,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     onClick={() => setMaxPrice("")}
                     className="flex items-center gap-1 px-3 py-1 bg-navy-700 text-white text-xs font-medium rounded-full hover:bg-navy-600 transition-colors"
                   >
-                    Max ${maxPrice}
+                    Max USD ${maxPrice}
                     <X size={12} />
                   </button>
                 )}
@@ -963,7 +954,11 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     <button
                       key={suggestion}
                       onClick={() => {
-                        cancelSmartSearch();
+                        queueSmartSearch(suggestion, {
+                          ...filterState, searchQuery: suggestion, activeCategory: "all", activeIsland: "",
+                          minPrice: "", maxPrice: "", minRating: "", guestCount: "", selectedAmenities: [],
+                          selectedDuration: "", cuisineType: "", selectedDate: "",
+                        }, true);
                         setSearchQuery(suggestion);
                         setActiveCategory("all");
                         setActiveIsland("");
@@ -975,7 +970,6 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         setSelectedDuration("");
                         setCuisineType("");
                         setSelectedDate("");
-                        setTimeout(() => handleSmartSearch(suggestion), 50);
                       }}
                       className="px-3 py-1 bg-white/70 hover:bg-white text-xs font-medium text-navy-600 rounded-full transition-colors shadow-sm"
                     >
@@ -1013,7 +1007,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
         {viewMode === "map" ? (
           /* ── Map View ─────────────────────────────────────────── */
           <div className="mx-auto max-w-[1600px] px-4 py-4">
-            <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 px-2">
               <p className="text-navy-400 text-sm">
                 Showing{" "}
                 <span className="font-semibold text-navy-700">
@@ -1029,12 +1023,12 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
+                className="max-w-full text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
+                <option value="price-asc">Price (USD estimate): Low to High</option>
+                <option value="price-desc">Price (USD estimate): High to Low</option>
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1093,7 +1087,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               <RecentlyViewed />
             )}
 
-            <div className="flex items-center justify-between mb-6 gap-4">
+            <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
               <p className="text-navy-400 text-sm">
                 <span className="block sm:inline text-navy-700 font-semibold text-base sm:mr-2" style={{ fontFamily: "var(--font-display)" }} role="heading" aria-level={2}>
                   {heading}
@@ -1112,12 +1106,12 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 aria-label="Sort by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
+                className="max-w-full text-sm font-medium text-navy-600 bg-transparent outline-none cursor-pointer"
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
+                <option value="price-asc">Price (USD estimate): Low to High</option>
+                <option value="price-desc">Price (USD estimate): High to Low</option>
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1247,14 +1241,14 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
               <div>
                 <span className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
-                  Price Range
+                  Price Range (USD estimates)
                 </span>
                 <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-3">
-                  <DollarSign size={16} className="text-navy-300 shrink-0" />
+                  <span className="text-xs font-semibold text-navy-500">USD</span>
                   <input
                     type="number"
-                    placeholder="Min"
-                    aria-label="Minimum price"
+                    placeholder="Min USD"
+                    aria-label="Minimum price in USD"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
@@ -1263,14 +1257,15 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   <span className="text-navy-300 text-sm">-</span>
                   <input
                     type="number"
-                    placeholder="Max"
-                    aria-label="Maximum price"
+                    placeholder="Max USD"
+                    aria-label="Maximum price in USD"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                     min="0"
                   />
                 </div>
+                <p className="mt-2 text-xs text-navy-500">Filters use USD estimates. Confirm the current price and price unit with the business.</p>
               </div>
 
               <div>

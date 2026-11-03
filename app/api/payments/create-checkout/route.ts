@@ -5,13 +5,12 @@ import { bookings, listings, users } from "@/drizzle/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { createCheckoutSession, retrieveCheckoutSession } from "@/server/stripe";
 import { CATEGORY_RATES } from "@/lib/pricing";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { expireBookingCheckout, isBookingCalendarAvailable } from "@/server/booking-checkout-safety";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string): string {
   let origin = "https://vakaygo.com";
@@ -36,7 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please sign in" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const { bookingId } = await request.json();
 
     if (!bookingId) {
@@ -91,11 +92,45 @@ export async function POST(request: Request) {
 
     if (booking.checkoutSessionId) {
       const existingSession = await retrieveCheckoutSession(booking.checkoutSessionId);
-      if (booking.paymentMode !== expectedPaymentMode || booking.checkoutStripeAccountId !== eligibility.stripeAccountId || existingSession.metadata?.bookingId !== booking.id) {
-        await expireBookingCheckout(booking.id, booking.checkoutSessionId);
+      const rejectReusedCheckout = async () => {
+        try {
+          await expireBookingCheckout(booking.id, booking.checkoutSessionId!);
+        } catch (error) {
+          logger.error("Unavailable checkout expiry needs retry", { bookingId: booking.id, sessionId: booking.checkoutSessionId, error });
+          return NextResponse.json({ error: "This checkout cannot be used. Closing its payment link could not be confirmed. Check My Bookings before trying again.", code: "CHECKOUT_EXPIRY_PENDING" }, { status: 503 });
+        }
         return NextResponse.json({ error: "This checkout is no longer available." }, { status: 409 });
+      };
+      if (booking.paymentMode !== expectedPaymentMode || booking.checkoutStripeAccountId !== eligibility.stripeAccountId
+        || existingSession.id !== booking.checkoutSessionId || existingSession.metadata?.bookingId !== booking.id) {
+        return rejectReusedCheckout();
       }
       if (existingSession.status !== "open") return NextResponse.json({ error: "This checkout is closed. Check My Bookings before trying again." }, { status: 409 });
+      if (!existingSession.url) return NextResponse.json({ error: "This checkout is not available. Check My Bookings before trying again." }, { status: 409 });
+
+      // The provider read can outlast a terms, ownership, account or calendar
+      // change. Recheck before releasing an already-issued payment link.
+      const currentEligibility = await getListingBookingEligibility(booking.listingId, { refreshProvider: true });
+      const currentPaymentMode = currentEligibility.paymentMode === "platform" ? "platform" : "destination";
+      if (!currentEligibility.eligible || !currentEligibility.stripeAccountId || currentEligibility.operatorId !== booking.operatorId
+        || currentEligibility.stripeAccountId !== booking.checkoutStripeAccountId || currentPaymentMode !== booking.paymentMode
+        || !await isBookingCalendarAvailable(booking.id)) {
+        return rejectReusedCheckout();
+      }
+      const [currentBooking] = await db.select({ id: bookings.id }).from(bookings).where(and(
+        eq(bookings.id, booking.id), eq(bookings.travelerId, payload.id), eq(bookings.listingId, booking.listingId),
+        eq(bookings.operatorId, booking.operatorId), eq(bookings.status, "pending"), isNull(bookings.paidAt),
+        isNull(bookings.cancellationRequestedAt), eq(bookings.checkoutSessionId, booking.checkoutSessionId),
+        eq(bookings.checkoutStripeAccountId, currentEligibility.stripeAccountId), eq(bookings.paymentMode, currentPaymentMode),
+        sql`vakaygo_listing_bookable(${bookings.listingId})`,
+        sql`vakaygo_booking_dates_available(${bookings.listingId},${bookings.startDate},${bookings.endDate},${bookings.guestCount},${bookings.id})`,
+        sql`EXISTS (SELECT 1 FROM listings current_listing JOIN listing_onboarding current_onboarding ON current_onboarding.listing_id=current_listing.id
+          WHERE current_listing.id=${bookings.listingId} AND current_listing.operator_id=${bookings.operatorId}
+          AND CASE WHEN current_onboarding.stripe_account_id IS NOT NULL THEN
+            ${bookings.paymentMode}='destination' AND ${bookings.checkoutStripeAccountId}=current_onboarding.stripe_account_id
+          ELSE ${bookings.paymentMode}='platform' AND ${bookings.checkoutStripeAccountId}=(SELECT platform_account_id FROM booking_provider_config WHERE id=true) END)`,
+      )).limit(1);
+      if (!currentBooking) return rejectReusedCheckout();
       return NextResponse.json({ url: existingSession.url });
     }
     if (Date.now() - booking.createdAt.getTime() > 23 * 3600000) return NextResponse.json({ error: "This payment link has expired. Cancel this unpaid booking and book again." }, { status: 409 });

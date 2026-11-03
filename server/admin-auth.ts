@@ -10,7 +10,7 @@ export { createSessionToken, verifySessionToken, verifyCurrentSessionToken, SESS
 export type { SessionClaims, SessionPayload } from "./session-validation";
 
 type AuthResult =
-  | { ok: true; userId: string; role: string; sessionVersion: number; emailVerified: boolean }
+  | { ok: true; userId: string; role: string; email: string; sessionVersion: number; emailVerified: boolean }
   | { ok: false; error: NextResponse };
 
 function getDb() {
@@ -51,7 +51,7 @@ export async function requireUser(): Promise<AuthResult> {
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
-  return { ok: true, userId: session.userId, role: session.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
+  return { ok: true, userId: session.userId, role: session.role, email: session.email, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 export async function requireAdmin(): Promise<AuthResult> {
@@ -77,7 +77,7 @@ export async function requireAdmin(): Promise<AuthResult> {
     };
   }
 
-  return { ok: true, userId: session.userId, role: user.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
+  return { ok: true, userId: session.userId, role: user.role, email: session.email, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 export async function requireOperator(): Promise<AuthResult> {
@@ -96,7 +96,7 @@ export async function requireOperator(): Promise<AuthResult> {
     };
   }
 
-  return { ok: true, userId: session.userId, role: session.role, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
+  return { ok: true, userId: session.userId, role: session.role, email: session.email, sessionVersion: session.sessionVersion!, emailVerified: session.emailVerified === true };
 }
 
 /**

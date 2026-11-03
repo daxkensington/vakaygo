@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { listings, listingViews, islands, media } from "@/drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+import { verifySession } from "@/server/admin-auth";
+import { sameSessionIdentity } from "@/lib/session-identity";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { getImageUrl } from "@/lib/image-utils";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
+const headers = { "Cache-Control": "private, no-store" };
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -15,14 +19,12 @@ function getDb() {
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) {
-      return NextResponse.json({ listings: [] });
+    const actor = await verifySession();
+    if (!actor) {
+      return NextResponse.json({ listings: [] }, { headers });
     }
-
-    const { payload } = await jwtVerify(token, SECRET);
-    const userId = payload.id as string;
+    const userId = actor.userId;
+    const bookingsEnabled = await bookingLaunchEnabled();
 
     const db = getDb();
 
@@ -35,6 +37,7 @@ export async function GET() {
         type: listings.type,
         headline: listings.headline,
         priceAmount: listings.priceAmount,
+        bookingEligible: bookingsEnabled ? currentListingBookable() : sql<boolean>`false`,
         priceCurrency: listings.priceCurrency,
         priceUnit: listings.priceUnit,
         avgRating: listings.avgRating,
@@ -56,7 +59,7 @@ export async function GET() {
       .where(
         and(
           eq(listingViews.userId, userId),
-          eq(listings.status, "active")
+          publicDirectoryListings()
         )
       )
       .orderBy(listingViews.listingId, desc(listingViews.createdAt));
@@ -68,9 +71,16 @@ export async function GET() {
       return bTime - aTime;
     });
 
-    return NextResponse.json({ listings: recent.slice(0, 4) });
+    if (!sameSessionIdentity(actor, await verifySession())) {
+      return NextResponse.json({ error: "Your session changed. Please reload." }, { status: 401, headers });
+    }
+    return NextResponse.json({ listings: recent.slice(0, 4).map(row => ({ ...row,
+      bookingEligible: row.bookingEligible === true,
+      priceAmount: row.bookingEligible === true ? row.priceAmount : null,
+      image: getImageUrl(row.image) || null,
+    })) }, { headers });
   } catch (error) {
     logger.error("Recent views error", error);
-    return NextResponse.json({ listings: [] });
+    return NextResponse.json({ listings: [] }, { headers });
   }
 }

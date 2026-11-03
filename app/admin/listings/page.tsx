@@ -147,15 +147,31 @@ function RejectModal({
   onCancel,
 }: {
   listing: Listing;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string) => Promise<void>;
   onCancel: () => void;
 }) {
   const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const inFlight = useRef(false);
+
+  async function confirm() {
+    if (inFlight.current || !reason.trim()) return;
+    inFlight.current = true; setSaving(true); setError("");
+    try {
+      await onConfirm(reason.trim());
+    } catch {
+      setError("Could not reject this listing. Your reason has been kept. Try again.");
+    } finally {
+      inFlight.current = false; setSaving(false);
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div role="dialog" aria-modal="true" aria-labelledby="reject-listing-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-[var(--shadow-elevated)]">
         <h3
+          id="reject-listing-title"
           className="mb-1 text-lg font-bold text-navy-800"
           style={{ fontFamily: "var(--font-display)" }}
         >
@@ -165,22 +181,26 @@ function RejectModal({
           Rejecting &ldquo;{listing.title}&rdquo;. Please provide a reason.
         </p>
         <textarea
+          aria-label="Reason for rejection"
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          disabled={saving}
+          onChange={(e) => { setReason(e.target.value); setError(""); }}
           rows={3}
           placeholder="Reason for rejection..."
           className="w-full rounded-xl border border-cream-300 bg-cream-50 px-4 py-3 text-sm text-navy-700 outline-none transition-colors focus:border-gold-400 focus:ring-2 focus:ring-gold-200"
         />
+        {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
         <div className="mt-4 flex justify-end gap-3">
           <button
             onClick={onCancel}
+            disabled={saving}
             className="rounded-xl px-4 py-2 text-sm font-medium text-navy-600 transition-colors hover:bg-cream-100"
           >
             Cancel
           </button>
           <button
-            onClick={() => onConfirm(reason)}
-            disabled={!reason.trim()}
+            onClick={() => void confirm()}
+            disabled={saving || !reason.trim()}
             className="rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
           >
             Reject
@@ -374,13 +394,12 @@ export default function AdminListingsPage() {
   }
 
   async function handleRejectConfirm(reason: string) {
-    if (!rejectTarget) return;
-    const ok = await patchListing(rejectTarget.id, { status: "rejected" });
-    if (ok) {
-      setToast(`"${rejectTarget.title}" rejected`);
-      fetchListings();
-      fetchPendingCount();
-    }
+    if (!rejectTarget || !reason.trim()) return;
+    const ok = await patchListing(rejectTarget.id, { status: "rejected", rejectionReason: reason.trim() });
+    if (!ok) throw new Error("Listing rejection failed");
+    setToast(`"${rejectTarget.title}" rejected`);
+    fetchListings();
+    fetchPendingCount();
     setRejectTarget(null);
   }
 

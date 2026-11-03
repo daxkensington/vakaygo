@@ -14,9 +14,8 @@ function getDb() {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    // The map asks for up to 7,500 pins (all 6,917+ active listings); everything else is capped at 100.
-    const wantsBulk = parseInt(searchParams.get("limit") || "0", 10) > 100;
-    const filters = parseListingFilters(searchParams, { maxLimit: wantsBulk ? 7500 : 100 });
+    // Full map reads use bounded keyset pages at /api/map/listings.
+    const filters = parseListingFilters(searchParams);
     const data = await searchListings(filters);
     return NextResponse.json(
       { listings: data },

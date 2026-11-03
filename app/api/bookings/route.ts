@@ -4,15 +4,16 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users, islands, promoCodes, promoCodeUses, availability, pricingRules } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
+import { calculateTransferUnitPrice } from "@/lib/transfer-pricing";
 import { shouldRequestBooking } from "@/lib/booking-request";
 import { toWallClockDate } from "@/lib/booking-time";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { bookingInputError, isDemoListing, localBookingNow } from "@/lib/booking-validation";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+import { bookingPaymentEligible } from "@/lib/booking-payment-eligibility";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please sign in to book" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const travelerId = payload.id as string;
 
     const body = await request.json();
@@ -50,6 +53,9 @@ export async function POST(request: Request) {
       includeInsurance = false,
       paymentMethod = "card",
       promoCode,
+      vehicleType = "sedan",
+      roundTrip = false,
+      reservationType,
     } = body;
 
     if (!listingId || !startDate || typeof startDate !== "string") {
@@ -156,13 +162,16 @@ export async function POST(request: Request) {
       db.select({ id: availability.id }).from(availability).where(and(eq(availability.listingId, listing.id), sql`${availability.priceOverride} is not null`)).limit(1),
       db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.listingId, listing.id), eq(pricingRules.isActive, true))).limit(1),
     ]);
-    const isRequest = overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
+    const isRequest = listing.type === "dining" && reservationType === "table" || overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
       typeData: listing.typeData,
       operatorEmail: listing.operatorEmail,
       priceAmount: listing.priceAmount,
     });
 
-    const pricePerUnit = parseFloat(listing.priceAmount || "0");
+    const basePricePerUnit = parseFloat(listing.priceAmount || "0");
+    const pricePerUnit = listing.type === "transfer"
+      ? calculateTransferUnitPrice(basePricePerUnit, vehicleType, roundTrip)
+      : basePricePerUnit;
 
     // Calculate quantity based on type
     let quantity = guestCount;
@@ -268,6 +277,8 @@ export async function POST(request: Request) {
         guestNotes,
         promoCodeId,
         discountAmount: discountAmount.toFixed(2),
+        transferVehicleType: listing.type === "transfer" ? vehicleType : null,
+        transferRoundTrip: listing.type === "transfer" ? roundTrip : null,
       })
       .returning({
         id: bookings.id,
@@ -302,7 +313,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
 
@@ -339,6 +352,8 @@ export async function GET(request: Request) {
         checkoutStripeAccountId: bookings.checkoutStripeAccountId,
         paymentMode: bookings.paymentMode,
         cancellationRequestedAt: bookings.cancellationRequestedAt,
+        cancellationPolicy: sql<string>`coalesce(${bookings.cancellationPolicySnapshot}, ${listings.cancellationPolicy}, 'moderate')`,
+        listingTimezone: islands.timezone,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))
@@ -357,8 +372,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ bookings: results.map(row => {
       const eligibility = eligibleListings.get(row.listingId);
       const bookingEligible = !!eligibility?.eligible && eligibility.operatorId === row.operatorId;
-      return { ...row, bookingEligible, paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && bookingEligible && row.datesAvailable === true &&
-        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility?.stripeAccountId)) };
+      return { ...row, bookingEligible, paymentEligible: !!eligibility && bookingPaymentEligible(row, eligibility) };
     }) });
   } catch (error) {
     logger.error("Get bookings error", error);

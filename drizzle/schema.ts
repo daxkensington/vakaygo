@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   decimal,
+  date,
   json,
   uuid,
   index,
@@ -28,6 +29,29 @@ export const listingInterest = pgTable("listing_interest", {
 }, t => [primaryKey({ columns: [t.listingId, t.userId] }),
   index("listing_interest_user_updated_idx").on(t.userId, t.updatedAt),
   index("listing_interest_active_listing_idx").on(t.listingId).where(sql`${t.active}=true`)]);
+
+export const listingInquiries = pgTable("listing_inquiries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  travelerEmail: varchar("traveler_email", { length: 254 }).notNull(),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  partySize: integer("party_size").notNull().default(1),
+  message: text("message").notNull().default(""),
+  status: varchar("status", { length: 16 }).notNull().default("new"),
+  teamNotifiedAt: timestamp("team_notified_at", { withTimezone: true }),
+  travelerNotifiedAt: timestamp("traveler_notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  index("listing_inquiries_listing_created_idx").on(t.listingId, t.createdAt),
+  index("listing_inquiries_email_created_idx").on(t.travelerEmail, t.createdAt),
+  index("listing_inquiries_status_created_idx").on(t.status, t.createdAt),
+  check("listing_inquiries_dates_check", sql`${t.endDate} IS NULL OR ${t.startDate} IS NULL OR ${t.endDate} >= ${t.startDate}`),
+  check("listing_inquiries_party_size_check", sql`${t.partySize} BETWEEN 1 AND 100`),
+  check("listing_inquiries_message_check", sql`length(${t.message}) <= 2000`),
+  check("listing_inquiries_status_check", sql`${t.status} IN ('new','reviewing','closed')`),
+]);
+
 export const businessOutreach = pgTable("business_outreach", {
   listingId: uuid("listing_id").primaryKey().references(() => listings.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 24 }).notNull().default("new"),
@@ -38,6 +62,117 @@ export const businessOutreach = pgTable("business_outreach", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [check("business_outreach_status_check", sql`${t.status} IN ('new','reviewing','contacted','do_not_contact')`),
   check("business_outreach_notes_check", sql`length(${t.notes})<=4000`)]);
+
+export const outreachCampaignControl = pgTable("outreach_campaign_control", {
+  id: boolean("id").primaryKey().default(true),
+  enabled: boolean("enabled").notNull().default(false),
+  provider: varchar("provider", { length: 32 }).notNull().default("resend"),
+  stage: integer("stage").notNull().default(0),
+  stageStartedAt: timestamp("stage_started_at", { withTimezone: true }).notNull().defaultNow(),
+  version: integer("version").notNull().default(0),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  pauseReason: text("pause_reason").notNull().default("Awaiting verified sender, tracking and recipient permission"),
+  healthCheckedAt: timestamp("health_checked_at", { withTimezone: true }),
+  healthReady: boolean("health_ready").notNull().default(false),
+  healthReason: text("health_reason").notNull().default("not_checked"),
+}, t => [check("outreach_campaign_singleton", sql`${t.id}=true`),
+  check("outreach_campaign_stage", sql`${t.stage} BETWEEN 0 AND 4`),
+  check("outreach_campaign_provider", sql`${t.provider} IN ('resend','sendcorex','mailforge','infraforge')`)]);
+
+export const outreachRecipientConsents = pgTable("outreach_recipient_consents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  recipientEmail: varchar("recipient_email", { length: 254 }).notNull(),
+  provider: varchar("provider", { length: 32 }).notNull().default("resend"),
+  permissionKind: varchar("permission_kind", { length: 32 }).notNull().default("explicit_opt_in"),
+  recipientCountry: varchar("recipient_country", { length: 2 }),
+  policyReference: text("policy_reference"),
+  evidence: text("evidence").notNull(),
+  grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  revokedBy: uuid("revoked_by").references(() => users.id, { onDelete: "set null" }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revocationReason: text("revocation_reason"),
+}, t => [uniqueIndex("outreach_recipient_consent_active_unique").on(t.listingId, t.recipientEmail, t.provider).where(sql`${t.revokedAt} IS NULL`),
+  check("outreach_permission_kind", sql`${t.permissionKind} IN ('explicit_opt_in','business_outreach_permission')`)]);
+
+export const outreachClaimAttributions = pgTable("outreach_claim_attributions", {
+  attemptId: uuid("attempt_id").primaryKey().references(() => outreachEmailAttempts.id, { onDelete: "cascade" }),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  firstVisitedAt: timestamp("first_visited_at", { withTimezone: true }).notNull().defaultNow(),
+  lastVisitedAt: timestamp("last_visited_at", { withTimezone: true }).notNull().defaultNow(),
+  claimId: uuid("claim_id").references(() => listingClaims.id, { onDelete: "set null" }),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  operatorId: uuid("operator_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+// Campaign delivery evidence is independent of booking/payment state.
+export const outreachEmailAttempts = pgTable("outreach_email_attempts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
+  recipient: varchar("recipient", { length: 254 }).notNull(),
+  campaignKey: varchar("campaign_key", { length: 96 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+  provider: varchar("provider", { length: 32 }).notNull().default("resend"),
+  state: varchar("state", { length: 16 }).notNull().default("reserved"),
+  providerEmailId: varchar("provider_email_id", { length: 128 }),
+  reservedAt: timestamp("reserved_at", { withTimezone: true }).notNull().defaultNow(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  failedAt: timestamp("failed_at", { withTimezone: true }),
+  errorCode: varchar("error_code", { length: 64 }),
+  lastEvent: varchar("last_event", { length: 64 }),
+  lastEventAt: timestamp("last_event_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  bouncedAt: timestamp("bounced_at", { withTimezone: true }),
+  complainedAt: timestamp("complained_at", { withTimezone: true }),
+  suppressedAt: timestamp("suppressed_at", { withTimezone: true }),
+  openedAt: timestamp("opened_at", { withTimezone: true }),
+  clickedAt: timestamp("clicked_at", { withTimezone: true }),
+  lastPolledAt: timestamp("last_polled_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  uniqueIndex("outreach_attempt_listing_campaign_key").on(t.listingId, t.campaignKey),
+  uniqueIndex("outreach_attempt_recipient_campaign_key").on(t.recipient, t.campaignKey),
+  uniqueIndex("outreach_attempt_idempotency_key").on(t.idempotencyKey),
+  uniqueIndex("outreach_attempt_provider_email_key").on(t.provider, t.providerEmailId),
+  index("outreach_attempt_reserved_idx").on(t.reservedAt),
+  check("outreach_attempt_recipient_check", sql`${t.recipient}=lower(trim(${t.recipient})) AND length(${t.recipient}) BETWEEN 6 AND 254`),
+  check("outreach_attempt_provider_check", sql`${t.provider} ~ '^[a-z][a-z0-9_-]{0,31}$'`),
+  check("outreach_attempt_state_check", sql`${t.state} IN ('reserved','accepted','failed','uncertain')`),
+  check("outreach_attempt_accepted_check", sql`${t.state}<>'accepted' OR (${t.providerEmailId} IS NOT NULL AND ${t.acceptedAt} IS NOT NULL)`),
+]);
+
+export const outreachEmailEvents = pgTable("outreach_email_events", {
+  provider: varchar("provider", { length: 32 }).notNull(),
+  providerEventId: varchar("provider_event_id", { length: 256 }).notNull(),
+  providerEmailId: varchar("provider_email_id", { length: 128 }).notNull(),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  recipientHash: varchar("recipient_hash", { length: 64 }).notNull(),
+  evidenceSource: varchar("evidence_source", { length: 24 }).notNull().default("webhook"),
+  bounceType: varchar("bounce_type", { length: 24 }),
+  attemptId: uuid("attempt_id").references(() => outreachEmailAttempts.id, { onDelete: "set null" }),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  primaryKey({ columns: [t.provider, t.providerEventId] }),
+  index("outreach_event_provider_email_idx").on(t.provider, t.providerEmailId),
+  check("outreach_event_recipient_hash_check", sql`${t.recipientHash} ~ '^[0-9a-f]{64}$'`),
+  check("outreach_event_evidence_source_check", sql`${t.evidenceSource} IN ('webhook','provider_poll')`),
+]);
+
+// Suppression is recipient-wide, including when a sending provider changes.
+export const outreachEmailSuppressions = pgTable("outreach_email_suppressions", {
+  recipient: varchar("recipient", { length: 254 }).primaryKey(),
+  reason: varchar("reason", { length: 24 }).notNull(),
+  provider: varchar("provider", { length: 32 }),
+  sourceEventId: varchar("source_event_id", { length: 256 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  check("outreach_suppression_recipient_check", sql`${t.recipient}=lower(trim(${t.recipient})) AND length(${t.recipient}) BETWEEN 6 AND 254`),
+  check("outreach_suppression_reason_check", sql`${t.reason} IN ('bounce','complaint','provider_suppressed','unsubscribe','manual')`),
+]);
 
 // ─── ENUMS ──────────────────────────────────────────────────────
 export const userRoleEnum = pgEnum("user_role", [
@@ -149,6 +284,28 @@ export const users = pgTable(
 );
 
 // ─── AUTH ACCOUNTS (NextAuth adapter) ───────────────────────────
+export const userPhoneChallenges = pgTable("user_phone_challenges", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  challengeId: uuid("challenge_id").notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  codeHash: varchar("code_hash", { length: 64 }),
+  sessionVersion: integer("session_version").notNull(),
+  profilePhoneSnapshot: varchar("profile_phone_snapshot", { length: 20 }),
+  state: varchar("state", { length: 16 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  nextSendAt: timestamp("next_send_at", { withTimezone: true }).notNull(),
+  sendWindowStartedAt: timestamp("send_window_started_at", { withTimezone: true }).notNull(),
+  sendCount: integer("send_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, () => [
+  check("user_phone_challenges_state_check", sql.raw("state IN ('sending','pending','failed','consumed','locked','expired','invalidated')")),
+  check("user_phone_challenges_attempts_check", sql.raw("attempts BETWEEN 0 AND 5")),
+  check("user_phone_challenges_send_count_check", sql.raw("send_count BETWEEN 1 AND 5")),
+  check("user_phone_challenges_phone_check", sql.raw("phone ~ '^\\+[1-9][0-9]{7,14}$'")),
+]);
+
 export const accounts = pgTable("accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
@@ -355,6 +512,8 @@ export const bookings = pgTable(
     // booking" email goes out; the claim that stops it repeating.
     recoveryEmailSentAt: timestamp("recovery_email_sent_at"),
     guestNotes: text("guest_notes"),
+    transferVehicleType: varchar("transfer_vehicle_type", { length: 16 }),
+    transferRoundTrip: boolean("transfer_round_trip"),
     operatorNotes: text("operator_notes"),
     cancellationReason: text("cancellation_reason"),
     verificationToken: varchar("verification_token", { length: 128 }),
@@ -1129,3 +1288,58 @@ export const operatorPayoutProfiles = pgTable("operator_payout_profiles", {
   check("operator_payout_profiles_status_check", sql.raw("status in ('pending_review','verified','rejected')")),
 ]);
 
+
+export const outreachProviderCursors = pgTable("outreach_provider_cursors", {
+  provider: varchar("provider", { length: 32 }).primaryKey(),
+  cursor: text("cursor").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const outreachWebhookProofs = pgTable("outreach_webhook_proofs", {
+  provider: varchar("provider", { length: 32 }).primaryKey(),
+  webhookId: varchar("webhook_id", { length: 128 }).notNull(),
+  secretHash: varchar("secret_hash", { length: 64 }).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── OPERATOR ONBOARDING NUDGES ───────────────────────────────
+// Reminders to claimed businesses that stalled before activation (lib/onboarding-nudges.ts).
+export const operatorOnboardingNudges = pgTable("operator_onboarding_nudges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 32 }).notNull(), // business_details, listing_setup, payout_setup, payout_rejected, activate, admin_review
+  recipient: varchar("recipient", { length: 320 }).notNull(),
+  sentOn: date("sent_on").notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  providerMessageId: varchar("provider_message_id", { length: 128 }),
+}, t => [
+  uniqueIndex("operator_onboarding_nudges_daily_unique").on(t.listingId, t.stage, t.sentOn),
+  index("operator_onboarding_nudges_listing_idx").on(t.listingId, t.sentAt),
+  check("operator_onboarding_nudges_stage_check", sql.raw("stage in ('business_details','listing_setup','payout_setup','payout_rejected','activate','admin_review')")),
+]);
+
+export const operatorOnboardingNudgeOptouts = pgTable("operator_onboarding_nudge_optouts", {
+  operatorId: uuid("operator_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  source: varchar("source", { length: 32 }).notNull().default("email_link"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Exact consent receipts survive replacement of the current onboarding version.
+export const operatorTermsAcceptances = pgTable("operator_terms_acceptances", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  operatorId: uuid("operator_id").notNull().references(() => users.id),
+  termsVersion: varchar("terms_version", { length: 32 }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  authorityAcceptedAt: timestamp("authority_accepted_at", { withTimezone: true }),
+  businessLegalName: varchar("business_legal_name", { length: 256 }),
+  businessCountry: varchar("business_country", { length: 2 }),
+  businessAddress: text("business_address"),
+  representativeName: varchar("representative_name", { length: 256 }),
+  recordOrigin: varchar("record_origin", { length: 24 }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("operator_terms_acceptances_receipt_idx").on(t.listingId, t.operatorId, t.termsVersion, t.acceptedAt),
+  check("operator_terms_acceptances_origin_check", sql.raw("record_origin in ('observed_existing','explicit_acceptance')")),
+]);

@@ -1,0 +1,3 @@
+# Preserve the reviewed upstream stylesheet and license bytes on all checkouts.
+app/styles/shadcn.css text eol=lf
+LICENSES/shadcn-MIT.txt text eol=lf

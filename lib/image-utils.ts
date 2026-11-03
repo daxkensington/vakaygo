@@ -22,7 +22,11 @@ const HOTLINK_BLOCKED_HOSTS = [
 
 export function getImageUrl(
   url: string | null | undefined,
-  _opts?: { width?: number },
+  options?: { width?: number },
+): string | null;
+// Keep the legacy width option callable; direct image URLs do not resize.
+export function getImageUrl(
+  url: string | null | undefined,
 ): string | null {
   if (!url) return null;
 

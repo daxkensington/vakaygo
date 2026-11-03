@@ -36,25 +36,29 @@ export function ReviewIntelligence({
   listingId: string;
   reviewCount: number;
 }) {
-  const [data, setData] = useState<IntelligenceData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const requestKey = `${listingId}:${reviewCount}`;
+  const [response, setResponse] = useState<{ key: string; data: IntelligenceData | null } | null>(null);
+  const loading = reviewCount >= 3 && response?.key !== requestKey;
+  const data = response?.key === requestKey ? response.data : null;
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (reviewCount < 3) return;
-    setLoading(true);
+    let current = true;
+    const controller = new AbortController();
     fetch("/api/ai/review-intelligence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ listingId }),
+      signal: controller.signal,
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((result) => {
-        if (result && result.summary) setData(result);
+        if (current) setResponse({ key: requestKey, data: result?.summary ? result : null });
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [listingId, reviewCount]);
+      .catch(() => { if (current) setResponse({ key: requestKey, data: null }); });
+    return () => { current = false; controller.abort(); };
+  }, [listingId, reviewCount, requestKey]);
 
   if (reviewCount < 3 || (!data && !loading)) return null;
 

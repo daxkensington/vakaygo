@@ -47,12 +47,15 @@ async function submitMessage() {
 }
 
 describe("public business contact", () => {
-  it("withholds direct external contact links pre-booking while showing VakayGo protection and claim link", async () => {
+  it("withholds direct contact links without promising protection or future booking activation", async () => {
     await render(<ContactInfo listingId={listingId} unclaimed typeData={{ phone: "+1 (246) 555-0123 ext. 45", website: "https://www.example.com/long/path?ref=directory", googleMapsUrl: "https://maps.google.com/?q=business" }} />);
     expect(container.querySelector('a[href^="tel:"]')).toBeNull();
     expect(container.querySelector('a[href^="https://www.example.com"]')).toBeNull();
     expect(container.querySelector('a[href^="https://maps.google.com"]')).toBeNull();
-    expect(container.textContent).toContain("Protected by VakayGo");
+    expect(container.textContent).toContain("Contact details and hours");
+    expect(container.textContent).toContain("Online bookings and payments are currently unavailable");
+    expect(container.textContent).toContain("Claiming a listing does not enable bookings or payments");
+    expect(container.textContent).not.toMatch(/Protected by VakayGo|VakayGo Guarantee|protected bookings|notify you|instant booking/);
     expect(container.textContent).toContain("Direct operator contact details");
     expect(container.querySelector("a")?.getAttribute("href")).toBe(`/auth/signup?role=operator&claim=${listingId}`);
     expect(container.querySelector("form, input, button")).toBeNull();
@@ -70,7 +73,9 @@ describe("public business contact", () => {
 
   it("describes in-app messaging and booking unlock for eligible listings", async () => {
     await render(<ContactInfo bookingEligible typeData={{ website: "https://example.com" }} />);
-    expect(container.textContent).toContain("Protected by VakayGo");
+    expect(container.textContent).toContain("Contact details and hours");
+    expect(container.textContent).toContain("after your booking is confirmed and paid");
+    expect(container.textContent).not.toContain("VakayGo Guarantee");
     expect(container.textContent).toContain("Message the operator in-app");
     expect(container.querySelector("a")).toBeNull();
   });

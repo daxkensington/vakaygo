@@ -4,18 +4,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import {
-  Home,
-  Compass,
-  UtensilsCrossed,
-  Music,
-  Car,
-  Users,
-  Sparkles,
-  Star,
-  MapPin,
-  ArrowRight,
-} from "lucide-react";
+import { Home, Compass, UtensilsCrossed, Music, Car, Users, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import {
   getIslandBySlug,
@@ -23,7 +12,7 @@ import {
   getTopListingsForIsland,
   getAllListingSlugsForIsland,
 } from "@/server/seo-queries";
-import { getImageUrl } from "@/lib/image-utils";
+
 import { FeaturedListingsClient } from "./featured-listings-client";
 
 // ISR: static HTML at the CDN, refreshed hourly in the background.
@@ -138,39 +127,39 @@ const defaultEssentials = {
 
 const islandGuideSlugs: Record<string, string> = {
   grenada: "ultimate-guide-to-grenada-the-spice-isle",
-  barbados: "best-beaches-in-barbados-a-locals-guide",
-  "trinidad-and-tobago": "trinidad-carnival-2026-everything-you-need-to-know",
-  "st-lucia": "island-hopping-in-the-eastern-caribbean-a-7-day-itinerary",
-  jamaica: "jamaica-travel-guide-montego-bay-negril-ocho-rios",
-  bahamas: "bahamas-travel-guide-nassau-exumas-harbour-island",
-  aruba: "aruba-travel-guide-eagle-beach-palm-beach-catamaran-cruises",
-  curacao: "curacao-travel-guide-willemstad-shore-diving-hidden-coves",
-  "dominican-republic": "dominican-republic-travel-guide-punta-cana-samana-santo-domingo",
-  antigua: "antigua-travel-guide-365-beaches-english-harbour-sailing",
-  "st-vincent": "st-vincent-and-the-grenadines-travel-guide-bequia-mustique-tobago-cays",
-  dominica: "dominica-travel-guide-the-nature-island-boiling-lake-whale-watching",
-  "turks-and-caicos": "turks-and-caicos-travel-guide-grace-bay-chalk-sound-private-charters",
-  "cayman-islands": "cayman-islands-travel-guide-seven-mile-beach-stingray-city-diving",
-  bonaire: "bonaire-travel-guide-shore-diving-capital-kralendijk-klein-bonaire",
-  "st-kitts": "st-kitts-and-nevis-travel-guide-brimstone-hill-pinneys-beach",
-  martinique: "martinique-travel-guide-french-caribbean-rum-mount-pelee-beaches",
-  guadeloupe: "guadeloupe-travel-guide-grande-terre-basse-terre-cousteau-reserve",
-  "us-virgin-islands": "us-virgin-islands-travel-guide-st-thomas-st-john-trunk-bay",
-  "british-virgin-islands": "british-virgin-islands-travel-guide-tortola-virgin-gorda-sailing",
-  "puerto-rico": "puerto-rico-travel-guide-old-san-juan-el-yunque-bioluminescent-bays",
-  cartagena: "cartagena-travel-guide-walled-city-rosario-islands-rooftop-dining",
-  medellin: "medellin-travel-guide-el-poblado-guatape-eternal-spring",
-  "cancun-riviera-maya": "cancun-and-riviera-maya-travel-guide-tulum-cenotes-isla-mujeres",
-  "los-cabos": "los-cabos-travel-guide-el-arco-whale-watching-baja-dining",
-  guanacaste: "guanacaste-costa-rica-travel-guide-tamarindo-papagayo-surf-eco-luxury",
-  "ambergris-caye": "ambergris-caye-belize-travel-guide-hol-chan-great-blue-hole-san-pedro",
-  santorini: "santorini-travel-guide-oia-caldera-sunsets-catamaran-cruises",
-  mykonos: "mykonos-travel-guide-beach-clubs-little-venice-delos-yachts",
-  crete: "crete-travel-guide-chania-elafonisi-balos-lagoon-minoan-palaces",
-  ibiza: "ibiza-travel-guide-dalt-vila-formentera-yachts-hidden-calas",
-  mallorca: "mallorca-travel-guide-palma-tramuntana-deia-private-boat-charters",
-  "amalfi-coast-capri": "amalfi-coast-and-capri-travel-guide-positano-ravello-private-gozzo-boats",
-  "hvar-split": "hvar-and-split-travel-guide-dalmatian-coast-pakleni-islands-blue-cave",
+  barbados: "barbados-travel-guide-sun-rum-and-culture",
+  "trinidad-and-tobago": "trinidad-and-tobago-travel-guide-best-stays-tours-and-dining",
+  "st-lucia": "st-lucia-travel-guide-best-stays-tours-and-dining",
+  jamaica: "jamaica-beyond-the-resort-authentic-local-experiences",
+  bahamas: "bahamas-travel-guide-best-stays-tours-and-dining",
+  aruba: "aruba-travel-guide-best-stays-tours-and-dining",
+  curacao: "curacao-travel-guide-best-stays-tours-and-dining",
+  "dominican-republic": "dominican-republic-travel-guide-best-stays-tours-and-dining",
+  antigua: "antigua-travel-guide-best-stays-tours-and-dining",
+  "st-vincent": "st-vincent-travel-guide-best-stays-tours-and-dining",
+  dominica: "dominica-travel-guide-best-stays-tours-and-dining",
+  "turks-and-caicos": "turks-and-caicos-travel-guide-best-stays-tours-and-dining",
+  "cayman-islands": "cayman-islands-travel-guide-best-stays-tours-and-dining",
+  bonaire: "bonaire-travel-guide-best-stays-tours-and-dining",
+  "st-kitts": "st-kitts-travel-guide-best-stays-tours-and-dining",
+  martinique: "martinique-travel-guide-best-stays-tours-and-dining",
+  guadeloupe: "guadeloupe-travel-guide-best-stays-tours-and-dining",
+  "us-virgin-islands": "us-virgin-islands-travel-guide-best-stays-tours-and-dining",
+  "british-virgin-islands": "british-virgin-islands-travel-guide-best-stays-tours-and-dining",
+  "puerto-rico": "puerto-rico-travel-guide-best-stays-tours-and-dining",
+  cartagena: "cartagena-travel-guide-best-stays-tours-and-dining",
+  medellin: "medellin-travel-guide-best-stays-tours-and-dining",
+  "cancun-riviera-maya": "cancun-riviera-maya-travel-guide-best-stays-tours-and-dining",
+  "los-cabos": "los-cabos-travel-guide-best-stays-tours-and-dining",
+  guanacaste: "guanacaste-travel-guide-best-stays-tours-and-dining",
+  "ambergris-caye": "ambergris-caye-travel-guide-best-stays-tours-and-dining",
+  santorini: "santorini-travel-guide-best-stays-tours-and-dining",
+  mykonos: "mykonos-travel-guide-best-stays-tours-and-dining",
+  crete: "crete-travel-guide-best-stays-tours-and-dining",
+  ibiza: "ibiza-travel-guide-best-stays-tours-and-dining",
+  mallorca: "mallorca-travel-guide-best-stays-tours-and-dining",
+  "amalfi-coast-capri": "amalfi-coast-capri-travel-guide-best-stays-tours-and-dining",
+  "hvar-split": "hvar-split-travel-guide-best-stays-tours-and-dining",
 };
 
 type Props = { params: Promise<{ island: string }> };
@@ -235,7 +224,7 @@ export default async function IslandPage({ params }: Props) {
                 <MapPin size={14} />
                 {island.country || "Sun & Sea"}
               </span>
-              <span>{stats.totalListings} verified places</span>
+              <span>{stats.totalListings} listed places</span>
               <Link
                 href={`/trips/new?island=${islandSlug}`}
                 className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-md transition-colors"
@@ -277,6 +266,14 @@ export default async function IslandPage({ params }: Props) {
         </div>
 
         {/* Island Essentials At-a-Glance Bar + 3D Map & AI Trip Planner Banner */}
+        {islandSlug === "grenada" && (
+          <section className="mx-auto max-w-7xl px-6 pt-8">
+            <Link href="/grenada/experiences" className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-navy-800 p-6 text-white transition hover:bg-navy-700">
+              <div><p className="text-xs font-semibold uppercase tracking-wider text-gold-300">Explore by activity</p><h2 className="mt-2 text-xl font-bold">Find tours, excursions and guides in Grenada</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/75">Browse boat trips, jet skis, Jeep tours, snorkeling, hiking and waterfalls, then check a listing for current details.</p></div>
+              <span className="inline-flex items-center gap-2 font-semibold text-gold-300">Browse experiences <ArrowRight size={18} /></span>
+            </Link>
+          </section>
+        )}
         <section className="mx-auto max-w-7xl px-6 pt-8 pb-2">
           <div className="bg-white rounded-2xl border border-cream-200 shadow-sm p-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

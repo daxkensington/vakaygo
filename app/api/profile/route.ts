@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users, bookings, reviews } from "@/drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireUser } from "@/server/admin-auth";
+import { PhoneVerificationError, updatePhoneAwareProfile } from "@/server/phone-verification";
 
 import { logger } from "@/lib/logger";
 export async function GET(request: Request) {
@@ -86,33 +87,18 @@ export async function PATCH(request: NextRequest) {
     const { name, phone } = body as { name?: string; phone?: string };
 
     // Build update object with only provided fields
-    const updates: Record<string, unknown> = {
-      updatedAt: new Date(),
-    };
+    const updates: { name?: string | null; phone?: string | null } = {};
     if (typeof name === "string") updates.name = name.trim() || null;
-    if (typeof phone === "string") updates.phone = phone.trim() || null;
+    if (typeof phone === "string") {
+      updates.phone = phone.trim() || null;
+      if (updates.phone && updates.phone.length > 20) return NextResponse.json({ error: "Phone number is too long" }, { status: 400 });
+    }
 
-    if (Object.keys(updates).length === 1) {
-      // Only updatedAt, nothing to change
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const db = drizzle(neon(process.env.DATABASE_URL!));
-
-    const [updated] = await db
-      .update(users)
-      .set(updates)
-      .where(and(eq(users.id, userId), eq(users.sessionVersion, auth.sessionVersion), sql`${users.role}=${auth.role}`))
-      .returning({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        phone: users.phone,
-        avatarUrl: users.avatarUrl,
-        role: users.role,
-        businessName: users.businessName,
-        createdAt: users.createdAt,
-      });
+    const updated = await updatePhoneAwareProfile({ userId, sessionVersion: auth.sessionVersion, role: auth.role, email: auth.email }, updates);
 
     if (!updated) {
       return NextResponse.json({ error: "Your account changed. Reload your profile before saving." }, { status: 409 });
@@ -120,6 +106,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ user: updated }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
+    if (error instanceof PhoneVerificationError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store" } });
     logger.error("PATCH /api/profile error", error);
     return NextResponse.json(
       { error: "Internal server error" },

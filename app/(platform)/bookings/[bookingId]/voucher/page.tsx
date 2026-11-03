@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import { use } from "react";
 import { Header } from "@/components/layout/header";
@@ -250,7 +252,11 @@ export default function VoucherPage({
 
             {/* QR Code Section */}
             <div className="flex flex-col items-center px-8 py-8 border-b-2 border-dashed border-cream-200">
-              <img
+              <Image
+                unoptimized
+                width={256}
+                height={256}
+                loading="eager"
                 src={data.qrCodeDataUrl}
                 alt="Booking QR Code"
                 className="w-56 h-56 md:w-64 md:h-64"

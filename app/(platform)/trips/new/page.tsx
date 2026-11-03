@@ -1,11 +1,15 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
+import { signInHref } from "@/lib/claim-return";
 import {
   MapPin,
   Calendar,
@@ -243,13 +247,26 @@ function TripPlanner() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState("");
+  const [sharedUrl, setSharedUrl] = useState("");
+  const [signInUrl, setSignInUrl] = useState(signInHref(null, { next: "/trips/new" }));
   const generationRequest = useRef<AbortController | null>(null);
+  const shareRequest = useRef<AbortController | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setSignInUrl(signInHref(null, { next: `/trips/new${window.location.search}${window.location.hash}` }));
+  }, []);
   useEffect(() => {
     setStep(1);
     setTrip(null);
     setItinerary(null);
     setGenerating(false);
     setError("");
+    setCopied(false);
+    setSharing(false);
+    setShareError("");
+    setSharedUrl("");
     setIslandId(null);
     setStartDate("");
     setEndDate("");
@@ -262,6 +279,10 @@ function TripPlanner() {
       const pending = generationRequest.current;
       generationRequest.current = null;
       pending?.abort();
+      const sharing = shareRequest.current;
+      shareRequest.current = null;
+      sharing?.abort();
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
     };
   }, [user?.id]);
 
@@ -426,13 +447,55 @@ function TripPlanner() {
   }
 
   async function handleShare() {
-    const url = trip ? `${window.location.origin}/trips/${trip.id}` : window.location.href;
+    if (!trip || !user || shareRequest.current) return;
+    const controller = new AbortController();
+    shareRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    setSharing(true);
+    setCopied(false);
+    setShareError("");
+    setSharedUrl("");
     try {
-      await navigator.clipboard.writeText(url);
+      const res = await fetch(`/api/trips/${trip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: true }),
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => null);
+      if (shareRequest.current !== controller) return;
+      if (controller.signal.aborted || !res.ok || data?.trip?.id !== trip.id ||
+        data.trip.userId !== user.id || data.trip.isPublic !== true) throw new Error("Sharing could not be confirmed.");
+      const url = new URL(`/trips/${trip.id}`, window.location.origin).href;
+      setSharedUrl(url);
+      let onCopyAbort = () => {};
+      try {
+        const aborted = new Promise<never>((_resolve, reject) => {
+          onCopyAbort = () => reject(new Error("Copy was interrupted."));
+          controller.signal.addEventListener("abort", onCopyAbort, { once: true });
+        });
+        controller.signal.throwIfAborted();
+        // Clipboard permission prompts do not consume an AbortSignal. Keep the
+        // existing shared deadline effective while that browser promise waits.
+        await Promise.race([navigator.clipboard.writeText(url), aborted]);
+      } catch {
+        if (shareRequest.current === controller) setShareError("Your trip is shared, but its link could not be copied. Use the link below or try copying again.");
+        return;
+      } finally {
+        controller.signal.removeEventListener("abort", onCopyAbort);
+      }
+      if (shareRequest.current !== controller || controller.signal.aborted) return;
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* ignore */
+      if (shareRequest.current === controller) setShareError("Sharing could not be confirmed. No link was copied. Try again or open your saved trip to check its sharing status.");
+    } finally {
+      clearTimeout(timeout);
+      if (shareRequest.current === controller) {
+        shareRequest.current = null;
+        setSharing(false);
+      }
     }
   }
 
@@ -441,6 +504,13 @@ function TripPlanner() {
   }
 
   function handleStartOver() {
+    shareRequest.current?.abort();
+    shareRequest.current = null;
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    setCopied(false);
+    setSharing(false);
+    setShareError("");
+    setSharedUrl("");
     setStep(1);
     setItinerary(null);
     setTrip(null);
@@ -471,7 +541,7 @@ function TripPlanner() {
                 Sign in to plan a trip
               </h2>
               <Link
-                href="/auth/signin?next=%2Ftrips%2Fnew"
+                href={signInUrl}
                 className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
               >
                 Sign In
@@ -1008,13 +1078,15 @@ function TripPlanner() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-2 print:hidden shrink-0">
+                <div className="flex flex-wrap gap-2 print:hidden shrink-0 max-w-full sm:max-w-xs">
                   <button
                     onClick={handleShare}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-cream-100 text-navy-600 hover:bg-cream-200 transition-all text-sm font-medium"
+                    disabled={sharing}
+                    aria-describedby="trip-sharing-note"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-cream-100 text-navy-600 hover:bg-cream-200 transition-all text-sm font-medium disabled:opacity-50"
                   >
                     {copied ? <Check size={16} /> : <Share2 size={16} />}
-                    {copied ? "Copied!" : "Share"}
+                    {copied ? "Copied!" : sharing ? "Sharing…" : "Share & copy link"}
                   </button>
                   <button
                     onClick={handlePrint}
@@ -1032,6 +1104,14 @@ function TripPlanner() {
                   </button>
                 </div>
               </div>
+
+              <p id="trip-sharing-note" className="mb-4 text-sm text-navy-500 print:hidden">
+                Sharing lets signed-in travelers with the link view this trip.
+              </p>
+              {shareError && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700 print:hidden">
+                <p>{shareError}</p>
+                {sharedUrl && <a href={sharedUrl} className="mt-2 block break-all underline">{sharedUrl}</a>}
+              </div>}
 
               {/* Layout: Itinerary + Budget sidebar */}
               <div className="flex flex-col lg:flex-row gap-6 mt-8">
@@ -1122,11 +1202,13 @@ function TripPlanner() {
                                   <div className="flex items-start gap-3">
                                     {/* Image */}
                                     {item.image && (
-                                      <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-cream-200">
-                                        <img
-                                          src={item.image}
+                                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-cream-200">
+                                        <ImageWithFallback
+                                          src={getImageUrl(item.image)}
+                                          type={item.type}
                                           alt={item.title}
-                                          className="w-full h-full object-cover"
+                                          sizes="64px"
+                                          className="absolute inset-0"
                                         />
                                       </div>
                                     )}
@@ -1148,7 +1230,7 @@ function TripPlanner() {
                                         <span
                                           className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${typeColor}`}
                                         >
-                                          {item.type}
+                                          {item.type === "free" ? "Personal time" : item.type}
                                         </span>
 
                                         {item.rating != null &&
@@ -1159,13 +1241,6 @@ function TripPlanner() {
                                                 fill="currentColor"
                                               />
                                               {Number(item.rating).toFixed(1)}
-                                            </span>
-                                          )}
-
-                                        {item.price != null &&
-                                          item.price > 0 && (
-                                            <span className="text-xs text-navy-400">
-                                              ${Number(item.price).toFixed(0)}
                                             </span>
                                           )}
 

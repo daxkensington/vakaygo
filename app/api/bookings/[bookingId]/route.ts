@@ -3,14 +3,14 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import { awardBookingPoints } from "@/server/loyalty";
 
 import { cancelBooking } from "@/server/cancel-booking";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+import { bookingPaymentEligible } from "@/lib/booking-payment-eligibility";
 
 export async function GET(
   _request: Request,
@@ -23,7 +23,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
     const { bookingId } = await params;
@@ -50,6 +52,8 @@ export async function GET(
         checkoutStripeAccountId: bookings.checkoutStripeAccountId,
         paymentMode: bookings.paymentMode,
         cancellationRequestedAt: bookings.cancellationRequestedAt,
+        cancellationPolicy: sql<string>`coalesce(${bookings.cancellationPolicySnapshot}, ${listings.cancellationPolicy}, 'moderate')`,
+        listingTimezone: islands.timezone,
         guestNotes: bookings.guestNotes,
         operatorNotes: bookings.operatorNotes,
         cancellationReason: bookings.cancellationReason,
@@ -92,8 +96,7 @@ export async function GET(
     return NextResponse.json({ booking: {
       ...row,
       bookingEligible: eligibility.eligible && eligibility.operatorId === row.operatorId,
-      paymentEligible: row.status === "pending" && !row.paidAt && !row.cancellationRequestedAt && eligibility.eligible && eligibility.operatorId === row.operatorId && row.datesAvailable === true &&
-        (!row.checkoutSessionId || (!!row.checkoutExpiresAt && row.checkoutExpiresAt.getTime() > Date.now() && row.paymentMode === "destination" && row.checkoutStripeAccountId === eligibility.stripeAccountId)),
+      paymentEligible: bookingPaymentEligible(row, eligibility),
     } });
   } catch (error) {
     logger.error("Get booking error", error);
@@ -112,7 +115,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, SECRET);
+    const currentSession = await verifyCurrentSessionToken(token);
+    if (!currentSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = { ...currentSession, id: currentSession.userId };
     const userId = payload.id as string;
     const role = payload.role as string;
     const { bookingId } = await params;
