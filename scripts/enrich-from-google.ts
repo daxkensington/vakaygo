@@ -306,7 +306,7 @@ async function main() {
           }
 
           process.stdout.write(updates.length > 0 ? "+" : ".");
-        } catch (e) {
+        } catch {
           stats.errors++;
           process.stdout.write("!");
         }

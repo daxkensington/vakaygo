@@ -3,13 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { cookies } from "next/headers";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
-import {
-  listings,
-  bookings,
-  reviews,
-  listingViews,
-  users,
-} from "@/drizzle/schema";
+import { listings, bookings, reviews, listingViews } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";

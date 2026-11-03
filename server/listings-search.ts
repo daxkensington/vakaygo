@@ -10,6 +10,7 @@ import { listingPriceInUsd } from "@/server/listing-prices";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { importedListingInteger, importedMultiDay } from "@/server/listing-import-values";
 import { currentListingBookable } from "@/server/listing-bookability-sql";
+import { isQuarantinedLocation } from "@/server/location-quarantine";
 import {
   filtersToSearchParams,
   type ListingFilters,
@@ -196,6 +197,7 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
 
   return rows.map((r) => ({
     ...r,
+    ...(isQuarantinedLocation(r) ? { latitude: null, longitude: null } : {}),
     bookingEligible: r.bookingEligible === true,
     priceAmount: r.bookingEligible === true ? r.priceAmount : null,
     reviewSource: r.reviewSource === "google" ? "google" : "vakaygo",

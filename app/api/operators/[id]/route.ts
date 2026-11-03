@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { users, listings, islands, media, reviews } from "@/drizzle/schema";
+import { users, listings, islands, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";

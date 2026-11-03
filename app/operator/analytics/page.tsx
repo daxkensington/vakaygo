@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { useEffect, useState, useMemo } from "react";
 import { Eye, ShoppingCart, TrendingUp, DollarSign, Loader2, BarChart3 } from "lucide-react";
 
@@ -114,7 +116,6 @@ export default function OperatorAnalyticsPage() {
   }
 
   const agg = data.aggregate;
-  const maxDayViews = Math.max(...agg.viewsByDay.map((d) => d.views), 1);
 
   // Fill in missing days for the chart
   const chartDays: DayView[] = [];

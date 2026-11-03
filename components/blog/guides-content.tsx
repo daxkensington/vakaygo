@@ -1,7 +1,11 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, ChevronLeft, ChevronRight, Loader2, BookOpen, MapPin, Calendar } from "lucide-react";
 
 type BlogPost = {
@@ -177,10 +181,12 @@ export function GuidesContent() {
                     {/* Cover image */}
                     <div className="relative aspect-[16/10] bg-navy-100 overflow-hidden">
                       {post.coverImage ? (
-                        <img
-                          src={post.coverImage}
+                        <ImageWithFallback
+                          src={getImageUrl(post.coverImage)}
+                          type="guide"
                           alt={post.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          className="absolute inset-0 group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-500/20 to-navy-500/20">
@@ -210,7 +216,10 @@ export function GuidesContent() {
                       <div className="mt-4 flex items-center justify-between text-xs text-navy-400">
                         <div className="flex items-center gap-2">
                           {post.authorAvatar ? (
-                            <img
+                            <Image
+                              unoptimized
+                              width={24}
+                              height={24}
                               src={post.authorAvatar}
                               alt=""
                               className="h-6 w-6 rounded-full object-cover"

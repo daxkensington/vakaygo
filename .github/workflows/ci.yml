@@ -23,6 +23,7 @@ jobs:
         env:
           NODE_ENV: test
       - run: node tests/regression/business-onboarding.cjs
+      - run: node tests/regression/booking-integrity.cjs
 
   e2e:
     runs-on: ubuntu-latest
@@ -56,12 +57,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - uses: ./.github/actions/prepare-test-db
       - name: Verify audit regressions against isolated PostgreSQL
-        run: npm test -- --run tests/unit/enhanced-claims-db.test.ts tests/unit/concierge-memory-db.test.ts tests/unit/discovery-capacity-db.test.ts tests/unit/listing-price-currency-db.test.ts tests/unit/discovery-map-db.test.ts tests/unit/admin-analytics-db.test.ts tests/unit/listing-bookability-db.test.ts tests/unit/phone-verification-db.test.ts
+        run: npm test -- --run tests/unit/enhanced-claims-db.test.ts tests/unit/concierge-memory-db.test.ts tests/unit/discovery-capacity-db.test.ts tests/unit/listing-price-currency-db.test.ts tests/unit/discovery-map-db.test.ts tests/unit/listing-similarity-db.test.ts tests/unit/admin-analytics-db.test.ts tests/unit/listing-bookability-db.test.ts tests/unit/phone-verification-db.test.ts tests/unit/trip-planner-persistence-db.test.ts tests/unit/grenada-experiences-db.test.ts tests/unit/rolling-availability-db.test.ts tests/unit/operator-terms-checkout-db.test.ts
         env:
+          VAKAYGO_TERMS_DB_TESTS: "true"
+          VAKAYGO_AVAILABILITY_DB_TESTS: "true"
           VAKAYGO_CLAIM_DB_TESTS: "true"
           VAKAYGO_CONCIERGE_DB_TESTS: "true"
           VAKAYGO_DISCOVERY_DB_TESTS: "true"
           VAKAYGO_PHONE_DB_TESTS: "true"
+          VAKAYGO_EXPERIENCES_DB_TESTS: "true"
           NODE_OPTIONS: --import ${{ github.workspace }}/tests/ci/fetch-preload.mjs
       - run: npm run build
         env:
@@ -136,6 +140,11 @@ jobs:
       DATABASE_URL: postgresql://audit:audit@localhost:5432/vakaygo_test
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Apply migrations to an empty isolated database
         run: |
           for migration in drizzle/migrations/*.sql; do
@@ -143,6 +152,20 @@ jobs:
           done
       - name: Verify email identity and session revocation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/account-bootstrap.sql
+      - name: Verify campaign delivery evidence and irreversible suppression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/outreach-tracking.sql
+      - name: Verify Sendcorex B2B reservations and global unsubscribe
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/sendcorex-outreach.sql
+      - name: Verify campaign administration and health gates
+        run: node tests/sql/render-outreach-controls.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+      - name: Verify campaign reservation and recipient permission gates
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/outreach-reservations.sql
+      - name: Verify final dispatch rechecks
+        run: node tests/sql/render-outreach-dispatch.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+      - name: Verify concurrent campaign limits
+        run: bash tests/sql/concurrency-outreach.sh
+      - name: Verify invitation attribution and global opt-out
+        run: node tests/sql/render-outreach-attribution.cjs | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
       - name: Verify directory interest and outreach isolation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/listing-interest.sql
       - name: Verify automated business claim proof
@@ -153,3 +176,19 @@ jobs:
         run: bash tests/sql/concurrent-booking.sh
       - name: Verify default-closed onboarding and revocation
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/onboarding-eligibility.sql
+      - name: Verify operator terms reacceptance and historical support
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/operator-terms-reacceptance.sql
+
+      - name: Verify operator terms upgrade preserves prior consent and financial records
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE vakaygo_terms_upgrade'
+          TERMS_UPGRADE_DATABASE_URL="${DATABASE_URL%/*}/vakaygo_terms_upgrade"
+          for migration in drizzle/migrations/*.sql; do
+            if [[ "$(basename "$migration")" < "0018_" ]]; then
+              psql "$TERMS_UPGRADE_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+            fi
+          done
+          psql "$TERMS_UPGRADE_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/operator-terms-previous-version-fixture.sql
+          psql "$TERMS_UPGRADE_DATABASE_URL" -v ON_ERROR_STOP=1 -v before_upgrade=true -f tests/sql/operator-terms-upgrade-check.sql
+          psql "$TERMS_UPGRADE_DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f drizzle/migrations/0018_operator_terms_revision.sql
+          psql "$TERMS_UPGRADE_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/operator-terms-upgrade-check.sql

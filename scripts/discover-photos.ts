@@ -19,8 +19,8 @@
 
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, media, islands } from "../drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+
+import { sql } from "drizzle-orm";
 import { recordValue, textValue } from "../lib/value-guards";
 import type { EnrichmentRow } from "./lib/enrichment-types";
 type PhotoListing = EnrichmentRow & { address: string | null; latitude: string | null; longitude: string | null; reliable_photos: string };
@@ -161,9 +161,7 @@ function resolveUrl(url: string, base: string): string {
 // ── Source: Facebook page search ──────────────────────────────────────
 
 async function fetchFacebookImages(
-  businessName: string,
-  latitude?: number | null,
-  longitude?: number | null
+  businessName: string
 ): Promise<{ url: string; source: string }[]> {
   // Use Facebook's public page search via Google to find the page
   // Then extract og:image from the Facebook page
@@ -376,11 +374,7 @@ async function main() {
 
         // 3. Facebook
         if (sources.includes("facebook") && newPhotos.length < 3) {
-          const fbPhotos = await fetchFacebookImages(
-            listing.title,
-            listing.latitude === null ? null : Number(listing.latitude),
-            listing.longitude === null ? null : Number(listing.longitude)
-          );
+          const fbPhotos = await fetchFacebookImages(listing.title);
           for (const photo of fbPhotos) {
             if (await validateImage(photo.url)) {
               newPhotos.push(photo);
@@ -450,7 +444,6 @@ async function main() {
 
     // Progress log every 50
     if ((i + concurrency) % 50 < concurrency) {
-      const total = Object.values(stats).reduce((a, b) => a + b, 0);
       console.log(
         `\n[${Math.min(i + concurrency, listingsToProcess.length)}/${listingsToProcess.length}] ` +
           `G:${stats.google} W:${stats["website-og"] + stats["website-twitter"] + stats["website-jsonld"]} ` +

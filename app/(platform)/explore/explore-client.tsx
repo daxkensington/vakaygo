@@ -213,6 +213,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   currentFilterKey.current = listKey;
   const smartRequest = useRef(0);
   const smartController = useRef<AbortController | null>(null);
+  const smartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const smartFilterKey = useRef<string | null>(null);
   const islandName = activeIsland
     ? activeIsland === f.island && initial.islandName
@@ -232,6 +233,10 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
 
   function cancelSmartSearch() {
     smartRequest.current += 1;
+    if (smartTimer.current !== null) {
+      clearTimeout(smartTimer.current);
+      smartTimer.current = null;
+    }
     smartController.current?.abort();
     smartFilterKey.current = null;
     setAiSearchLoading(false);
@@ -245,7 +250,10 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     if (smartFilterKey.current !== null && smartFilterKey.current !== listKey) cancelSmartSearch();
   }, [listKey]);
 
-  useEffect(() => () => { smartController.current?.abort(); }, []);
+  useEffect(() => () => {
+    smartController.current?.abort();
+    if (smartTimer.current !== null) clearTimeout(smartTimer.current);
+  }, []);
 
   // AI smart search keywords that trigger natural language parsing
   const AI_TRIGGER_WORDS = ["romantic", "budget", "best", "cheap", "luxury", "family", "adventure", "quiet", "popular", "top", "amazing", "beautiful", "relaxing", "fun", "unique", "authentic", "cozy", "stunning"];
@@ -256,9 +264,24 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
     return AI_TRIGGER_WORDS.some((word) => lower.includes(word));
   }
 
-  async function handleSmartSearch(query: string) {
+  function queueSmartSearch(query: string, nextFilters: FilterState, force = false) {
     cancelSmartSearch();
-    if (!isNaturalLanguageQuery(query)) {
+    if (!force && !isNaturalLanguageQuery(query)) return;
+    const request = smartRequest.current;
+    const filterKey = stateToParams(nextFilters, { includeSort: true }).toString();
+    smartFilterKey.current = filterKey;
+    // Wait for the controlled input/filter update, but never start an old
+    // suggestion after a newer edit, filter change or unmount.
+    smartTimer.current = setTimeout(() => {
+      smartTimer.current = null;
+      if (request !== smartRequest.current || filterKey !== currentFilterKey.current) return;
+      void handleSmartSearch(query, force);
+    }, 50);
+  }
+
+  async function handleSmartSearch(query: string, force = false) {
+    cancelSmartSearch();
+    if (!force && !isNaturalLanguageQuery(query)) {
       return;
     }
 
@@ -302,7 +325,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
       if (Array.isArray(filters.amenities) && filters.amenities.length > 0)
         setSelectedAmenities(filters.amenities);
       if (filters.duration) setSelectedDuration(filters.duration);
-      if (filters.q) setSearchQuery(filters.q);
+      setSearchQuery(filters.q ?? "");
     } catch {
       // Fall back to normal search
       if (request === smartRequest.current) cancelSmartSearch();
@@ -508,7 +531,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         onClick={() => {
                           setSearchQuery(term);
                           setShowSearchHistory(false);
-                          handleSmartSearch(term);
+                          queueSmartSearch(term, { ...filterState, searchQuery: term });
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-cream-50 transition-colors text-left"
                       >
@@ -931,7 +954,11 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     <button
                       key={suggestion}
                       onClick={() => {
-                        cancelSmartSearch();
+                        queueSmartSearch(suggestion, {
+                          ...filterState, searchQuery: suggestion, activeCategory: "all", activeIsland: "",
+                          minPrice: "", maxPrice: "", minRating: "", guestCount: "", selectedAmenities: [],
+                          selectedDuration: "", cuisineType: "", selectedDate: "",
+                        }, true);
                         setSearchQuery(suggestion);
                         setActiveCategory("all");
                         setActiveIsland("");
@@ -943,7 +970,6 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                         setSelectedDuration("");
                         setCuisineType("");
                         setSelectedDate("");
-                        setTimeout(() => handleSmartSearch(suggestion), 50);
                       }}
                       className="px-3 py-1 bg-white/70 hover:bg-white text-xs font-medium text-navy-600 rounded-full transition-colors shadow-sm"
                     >

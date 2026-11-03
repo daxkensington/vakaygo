@@ -5,12 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import {
-  getIslandsWithStays,
-  getIslandBySlug,
-  getTopListingsByType,
-  getIslandStats,
-} from "@/server/seo-queries";
+import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
 import {
   Star,
@@ -50,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!island) return { title: "Not Found" };
 
   const title = `Best Hotels in ${island.name} (2026) — Top Stays & Accommodations`;
-  const description = `Browse and compare hotels, villas, resorts, guesthouses, and vacation rentals in ${island.name} on VakayGo's directory. Online bookings and payments are currently unavailable.`;
+  const description = `Browse and compare hotels, villas, resorts, guesthouses, and vacation rentals in ${island.name} on VakayGo. Booking options depend on each listing's current eligibility and available dates.`;
 
   return {
     title,
@@ -140,6 +135,7 @@ function getAmenities(typeData: Record<string, unknown> | null): string[] {
 function getPriceRange(priceAmount: string | null): string {
   if (!priceAmount) return "Varies";
   const p = parseFloat(priceAmount);
+  if (!Number.isFinite(p) || p <= 0) return "Varies";
   if (p < 80) return "Budget";
   if (p < 200) return "Mid-Range";
   if (p < 400) return "Upscale";
@@ -159,7 +155,7 @@ function getFaqs(name: string) {
   return [
     {
       q: `What are the best hotels in ${name}?`,
-      a: `${name} offers a range of accommodations from luxury resorts to charming guesthouses and vacation rentals. Browse and compare stays in VakayGo's directory. Directory information may come from public sources; check ownership labels and confirm current prices, amenities, and availability with the business. Online bookings and payments through VakayGo are currently unavailable.`,
+      a: `${name} offers a range of accommodations from luxury resorts to charming guesthouses and vacation rentals. Browse and compare stays on VakayGo. Directory information may come from public sources; check ownership labels and confirm current prices, amenities, and availability with the business. Use only the booking options shown on an eligible listing for your selected dates and group size. Saving a listing or sending an inquiry does not create a reservation.`,
     },
     {
       q: `How much do hotels cost in ${name}?`,
@@ -205,8 +201,15 @@ export default async function BestHotelsPage({ params }: Props) {
   const priceDistribution: Record<string, number> = {};
   stayListings.forEach((l) => {
     const range = getPriceRange(l.priceAmount);
+    if (range === "Varies") return;
     priceDistribution[range] = (priceDistribution[range] || 0) + 1;
   });
+  const presentPriceTiers = ["Budget", "Mid-Range", "Upscale", "Luxury"].filter(
+    (tier) => priceDistribution[tier] > 0
+  );
+  const priceRangeSummary = presentPriceTiers.length > 1
+    ? `${presentPriceTiers[0]} - ${presentPriceTiers[presentPriceTiers.length - 1]}`
+    : presentPriceTiers[0] || "Varies";
 
   // JSON-LD
   const jsonLd = {
@@ -237,7 +240,7 @@ export default async function BestHotelsPage({ params }: Props) {
               },
             }
           : {}),
-        ...(listing.priceAmount
+        ...(getPriceRange(listing.priceAmount) !== "Varies"
           ? {
               priceRange: getPriceRange(listing.priceAmount),
             }
@@ -304,8 +307,8 @@ export default async function BestHotelsPage({ params }: Props) {
             </h1>
             <p className="text-white/70 mt-3 max-w-2xl text-lg">
               Browse and compare {stayCount} directory stays, from beachfront
-              resorts to cozy villas. Online bookings and payments are currently
-              unavailable.
+              resorts to cozy villas. Booking options depend on each listing&apos;s
+              current eligibility and your selected dates and group size.
             </p>
           </div>
         </section>
@@ -325,9 +328,7 @@ export default async function BestHotelsPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <p className="text-2xl font-bold text-navy-700">
-                {Object.keys(priceDistribution).length > 0
-                  ? Object.keys(priceDistribution).sort().join(" - ")
-                  : "Varies"}
+                {priceRangeSummary}
               </p>
               <p className="text-xs text-navy-400 mt-1">Price Range</p>
             </div>
@@ -669,8 +670,10 @@ export default async function BestHotelsPage({ params }: Props) {
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
               Discover local stays and compare directory listings for your trip.
-              Confirm current details with the business. Online bookings and
-              payments through VakayGo are currently unavailable.
+              Confirm current details with the business. Use only the booking
+              options shown on an eligible listing for your selected dates and
+              group size. Saving a listing or sending an inquiry does not create
+              a reservation.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link

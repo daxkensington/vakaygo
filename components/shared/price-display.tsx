@@ -22,9 +22,8 @@ export function PriceDisplay({
   className = "",
   size = "md",
 }: PriceDisplayProps) {
-  const { currency, convert, format, ratesLoading } = useCurrency();
+  const { currency, format, ratesLoading } = useCurrency();
 
-  const convertedAmount = convert(amount, baseCurrency);
   const displayPrice = format(amount, baseCurrency);
   const isSameCurrency = currency === baseCurrency;
 

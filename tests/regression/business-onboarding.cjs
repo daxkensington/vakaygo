@@ -13,6 +13,10 @@ const countrySource = ts.transpileModule(fs.readFileSync(path.join(__dirname,"..
 }).outputText;
 const countryModule={exports:{}};
 vm.runInNewContext(countrySource,{module:countryModule,exports:countryModule.exports},{filename:"countries.ts"});
+const termsModule={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,"../../lib/operator-terms.ts"),"utf8"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+}).outputText,{module:termsModule,exports:termsModule.exports},{filename:"operator-terms.ts"});
 const id = "11111111-1111-4111-8111-111111111111";
 const operator = "22222222-2222-4222-8222-222222222222";
 const baseEnv = { DATABASE_URL:"postgresql://synthetic.invalid/test",BOOKINGS_ENABLED:"true",STRIPE_SECRET_KEY:"sk_test_synthetic",
@@ -24,7 +28,7 @@ function readyContext() {
     config_environment:"test",config_platform:"acct_platform",config_countries:["CA"],
     onboarding:{ listing_id:id,operator_id:operator,verified_claim_id:"verified",business_legal_name:"Synthetic Ltd",
       business_country:"CA",business_address:"123 Synthetic Road",representative_name:"Synthetic Operator",
-      authority_accepted_at:new Date().toISOString(),terms_version:"2026-09-06",terms_accepted_at:new Date().toISOString(),
+      authority_accepted_at:new Date().toISOString(),terms_version:"2026-10-27",terms_accepted_at:new Date().toISOString(),
       stripe_account_id:"acct_connected",provider_environment:"test",platform_account_id:"acct_platform",provider_country:"CA",
       charges_enabled:true,payouts_enabled:true,details_submitted:true,card_payments_active:true,transfers_active:true,
       provider_checked_at:new Date().toISOString(),provider_version:1,provider_revoked_at:null,connect_attempt_id:"attempt",
@@ -46,6 +50,7 @@ function load(options={}) {
     "@/server/booking-checkout-safety":{expireListingPendingCheckouts:async value=>expired.push(value)},
     "@/lib/revalidate-listing":{revalidateListing:async value=>invalidated.push(value)},
     "@/lib/countries":countryModule.exports,
+    "@/lib/operator-terms":termsModule.exports,
   };
   const testModule={exports:{}};
   const context={module:testModule,exports:testModule.exports,require:name=>name==="node:crypto"?require(name):imports[name],
@@ -301,7 +306,7 @@ test("actual worldwide company details can be saved without enabling a payment r
     return [ctx];
   }});
   const result=await h.api.saveOnboarding(id,operator,{business:{legalName:"Worldwide company",country:"jp",address:"123 Synthetic Road",representativeName:"Synthetic Operator"},
-    authorityAccepted:true,termsAccepted:true,termsVersion:"2026-09-06"});
+    authorityAccepted:true,termsAccepted:true,termsVersion:"2026-10-27"});
   assert.equal(result.business.country,"JP");assert.equal(result.requirements.business,true);assert.equal(result.eligible,false);
   assert.equal(result.allowedPaymentCountries.includes("JP"),false);
   await assert.rejects(h.api.connectOnboarding(id,operator,"synthetic@example.invalid"),/not enabled for this business country/);
@@ -313,7 +318,7 @@ test("unassigned and wildcard country values cannot be saved or made bookable",a
     const ctx=readyContext();ctx.onboarding.stripe_account_id=null;
     const h=load({context:ctx});
     await assert.rejects(h.api.saveOnboarding(id,operator,{business:{legalName:"Synthetic company",country,address:"123 Synthetic Road",representativeName:"Synthetic Operator"},
-      authorityAccepted:true,termsAccepted:true,termsVersion:"2026-09-06"}));
+      authorityAccepted:true,termsAccepted:true,termsVersion:"2026-10-27"}));
     assert.equal(h.calls.some(call=>call.text.includes("UPDATE")),false);
     ctx.onboarding.business_country=country;ctx.onboarding.provider_country=country;
     ctx.config_countries=[country];

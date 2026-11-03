@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useCurrentBookingEligibility } from "@/components/listings/booking-eligibility";
 import { ListingInterest } from "@/components/listings/listing-interest";
+import { ListingInquiry } from "@/components/listings/listing-inquiry";
 import { BookingWidget } from "@/components/listings/booking-widget";
 import { DiningReservation } from "@/components/listings/dining-reservation";
 import { TransferBooking } from "@/components/listings/transfer-booking";
@@ -250,6 +251,15 @@ export function ListingDetailClient({
   }
 
   const td = listing.typeData || {};
+  const amenities = Array.isArray(td.amenities)
+    ? td.amenities.filter((item: unknown): item is string => typeof item === "string")
+    : [];
+  const includes = Array.isArray(td.includes)
+    ? td.includes.filter((item: unknown): item is string => typeof item === "string")
+    : [];
+  const languages = Array.isArray(td.languages)
+    ? td.languages.filter((item: unknown): item is string => typeof item === "string")
+    : [];
   const guestCapacity = resolveListingGuestCapacity(listing.maxGuests, td.maxGuests);
   const images = listing.images.length > 0
     ? listing.images.map((img: { id: string; url: string; alt: string | null; type?: string | null }) => ({
@@ -414,6 +424,9 @@ export function ListingDetailClient({
 
               {/* Traveler contact comes before business-owner actions. */}
               <ContactInfo typeData={listing.typeData} listingId={listing.id} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
+              {!bookingEligible && !listing.claimVerified && (
+                <div className="mt-6 lg:hidden"><ListingInquiry listingId={listing.id} listingTitle={listing.title} /></div>
+              )}
 
               {/* Operator / Claim Banner */}
               {!listing.claimVerified ? (
@@ -590,13 +603,13 @@ export function ListingDetailClient({
               )}
 
               {/* Legacy: What's Included (simple list from td.includes) */}
-              {td.includes && !td.included && (
+              {includes.length > 0 && !td.included && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">
                     What&apos;s Included
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(td.includes as string[]).map((item) => (
+                    {includes.map((item) => (
                       <div key={item} className="flex items-center gap-3">
                         <div className="w-6 h-6 bg-teal-50 rounded-full flex items-center justify-center">
                           <Check size={14} className="text-teal-500" />
@@ -650,13 +663,13 @@ export function ListingDetailClient({
               )}
 
               {/* Amenities */}
-              {td.amenities && (
+              {amenities.length > 0 && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">
                     Amenities
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {(td.amenities as string[]).map((item) => (
+                    {amenities.map((item) => (
                       <div key={item} className="flex items-center gap-3">
                         <div className="w-6 h-6 bg-gold-50 rounded-full flex items-center justify-center">
                           <Check size={14} className="text-gold-700" />
@@ -669,13 +682,13 @@ export function ListingDetailClient({
               )}
 
               {/* Languages (guides) */}
-              {td.languages && (
+              {languages.length > 0 && (
                 <div className="mt-8">
                   <h2 className="text-xl font-bold text-navy-700 mb-4">
                     Languages
                   </h2>
                   <div className="flex gap-2">
-                    {(td.languages as string[]).map((lang) => (
+                    {languages.map((lang) => (
                       <span
                         key={lang}
                         className="bg-cream-100 text-navy-600 px-4 py-2 rounded-full text-sm font-medium"
@@ -758,7 +771,15 @@ export function ListingDetailClient({
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
             {!bookingEligible ? (
-              <aside aria-label="Listing interest" className="lg:col-span-1"><div className="sticky top-24"><ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} /></div></aside>
+              <aside aria-label={!listing.claimVerified ? "Listing inquiry" : "Listing interest"} className={!listing.claimVerified ? "hidden lg:block lg:col-span-1" : "lg:col-span-1"}>
+                <div className="sticky top-24">
+                  {!listing.claimVerified ? (
+                    <ListingInquiry listingId={listing.id} listingTitle={listing.title} />
+                  ) : (
+                    <ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} />
+                  )}
+                </div>
+              </aside>
             ) : listing.type === "dining" ? (
               <div className="lg:col-span-1">
                 <div className="sticky top-24">
@@ -792,7 +813,7 @@ export function ListingDetailClient({
             )}
           </div>
 
-          {/* Similar & Nearby Listings */}
+          {/* Same-destination, same-type directory suggestions */}
           {similar.length > 0 && (
             <div className="mt-16">
               <div className="flex items-center justify-between mb-6">
@@ -800,7 +821,7 @@ export function ListingDetailClient({
                   className="text-2xl font-bold text-navy-700"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Nearby &amp; Similar in {listing.islandName}
+                  Similar {typeLabels[listing.type] || listing.type} listings in {listing.islandName}
                 </h2>
                 <Link
                   href={`/${listing.islandSlug}`}
@@ -811,23 +832,6 @@ export function ListingDetailClient({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {similar.map((item) => {
-                  const oLat = listing.latitude ? parseFloat(listing.latitude) : NaN;
-                  const oLng = listing.longitude ? parseFloat(listing.longitude) : NaN;
-                  const iLat = item.latitude ? parseFloat(item.latitude) : NaN;
-                  const iLng = item.longitude ? parseFloat(item.longitude) : NaN;
-                  let distKm: number | null = null;
-                  if (Number.isFinite(oLat) && Number.isFinite(oLng) && Number.isFinite(iLat) && Number.isFinite(iLng)) {
-                    const R = 6371;
-                    const dLat = ((iLat - oLat) * Math.PI) / 180;
-                    const dLon = ((iLng - oLng) * Math.PI) / 180;
-                    const a =
-                      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos((oLat * Math.PI) / 180) *
-                        Math.cos((iLat * Math.PI) / 180) *
-                        Math.sin(dLon / 2) *
-                        Math.sin(dLon / 2);
-                    distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                  }
                   const hasPrice = item.bookingEligible && item.priceAmount && parseFloat(item.priceAmount) > 0;
 
                   return (
@@ -846,11 +850,7 @@ export function ListingDetailClient({
                           <span className="bg-navy-900/80 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
                             {typeLabels[item.type] || item.type}
                           </span>
-                          {distKm !== null && distKm < 80 && (
-                            <span className="bg-white/95 backdrop-blur-sm text-navy-700 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                              📍 {distKm < 1 ? `${Math.max(100, Math.round(distKm * 1000))}m` : `${distKm.toFixed(1)} km`} away
-                            </span>
-                          )}
+
                         </div>
                       </div>
                       <div className="p-4">

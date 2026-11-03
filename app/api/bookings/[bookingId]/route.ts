@@ -52,6 +52,8 @@ export async function GET(
         checkoutStripeAccountId: bookings.checkoutStripeAccountId,
         paymentMode: bookings.paymentMode,
         cancellationRequestedAt: bookings.cancellationRequestedAt,
+        cancellationPolicy: sql<string>`coalesce(${bookings.cancellationPolicySnapshot}, ${listings.cancellationPolicy}, 'moderate')`,
+        listingTimezone: islands.timezone,
         guestNotes: bookings.guestNotes,
         operatorNotes: bookings.operatorNotes,
         cancellationReason: bookings.cancellationReason,

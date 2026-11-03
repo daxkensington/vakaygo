@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { CURRENCIES } from "@/lib/currency";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface ListingCard {
@@ -12,6 +14,9 @@ interface ListingCard {
   island: string;
   type: string;
   price: number | null;
+  currency?: string | null;
+  priceUnit?: string | null;
+  bookingEligible?: boolean;
   rating: number | null;
   image: string | null;
   url: string;
@@ -203,14 +208,6 @@ function SparkleIcon({ className }: { className?: string }) {
   );
 }
 
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-    </svg>
-  );
-}
-
 function CloseIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -303,6 +300,11 @@ function VoiceVisualizer({ state, personality }: { state: VoiceState; personalit
 
 // ─── Listing Card Component ─────────────────────────────────────
 function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick: () => void }) {
+  const currency = typeof listing.currency === "string" ? listing.currency.trim().toUpperCase() : "";
+  const hasPrice = listing.bookingEligible === true && typeof listing.price === "number"
+    && Number.isFinite(listing.price) && listing.price > 0 && CURRENCIES.includes(currency);
+  const price = hasPrice ? new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" }).format(listing.price!) : null;
+  const unit = typeof listing.priceUnit === "string" ? listing.priceUnit.trim() : "";
   return (
     <button
       onClick={onClick}
@@ -310,7 +312,7 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
     >
       <div className="relative h-28 overflow-hidden bg-cream-100">
         {listing.image ? (
-          <img src={listing.image} alt={listing.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <ImageWithFallback src={listing.image} type={listing.type} alt={listing.title} sizes="208px" className="w-full h-full transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gold-100 to-teal-100 flex items-center justify-center">
             <SparkleIcon className="w-8 h-8 text-gold-400" />
@@ -325,10 +327,10 @@ function ListingCardInline({ listing, onClick }: { listing: ListingCard; onClick
           {listing.title}
         </h4>
         <div className="flex items-center justify-between mt-1.5">
-          {listing.price !== null ? (
-            <span className="text-xs font-bold text-navy-700">${listing.price.toFixed(0)}</span>
+          {hasPrice ? (
+            <span className="text-xs font-bold text-navy-700">{price}{unit ? ` / ${unit}` : ""}</span>
           ) : (
-            <span className="text-xs text-navy-400">Price TBD</span>
+            <span className="text-xs text-navy-400">Explore details</span>
           )}
           {listing.rating !== null && listing.rating > 0 && (
             <div className="flex items-center gap-0.5">
@@ -375,7 +377,6 @@ export function AIConcierge({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
-  const pendingVoiceTranscriptRef = useRef<string | null>(null);
   const sendMessageRef = useRef<((content: string, isVoice?: boolean) => Promise<void>) | null>(null);
   const router = useRouter();
   const params = useParams();
@@ -665,6 +666,13 @@ export function AIConcierge({
 
   // ─── Send Message ─────────────────────────────────────────────
 
+  // Stable recognition callbacks dispatch through the latest conversation handler.
+  const voiceSend = useCallback((transcript: string) => {
+    if (!transcript.trim()) return;
+    setLastTranscript(transcript);
+    sendMessageRef.current?.(transcript, true);
+  }, []);
+
   const sendMessage = useCallback(
     async (content: string, isVoice = false) => {
       if (!content.trim() || isLoading || requestRef.current) return;
@@ -674,7 +682,7 @@ export function AIConcierge({
       const searchTimer = setTimeout(() => setLoadingLabel("Searching listings..."), 1500);
 
       const userMessage: Message = { role: "user", content: content.trim() };
-      analytics.useConcierge(content.trim());
+      analytics.useConcierge();
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       setInput("");
@@ -728,8 +736,6 @@ export function AIConcierge({
                   setLastTranscript(transcript);
                   // Auto-send in voice mode
                   if (transcript.trim()) {
-                    // We need to call sendMessage but can't recurse directly here
-                    // Instead, set a flag that triggers send
                     voiceSend(transcript);
                   }
                 });
@@ -760,22 +766,13 @@ export function AIConcierge({
         }
       }
     },
-    [messages, isLoading, isOpen, buildContext, voiceEnabled, speakText, personality, startListening, getUserLocale]
+    [messages, isLoading, isOpen, buildContext, speakText, personality, startListening, getUserLocale, voiceSend]
   );
 
   // Keep sendMessage ref in sync so voice callbacks can call it without stale closures
   useEffect(() => {
     sendMessageRef.current = sendMessage;
   }, [sendMessage]);
-
-  // Voice auto-send: call sendMessage directly via ref (no form hack)
-  const voiceSend = useCallback((transcript: string) => {
-    if (!transcript.trim()) return;
-    setLastTranscript(transcript);
-    // Use ref to avoid stale closure
-    sendMessageRef.current?.(transcript, true);
-  }, []
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,12 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
-import {
-  getActiveIslands,
-  getIslandBySlug,
-  getTopListingsByType,
-  getIslandStats,
-} from "@/server/seo-queries";
+import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
 import {
   Star,
@@ -149,6 +144,7 @@ const sectionConfig = [
   { type: "transfer", label: "Airport Transfers", icon: Car, color: "bg-navy-600" },
   { type: "vip", label: "VIP Experiences", icon: Users, color: "bg-gold-600" },
   { type: "guide", label: "Local Guides", icon: Users, color: "bg-gold-500" },
+  { type: "spa", label: "Spas & Wellness", icon: Sparkles, color: "bg-teal-500" },
 ] as const;
 
 const typeFallbacks: Record<string, string> = {
@@ -185,7 +181,7 @@ function getFaqs(name: string, slug: string) {
     },
     {
       q: `What is the local currency in ${name}?`,
-      a: `Most Caribbean islands use the Eastern Caribbean Dollar (XCD), though US dollars are widely accepted. VakayGo shows prices in your preferred currency so you always know the cost upfront.`,
+      a: `The local currency in ${name} depends on the destination. Before you travel, confirm the currency and accepted payment methods directly with the business you plan to book or visit.`,
     },
   ];
 }

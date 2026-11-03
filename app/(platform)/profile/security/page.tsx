@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -365,7 +367,11 @@ function SecurityContent() {
                       Scan this QR code with your authenticator app:
                     </p>
                     <div className="bg-white p-4 rounded-xl inline-block shadow-sm">
-                      <img
+                      <Image
+                        unoptimized
+                        width={192}
+                        height={192}
+                        loading="eager"
                         src={totp.qrCodeUrl}
                         alt="TOTP QR Code"
                         className="w-48 h-48"

@@ -5,44 +5,58 @@ import { useParams } from "next/navigation";
 import { BlogEditor } from "@/components/blog/blog-editor";
 import { Loader2 } from "lucide-react";
 
+type EditorData = NonNullable<ComponentProps<typeof BlogEditor>["initialData"]>;
+
+type LoadResult = { id: string; post: EditorData } | { id: string; error: string };
+
 export default function EditBlogPostPage() {
   const params = useParams();
   const id = params.id as string;
-  const [loading, setLoading] = useState(true);
-  const [postData, setPostData] = useState<ComponentProps<typeof BlogEditor>["initialData"]>();
-  const [error, setError] = useState("");
+  // Each result records the post ID it was loaded for, so a stale result is
+  // never shown for a different route ID.
+  const [result, setResult] = useState<LoadResult | null>(null);
+  const loading = !result || result.id !== id;
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchPost() {
       try {
-        const res = await fetch(`/api/admin/blog/${id}`);
+        const res = await fetch(`/api/admin/blog/${id}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
+        if (controller.signal.aborted) return;
         if (!res.ok) {
-          setError(data.error || "Post not found");
+          setResult({ id, error: data.error || "Post not found" });
           return;
         }
         const p = data.post;
-        setPostData({
-          id: p.id,
-          title: p.title,
-          slug: p.slug,
-          excerpt: p.excerpt || "",
-          content: p.content,
-          coverImage: p.coverImage || "",
-          islandId: p.islandId ? String(p.islandId) : "",
-          category: p.category,
-          tags: Array.isArray(p.tags) ? p.tags.join(", ") : "",
-          status: p.status,
-          metaTitle: p.metaTitle || "",
-          metaDescription: p.metaDescription || "",
+        setResult({
+          id,
+          post: {
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            excerpt: p.excerpt || "",
+            content: p.content,
+            coverImage: p.coverImage || "",
+            islandId: p.islandId ? String(p.islandId) : "",
+            category: p.category,
+            tags: Array.isArray(p.tags) ? p.tags.join(", ") : "",
+            status: p.status,
+            metaTitle: p.metaTitle || "",
+            metaDescription: p.metaDescription || "",
+          },
         });
       } catch {
-        setError("Failed to load post");
-      } finally {
-        setLoading(false);
+        if (controller.signal.aborted) return;
+        setResult({ id, error: "Failed to load post" });
       }
     }
     fetchPost();
+
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {
@@ -53,13 +67,13 @@ export default function EditBlogPostPage() {
     );
   }
 
-  if (error) {
+  if ("error" in result) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-500 font-medium">{error}</p>
+        <p className="text-red-500 font-medium">{result.error}</p>
       </div>
     );
   }
 
-  return <BlogEditor initialData={postData} isEdit />;
+  return <BlogEditor key={id} initialData={result.post} isEdit />;
 }

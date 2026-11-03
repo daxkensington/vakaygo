@@ -39,6 +39,10 @@ export type IslandStats = {
   typeCounts: Record<string, number>;
 };
 
+function pickIslandSeoData({ id, slug, name, country, description, heroImage, region }: IslandSeoData): IslandSeoData {
+  return { id, slug, name, country, description, heroImage, region };
+}
+
 /** Get all active islands for generateStaticParams */
 export async function getActiveIslands(): Promise<IslandSeoData[]> {
   const db = createDb();
@@ -79,7 +83,7 @@ export async function getActiveIslandsWithCounts(): Promise<
     .where(publicIsland())
     .groupBy(islands.id)
     .orderBy(islands.sortOrder);
-  return rows.map(({ sortOrder: _s, ...rest }) => rest);
+  return rows.map(row => ({ ...pickIslandSeoData(row), listingCount: row.listingCount }));
 }
 
 export type ListingSeoMeta = {
@@ -350,7 +354,7 @@ export async function getIslandsWithDining(): Promise<IslandSeoData[]> {
       )
     )
     .orderBy(islands.sortOrder);
-  return results.map(({ sortOrder: _s, ...rest }) => rest);
+  return results.map(pickIslandSeoData);
 }
 
 /** Get islands that have stay listings */
@@ -376,5 +380,5 @@ export async function getIslandsWithStays(): Promise<IslandSeoData[]> {
       )
     )
     .orderBy(islands.sortOrder);
-  return results.map(({ sortOrder: _s, ...rest }) => rest);
+  return results.map(pickIslandSeoData);
 }

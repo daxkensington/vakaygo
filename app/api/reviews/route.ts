@@ -263,7 +263,7 @@ export async function POST(request: Request) {
           link: `/operator/reviews`,
         }).catch(() => {});
       }
-    } catch (_emailErr) {
+    } catch {
       // Email failure should not break the review response
     }
 

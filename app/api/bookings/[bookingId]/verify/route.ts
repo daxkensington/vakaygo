@@ -3,12 +3,10 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+
 import crypto from "crypto";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));

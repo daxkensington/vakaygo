@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { isListingId } from "@/lib/listing-interest";
 import { verifyOutreachUnsubscribeToken } from "@/server/outreach-automation";
+import { decodeOutreachContext, unsubscribeInvitation } from "@/server/outreach-attribution";
 
 function renderHtmlPage(title: string, message: string, status = 200) {
   const html = `<!DOCTYPE html>
@@ -22,6 +23,15 @@ function renderHtmlPage(title: string, message: string, status = 200) {
 }
 
 export async function GET(request: NextRequest) {
+  const contextToken = request.nextUrl.searchParams.get("context");
+  if (contextToken) {
+    try {
+      const context = decodeOutreachContext(contextToken, "unsubscribe");
+      if (!context) return renderHtmlPage("Invalid Unsubscribe Link", "This link is invalid. Contact support@vakaygo.com to opt out.", 400);
+      if (!await unsubscribeInvitation(context)) return renderHtmlPage("Unsubscribe Link Unavailable", "Contact support@vakaygo.com to opt out.", 404);
+      return renderHtmlPage("You Have Been Unsubscribed", "We have recorded your preference. This email address will not receive further VakayGo campaign invitations.");
+    } catch { return renderHtmlPage("Temporary Error", "We could not record your preference. Please retry or contact support@vakaygo.com.", 503); }
+  }
   const listingId = request.nextUrl.searchParams.get("listingId") || "";
   const token = request.nextUrl.searchParams.get("token") || "";
 
@@ -36,7 +46,9 @@ export async function GET(request: NextRequest) {
   try {
     const db = neon(process.env.DATABASE_URL!);
     const note = `[${new Date().toISOString().slice(0, 10)}] Business opted out via 1-click unsubscribe link.`;
-    await db.query(
+    await db.transaction(tx => [
+      tx.query("SELECT pg_advisory_xact_lock(hashtextextended('vakaygo-outreach-campaign',0))"),
+      tx.query(
       `INSERT INTO business_outreach (listing_id, status, notes, updated_at)
        VALUES ($1, 'do_not_contact', $2, now())
        ON CONFLICT (listing_id) DO UPDATE
@@ -50,7 +62,22 @@ export async function GET(request: NextRequest) {
              4000
            )`,
       [listingId, note]
-    );
+      ),
+
+    // Older invitation links were listing-scoped. Preserve their opt-out for
+    // every known recipient on that listing, including the original send note,
+    // so a changed address or provider cannot reopen the same contact.
+      tx.query(`WITH sources AS (
+       SELECT lower(btrim(type_data->>'email')) AS recipient FROM listings WHERE id=$1::uuid
+       UNION SELECT recipient FROM outreach_email_attempts WHERE listing_id=$1::uuid
+       UNION SELECT lower((regexp_matches(notes,'Claim invitation emailed to ([^[:space:]]+)','g'))[1])
+         FROM business_outreach WHERE listing_id=$1::uuid),
+      targets AS (SELECT DISTINCT recipient FROM sources WHERE recipient ~ '^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,24}$'),
+      blocked AS (INSERT INTO outreach_email_suppressions(recipient,reason) SELECT recipient,'unsubscribe' FROM targets
+       ON CONFLICT(recipient) DO NOTHING RETURNING recipient)
+      UPDATE outreach_recipient_consents SET revoked_at=now(),revocation_reason='legacy_recipient_unsubscribe'
+      WHERE recipient_email IN (SELECT recipient FROM targets) AND revoked_at IS NULL`, [listingId]),
+    ], { isolationLevel: "ReadCommitted" });
 
     return renderHtmlPage(
       "You Have Been Unsubscribed",

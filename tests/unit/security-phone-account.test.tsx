@@ -69,3 +69,15 @@ it("ends a stalled status read at the deadline instead of leaving the spinner fo
   await render(); await act(async () => vi.advanceTimersByTime(15_000));
   expect(phone()).not.toBeNull(); expect(container.textContent).toContain("Could not load your phone status");
 });
+
+it.each(["https://private.fixture.invalid/totp-qr.svg?token=synthetic-only", "data:image/png;base64,c3ludGhldGlj", "blob:owned-totp-qr"])("renders private authenticator QR sources directly without optimizer disclosure: %s", async qrCodeUrl => {
+  fetchMock.mockImplementation((input: string) => Promise.resolve(response(input.includes("totp") ? { enabled: false, qrCodeUrl } : input.includes("phone-verify") ? { userId: "a", verified: false, phone: null } : { status: "none" })));
+  await render();
+  const qr = container.querySelector<HTMLImageElement>('img[alt="TOTP QR Code"]')!;
+  expect(qr).not.toBeNull();
+  expect(qr.getAttribute("src")).toBe(qrCodeUrl);
+  expect(qr.getAttribute("srcset")).toBeNull();
+  expect(qr.getAttribute("src")).not.toContain("/_next/image");
+  expect(qr.getAttribute("width")).toBe("192");
+  expect(qr.getAttribute("height")).toBe("192");
+});

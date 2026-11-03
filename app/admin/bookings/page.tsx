@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CalendarCheck, Loader2, ChevronLeft, ChevronRight, Search, Download } from "lucide-react";
+import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
 type Booking = {
   id: string;
@@ -14,6 +15,7 @@ type Booking = {
   serviceFee: string;
   totalAmount: string;
   currency: string;
+  paidAt: string | null;
   createdAt: string;
   listingTitle: string;
   travelerName: string | null;
@@ -64,9 +66,17 @@ function formatCurrency(amount: string, currency: string) {
   }).format(parseFloat(amount));
 }
 
+// Error bodies (e.g. { error }) are truthy, so check the shape the page renders.
+function isBookingsResponse(body: unknown): body is BookingsResponse {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as { bookings?: unknown; total?: unknown };
+  return Array.isArray(candidate.bookings) && typeof candidate.total === "number";
+}
+
 export default function AdminBookingsPage() {
   const [data, setData] = useState<BookingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -74,20 +84,16 @@ export default function AdminBookingsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Outcome of a phoned-in request (unclaimed/unpriced listing). The API
-  // emails the traveler either way.
-  async function resolveRequest(id: string, status: "confirmed" | "cancelled") {
-    const prompt =
-      status === "confirmed"
-        ? "Business confirmed by phone? Optional note to include in the traveler's email:"
-        : "Reason to tell the traveler (optional):";
-    const text = window.prompt(prompt, "");
+  // emails the traveler when the business confirms by phone.
+  async function confirmRequest(id: string) {
+    const text = window.prompt("Business confirmed by phone? Optional note to include in the traveler's email:", "");
     if (text === null) return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/bookings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(status === "confirmed" ? { status, note: text } : { status, reason: text }),
+        body: JSON.stringify({ status: "confirmed", note: text }),
       });
       const body = await res.json();
       if (!res.ok) window.alert(body.error || "Failed");
@@ -99,15 +105,23 @@ export default function AdminBookingsPage() {
 
   const fetchBookings = useCallback(() => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page) });
     if (statusFilter) params.set("status", statusFilter);
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
 
     fetch(`/api/admin/bookings?${params}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Bookings request failed (${r.status})`);
+        const body: unknown = await r.json();
+        if (!isBookingsResponse(body)) throw new Error("Unexpected bookings response");
+        setData(body);
+      })
+      .catch(() => {
+        setData(null);
+        setError("Couldn't load bookings. Please try again.");
+      })
       .finally(() => setLoading(false));
   }, [page, statusFilter, dateFrom, dateTo]);
 
@@ -132,7 +146,7 @@ export default function AdminBookingsPage() {
           >
             Bookings
           </h1>
-          {data && (
+          {data && !error && (
             <span className="ml-2 rounded-full bg-cream-100 px-3 py-1 text-sm font-semibold text-navy-500">
               {data.total.toLocaleString()} total
             </span>
@@ -210,6 +224,17 @@ export default function AdminBookingsPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-gold-700" />
           </div>
+        ) : error ? (
+          <div role="alert" className="py-20 text-center">
+            <p className="mb-4 text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={fetchBookings}
+              className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-800"
+            >
+              Retry
+            </button>
+          </div>
         ) : !data || data.bookings.length === 0 ? (
           <div className="py-20 text-center">
             <Search className="mx-auto mb-3 h-10 w-10 text-navy-200" />
@@ -274,25 +299,32 @@ export default function AdminBookingsPage() {
                         {formatDate(b.createdAt)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        {b.status === "requested" && (
-                          <div className="flex gap-2">
+                        <div className="flex gap-2">
+                          {b.status === "requested" && (
                             <button
-                              onClick={() => resolveRequest(b.id, "confirmed")}
+                              onClick={() => confirmRequest(b.id)}
                               disabled={busyId === b.id}
                               className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
                               title="The business confirmed by phone — emails the traveler"
                             >
                               Confirm
                             </button>
-                            <button
-                              onClick={() => resolveRequest(b.id, "cancelled")}
-                              disabled={busyId === b.id}
-                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        )}
+                          )}
+                          {canCancelBooking(b.status) && (
+                            <CancelBookingControl
+                              bookingId={b.id}
+                              bookingNumber={b.bookingNumber}
+                              status={b.status}
+                              totalAmount={b.totalAmount}
+                              currency={b.currency}
+                              paidAt={b.paidAt}
+                              startDate={b.startDate}
+                              actor="business"
+                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                              onComplete={fetchBookings}
+                            />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

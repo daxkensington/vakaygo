@@ -12,8 +12,8 @@
 
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, media, islands, listingTypeEnum } from "../drizzle/schema";
-import { eq, and, isNull, sql, not, like } from "drizzle-orm";
+import { listings, media, listingTypeEnum } from "../drizzle/schema";
+import { eq, and, isNull, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GROK_API_KEY = process.env.GROK_API_KEY!;

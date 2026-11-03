@@ -3,25 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { users, bookings, reviews, listings } from "@/drizzle/schema";
 import { desc, sql, eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return null;
-    return payload.id as string;
-  } catch {
-    return null;
-  }
-}
 
 type ActivityEvent = {
   type: "signup" | "booking" | "review" | "listing_approved";
@@ -32,7 +16,6 @@ type ActivityEvent = {
 export async function GET() {
   const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
