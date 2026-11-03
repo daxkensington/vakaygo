@@ -20,6 +20,10 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { recordValue, textValue, textList } from "../lib/value-guards";
+import type { LocatedEnrichmentRow } from "./lib/enrichment-types";
+type DescriptionListing = LocatedEnrichmentRow & { parish: string | null; avgRating: string | null };
+type DescriptionContext = { title: string; island: string; parish?: string | null; category?: string; avgRating?: string | null; googleTypes?: string[]; hours?: string[] };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
@@ -147,7 +151,7 @@ async function fetchWebsiteDescription(
 
 // ── Generate from known data ──────────────────────────────────────────
 
-const TYPE_TEMPLATES: Record<string, (ctx: any) => string> = {
+const TYPE_TEMPLATES: Record<string, (ctx: DescriptionContext) => string> = {
   stay: (ctx) => {
     const cat = ctx.category || "accommodation";
     const rating = ctx.avgRating
@@ -188,7 +192,7 @@ const TYPE_TEMPLATES: Record<string, (ctx: any) => string> = {
   },
 };
 
-const HEADLINE_TEMPLATES: Record<string, (ctx: any) => string> = {
+const HEADLINE_TEMPLATES: Record<string, (ctx: DescriptionContext) => string> = {
   stay: (ctx) => `${ctx.category || "Stay"} in ${ctx.parish || ctx.island}`,
   tour: (ctx) => `Tours & activities in ${ctx.parish || ctx.island}`,
   dining: (ctx) => `${ctx.category || "Dining"} in ${ctx.parish || ctx.island}`,
@@ -200,7 +204,7 @@ const HEADLINE_TEMPLATES: Record<string, (ctx: any) => string> = {
   guide: (ctx) => `Local guide in ${ctx.island}`,
 };
 
-function formatGoogleTypes(types: string[] | null, fallback: string): string {
+function formatGoogleTypes(types: string[] | null | undefined, fallback: string): string {
   if (!types || types.length === 0) return fallback;
   const nice: Record<string, string> = {
     tourist_attraction: "sightseeing",
@@ -231,7 +235,7 @@ function formatGoogleTypes(types: string[] | null, fallback: string): string {
   return mapped.length > 0 ? mapped.slice(0, 2).join(" & ") : fallback;
 }
 
-function simplifyHours(hours: string[] | null): string {
+function simplifyHours(hours: string[] | null | undefined): string {
   if (!hours || hours.length === 0) return "";
   // Check if all days are the same
   const unique = [...new Set(hours.map((h) => h.replace(/^\w+:\s*/, "")))];
@@ -242,17 +246,17 @@ function simplifyHours(hours: string[] | null): string {
   return "";
 }
 
-function generateDescription(listing: any): EnrichResult {
-  const td = listing.typeData || {};
+function generateDescription(listing: DescriptionListing): EnrichResult {
+  const td = recordValue(listing.typeData);
   const ctx = {
     title: listing.title,
     type: listing.type,
     island: listing.island,
     parish: listing.parish,
-    category: td.category,
-    googleTypes: td.googleTypes,
+    category: textValue(td.category),
+    googleTypes: textList(td.googleTypes),
     avgRating: listing.avgRating,
-    hours: td.hours,
+    hours: textList(td.hours),
     website: td.website,
   };
 
@@ -275,7 +279,7 @@ async function main() {
   const typeCondition = typeFilter ? sql`AND l.type = ${typeFilter}` : sql``;
 
   // Get listings with boilerplate descriptions
-  const result = await db.execute(sql`
+  const result = await db.execute<DescriptionListing>(sql`
     SELECT l.id, l.title, l.type, l.parish, l.avg_rating as "avgRating",
       l.type_data as "typeData",
       i.name as island
@@ -292,7 +296,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Found ${listings.length} listings with boilerplate descriptions\n`);
   if (dryRun) console.log("=== DRY RUN ===\n");
 
@@ -314,12 +318,12 @@ async function main() {
     const batch = listings.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
-        const td = listing.typeData || {};
+      batch.map(async (listing) => {
+        const td = recordValue(listing.typeData);
         let result: EnrichResult | null = null;
 
         // 1. Google Places editorial summary
-        if (sources.includes("google") && td.googlePlaceId) {
+        if (sources.includes("google") && typeof td.googlePlaceId === "string") {
           const googleDesc = await fetchGoogleDescription(td.googlePlaceId);
           if (googleDesc && googleDesc.length >= 30) {
             result = {
@@ -327,7 +331,7 @@ async function main() {
               headline:
                 HEADLINE_TEMPLATES[listing.type]?.({
                   ...listing,
-                  category: td.category,
+                  category: textValue(td.category),
                 }) || `${listing.type} in ${listing.island}`,
               source: "google",
             };
@@ -335,7 +339,7 @@ async function main() {
         }
 
         // 2. Website meta description
-        if (!result && sources.includes("website") && td.website) {
+        if (!result && sources.includes("website") && typeof td.website === "string") {
           const webDesc = await fetchWebsiteDescription(td.website);
           if (webDesc && webDesc.length >= 30) {
             result = {
@@ -343,7 +347,7 @@ async function main() {
               headline:
                 HEADLINE_TEMPLATES[listing.type]?.({
                   ...listing,
-                  category: td.category,
+                  category: textValue(td.category),
                 }) || `${listing.type} in ${listing.island}`,
               source: "website",
             };

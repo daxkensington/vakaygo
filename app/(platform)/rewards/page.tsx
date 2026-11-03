@@ -1,28 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
-import {
-  Star,
-  Gift,
-  Copy,
-  Check,
-  Users,
-  TrendingUp,
-  Award,
-  ArrowRight,
-  Loader2,
-  Lock,
-  Mail,
-  Share2,
-  Trophy,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
-import { LoyaltyBadge } from "@/components/shared/loyalty-badge";
+import { Gift, Copy, Check, ArrowRight, Loader2, Lock, Mail, Share2, Trophy, Sparkles, ChevronRight } from "lucide-react";
 
 type LoyaltyData = {
   points: number;
@@ -58,6 +41,14 @@ type ReferralStats = {
   };
 };
 
+type HistoryFilter = "all" | "earned" | "redeemed";
+type ReadState<T> =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "success"; data: T };
+type LoyaltyRead = { filter: HistoryFilter; attempt: number; result: ReadState<LoyaltyData> };
+type ReferralRead = { filter: HistoryFilter; attempt: number; result: ReadState<ReferralStats> };
+
 const tierEmojis: Record<string, string> = {
   explorer: "\uD83C\uDF0D",
   adventurer: "\uD83C\uDFD4\uFE0F",
@@ -90,71 +81,7 @@ const tiers = [
 
 export default function RewardsPage() {
   const { user, loading: authLoading } = useAuth();
-  const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
-  const [referrals, setReferrals] = useState<ReferralStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "earned" | "redeemed">("all");
-  const [copied, setCopied] = useState(false);
-  const [generatingCode, setGeneratingCode] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [loyaltyRes, referralRes] = await Promise.all([
-        fetch(`/api/loyalty?filter=${filter}`),
-        fetch("/api/referrals"),
-      ]);
-
-      if (loyaltyRes.ok) {
-        setLoyalty(await loyaltyRes.json());
-      }
-      if (referralRes.ok) {
-        setReferrals(await referralRes.json());
-      }
-    } catch {
-      // Silent fail
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
-
-  useEffect(() => {
-    if (user) fetchData();
-    else setLoading(false);
-  }, [user, fetchData]);
-
-  async function generateCode() {
-    setGeneratingCode(true);
-    try {
-      const res = await fetch("/api/referrals", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setReferrals((prev) => prev ? { ...prev, referralCode: data.referralCode, referralLink: data.referralLink } : prev);
-      }
-    } catch {
-      // Silent
-    } finally {
-      setGeneratingCode(false);
-    }
-  }
-
-  function copyReferralLink() {
-    if (!referrals?.referralLink) return;
-    navigator.clipboard.writeText(referrals.referralLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  if (authLoading || loading) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-cream-50">
-          <Loader2 size={32} className="animate-spin text-gold-700" />
-        </div>
-      </>
-    );
-  }
-
+  if (authLoading) return <RewardsLoading />;
   if (!user) {
     return (
       <>
@@ -162,21 +89,137 @@ export default function RewardsPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-cream-50 px-6 pt-20">
           <Lock size={48} className="text-navy-200 mb-6" />
           <h1 className="text-2xl font-bold text-navy-700">Sign in to view rewards</h1>
-          <p className="text-navy-400 mt-2">Earn points on every booking and unlock exclusive perks.</p>
-          <Link href="/auth/signin" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors">
+          <p className="text-navy-400 mt-2">View your existing points and rewards history. New rewards and redemption are unavailable.</p>
+          <Link href="/auth/signin?next=%2Frewards" className="mt-6 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors">
             Sign In
           </Link>
         </div>
       </>
     );
   }
+  return <RewardsAccount key={`${user.id}:${user.role}:${user.email}`} />;
+}
 
-  const points = loyalty?.points || 0;
-  const tier = (loyalty?.tier || "explorer") as string;
-  const colors = tierColors[tier] || tierColors.explorer;
+function RewardsLoading() {
+  return <><Header /><div role="status" className="min-h-screen flex items-center justify-center bg-cream-50"><Loader2 size={32} aria-hidden="true" className="animate-spin text-gold-700" /><span className="sr-only">Loading rewards</span></div></>;
+}
+
+function ReadFeedback({ status, label, retry }: { status: "loading" | "error"; label: string; retry: () => void }) {
+  return status === "loading" ? (
+    <p role="status" className="p-6 text-sm text-navy-500">Loading {label}…</p>
+  ) : (
+    <div className="p-6 text-sm text-navy-700">
+      <p role="alert">Unable to load {label}. Please try again.</p>
+      <button type="button" onClick={retry} className="mt-3 rounded-lg bg-gold-700 px-4 py-2 font-semibold text-white hover:bg-gold-800">
+        Retry {label}
+      </button>
+    </div>
+  );
+}
+
+function RewardsAccount() {
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+  const [loyaltyAttempt, setLoyaltyAttempt] = useState(0);
+  const [referralAttempt, setReferralAttempt] = useState(0);
+  const [loyaltyRead, setLoyaltyRead] = useState<LoyaltyRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
+  const [referralRead, setReferralRead] = useState<ReferralRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
+  const [copied, setCopied] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const active = useRef(true);
+  const mutations = useRef(new Set<AbortController>());
+
+  useEffect(() => {
+    active.current = true;
+    const pending = mutations.current;
+    return () => {
+      active.current = false;
+      for (const controller of pending) controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "loading" } });
+    async function fetchLoyalty() {
+      try {
+        const response = await fetch(`/api/loyalty?filter=${filter}`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Loyalty read failed");
+        const data: LoyaltyData = await response.json();
+        if (current && !controller.signal.aborted)
+          setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "success", data } });
+      } catch {
+        if (current && !controller.signal.aborted)
+          setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "error" } });
+      }
+    }
+    void fetchLoyalty();
+    return () => { current = false; controller.abort(); };
+  }, [filter, loyaltyAttempt]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let current = true;
+    setReferralRead({ filter, attempt: referralAttempt, result: { status: "loading" } });
+    setCopied(false);
+    async function fetchReferrals() {
+      try {
+        const response = await fetch("/api/referrals", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Referral read failed");
+        const data: ReferralStats = await response.json();
+        if (current && !controller.signal.aborted)
+          setReferralRead({ filter, attempt: referralAttempt, result: { status: "success", data } });
+      } catch {
+        if (current && !controller.signal.aborted)
+          setReferralRead({ filter, attempt: referralAttempt, result: { status: "error" } });
+      }
+    }
+    void fetchReferrals();
+    return () => { current = false; controller.abort(); };
+  }, [filter, referralAttempt]);
+
+  const loyaltyResult: ReadState<LoyaltyData> = loyaltyRead.filter === filter && loyaltyRead.attempt === loyaltyAttempt
+    ? loyaltyRead.result : { status: "loading" };
+  const referralResult: ReadState<ReferralStats> = referralRead.filter === filter && referralRead.attempt === referralAttempt
+    ? referralRead.result : { status: "loading" };
+  const loyalty = loyaltyResult.status === "success" ? loyaltyResult.data : null;
+  const referrals = referralResult.status === "success" ? referralResult.data : null;
+
+  async function generateCode() {
+    if (!active.current || !referrals || generatingCode) return;
+    const requestedRead = referralRead;
+    const controller = new AbortController(); mutations.current.add(controller);
+    setGeneratingCode(true);
+    try {
+      const res = await fetch("/api/referrals", { method: "POST", signal: controller.signal });
+      if (res.ok) {
+        const data = await res.json();
+        if (active.current && !controller.signal.aborted)
+          setReferralRead((prev) => prev === requestedRead && prev.result.status === "success"
+            ? { ...prev, result: { status: "success", data: { ...prev.result.data, referralCode: data.referralCode, referralLink: data.referralLink } } }
+            : prev);
+      }
+    } catch {
+      // Silent
+    } finally {
+      mutations.current.delete(controller);
+      if (active.current && !controller.signal.aborted) setGeneratingCode(false);
+    }
+  }
+
+  function copyReferralLink() {
+    if (!active.current || !referrals?.referralLink) return;
+    navigator.clipboard.writeText(referrals.referralLink);
+    setCopied(true);
+    setTimeout(() => { if (active.current) setCopied(false); }, 2000);
+  }
+
+  const points = loyalty?.points;
+  const tier = loyalty?.tier;
+  const colors = tier ? tierColors[tier] || tierColors.explorer : tierColors.explorer;
   const nextTier = loyalty?.nextTier;
-  const progressPercent = nextTier
-    ? Math.min(100, ((points - (loyalty?.tierInfo?.minPoints || 0)) / (nextTier.pointsNeeded - (loyalty?.tierInfo?.minPoints || 0))) * 100)
+  const progressPercent = loyalty && nextTier
+    ? Math.min(100, ((loyalty.points - loyalty.tierInfo.minPoints) / (nextTier.pointsNeeded - loyalty.tierInfo.minPoints)) * 100)
     : 100;
 
   return (
@@ -186,6 +229,7 @@ export default function RewardsPage() {
         <div className="mx-auto max-w-5xl px-4 md:px-6 py-10">
 
           {/* ─── HERO SECTION ─────────────────────────────────── */}
+          {loyalty && tier && points !== undefined ? (
           <div className={`relative overflow-hidden bg-gradient-to-br ${colors.gradient} rounded-3xl p-8 md:p-12 text-white mb-10`}>
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-20 translate-x-20" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
@@ -203,8 +247,8 @@ export default function RewardsPage() {
                 </div>
 
                 <p className="text-white/80 text-lg">
-                  {loyalty?.tierInfo?.name || "Explorer"} Member
-                  {loyalty?.discount ? ` — ${(loyalty.discount * 100).toFixed(0)}% fee discount active` : ""}
+                  {loyalty.tierInfo.name} Member
+                  {loyalty.discount ? ` — recorded tier discount: ${(loyalty.discount * 100).toFixed(0)}%` : ""}
                 </p>
 
                 {nextTier && (
@@ -231,13 +275,17 @@ export default function RewardsPage() {
               </div>
 
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center min-w-[180px]">
-                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Points Value</p>
+                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Historical program value</p>
                 <p className="text-3xl font-bold">${(points / 100).toFixed(2)}</p>
-                <p className="text-white/60 text-xs mt-1">in booking credit</p>
+                <p className="text-white/60 text-xs mt-1">Redemption unavailable</p>
               </div>
             </div>
           </div>
+          ) : (
+            <h1 className="mb-10 text-3xl font-bold text-navy-700">Your Rewards</h1>
+          )}
 
+          <p role="status" className="mb-8 rounded-xl bg-gold-50 p-4 text-sm text-navy-700">New booking rewards, referral bonuses, tier benefits and redemption are unavailable during the directory launch. Your existing points and transaction history remain visible below.</p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* ─── LEFT COLUMN: HISTORY + TIERS ────────────── */}
             <div className="lg:col-span-2 space-y-8">
@@ -250,6 +298,8 @@ export default function RewardsPage() {
                     {(["all", "earned", "redeemed"] as const).map((f) => (
                       <button
                         key={f}
+                        type="button"
+                        aria-pressed={filter === f}
                         onClick={() => setFilter(f)}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           filter === f
@@ -264,8 +314,10 @@ export default function RewardsPage() {
                 </div>
 
                 <div className="divide-y divide-cream-100">
-                  {loyalty?.transactions && loyalty.transactions.length > 0 ? (
-                    loyalty.transactions.map((tx) => {
+                  {loyaltyResult.status !== "success" ? (
+                    <ReadFeedback status={loyaltyResult.status} label="rewards" retry={() => setLoyaltyAttempt(attempt => attempt + 1)} />
+                  ) : loyaltyResult.data.transactions.length > 0 ? (
+                    loyaltyResult.data.transactions.map((tx) => {
                       const typeInfo = typeIcons[tx.type] || { icon: "\u2022", color: "text-gray-500" };
                       const isPositive = tx.points > 0;
 
@@ -292,7 +344,7 @@ export default function RewardsPage() {
                     <div className="px-6 py-12 text-center">
                       <Sparkles size={32} className="text-navy-200 mx-auto mb-4" />
                       <p className="text-navy-400">No transactions yet.</p>
-                      <p className="text-navy-300 text-sm mt-1">Explore the directory while online bookings are unavailable.</p>
+                      <p className="text-navy-300 text-sm mt-1">Explore the directory and check each listing for current booking options and availability.</p>
                       <Link
                         href="/explore"
                         className="inline-flex items-center gap-2 mt-4 text-gold-700 font-medium text-sm hover:text-gold-600"
@@ -305,8 +357,10 @@ export default function RewardsPage() {
               </div>
 
               {/* ─── TIER LADDER ────────────────────────────── */}
+              {loyalty && (
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
-                <h2 className="text-lg font-bold text-navy-700 mb-6">Tier Benefits</h2>
+                <h2 className="text-lg font-bold text-navy-700 mb-2">Historical program tiers</h2>
+                <p className="text-sm text-navy-500 mb-6">These recorded program descriptions are not current offers. Tier benefits are unavailable.</p>
                 <div className="space-y-4">
                   {tiers.map((t) => {
                     const isCurrent = t.key === tier;
@@ -350,6 +404,7 @@ export default function RewardsPage() {
                   })}
                 </div>
               </div>
+              )}
             </div>
 
             {/* ─── RIGHT COLUMN: REFERRAL ──────────────────── */}
@@ -357,27 +412,8 @@ export default function RewardsPage() {
 
               {/* How to Earn */}
               <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
-                <h2 className="text-lg font-bold text-navy-700 mb-4">How to Earn</h2>
-                <div className="space-y-3">
-                  {[
-                    { icon: "\uD83D\uDCB3", label: "Complete a booking", value: "10 pts/$1" },
-                    { icon: "\u2B50", label: "Leave a review", value: "100 pts" },
-                    { icon: "\uD83E\uDD1D", label: "Refer a friend", value: "500 pts each" },
-                    { icon: "\uD83C\uDF89", label: "First booking bonus", value: "200 pts" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="text-lg w-8 text-center">{item.icon}</span>
-                      <span className="flex-1 text-sm text-navy-600">{item.label}</span>
-                      <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full">
-                        +{item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t border-cream-100 text-xs text-navy-400">
-                  <p>1,000 points = $10 credit. Min redemption: 500 pts ($5).</p>
-                  <p className="mt-1">Points expire after 12 months of inactivity.</p>
-                </div>
+                <h2 className="text-lg font-bold text-navy-700 mb-4">Rewards availability</h2>
+                <p className="text-sm text-navy-500">You can review existing points and transactions. New earning and redemption are unavailable; browsing, saving places and sharing links do not earn booking rewards.</p>
               </div>
 
               {/* Referral Section */}
@@ -387,16 +423,20 @@ export default function RewardsPage() {
                   <h2 className="text-lg font-bold text-navy-700">Invite Friends</h2>
                 </div>
                 <p className="text-sm text-navy-500 mb-4">
-                  Share your link and earn 500 points when your friend completes their first booking. They get 500 points too!
+                  Share the directory with friends. New referral bonuses are unavailable; any existing referral records appear below.
                 </p>
 
-                {referrals?.referralCode ? (
+                {referralResult.status !== "success" ? (
+                  <ReadFeedback status={referralResult.status} label="referrals" retry={() => setReferralAttempt(attempt => attempt + 1)} />
+                ) : referrals?.referralCode ? (
                   <>
                     <div className="flex items-center gap-2 bg-cream-50 rounded-xl px-4 py-3 mb-4">
                       <code className="flex-1 text-sm text-navy-700 font-mono truncate">
                         {referrals.referralLink}
                       </code>
                       <button
+                        type="button"
+                        aria-label={copied ? "Referral link copied" : "Copy referral link"}
                         onClick={copyReferralLink}
                         className="shrink-0 p-2 hover:bg-cream-200 rounded-lg transition-colors"
                       >
@@ -411,7 +451,7 @@ export default function RewardsPage() {
                     {/* Share buttons */}
                     <div className="flex gap-2 mb-6">
                       <a
-                        href={`https://wa.me/?text=Join%20VakayGo%20and%20get%20500%20bonus%20points!%20${encodeURIComponent(referrals.referralLink || "")}`}
+                        href={`https://wa.me/?text=Explore%20places%20and%20plan%20a%20trip%20with%20VakayGo.%20${encodeURIComponent(referrals.referralLink || "")}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors"
@@ -420,7 +460,7 @@ export default function RewardsPage() {
                         WhatsApp
                       </a>
                       <a
-                        href={`mailto:?subject=Join%20VakayGo&body=Hey!%20Join%20VakayGo%20and%20get%20500%20bonus%20points%20on%20your%20first%20booking.%20${encodeURIComponent(referrals.referralLink || "")}`}
+                        href={`mailto:?subject=Explore%20VakayGo&body=Explore%20places%20and%20plan%20a%20trip%20with%20VakayGo.%20${encodeURIComponent(referrals.referralLink || "")}`}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-navy-500 hover:bg-navy-600 text-white text-xs font-medium py-2.5 rounded-lg transition-colors"
                       >
                         <Mail size={14} />
@@ -459,12 +499,13 @@ export default function RewardsPage() {
                   </>
                 ) : (
                   <button
+                    type="button"
                     onClick={generateCode}
                     disabled={generatingCode}
                     className="w-full bg-gold-700 hover:bg-gold-800 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                   >
                     {generatingCode ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <><Loader2 size={16} aria-hidden="true" className="animate-spin" /><span className="sr-only">Generating referral link</span></>
                     ) : (
                       <>
                         <Gift size={16} />
@@ -476,11 +517,11 @@ export default function RewardsPage() {
               </div>
 
               {/* Quick Redeem */}
-              {points >= 500 && (
+              {loyalty && points !== undefined && points >= 500 && (
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
-                  <h3 className="font-bold mb-2">Ready to Redeem?</h3>
+                  <h3 className="font-bold mb-2">Points redemption</h3>
                   <p className="text-teal-100 text-sm mb-4">
-                    You have {points.toLocaleString()} points (${(points / 100).toFixed(2)} credit). Online booking and redemption are currently unavailable.
+                    You have {points.toLocaleString()} points. Points redemption is currently unavailable.
                   </p>
                   <Link
                     href="/explore"

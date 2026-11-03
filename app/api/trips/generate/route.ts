@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands } from "@/drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { publicDestinations } from "@/server/public-listing-eligibility";
 import { z } from "zod";
 import { requireUser } from "@/server/admin-auth";
 import { env } from "@/lib/env";
@@ -13,16 +14,13 @@ import {
 } from "@/server/trip-planner-tools";
 
 import { logger } from "@/lib/logger";
+import { planningDate as date, projectTripPlan } from "@/server/trip-planner-response";
 export const maxDuration = 60;
 
 const UNAVAILABLE = {
   code: "TRIP_PLANNER_UNAVAILABLE",
   error: "Trip planning is temporarily unavailable. Your preferences are kept so you can try again. For help, contact hello@vakaygo.com.",
 };
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-});
 const requestSchema = z.object({
   islandId: z.number().int().positive(), startDate: date, endDate: date,
   guestCount: z.number().int().min(1).max(50).default(2),
@@ -34,22 +32,6 @@ const requestSchema = z.object({
   const days = (Date.parse(value.endDate) - Date.parse(value.startDate)) / 86400000;
   return days > 0 && days <= 30;
 }, { message: "Choose an end date after your start date, within 30 days." });
-const itinerarySchema = z.object({
-  title: z.string().trim().min(1).max(256), summary: z.string().max(4000),
-  estimatedBudget: z.object({ accommodation: z.number().nonnegative(), activities: z.number().nonnegative(), dining: z.number().nonnegative(), transport: z.number().nonnegative(), total: z.number().nonnegative() }),
-  days: z.array(z.object({
-    dayNumber: z.number().int().min(1).max(30), date, theme: z.string().max(256),
-    items: z.array(z.object({
-      timeSlot: z.enum(["morning", "afternoon", "evening"]),
-      type: z.enum(["stay", "tour", "dining", "event", "excursion", "transport", "transfer", "guide", "spa", "vip", "free"]),
-      title: z.string().trim().min(1).max(256), listingId: z.string().uuid().nullable(),
-      listingSlug: z.string().nullable().optional(), listingTitle: z.string().nullable().optional(),
-      price: z.number().nonnegative().nullable(), rating: z.number().min(0).max(5).nullable(),
-      image: z.string().nullable(), note: z.string().max(4000).nullable(),
-    })).max(12),
-  })).min(1).max(30),
-});
-
 function getDb() {
   return drizzle(neon(env.DATABASE_URL));
 }
@@ -66,53 +48,13 @@ async function runWhileActive<T>(signal: AbortSignal, work: () => PromiseLike<T>
   });
 }
 
-const SYSTEM_PROMPT = `You are VakayGo's AI Trip Planner. You create personalized itineraries across 34 Caribbean, Latin American, and Mediterranean destinations using REAL listings from the VakayGo platform.
-
-For each day of the trip, search for actual listings and build a schedule:
-- Morning activity (tour, excursion, or free time)
-- Lunch (restaurant recommendation)
-- Afternoon activity
-- Dinner recommendation
-- Evening (event, nightlife, or relaxation)
-
-Match the traveler's budget, interests, and pace. For "relaxed" pace, leave free time. For "active" pace, fill every slot.
-
-Budget guide (per person per day):
-- Budget: under $100/day
-- Mid-range: $100-250/day
-- Luxury: $250+/day
-
-Always search for real listings first. Never make up fictional places. If no listings match, suggest "free time" or "explore on your own" for that slot.
-
-IMPORTANT: You MUST call tools to search for listings. Do NOT generate listing IDs from memory. Start by searching for stays, then tours/excursions, then dining, then events/transfers as needed.
-
-Return your itinerary as structured JSON matching this exact format:
-{
-  "title": "descriptive trip title",
-  "summary": "2-3 sentence trip summary",
-  "estimatedBudget": { "accommodation": 0, "activities": 0, "dining": 0, "transport": 0, "total": 0 },
-  "days": [
-    {
-      "dayNumber": 1,
-      "date": "YYYY-MM-DD",
-      "theme": "Day theme",
-      "items": [
-        {
-          "timeSlot": "morning|afternoon|evening",
-          "type": "stay|tour|dining|event|excursion|transport|transfer|free",
-          "title": "Activity title",
-          "listingId": "uuid or null for free activities",
-          "listingSlug": "slug or null",
-          "listingTitle": "Original listing title or null",
-          "price": 0,
-          "rating": 0,
-          "image": "url or null",
-          "note": "Brief description/tip"
-        }
-      ]
-    }
-  ]
-}`;
+const SYSTEM_PROMPT = `You select listings and suggested planning slots for VakayGo trips.
+You MUST search the real directory before selecting listings. Use only listing IDs returned by the tools on the requested destination.
+Return JSON only: {"days":[{"dayNumber":1,"date":"YYYY-MM-DD","items":[{"timeSlot":"morning|afternoon|evening","type":"stay|tour|dining|event|excursion|transport|transfer|guide|spa|vip|free","listingId":"known uuid or null"}]}]}.
+Include each requested day in order. Use null with type free for personal time; this label means an unassigned planning slot, never free admission.
+Match the requested pace, interests and budget preference without estimating prices. Do not supply narrative, cost totals, venue hours, admission, access or reservation claims.
+Missing/null/zero platform prices and booking ineligibility do not establish free visitor admission or current access. Tool availability concerns platform booking only, never opening hours or walk-in access.
+The server supplies titles, notes and explicit unconfirmed visitor-fact labels. Planning slots are suggestions, not confirmed venue hours.`;
 
 const CLAUDE_TOOLS = [
   {
@@ -232,7 +174,7 @@ export async function POST(request: Request) {
     const [island] = await runWhileActive(signal, () => db
       .select({ id: islands.id, name: islands.name, slug: islands.slug })
       .from(islands)
-      .where(eq(islands.id, islandId))
+      .where(and(eq(islands.id, islandId), publicDestinations()))
       .limit(1));
 
     if (!island) {
@@ -261,7 +203,8 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
     // Call Claude with tool use loop
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const messages: any[] = [{ role: "user", content: userPrompt }];
-    let itineraryData = null;
+    let itineraryData: unknown = null;
+    let catalogLookupCompleted = false;
     const MAX_ITERATIONS = 8;
     const knownListings = new Map<string, Awaited<ReturnType<typeof getListingDetails>> & {}>();
 
@@ -339,8 +282,10 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
             const result = await runWhileActive(signal, () => handleToolCall(toolUse.name, toolUse.input));
             signal.throwIfAborted();
             if (toolUse.name === "search_listings" && Array.isArray(result)) {
+              catalogLookupCompleted = true;
               for (const listing of result) knownListings.set(listing.id, listing);
             } else if (toolUse.name === "get_listing_details" && result && "id" in result) {
+              catalogLookupCompleted = true;
               knownListings.set(result.id, result);
             }
             toolResults.push({
@@ -364,12 +309,10 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
       }
     }
 
-    const validated = itinerarySchema.safeParse(itineraryData);
-    if (!validated.success) return NextResponse.json(UNAVAILABLE, { status: 503 });
-    const itinerary = validated.data;
-    if (itinerary.days.length !== days || itinerary.days.some((day, index) =>
-      day.dayNumber !== index + 1 || day.date !== new Date(start.getTime() + index * 86400000).toISOString().slice(0, 10)
-    )) return NextResponse.json(UNAVAILABLE, { status: 503 });
+    const itinerary = catalogLookupCompleted ? projectTripPlan(itineraryData, {
+      islandName: island.name, islandSlug: island.slug, startDate, days, listings: knownListings,
+    }) : null;
+    if (!itinerary) return NextResponse.json(UNAVAILABLE, { status: 503 });
 
     const itemValues: {
       listingId: string | null;
@@ -380,37 +323,12 @@ Search for real listings on this island and build a day-by-day itinerary. Start 
       sortOrder: number;
     }[] = [];
 
-      for (const day of itinerary.days) {
-          for (let i = 0; i < day.items.length; i++) {
-            const item = day.items[i];
-            if (item.listingId) {
-              const listing = knownListings.get(item.listingId);
-              if (!listing || listing.islandSlug !== island.slug || listing.type !== item.type) return NextResponse.json(UNAVAILABLE, { status: 503 });
-              // Listing links and facts come from the catalog, never model text.
-              item.listingSlug = listing.slug;
-              item.listingTitle = listing.title;
-              item.image = listing.image;
-              item.rating = listing.avgRating === null ? null : Number(listing.avgRating);
-              item.price = listing.bookingEligible && listing.priceAmount !== null ? Number(listing.priceAmount) : null;
-            } else if (item.type !== "free") {
-              return NextResponse.json(UNAVAILABLE, { status: 503 });
-            } else {
-              item.listingSlug = null;
-              item.listingTitle = null;
-              item.image = null;
-              item.price = 0;
-              item.rating = null;
-            }
-            itemValues.push({
-              listingId: item.listingId || null,
-              dayNumber: day.dayNumber,
-              timeSlot: item.timeSlot || "morning",
-              customTitle: item.title || "Activity",
-              customNote: item.note || null,
-              sortOrder: i,
-            });
-          }
+    for (const day of itinerary.days) {
+      for (const [index, item] of day.items.entries()) {
+        itemValues.push({ listingId: item.listingId, dayNumber: day.dayNumber, timeSlot: item.timeSlot,
+          customTitle: item.title, customNote: item.note, sortOrder: index });
       }
+    }
     signal.throwIfAborted();
     // One PostgreSQL statement commits the trip and all items together. The
     // actor lock checks the current session after the potentially long AI call.

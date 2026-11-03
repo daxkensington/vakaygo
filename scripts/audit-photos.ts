@@ -17,6 +17,9 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { recordValue, textValue } from "../lib/value-guards";
+import type { LocatedEnrichmentRow } from "./lib/enrichment-types";
+type AuditListing = LocatedEnrichmentRow & { address: string | null; media: { url: string | null; isPrimary: boolean | null; source: string }[] };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
@@ -125,7 +128,7 @@ async function main() {
   const issues: AuditIssue[] = [];
 
   // 1. Get listings with their media info
-  const result = await db.execute(sql`
+  const result = await db.execute<AuditListing>(sql`
     SELECT
       l.id, l.title, l.type, l.address,
       l.type_data as "typeData",
@@ -149,7 +152,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Auditing ${listings.length} listings...\n`);
 
   // === Check 1: Expired Grok temp URLs ===
@@ -158,7 +161,7 @@ async function main() {
   for (const listing of listings) {
     const media = listing.media || [];
     const tempUrls = media.filter(
-      (m: any) => m.source === "grok-temp"
+      (m) => m.source === "grok-temp"
     );
     if (tempUrls.length > 0) {
       tempUrlCount++;
@@ -181,7 +184,7 @@ async function main() {
   for (const listing of listings) {
     const media = listing.media || [];
     const nonGoogle = media.filter(
-      (m: any) => m.source !== "google" && m.url
+      (m) => m.source !== "google" && m.url
     );
     if (nonGoogle.length === 0 && media.length > 0) {
       googleOnlyCount++;
@@ -194,7 +197,7 @@ async function main() {
   if (GOOGLE_API_KEY) {
     console.log("--- Check 3: Name verification (sampling 100) ---");
     const sample = listings
-      .filter((l: any) => l.typeData?.googlePlaceId)
+      .filter(l => textValue(recordValue(l.typeData).googlePlaceId))
       .slice(0, 100);
 
     let checked = 0;
@@ -202,7 +205,8 @@ async function main() {
     let nonBusiness = 0;
 
     for (const listing of sample) {
-      const placeId = listing.typeData.googlePlaceId;
+      const placeId = textValue(recordValue(listing.typeData).googlePlaceId);
+      if (!placeId) continue;
       const placeData = await getPlaceName(placeId);
 
       if (placeData) {
@@ -260,7 +264,7 @@ async function main() {
     for (const listing of listings) {
       const media = listing.media || [];
       for (const m of media) {
-        if (m.source === "external" || m.source === "grok-temp") {
+        if (m.url && (m.source === "external" || m.source === "grok-temp")) {
           const alive = await checkImageUrl(m.url);
           checkedUrls++;
           if (!alive) {

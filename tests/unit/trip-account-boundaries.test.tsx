@@ -162,6 +162,35 @@ it("copies only the canonical trip link after confirmed explicit sharing and rep
   fetchMock.mockResolvedValueOnce(response({ trip: detail("Private A", "owner-a", id, true) })); await click("Share trip");
   expect(container.textContent).not.toContain("Copied!");
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("trip is shared, but its link could not be copied");
+  expect(button("Share trip").disabled).toBe(false);
+});
+
+it("releases saved-trip controls when a clipboard permission prompt outlasts the share deadline", async () => {
+  fetchMock.mockResolvedValueOnce(response(data("Shared A"))).mockResolvedValueOnce(response({ trip: detail("Shared A", "owner-a", id, true) }));
+  await trip(); vi.useFakeTimers();
+  clipboard.writeText.mockImplementationOnce(() => new Promise<void>(() => {}));
+  await click("Share trip");
+  expect(button("Share trip").disabled).toBe(true); expect(button("Edit").disabled).toBe(true);
+  await act(async () => vi.advanceTimersByTimeAsync(20_000));
+  expect(container.textContent).toContain("Shared A"); expect(container.textContent).not.toContain("Copied!");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("trip is shared, but its link could not be copied");
+  expect(button("Share trip").disabled).toBe(false); expect(button("Delete trip").disabled).toBe(false);
+  await click("Edit"); expect(container.querySelector('input[aria-label="Trip title"]')).not.toBeNull();
+});
+
+it("does not report a late clipboard completion after the saved trip's account changes", async () => {
+  let finishCopy!: () => void;
+  clipboard.writeText.mockImplementationOnce(() => new Promise<void>(resolve => { finishCopy = resolve; }));
+  fetchMock.mockResolvedValueOnce(response(data("Shared A")))
+    .mockResolvedValueOnce(response({ trip: detail("Shared A", "owner-a", id, true) }))
+    .mockResolvedValueOnce(response(data("Private B", "owner-b")));
+  await trip(); await click("Share trip");
+  const signal = fetchMock.mock.calls[1][1].signal;
+  auth.user = { id: "owner-b" }; await trip(); expect(signal.aborted).toBe(true);
+  await act(async () => finishCopy());
+  expect(container.textContent).toContain("Private B"); expect(container.textContent).not.toContain("Shared A");
+  expect(container.textContent).not.toContain("Copied!"); expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(button("Edit").disabled).toBe(false);
 });
 
 it("keeps a failed title draft through status reload and retry without claiming it was saved", async () => {

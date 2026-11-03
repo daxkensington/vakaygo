@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -50,23 +50,22 @@ export function NotificationBell({ scrolled, isLanding }: { scrolled: boolean; i
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications");
-      if (!res.ok) return;
-      const data = await res.json();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-    } catch {
-      // silent
-    }
-  }, []);
-
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    let current = true;
+    const controller = new AbortController();
+    const refresh = () => {
+      fetch("/api/notifications", { signal: controller.signal })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (!current || !data) return;
+          setNotifications(data.notifications);
+          setUnreadCount(data.unreadCount);
+        }).catch(() => {});
+    };
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => { current = false; controller.abort(); clearInterval(interval); };
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {

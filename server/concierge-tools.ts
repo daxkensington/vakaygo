@@ -3,6 +3,9 @@ import { listings, islands, media, reviews, users } from "@/drizzle/schema";
 import { eq, and, sql, gte, lte, ilike, desc, asc } from "drizzle-orm";
 import { bookingLaunchEnabled, getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
+import { publicListingTypeData } from "@/lib/listing-public-data";
+import { unconfirmedVisitorFacts } from "@/server/concierge-factual-status";
 
 // ─── Types ──────────────────────────────────────────────────────
 type SearchParams = {
@@ -39,7 +42,7 @@ export async function searchListings(params: SearchParams) {
   const db = createDb();
   const limit = Math.min(params.limit || 5, 10);
 
-  const conditions = [eq(listings.status, "active")];
+  const conditions = [publicDirectoryListings()];
 
   if (params.type) {
     conditions.push(eq(listings.type, params.type as typeof listings.type.enumValues[number]));
@@ -143,6 +146,7 @@ export async function searchListings(params: SearchParams) {
     island: r.islandSlug,
     islandName: r.islandName,
     type: r.type,
+    visitorFacts: unconfirmedVisitorFacts(),
     price: r.bookingEligible === true && r.priceAmount ? parseFloat(r.priceAmount) : null,
     currency: r.priceCurrency || "XCD",
     priceUnit: r.priceUnit,
@@ -194,7 +198,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
       and(
         eq(listings.slug, params.slug),
         eq(islands.slug, params.island),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     )
     .limit(1);
@@ -234,6 +238,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     description: listing.description,
     address: listing.address,
     parish: listing.parish,
+    visitorFacts: unconfirmedVisitorFacts(),
     price: listing.bookingEligible === true && listing.priceAmount ? parseFloat(listing.priceAmount) : null,
     currency: listing.priceCurrency || "XCD",
     priceUnit: listing.priceUnit,
@@ -247,7 +252,7 @@ export async function getListingDetails(params: ListingDetailsParams) {
     isInstantBook: listing.bookingEligible === true && listing.isInstantBook === true,
     cancellationPolicy: listing.cancellationPolicy,
     maxGuests: listing.maxGuests,
-    typeData: listing.typeData,
+    typeData: publicListingTypeData(listing.typeData),
     images: images.map((i) => getImageUrl(i.url)).filter(Boolean),
     url: `/${listing.islandSlug}/${listing.slug}`,
     recentReviews: recentReviews.map((r) => ({
@@ -262,16 +267,16 @@ export async function getListingDetails(params: ListingDetailsParams) {
 // ─── Check Availability ─────────────────────────────────────────
 export async function checkAvailability(params: AvailabilityParams) {
   const eligibility = await getListingBookingEligibility(params.listingId);
-  if (!eligibility.eligible) return { available: false, bookingEligible: false, message: "Information only. Bookings and reservation requests are unavailable for this listing." };
+  if (!eligibility.eligible) return { available: false, bookingEligible: false, visitorFacts: unconfirmedVisitorFacts(), message: "Information only. Bookings and reservation requests are unavailable for this listing." };
   const targetDate = new Date(params.date);
-  if (!Number.isFinite(targetDate.getTime())) return { available: false, bookingEligible: false, message: "A valid date is required." };
+  if (!Number.isFinite(targetDate.getTime())) return { available: false, bookingEligible: false, visitorFacts: unconfirmedVisitorFacts(), message: "A valid date is required." };
   const date = targetDate.toISOString();
   const db = createDb();
   const [result] = await db.select({
     available: sql<boolean>`vakaygo_listing_bookable(${listings.id}) AND vakaygo_booking_dates_available(${listings.id}, ${date}::timestamp, CASE WHEN ${listings.type}='stay' THEN ${date}::timestamp + interval '1 day' ELSE NULL END, 1, NULL)`,
   }).from(listings).where(eq(listings.id, params.listingId)).limit(1);
   const available = result?.available === true;
-  return { available, bookingEligible: available, message: available ? "The operator has published availability for this date. Final availability is checked when booking." : "This date is unavailable or has not been published by the operator." };
+  return { available, bookingEligible: available, visitorFacts: unconfirmedVisitorFacts(), message: available ? "The operator has published availability for this date. Final availability is checked when booking." : "This date is unavailable or has not been published by the operator." };
 }
 
 // ─── Get Island Info ────────────────────────────────────────────
@@ -290,7 +295,8 @@ export async function getIslandInfo(params: IslandInfoParams) {
       timezone: islands.timezone,
     })
     .from(islands)
-    .where(eq(islands.slug, params.island))
+    .where(and(eq(islands.slug, params.island), eq(islands.isActive, true),
+      sql`${islands.name} ~ '[^[:space:]]'`, sql`${islands.slug} ~ '[^[:space:]]'`))
     .limit(1);
 
   if (islandResults.length === 0) {
@@ -306,8 +312,9 @@ export async function getIslandInfo(params: IslandInfoParams) {
       count: sql<number>`count(*)::int`,
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
-      and(eq(listings.islandId, island.id), eq(listings.status, "active"))
+      and(eq(listings.islandId, island.id), publicDirectoryListings())
     )
     .groupBy(listings.type);
 
@@ -321,13 +328,15 @@ export async function getIslandInfo(params: IslandInfoParams) {
       reviewCount: listings.reviewCount,
       bookingEligible: await bookingLaunchEnabled() ? sql<boolean>`vakaygo_listing_bookable(${listings.id})` : sql<boolean>`false`,
       priceAmount: listings.priceAmount,
+      priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
       and(
         eq(listings.islandId, island.id),
-        eq(listings.status, "active"),
+        publicDirectoryListings(),
         gte(listings.reviewCount, 1)
       )
     )
@@ -339,6 +348,7 @@ export async function getIslandInfo(params: IslandInfoParams) {
   return {
     name: island.name,
     slug: island.slug,
+    visitorFacts: unconfirmedVisitorFacts(),
     country: island.country,
     description: island.description,
     currency: island.currency,
@@ -355,7 +365,9 @@ export async function getIslandInfo(params: IslandInfoParams) {
       rating: l.avgRating ? parseFloat(l.avgRating) : null,
       reviewCount: l.reviewCount || 0,
       bookingEligible: l.bookingEligible === true,
+      visitorFacts: unconfirmedVisitorFacts(),
       price: l.bookingEligible === true && l.priceAmount ? parseFloat(l.priceAmount) : null,
+      currency: l.priceCurrency,
       priceUnit: l.priceUnit,
       url: `/${island.slug}/${l.slug}`,
     })),
@@ -395,7 +407,7 @@ export async function compareListings(params: CompareParams) {
       and(
         sql`${listings.slug} IN ${slugList}`,
         eq(islands.slug, params.island),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -404,6 +416,7 @@ export async function compareListings(params: CompareParams) {
     slug: r.slug,
     type: r.type,
     headline: r.headline,
+    visitorFacts: unconfirmedVisitorFacts(),
     price: r.bookingEligible === true && r.priceAmount ? parseFloat(r.priceAmount) : null,
     currency: r.priceCurrency || "XCD",
     priceUnit: r.priceUnit,
@@ -417,7 +430,7 @@ export async function compareListings(params: CompareParams) {
     isInstantBook: r.bookingEligible === true && r.isInstantBook === true,
     cancellationPolicy: r.cancellationPolicy,
     maxGuests: r.maxGuests,
-    typeData: r.typeData,
+    typeData: publicListingTypeData(r.typeData),
     url: `/${r.islandSlug}/${r.slug}`,
   }));
 }

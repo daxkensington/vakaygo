@@ -4,6 +4,7 @@ import { listings, islands, media } from "@/drizzle/schema";
 import { eq, and, ilike, lte, gte, inArray, sql } from "drizzle-orm";
 import { bookingLaunchEnabled, getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -38,7 +39,7 @@ export type ListingResult = {
 
 export async function searchListings(params: SearchListingsParams): Promise<ListingResult[]> {
   const db = getDb();
-  const conditions = [eq(listings.status, "active")];
+  const conditions = [publicDirectoryListings()];
 
   if (params.type && params.type !== "all") {
     conditions.push(
@@ -47,13 +48,7 @@ export async function searchListings(params: SearchListingsParams): Promise<List
   }
 
   if (params.island) {
-    const [islandRow] = await db
-      .select({ id: islands.id })
-      .from(islands)
-      .where(eq(islands.slug, params.island))
-      .limit(1);
-    if (!islandRow) return [];
-    conditions.push(eq(listings.islandId, islandRow.id));
+    conditions.push(eq(islands.slug, params.island));
   }
 
   if (params.q) {
@@ -134,7 +129,7 @@ export async function getListingDetails(listingId: string): Promise<ListingResul
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(and(eq(listings.id, listingId), eq(listings.status, "active")))
+    .where(and(eq(listings.id, listingId), publicDirectoryListings()))
     .limit(1);
 
   if (!result) return null;

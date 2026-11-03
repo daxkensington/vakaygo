@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useMemo, useRef, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useFocusTrap } from "@/components/ui/focus-trap";
@@ -171,7 +173,7 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
           )}
 
           {/* Image or Video */}
-          <div className="max-w-5xl max-h-[80vh] w-full mx-16">
+          <div className="relative max-w-5xl h-[80vh] w-full mx-16">
             {isVideo(proxiedPhotos[activeIndex]) ? (
               <video
                 ref={videoRef}
@@ -182,7 +184,11 @@ export function PhotoGallery({ photos, title, type = "tour" }: { photos: Photo[]
                 className="w-full h-full object-contain"
               />
             ) : (
-              <img
+              <Image
+                unoptimized
+                fill
+                sizes="(max-width: 1024px) calc(100vw - 8rem), 1024px"
+                loading="eager"
                 src={proxiedPhotos[activeIndex].url}
                 alt={proxiedPhotos[activeIndex].alt || title}
                 className="w-full h-full object-contain"

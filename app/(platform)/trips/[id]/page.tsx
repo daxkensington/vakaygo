@@ -1,5 +1,9 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/shared/image-fallback";
+import { getImageUrl } from "@/lib/image-utils";
+import { tripPriceLabel } from "@/lib/trip-price-label";
+
 import { useEffect, useLayoutEffect, useRef, useState, use, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -57,6 +61,7 @@ type TripItem = {
     type: string;
     headline: string | null;
     priceAmount: string | null;
+    bookingEligible?: boolean;
     priceCurrency: string | null;
     priceUnit: string | null;
     avgRating: string | null;
@@ -174,17 +179,26 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
     .map(Number)
     .sort((a, b) => a - b);
 
-  const totalDays =
+  // Items can sit beyond the date span (or on non-contiguous days), so the
+  // tab count must reach the highest planned day for them to stay reachable.
+  const maxItemDay = sortedDays
+    .filter((d) => Number.isInteger(d) && d >= 1)
+    .reduce((max, d) => Math.max(max, d), 0);
+
+  const dateDays =
     trip?.startDate && trip?.endDate
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(trip.endDate).getTime() -
-              new Date(trip.startDate).getTime()) /
-              86400000
-          )
+      ? Math.ceil(
+          (new Date(trip.endDate).getTime() -
+            new Date(trip.startDate).getTime()) /
+            86400000
         )
-      : sortedDays.length;
+      : 0;
+
+  const totalDays = Math.max(
+    1,
+    Number.isFinite(dateDays) ? dateDays : 0,
+    maxItemDay
+  );
 
   const allDays = Array.from({ length: totalDays }, (_, i) => i + 1);
 
@@ -217,11 +231,21 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
       } else {
         if (data.trip.isPublic !== true) throw new Error("Sharing could not be confirmed.");
         setTrip(prev => prev ? { ...prev, isPublic: true } : prev);
+        let onCopyAbort = () => {};
         try {
-          await navigator.clipboard.writeText(new URL(`/trips/${id}`, window.location.origin).href);
+          const aborted = new Promise<never>((_resolve, reject) => {
+            onCopyAbort = () => reject(new Error("Copy was interrupted."));
+            controller.signal.addEventListener("abort", onCopyAbort, { once: true });
+          });
+          controller.signal.throwIfAborted();
+          // A clipboard permission prompt does not consume the request signal.
+          // Keep the shared action deadline effective while that promise waits.
+          await Promise.race([navigator.clipboard.writeText(new URL(`/trips/${id}`, window.location.origin).href), aborted]);
         } catch {
           if (actionRequest.current === controller && contextRef.current === `${user.id}:${id}`) setActionError("This trip is shared, but its link could not be copied. Copy the trip address from your browser.");
           return;
+        } finally {
+          controller.signal.removeEventListener("abort", onCopyAbort);
         }
         if (actionRequest.current !== controller || contextRef.current !== `${user.id}:${id}` || controller.signal.aborted) return;
         setShared(true);
@@ -498,6 +522,7 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                       TIME_SLOT_CONFIG[item.timeSlot] ||
                       TIME_SLOT_CONFIG.morning;
                     const Icon = config.icon;
+                    const priceLabel = item.listing ? tripPriceLabel(item.listing) : null;
 
                     return (
                       <div
@@ -521,11 +546,13 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                           <div className="flex">
                             {/* Image */}
                             {item.listing?.image && (
-                              <div className="w-32 md:w-40 shrink-0 bg-cream-200">
-                                <img
-                                  src={item.listing.image}
+                              <div className="relative w-32 md:w-40 shrink-0 bg-cream-200">
+                                <ImageWithFallback
+                                  src={getImageUrl(item.listing.image)}
+                                  type={item.listing.type}
                                   alt={item.listing.title}
-                                  className="w-full h-full object-cover"
+                                  sizes="(max-width: 768px) 128px, 160px"
+                                  className="absolute inset-0"
                                 />
                               </div>
                             )}
@@ -579,15 +606,9 @@ function TripDetailContent({ id, contextRef }: { id: string; contextRef: RefObje
                                           : ""}
                                       </span>
                                     )}
-                                  {item.listing.priceAmount && (
+                                  {priceLabel && (
                                     <span className="text-xs text-navy-500 font-medium">
-                                      $
-                                      {parseFloat(
-                                        item.listing.priceAmount
-                                      ).toFixed(0)}
-                                      {item.listing.priceUnit
-                                        ? `/${item.listing.priceUnit}`
-                                        : ""}
+                                      {priceLabel}
                                     </span>
                                   )}
                                   {item.listing.parish && (

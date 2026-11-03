@@ -16,6 +16,9 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { recordValue, textValue } from "../lib/value-guards";
+import type { LocatedEnrichmentRow } from "./lib/enrichment-types";
+type WebsiteListing = LocatedEnrichmentRow & { description: string | null };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 
@@ -243,7 +246,7 @@ async function main() {
 
   const typeCondition = typeFilter ? sql`AND l.type = ${typeFilter}` : sql``;
 
-  const result = await db.execute(sql`
+  const result = await db.execute<WebsiteListing>(sql`
     SELECT l.id, l.title, l.type, l.description,
       l.type_data as "typeData",
       i.name as island
@@ -256,7 +259,7 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Found ${listings.length} listings without websites\n`);
   if (dryRun) console.log("=== DRY RUN ===\n");
 
@@ -270,9 +273,9 @@ async function main() {
     const batch = listings.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
-        const td = listing.typeData || {};
-        const result = await searchForBusiness(listing.title, listing.island, listing.type, td.googlePlaceId);
+      batch.map(async (listing) => {
+        const td = recordValue(listing.typeData);
+        const result = await searchForBusiness(listing.title, listing.island, listing.type, textValue(td.googlePlaceId));
 
         if (!result) {
           stats.skipped++;
@@ -298,14 +301,14 @@ async function main() {
           websitesFound++;
         }
 
-        const descUpdate = result.description && listing.description.length < 200
+        const descUpdate = result.description && (listing.description?.length || 0) < 200
           ? sql`, description = ${result.description}`
           : sql``;
         const priceUpdate = result.priceAmount
           ? sql`, price_amount = ${result.priceAmount}, price_unit = ${result.priceUnit}`
           : sql``;
 
-        if (result.description && listing.description.length < 200) descsFound++;
+        if (result.description && (listing.description?.length || 0) < 200) descsFound++;
         if (result.priceAmount) pricesFound++;
 
         await db.execute(sql`

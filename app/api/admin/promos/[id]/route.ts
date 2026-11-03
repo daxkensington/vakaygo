@@ -3,28 +3,12 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { promoCodes } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return null;
-    return payload.id as string;
-  } catch {
-    return null;
-  }
 }
 
 // PATCH: Update a promo code
@@ -34,7 +18,6 @@ export async function PATCH(
 ) {
   const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
   try {
     const { id } = await params;
@@ -82,7 +65,6 @@ export async function DELETE(
 ) {
   const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
   try {
     const { id } = await params;

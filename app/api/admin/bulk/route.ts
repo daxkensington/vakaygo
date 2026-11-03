@@ -7,10 +7,11 @@ import { logAdminAction } from "@/server/audit";
 import { requireAdmin } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
+import { recordValue } from "@/lib/value-guards";
 const VALID_ACTIONS = ["approve", "reject", "pause", "delete"] as const;
 type BulkAction = (typeof VALID_ACTIONS)[number];
 
-const STATUS_MAP: Record<Exclude<BulkAction, "delete">, string> = {
+const STATUS_MAP: Record<Exclude<BulkAction, "delete">, (typeof listings.$inferSelect)["status"]> = {
   approve: "active",
   reject: "rejected",
   pause: "paused",
@@ -23,15 +24,12 @@ export async function POST(request: NextRequest) {
     const adminId = auth.userId;
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
-    const body = await request.json();
-
-    const { action, listingIds } = body as {
-      action: string;
-      listingIds: string[];
-    };
+    const body: unknown = await request.json();
+    const { action: rawAction, listingIds } = recordValue(body);
+    const action = VALID_ACTIONS.find(value => value === rawAction);
 
     // Validate action
-    if (!action || !VALID_ACTIONS.includes(action as BulkAction)) {
+    if (!action) {
       return NextResponse.json(
         { error: `Invalid action. Use: ${VALID_ACTIONS.join(", ")}` },
         { status: 400 }
@@ -39,9 +37,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate listingIds
-    if (!Array.isArray(listingIds) || listingIds.length === 0) {
+    if (!Array.isArray(listingIds) || listingIds.length === 0 || !listingIds.every((id): id is string =>
+      typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
       return NextResponse.json(
-        { error: "listingIds must be a non-empty array" },
+        { error: "listingIds must be a non-empty array of listing UUIDs" },
         { status: 400 }
       );
     }
@@ -62,11 +61,11 @@ export async function POST(request: NextRequest) {
         .returning({ id: listings.id });
       updated = result.length;
     } else {
-      const newStatus = STATUS_MAP[action as Exclude<BulkAction, "delete">];
+      const newStatus = STATUS_MAP[action];
       const result = await db
         .update(listings)
         .set({
-          status: newStatus as any,
+          status: newStatus,
           updatedAt: sql`now()`,
         })
         .where(inArray(listings.id, listingIds))

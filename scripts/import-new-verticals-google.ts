@@ -7,9 +7,11 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { placeSearchArea, placeWithinSearchArea } from "./lib/place-geography";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GKEY = process.env.GOOGLE_PLACES_API_KEY!;
+const SEARCH_RADIUS = 30000;
 
 function slugify(t: string) { return t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 200); }
 
@@ -37,7 +39,7 @@ const queries = [
 ];
 
 async function search(query: string, lat: number, lng: number) {
-  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=30000&key=${GKEY}`;
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=${SEARCH_RADIUS}&key=${GKEY}`;
   const res = await fetch(url);
   const data = await res.json();
   return data.status === "OK" ? data.results : [];
@@ -58,9 +60,9 @@ async function main() {
   let totalImported = 0;
 
   for (const island of allIslands) {
-    const lat = parseFloat(island.latitude || "0");
-    const lng = parseFloat(island.longitude || "0");
-    if (!lat) continue;
+    const area = placeSearchArea(island.latitude, island.longitude, SEARCH_RADIUS);
+    if (!area) continue;
+    const { latitude: lat, longitude: lng } = area;
 
     console.log(`\n=== ${island.name} ===`);
     let count = 0;
@@ -69,6 +71,7 @@ async function main() {
       const results = await search(`${q} ${island.name}`, lat, lng);
 
       for (const place of results) {
+        if (!placeWithinSearchArea(place, area)) continue;
         if (seen.has(place.place_id)) continue;
         seen.add(place.place_id);
         if (place.business_status === "CLOSED_PERMANENTLY") continue;

@@ -1,6 +1,9 @@
 import { createHmac, randomInt, randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { sendEmail } from "@/server/mail-client";
+import { sendClaimDecision } from "@/server/email-requests";
+import { ensureDefaultAvailability } from "@/server/listing-availability";
+import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
 import { SESSION_SECRET } from "@/lib/env";
 import { requireUser } from "@/server/admin-auth";
@@ -206,7 +209,37 @@ export async function finalizeVerifiedClaimInDb(
   if (result.incorrectCode) throw new OnboardingError("The verification code is incorrect", 400);
   if (typeof result.claimId !== "string") throw new OnboardingError("Verification expired, another claim is active, or the account/business contact changed. Refresh the claim status.", 409);
   await revalidateListing(listingId);
+  await afterClaimApproved(listingId, operatorId);
   return result.claimId;
+}
+
+/**
+ * Best-effort follow-through once a claim is approved, outside the audited
+ * claim transaction: open the default 90 days (the admin listing approval
+ * already does this; self-serve claims never did, so the calendar step was
+ * unreachable) and send the business its next step. Replays of an already
+ * approved claim come back through here too, so only a fresh onboarding row
+ * gets the welcome. Never fails the approval.
+ */
+async function afterClaimApproved(listingId: string, operatorId: string) {
+  try {
+    const opened = await ensureDefaultAvailability(listingId);
+    const [row] = await sql()`
+      SELECT l.title, u.email, u.name, n.created_at
+        FROM listing_onboarding n
+        JOIN listings l ON l.id=n.listing_id
+        JOIN users u ON u.id=n.operator_id
+       WHERE n.listing_id=${listingId}::uuid AND n.operator_id=${operatorId}::uuid`;
+    const fresh = !!row && Date.now() - new Date(row.created_at as string).getTime() < 5 * 60_000;
+    if (fresh && typeof row.email === "string" && row.email.includes("@")) {
+      await sendClaimDecision({
+        to: row.email, contactName: typeof row.name === "string" && row.name.trim() ? row.name : "there",
+        listingTitle: String(row.title), listingId, approved: true, adminNotes: null, openedDays: opened,
+      });
+    }
+  } catch (error) {
+    logger.warn("Claim approval follow-through skipped", { listingId, error });
+  }
 }
 
 export async function getEnhancedClaimStatus(listingId: string, operatorId: string, operatorEmail: string) {
@@ -414,14 +447,29 @@ export async function submitManualClaimRequest(
     RETURNING id
   `;
 
-  void sendEmail({
-    from: "VakayGo <support@vakaygo.com>",
-    to: "support@vakaygo.com",
-    subject: `New Business Claim Request: ${row.title}`,
-    html: `<p><strong>${row.operator_name || operatorEmail}</strong> (${operatorEmail}) requested to claim <strong>${row.title}</strong>.</p>
-      <p>Role: ${role}<br/>Phone: ${phone}<br/>Notes: ${notes || "None"}</p>
-      <p><a href="https://vakaygo.com/admin/claims">Review &amp; Approve in Admin Claims →</a></p>`,
-  }).catch(() => {});
+  let notificationWarning: string | undefined;
+  let notificationTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const delivery = sendEmail({
+      from: "VakayGo <support@vakaygo.com>",
+      to: "support@vakaygo.com",
+      subject: `New Business Claim Request: ${row.title}`,
+      html: `<p><strong>${escaped(String(row.operator_name || operatorEmail))}</strong> (${escaped(operatorEmail)}) requested to claim <strong>${escaped(String(row.title))}</strong>.</p>
+        <p>Role: ${escaped(role)}<br/>Phone: ${escaped(phone)}<br/>Notes: ${escaped(notes || "None")}</p>
+        <p><a href="https://vakaygo.com/admin/claims">Review &amp; Approve in Admin Claims →</a></p>`,
+    });
+    await Promise.race([delivery, new Promise<never>((_resolve, reject) => {
+      notificationTimer = setTimeout(() => reject(new Error("Notification confirmation timed out")), 8_000);
+    })]);
+  } catch {
+    // The pending claim is already saved. Report only the notification failure;
+    // never ask the claimant to repeat the write or log provider payloads.
+    logger.error("Manual claim notification unconfirmed", null, { claimId: String(claim.id), listingId, operatorId });
+    notificationWarning = "Your claim was saved for team review, but its email notification could not be confirmed. You do not need to submit again.";
+  } finally {
+    if (notificationTimer !== undefined) clearTimeout(notificationTimer);
+  }
 
-  return { claim: { id: claim.id, status: "pending" }, submitted: true };
+  return { claim: { id: claim.id, status: "pending" }, submitted: true,
+    ...(notificationWarning ? { notificationWarning } : {}) };
 }

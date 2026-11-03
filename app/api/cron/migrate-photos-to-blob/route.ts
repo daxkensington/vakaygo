@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { put } from "@vercel/blob";
 
 import { logger } from "@/lib/logger";
+import { errorMessage } from "@/lib/value-guards";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -95,9 +96,9 @@ export async function POST(req: Request) {
           await sql`UPDATE media SET url = ${blob.url} WHERE id = ${row.id}::uuid`;
           migrated++;
           bytesUploaded += buf.byteLength;
-        } catch (err: any) {
+        } catch (err) {
           failed++;
-          logger.warn("migrate-photos error", { id: row.id, msg: err?.message });
+          logger.warn("migrate-photos error", { id: row.id, msg: errorMessage(err) });
         }
       }
     }),

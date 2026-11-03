@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -231,7 +232,7 @@ export function Hero() {
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
           Stays. Boat Charters. Tours. Dining. Transfers. Concierge.{" "}
           <br className="hidden md:block" />
-          Discover local places and plan your trip. Online bookings and payments are not available yet.
+          Discover local places and plan your trip. Booking options depend on verification, setup, and availability for each listing.
         </p>
 
         {/* Search Bar */}
@@ -437,36 +438,36 @@ export function Hero() {
 
         {/* Quick Discovery Pills */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs">
-          <a
+          <Link prefetch={false}
             href="/trips/new"
             className="inline-flex items-center gap-1.5 bg-gold-500/90 hover:bg-gold-500 text-navy-900 font-bold px-4 py-2 rounded-full shadow-lg transition-all duration-200 hover:scale-105"
           >
             ✨ AI Trip Planner
-          </a>
-          <a
+          </Link>
+          <Link prefetch={false}
             href="/map"
             className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white font-semibold px-4 py-2 rounded-full border border-white/25 transition-all duration-200"
           >
             🗺️ 3D Interactive Map
-          </a>
-          <a
+          </Link>
+          <Link prefetch={false}
             href="/explore?type=stay"
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
           >
             🏨 Boutique Stays
-          </a>
-          <a
+          </Link>
+          <Link prefetch={false}
             href="/explore?type=excursion"
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
           >
             🚤 Boat &amp; Snorkel Excursions
-          </a>
-          <a
+          </Link>
+          <Link prefetch={false}
             href="/explore?type=dining"
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/90 font-medium px-3.5 py-2 rounded-full border border-white/15 transition-all duration-200"
           >
             🍽️ Waterfront Dining
-          </a>
+          </Link>
         </div>
 
         {/* Stats */}

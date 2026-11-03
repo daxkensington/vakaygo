@@ -48,6 +48,14 @@ it("recovers a completed result into a usable, private fresh wizard when the acc
   expect(container.textContent).toContain("Plan Your Dream Trip"); expect(container.textContent).not.toContain("Test plan ready");
   expect(container.querySelector<HTMLInputElement>("#trip-start-date")?.value).toBe(""); expect(button("Continue").disabled).toBe(true);
 });
+it("labels unlinked planning time without implying free entry or displaying an AI price", async () => {
+  await preferences();
+  fetchMock.mockResolvedValueOnce(Response.json({ ...plan, itinerary: { ...plan.itinerary, estimatedBudget: undefined, days: [{ ...plan.itinerary.days[0], items: [{ ...plan.itinerary.days[0].items[0], title: "Personal time", price: 500 }] }] } }));
+  await click("Generate My Trip");
+  expect(container.textContent).toContain("Personal time");
+  expect(container.textContent).not.toContain("$500");
+  expect(container.textContent).not.toContain("Estimated Budget");
+});
 it("aborts in-flight generation and discards its result on account change", async () => {
   await preferences(); let captured!: AbortSignal; let finish!: (value: Response) => void;
   fetchMock.mockImplementation((url: string, init: RequestInit) => {

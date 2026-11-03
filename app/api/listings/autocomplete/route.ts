@@ -5,6 +5,7 @@ import { listings, islands } from "@/drizzle/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
         .innerJoin(islands, eq(listings.islandId, islands.id))
         .where(
           and(
-            eq(listings.status, "active"),
+            publicDirectoryListings(),
             or(
               ilike(listings.title, pattern),
               ilike(listings.headline, pattern)
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
         })
         .from(islands)
         .where(
-          and(eq(islands.isActive, true), ilike(islands.name, pattern))
+          and(publicDestinations(), ilike(islands.name, pattern))
         )
         .limit(4),
     ]);

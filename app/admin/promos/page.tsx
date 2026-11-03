@@ -1,21 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  Tag,
-  Plus,
-  Loader2,
-  Search,
-  Pencil,
-  ToggleLeft,
-  ToggleRight,
-  Calendar,
-  Users,
-  Percent,
-  DollarSign,
-  X,
-  Check,
-} from "lucide-react";
+import { Tag, Plus, Loader2, Search, Pencil, ToggleLeft, ToggleRight, Percent, DollarSign, X, Check } from "lucide-react";
 
 type PromoCode = {
   id: string;

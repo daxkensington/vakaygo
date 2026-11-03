@@ -2,7 +2,9 @@
 import { neon } from "@neondatabase/serverless";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { expect, it } from "vitest";
+import { sql } from "drizzle-orm";
 import { stayGuestCapacity } from "@/server/listing-capacity";
+import { importedListingInteger, importedMultiDay } from "@/server/listing-import-values";
 
 // Explicit opt-in against the disposable audit DB; one read-only CTE uses the
 // exact production SQL expression, not a JS reimplementation of NULL/cast rules.
@@ -28,5 +30,44 @@ it.skipIf(process.env.VAKAYGO_DISCOVERY_DB_TESTS !== "true")("uses the authorita
   for (const row of rows) {
     expect(row.capacity).toBe(row.expected);
     expect(row.matches_three_guests).toBe(row.expected === null ? null : row.expected >= 3);
+  }
+});
+
+it.skipIf(process.env.VAKAYGO_DISCOVERY_DB_TESTS !== "true")("handles malformed imported capacity, duration and multi-day fields without a database cast failure", async () => {
+  const url = new URL(process.env.DATABASE_URL || "http://invalid");
+  const ownedLocal = url.hostname === "127.0.0.1" && url.port === "5498";
+  const hostedFixture = process.env.CI === "true" && process.env.VAKAYGO_CI_DATABASE_PROXY === "1"
+    && ["127.0.0.1", "localhost"].includes(url.hostname) && url.port === "5432";
+  if ((!ownedLocal && !hostedFixture) || url.pathname !== "/vakaygo_test" || url.username !== "audit")
+    throw new Error("Owned audit or hosted disposable PostgreSQL required");
+
+  const cases: [unknown, number | null][] = [
+    [0, 0], [3, 3], ["480", 480], ["999999999", 999999999], [null, null],
+    ["", null], ["unknown", null], ["3 guests", null], ["1.5", null],
+    ["-1", null], ["999999999999999999999999", null], [{ value: 3 }, null], [[3], null],
+  ];
+  const fixture = sql.join(cases.map(([value, expected], index) => sql`(${index}::int,
+    ${JSON.stringify({ groupSize: value, partySize: value, durationMinutes: value, isMultiDay: value })}::jsonb,
+    ${expected}::integer)`), sql`, `);
+  const query = new PgDialect().sqlToQuery(sql`WITH listings(id,type_data,expected) AS (VALUES ${fixture})
+    SELECT id, expected, ${importedListingInteger("groupSize")} AS group_size,
+      ${importedListingInteger("partySize")} AS party_size,
+      ${importedListingInteger("durationMinutes")} AS duration,
+      ${importedMultiDay} AS multi_day FROM listings ORDER BY id`);
+  const db = neon(process.env.DATABASE_URL!);
+  const rows = await db.query(query.sql, query.params) as Array<{
+    id: number; expected: number | null; group_size: number | null; party_size: number | null;
+    duration: number | null; multi_day: boolean | null;
+  }>;
+  expect(rows).toHaveLength(cases.length);
+  for (const row of rows) {
+    expect([row.group_size, row.party_size, row.duration]).toEqual([row.expected, row.expected, row.expected]);
+    expect(row.multi_day).toBeNull();
+  }
+  for (const value of [true, false, "true", "false"]) {
+    const expression = new PgDialect().sqlToQuery(sql`WITH listings(type_data) AS (
+      VALUES (${JSON.stringify({ isMultiDay: value })}::jsonb)) SELECT ${importedMultiDay} AS value FROM listings`);
+    const result = await db.query(expression.sql, expression.params) as { value: boolean }[];
+    expect(result[0].value).toBe(String(value) === "true");
   }
 });

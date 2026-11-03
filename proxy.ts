@@ -39,7 +39,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "media-src 'self' blob:",
-    "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com https://*.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://www.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net",
+    "connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app https://api.x.ai https://api.openai.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.resend.com https://*.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://*.google-analytics.com https://www.googletagmanager.com https://*.analytics.google.com https://stats.g.doubleclick.net",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -123,6 +123,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: [
+    // API route parameters can end in image extensions; they still need auth
+    // revocation, role checks and rate limiting before the handler runs.
+    "/api/:path*",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -23,7 +23,9 @@ function load(rel, mocks={}) {
     '@neondatabase/serverless':{neon:()=>({})},
     'drizzle-orm':{eq:(a,b)=>({op:'eq',a,b}),ne:(a,b)=>({op:'ne',a,b}),isNull:a=>({op:'null',a}),and:(...args)=>({op:'and',args}),or:(...args)=>({op:'or',args}),sql:(parts,...args)=>({op:'sql',text:parts.join('?'),args})},
     'next/headers':{cookies:async()=>({get:()=>({value:'synthetic-session'}),delete:()=>{}})},
-    jose:{jwtVerify:async()=>({payload:{id:'traveler',role:'traveler'}})},
+    // Financial scenarios receive an already current actor; cryptographic and
+    // revoked-session behavior is covered by active-route-session.test.ts.
+    '@/server/session-validation':{verifyCurrentSessionToken:async()=>({userId:'traveler',role:'traveler',email:'traveler@example.invalid',sessionVersion:1,emailVerified:true})},
   };
   const requireMock=(id)=>{
     if(id in mocks) return mocks[id];
@@ -116,7 +118,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  });
  await check("Priced legacy requests can be confirmed without a fabricated payment",async()=>{
    const rows={bookings:[{...pending(),status:"requested",checkoutSessionId:null}]};const db=dbFor(rows);
-   const h=load("app/api/bookings/[bookingId]/route.ts",mocksFor(db,{jose:{jwtVerify:async()=>({payload:{id:"operator",role:"operator"}})}}));
+   const h=load("app/api/bookings/[bookingId]/route.ts",mocksFor(db,{"@/server/session-validation":{verifyCurrentSessionToken:async()=>({userId:"operator",role:"operator",email:"operator@example.invalid",sessionVersion:1,emailVerified:true})}}));
    assert.equal((await h.PATCH(request({status:"confirmed"},"PATCH"),{params:Promise.resolve({bookingId})})).status,200);
    assert.equal(rows.bookings[0].totalAmount,"0.00");assert.equal(rows.bookings[0].paymentMethod,"none");
  });
@@ -124,6 +126,27 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  for(const invalid of [{guestCount:0},{guestCount:-1},{guestCount:1.5},{guestCount:"2"},{startDate:"2020-01-01"},{startDate:"2099-02-30"},{paymentType:"deposit"},{giftCardCode:"TEST"},{includeInsurance:true},{endDate:"2099-11-30"}]) await check("Reject invalid or unsupported booking: "+JSON.stringify(invalid),async()=>{
    const rows={listings:[listing],users:[],bookings:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
    const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1,...invalid}));assert.equal(r.status,400);assert.equal(rows.bookings.length,0);
+ });
+ await check("Transfer options are priced and persisted by the booking API",async()=>{
+   const rows={listings:[{...listing,type:"transfer",priceAmount:"100.00",priceUnit:"trip"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2,vehicleType:"suv",roundTrip:true}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.pricing.subtotal,252);assert.equal(data.booking.totalAmount,"252.00");
+   assert.equal(rows.bookings[0].subtotal,"252.00");assert.equal(rows.bookings[0].transferVehicleType,"suv");assert.equal(rows.bookings[0].transferRoundTrip,true);
+ });
+ await check("An invalid transfer vehicle is rejected",async()=>{
+   const rows={listings:[{...listing,type:"transfer",priceAmount:"100.00",priceUnit:"trip"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1,vehicleType:"hovercraft"}));assert.equal(r.status,400);assert.equal(rows.bookings.length,0);
+ });
+ await check("A priced dining table request is free and requires no payment",async()=>{
+   const rows={listings:[{...listing,type:"dining"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2,reservationType:"table"}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.mode,"request");assert.equal(data.booking.status,"requested");assert.equal(data.booking.totalAmount,"0.00");assert.equal(rows.bookings[0].paymentMethod,"none");
+ });
+ await check("An ordinary priced dining experience remains paid",async()=>{
+   const rows={listings:[{...listing,type:"dining"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:2}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.mode,"booking");assert.equal(data.booking.status,"pending");assert.equal(data.booking.totalAmount,"130.00");assert.equal(rows.bookings[0].paymentMethod,"card");
+   assert.equal(rows.bookings[0].transferVehicleType,null);assert.equal(rows.bookings[0].transferRoundTrip,null);
  });
  for(const change of [{status:"paused"},{operatorId:"197d8586-7fd3-4999-91de-a50ad7d70e23"}]) await check("Reject unavailable inventory: "+JSON.stringify(change),async()=>{
    const db=dbFor({listings:[{...listing,...change}],bookings:[]});const h=load("app/api/bookings/route.ts",mocksFor(db));
@@ -156,7 +179,7 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
  });
  await check("Repeated checkout calls reuse the saved Stripe session",async()=>{
    const db=dbFor({bookings:[pending()]});let created=0;
-   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({status:"open",url:"https://checkout.stripe.com/test",metadata:{bookingId}}),createCheckoutSession:async()=>{created++;}}}));
+   const h=load("app/api/payments/create-checkout/route.ts",mocksFor(db,{"@/server/stripe":{retrieveCheckoutSession:async()=>({id:"cs_test",status:"open",url:"https://checkout.stripe.com/test",metadata:{bookingId}}),createCheckoutSession:async()=>{created++;}}}));
    for(let i=0;i<2;i++)assert.equal((await h.POST(request({bookingId}))).status,200);
    assert.equal(created,0);
  });

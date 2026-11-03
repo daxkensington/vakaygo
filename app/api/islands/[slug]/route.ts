@@ -4,6 +4,9 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, media } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
+import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
+import { bookingLaunchEnabled } from "@/server/business-onboarding";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 import { logger } from "@/lib/logger";
 export async function GET(
@@ -17,7 +20,7 @@ export async function GET(
     const [island] = await db
       .select()
       .from(islands)
-      .where(eq(islands.slug, slug))
+      .where(and(eq(islands.slug, slug), publicDestinations()))
       .limit(1);
 
     if (!island) {
@@ -31,13 +34,15 @@ export async function GET(
         count: sql<number>`count(*)::int`,
       })
       .from(listings)
-      .where(and(eq(listings.islandId, island.id), eq(listings.status, "active")))
+      .innerJoin(islands, eq(listings.islandId, islands.id))
+      .where(and(eq(listings.islandId, island.id), publicDirectoryListings()))
       .groupBy(listings.type);
 
     const counts: Record<string, number> = {};
     countResults.forEach((r) => { counts[r.type] = r.count; });
 
-    // Get featured/top listings
+    const bookingsEnabled = await bookingLaunchEnabled();
+    // Get featured/top public listings.
     const featured = await db
       .select({
         id: listings.id,
@@ -45,13 +50,16 @@ export async function GET(
         slug: listings.slug,
         type: listings.type,
         priceAmount: listings.priceAmount,
+        priceCurrency: listings.priceCurrency,
+        bookingEligible: bookingsEnabled ? currentListingBookable() : sql<boolean>`false`,
         priceUnit: listings.priceUnit,
         avgRating: listings.avgRating,
         reviewCount: listings.reviewCount,
         parish: listings.parish,
       })
       .from(listings)
-      .where(and(eq(listings.islandId, island.id), eq(listings.status, "active")))
+      .innerJoin(islands, eq(listings.islandId, islands.id))
+      .where(and(eq(listings.islandId, island.id), publicDirectoryListings()))
       .orderBy(desc(listings.isFeatured), desc(listings.avgRating))
       .limit(8);
 
@@ -63,7 +71,8 @@ export async function GET(
           .from(media)
           .where(and(eq(media.listingId, f.id), eq(media.isPrimary, true)))
           .limit(1);
-        return { ...f, image: getImageUrl(img?.url) || null };
+        return { ...f, bookingEligible: f.bookingEligible === true,
+          priceAmount: f.bookingEligible === true ? f.priceAmount : null, image: getImageUrl(img?.url) || null };
       })
     );
 

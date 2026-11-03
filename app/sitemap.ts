@@ -3,8 +3,14 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, blogPosts } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
+import { getGrenadaExperiences } from "@/server/grenada-experiences";
+import { grenadaExperiencePath } from "@/lib/grenada-experience-routes";
 
 const BASE_URL = "https://vakaygo.com";
+
+// Refresh catalogue metadata without requiring a new application deployment.
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
@@ -46,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Island pages
   const allIslands = await db
     .select({ slug: islands.slug, isActive: islands.isActive })
-    .from(islands);
+    .from(islands).where(publicDestinations());
 
   const islandPages: MetadataRoute.Sitemap = allIslands.filter(island => island.isActive).map((island) => ({
     url: `${BASE_URL}/${island.slug}`,
@@ -57,6 +63,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Programmatic SEO pages — things-to-do for all active islands
   const activeIslands = allIslands.filter((i) => i.isActive);
+  const grenadaExperiences: MetadataRoute.Sitemap = [];
+  if (activeIslands.some(island => island.slug === "grenada")) {
+    const directory = await getGrenadaExperiences();
+    if (directory.totalCount > 0) {
+      grenadaExperiences.push({ url: `${BASE_URL}${grenadaExperiencePath()}`, changeFrequency: "daily", priority: 0.8 });
+    }
+    for (const topic of directory.topics) {
+      if (topic.count > 0) grenadaExperiences.push({ url: `${BASE_URL}${grenadaExperiencePath(topic.slug)}`, changeFrequency: "daily", priority: 0.7 });
+    }
+  }
 
   const thingsToDoPages: MetadataRoute.Sitemap = activeIslands.map((island) => ({
     url: `${BASE_URL}/things-to-do-in-${island.slug}`,
@@ -74,7 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       and(
         eq(islands.isActive, true),
         eq(listings.type, "dining"),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -94,7 +110,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       and(
         eq(islands.isActive, true),
         eq(listings.type, "stay"),
-        eq(listings.status, "active")
+        publicDirectoryListings()
       )
     );
 
@@ -114,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(and(eq(listings.status, "active"), eq(islands.isActive, true), sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`));
+    .where(publicDirectoryListings());
 
   const listingPages: MetadataRoute.Sitemap = allListings.map((listing) => ({
     url: `${BASE_URL}/${listing.islandSlug}/${listing.slug}`,
@@ -152,7 +168,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select({ slug: islands.slug, type: listings.type, n: sql<number>`count(*)::int` })
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
-    .where(and(eq(islands.isActive, true), eq(listings.status, "active")))
+    .where(publicDirectoryListings())
     .groupBy(islands.slug, listings.type);
   const facetIslands = Array.from(new Set(facetCounts.map((r) => r.slug)));
   const explorePages: MetadataRoute.Sitemap = [
@@ -176,6 +192,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...islandPages,
+    ...grenadaExperiences,
     ...explorePages,
     ...thingsToDoPages,
     ...restaurantPages,

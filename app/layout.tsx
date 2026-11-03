@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, DM_Serif_Display } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-context";
 import { SavedProvider } from "@/lib/use-saved";
 import { CurrencyProvider } from "@/lib/currency";
@@ -11,18 +11,49 @@ import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
+import { SkipToContent } from "@/components/layout/skip-to-content";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const dmSans = localFont({
+  src: "./fonts/DMSans-latin.woff2",
+  variable: "--font-dm-sans-latin",
+  declarations: [{ prop: "unicode-range", value: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD" }],
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
 });
 
-const dmSerif = DM_Serif_Display({
-  variable: "--font-display",
-  subsets: ["latin"],
+const dmSansExtended = localFont({
+  src: "./fonts/DMSans-latin-ext.woff2",
+  variable: "--font-dm-sans-latin-ext",
+  declarations: [{ prop: "unicode-range", value: "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF" }],
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const dmSerif = localFont({
+  src: "./fonts/DMSerifDisplay-latin.woff2",
+  variable: "--font-dm-serif-latin",
+  declarations: [{ prop: "unicode-range", value: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD" }],
   weight: "400",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+});
+
+const dmSerifExtended = localFont({
+  src: "./fonts/DMSerifDisplay-latin-ext.woff2",
+  variable: "--font-dm-serif-latin-ext",
+  declarations: [{ prop: "unicode-range", value: "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF" }],
+  weight: "400",
+  style: "normal",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
 });
 
 export const viewport: Viewport = {
@@ -99,7 +130,7 @@ export default function RootLayout({
   // lang/dir are fixed up client-side by <LocaleHtmlAttrs/>; reading the
   // locale cookie here made every page dynamic (see that component).
   return (
-    <html lang="en" dir="ltr" data-dir="ltr" data-scroll-behavior="smooth" className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" dir="ltr" data-dir="ltr" data-scroll-behavior="smooth" className={`${dmSans.variable} ${dmSansExtended.variable} ${dmSerif.variable} ${dmSerifExtended.variable}`}>
       <head>
         {/* manifest + theme-color moved to the metadata/viewport exports below.
             A hardcoded <link>/<meta> always wins (the browser takes the first),
@@ -108,9 +139,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-screen flex flex-col">
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-gold-700 focus:text-white focus:px-4 focus:py-2 focus:rounded-xl focus:font-semibold">
-          Skip to content
-        </a>
+        <SkipToContent />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -153,7 +182,7 @@ export default function RootLayout({
           }}
         />
         <LocaleHtmlAttrs />
-        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content">{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
+        <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content" tabIndex={-1}>{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />
         {process.env.VERCEL === "1" && <Analytics />}

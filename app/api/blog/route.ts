@@ -3,26 +3,12 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { blogPosts, users, islands } from "@/drizzle/schema";
 import { eq, and, ilike, desc, sql } from "drizzle-orm";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { requireAdmin } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
-}
-
-async function getUser() {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload as { sub: string; role: string };
-  } catch {
-    return null;
-  }
 }
 
 export async function GET(request: NextRequest) {
@@ -105,10 +91,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUser();
-    if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     const db = getDb();
     const body = await request.json();
@@ -133,7 +117,7 @@ export async function POST(request: NextRequest) {
         excerpt: excerpt || null,
         content,
         coverImage: coverImage || null,
-        authorId: user.sub,
+        authorId: auth.userId,
         islandId: islandId ? parseInt(islandId) : null,
         category,
         tags: tags || [],
@@ -145,9 +129,9 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ post }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Blog POST error", error);
-    if (error?.message?.includes("unique")) {
+    if (error instanceof Error && error.message.includes("unique")) {
       return NextResponse.json({ error: "A post with this slug already exists" }, { status: 409 });
     }
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 });

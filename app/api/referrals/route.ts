@@ -3,12 +3,11 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
 import { users, referrals } from "@/drizzle/schema";
-import { jwtVerify } from "jose";
+import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import { generateReferralCode, getReferralStats } from "@/server/loyalty";
 
 import { logger } from "@/lib/logger";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -19,8 +18,8 @@ async function getAuthUserId(): Promise<string | null> {
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload.id as string;
+    const currentSession = await verifyCurrentSessionToken(token);
+    return currentSession?.userId ?? null;
   } catch {
     return null;
   }

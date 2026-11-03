@@ -221,7 +221,7 @@ export default function ServicesPage() {
               List your service on VakayGo
             </h2>
             <p className="mt-4 text-white/80 max-w-xl mx-auto">
-              Offer excursions, charters, transfers, or VIP services? Start a free listing claim, verify ownership, and help travelers discover your business. Online bookings and payments are not available yet.
+              Offer excursions, charters, transfers, or VIP services? Start a free listing claim, verify ownership, and help travelers discover your business. Booking availability depends on each listing&apos;s company details, listing setup, payment verification and activation. Claiming alone does not activate bookings or payouts.
             </p>
             <Link
               href="/for-businesses"

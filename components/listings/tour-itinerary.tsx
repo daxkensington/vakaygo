@@ -27,7 +27,7 @@ export function TourItinerary({ itinerary }: { itinerary: ItineraryStop[] }) {
         <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-gold-300" />
 
         <div className="space-y-6">
-          {itinerary.map((stop, index) => (
+          {itinerary.map((stop) => (
             <div key={stop.stopNumber} className="relative flex gap-4">
               {/* Numbered circle badge */}
               <div className="relative z-10 flex-shrink-0">

@@ -1,7 +1,9 @@
 import { cache } from "react";
 import { createDb } from "@/server/db";
-import { islands, listings, media, categories } from "@/drizzle/schema";
-import { eq, and, desc, sql, count, avg } from "drizzle-orm";
+import { islands, listings, media, listingTypeEnum } from "@/drizzle/schema";
+import { eq, and, sql, count, avg } from "drizzle-orm";
+
+import { publicDirectoryListings, publicDestinations as publicIsland } from "@/server/public-listing-eligibility";
 
 export type SeoListing = {
   id: string;
@@ -37,6 +39,10 @@ export type IslandStats = {
   typeCounts: Record<string, number>;
 };
 
+function pickIslandSeoData({ id, slug, name, country, description, heroImage, region }: IslandSeoData): IslandSeoData {
+  return { id, slug, name, country, description, heroImage, region };
+}
+
 /** Get all active islands for generateStaticParams */
 export async function getActiveIslands(): Promise<IslandSeoData[]> {
   const db = createDb();
@@ -51,7 +57,7 @@ export async function getActiveIslands(): Promise<IslandSeoData[]> {
       region: islands.region,
     })
     .from(islands)
-    .where(eq(islands.isActive, true))
+    .where(publicIsland())
     .orderBy(islands.sortOrder);
 }
 
@@ -70,14 +76,14 @@ export async function getActiveIslandsWithCounts(): Promise<
       heroImage: islands.heroImage,
       region: islands.region,
       sortOrder: islands.sortOrder,
-      listingCount: sql<number>`COUNT(CASE WHEN ${listings.status} = 'active' THEN 1 END)::int`,
+      listingCount: sql<number>`COUNT(CASE WHEN ${publicDirectoryListings()} THEN 1 END)::int`,
     })
     .from(islands)
     .leftJoin(listings, eq(listings.islandId, islands.id))
-    .where(eq(islands.isActive, true))
+    .where(publicIsland())
     .groupBy(islands.id)
     .orderBy(islands.sortOrder);
-  return rows.map(({ sortOrder: _s, ...rest }) => rest);
+  return rows.map(row => ({ ...pickIslandSeoData(row), listingCount: row.listingCount }));
 }
 
 export type ListingSeoMeta = {
@@ -135,9 +141,7 @@ export const getListingForSeo = cache(
         and(
           eq(listings.slug, listingSlug),
           eq(islands.slug, islandSlug),
-          eq(islands.isActive, true),
-          sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`,
-          eq(listings.status, "active")
+          publicDirectoryListings()
         )
       )
       .limit(1);
@@ -163,7 +167,7 @@ export const getIslandBySlug = cache(
         region: islands.region,
       })
       .from(islands)
-      .where(eq(islands.slug, slug))
+      .where(and(eq(islands.slug, slug), publicIsland()))
       .limit(1);
     return results[0] || null;
   }
@@ -175,6 +179,8 @@ export async function getTopListingsByType(
   type: string,
   limit = 6
 ): Promise<SeoListing[]> {
+  const listingType = listingTypeEnum.enumValues.find(value => value === type);
+  if (!listingType) return [];
   const db = createDb();
   const results = await db
     .select({
@@ -203,9 +209,8 @@ export async function getTopListingsByType(
     .where(
       and(
         eq(listings.islandId, islandId),
-        eq(listings.type, type as any),
-        eq(listings.status, "active"),
-        sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`
+        eq(listings.type, listingType),
+        publicDirectoryListings()
       )
     )
     .orderBy(
@@ -251,8 +256,7 @@ export async function getTopListingsForIsland(
     .where(
       and(
         eq(listings.islandId, islandId),
-        eq(listings.status, "active"),
-        sql`${listings.operatorId} <> '197d8586-7fd3-4999-91de-a50ad7d70e23'`
+        publicDirectoryListings()
       )
     )
     .orderBy(
@@ -280,7 +284,8 @@ export async function getAllListingSlugsForIsland(
       type: listings.type,
     })
     .from(listings)
-    .where(and(eq(listings.islandId, islandId), eq(listings.status, "active")))
+    .innerJoin(islands, eq(listings.islandId, islands.id))
+    .where(and(eq(listings.islandId, islandId), publicDirectoryListings()))
     .orderBy(listings.title);
 }
 
@@ -294,8 +299,9 @@ export async function getIslandStats(islandId: number): Promise<IslandStats> {
       count: count(),
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
-      and(eq(listings.islandId, islandId), eq(listings.status, "active"))
+      and(eq(listings.islandId, islandId), publicDirectoryListings())
     )
     .groupBy(listings.type);
 
@@ -304,8 +310,9 @@ export async function getIslandStats(islandId: number): Promise<IslandStats> {
       avgRating: avg(listings.avgRating),
     })
     .from(listings)
+    .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(
-      and(eq(listings.islandId, islandId), eq(listings.status, "active"))
+      and(eq(listings.islandId, islandId), publicDirectoryListings())
     );
 
   const typeCounts: Record<string, number> = {};
@@ -342,13 +349,12 @@ export async function getIslandsWithDining(): Promise<IslandSeoData[]> {
     .innerJoin(listings, eq(listings.islandId, islands.id))
     .where(
       and(
-        eq(islands.isActive, true),
-        eq(listings.type, "dining"),
-        eq(listings.status, "active")
+        publicDirectoryListings(),
+        eq(listings.type, "dining")
       )
     )
     .orderBy(islands.sortOrder);
-  return results.map(({ sortOrder: _s, ...rest }) => rest);
+  return results.map(pickIslandSeoData);
 }
 
 /** Get islands that have stay listings */
@@ -369,11 +375,10 @@ export async function getIslandsWithStays(): Promise<IslandSeoData[]> {
     .innerJoin(listings, eq(listings.islandId, islands.id))
     .where(
       and(
-        eq(islands.isActive, true),
-        eq(listings.type, "stay"),
-        eq(listings.status, "active")
+        publicDirectoryListings(),
+        eq(listings.type, "stay")
       )
     )
     .orderBy(islands.sortOrder);
-  return results.map(({ sortOrder: _s, ...rest }) => rest);
+  return results.map(pickIslandSeoData);
 }

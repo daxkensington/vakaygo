@@ -19,6 +19,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+type PriceListing = { id: string; title: string; type: string; website: string };
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 
@@ -245,7 +246,7 @@ async function main() {
 
   const typeCondition = typeFilter ? sql`AND l.type = ${typeFilter}` : sql``;
 
-  const result = await db.execute(sql`
+  const result = await db.execute<PriceListing>(sql`
     SELECT l.id, l.title, l.type, l.type_data->>'website' as website
     FROM listings l
     WHERE l.status = 'active'
@@ -257,12 +258,11 @@ async function main() {
     LIMIT ${limit}
   `);
 
-  const listings = result.rows as any[];
+  const listings = result.rows;
   console.log(`Found ${listings.length} listings with websites but no price\n`);
   if (dryRun) console.log("=== DRY RUN ===\n");
 
   let found = 0;
-  let failed = 0;
   let skipped = 0;
 
   const bySource: Record<string, number> = {};
@@ -272,7 +272,7 @@ async function main() {
     const batch = listings.slice(i, i + concurrency);
 
     await Promise.allSettled(
-      batch.map(async (listing: any) => {
+      batch.map(async (listing) => {
         if (!byType[listing.type])
           byType[listing.type] = { found: 0, total: 0 };
         byType[listing.type].total++;

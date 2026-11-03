@@ -1,33 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { bookings, listings, users } from "@/drizzle/schema";
+import { bookings, listings, users, bookingStatusEnum } from "@/drizzle/schema";
 import { eq, sql, desc, and, gte, lte } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { jwtVerify } from "jose";
-import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    if (payload.role !== "admin") return null;
-    return payload.id as string;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: NextRequest) {
   const __auth = await requireAdmin();
   if (!__auth.ok) return __auth.error;
-  const adminId = __auth.userId;
 
   try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -47,7 +30,11 @@ export async function GET(request: NextRequest) {
 
     // Build conditions
     const conditions = [];
-    if (status) conditions.push(eq(bookings.status, status as any));
+    if (status) {
+      const validStatus = bookingStatusEnum.enumValues.find(value => value === status);
+      if (!validStatus) return NextResponse.json({ error: "Invalid booking status" }, { status: 400 });
+      conditions.push(eq(bookings.status, validStatus));
+    }
     if (from) conditions.push(gte(bookings.startDate, new Date(from)));
     if (to) conditions.push(lte(bookings.startDate, new Date(to)));
 

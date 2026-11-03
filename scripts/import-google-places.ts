@@ -10,6 +10,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { placeSearchArea, placeWithinSearchArea } from "./lib/place-geography";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
@@ -17,7 +18,8 @@ const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
 // Grenada center coordinates
 const GRENADA_LAT = 12.1165;
 const GRENADA_LNG = -61.679;
-const SEARCH_RADIUS = 25000; // 25km covers the whole island
+const SEARCH_RADIUS = 25000; // Strict acceptance circle; not a whole-country boundary.
+const SEARCH_AREA = placeSearchArea(GRENADA_LAT, GRENADA_LNG, SEARCH_RADIUS)!;
 
 // Map Google place types to VakayGo listing types
 const TYPE_MAP: Record<string, { type: string; category: string }> = {
@@ -199,6 +201,7 @@ async function main() {
     console.log(`  Found ${results.length} results`);
 
     for (const place of results) {
+      if (!placeWithinSearchArea(place, SEARCH_AREA)) continue;
       if (seen.has(place.place_id)) {
         skipped++;
         continue;

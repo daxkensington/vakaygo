@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   env: { ANTHROPIC_API_KEY: "synthetic-test-key" as string | undefined, ANTHROPIC_CONCIERGE_MODEL: "claude-sonnet-4-6" },
   error: vi.fn(),
+  searchListings: vi.fn(),
   bookingLaunchEnabled: vi.fn(async () => false),
 }));
 vi.mock("@/lib/env", () => ({ env: mocks.env }));
@@ -11,13 +12,14 @@ vi.mock("@/lib/logger", () => ({ logger: { error: mocks.error } }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 vi.mock("@/server/business-onboarding", () => ({ bookingLaunchEnabled: mocks.bookingLaunchEnabled }));
 vi.mock("@/server/concierge-tools", () => ({
-  searchListings: vi.fn(), getListingDetails: vi.fn(), checkAvailability: vi.fn(),
+  searchListings: mocks.searchListings, getListingDetails: vi.fn(), checkAvailability: vi.fn(),
   getIslandInfo: vi.fn(), compareListings: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ createDb: () => { throw new Error("Unexpected database access"); } }));
 vi.mock("@/drizzle/schema", () => ({ conciergeMemory: {} }));
 
 import { POST } from "@/app/api/chat/route";
+import { unconfirmedVisitorFacts } from "@/server/concierge-factual-status";
 
 const message = { role: "user", content: "How do I contact support?" };
 const request = (messages: unknown = [message], signal?: AbortSignal) => new Request("https://test.invalid/api/chat", {
@@ -26,6 +28,8 @@ const request = (messages: unknown = [message], signal?: AbortSignal) => new Req
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.searchListings.mockReset();
+  mocks.bookingLaunchEnabled.mockResolvedValue(false);
   mocks.env.ANTHROPIC_API_KEY = "synthetic-test-key";
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -76,20 +80,32 @@ describe("concierge availability", () => {
   });
 
   it("returns a normal reply without database access for an anonymous visitor", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: [{ type: "text", text: "Email hello@vakaygo.com." }], stop_reason: "end_turn" })));
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: [{ type: "tool_use", id: "reply", name: "respond_with_plan", input: { kind: "platform", listingRefs: [], topics: ["support"] } }], stop_reason: "tool_use" })));
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect((await response.json()).message).toBe("Email hello@vakaygo.com.");
+    expect((await response.json()).message).toContain("hello@vakaygo.com");
   });
 
-  it("grounds the concierge in current directory capabilities across all supported regions", async () => {
+  it.each([false, true])("grounds directory guidance in the current booking launch state %s without a contradictory blanket pause", async bookingsEnabled => {
+    mocks.bookingLaunchEnabled.mockResolvedValueOnce(bookingsEnabled);
     const fetch = vi.fn(async () => Response.json({ content: [{ type: "text", text: "Synthetic reply" }], stop_reason: "end_turn" }));
     vi.stubGlobal("fetch", fetch);
     expect((await POST(request())).status).toBe(200);
     const prompt = JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).system as string;
     expect(prompt).toContain("website interface is currently English");
     expect(prompt).toContain("current verified ownership");
-    expect(prompt).toContain("Payment onboarding and new payouts are currently unavailable");
+    expect(prompt).not.toContain("Payment onboarding and new payouts are currently unavailable");
+    expect(prompt).not.toContain("Online bookings and payments are currently unavailable during the directory launch");
+    expect(prompt).not.toContain("Explain the current pause on new bookings");
+    expect(prompt).toContain("unless a tool called in this response explicitly returns bookingEligible=true for the exact listing");
+    expect(prompt).toContain("available=true from check_availability for that exact date");
+    if (bookingsEnabled) {
+      expect(prompt).toContain("Booking launch is enabled, but every listing still requires explicit current tool eligibility");
+      expect(prompt).not.toContain("payments are disabled platform-wide");
+    } else {
+      expect(prompt).toContain("Online bookings, reservation requests and payments are disabled platform-wide");
+      expect(prompt).toContain("Do not invite the user to book, reserve, request a booking, pay, or redeem booking credit");
+    }
     expect(prompt).toContain("all supported Caribbean, Latin American and Mediterranean destinations");
     expect(prompt).not.toContain("Site available in English, Spanish");
     expect(prompt).not.toContain("Earn 10 points per dollar");
@@ -100,5 +116,46 @@ describe("concierge availability", () => {
   it("treats an empty provider response as unavailable", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: [], stop_reason: "end_turn" })));
     expect((await POST(request())).status).toBe(503);
+  });
+});
+
+
+describe("concierge visitor admission grounding", () => {
+  const freeRequest = () => request([{ role: "user", content: "Suggest one free public outdoor stop in Grenada in one sentence. I am only browsing; do not contact anyone or make a booking." }]);
+  it("renders factual unknowns without directory tools while preserving the provider transport contract", async () => {
+    const provider = vi.fn<(_url: string, _init: RequestInit) => Promise<Response>>().mockResolvedValue(Response.json({ content: [{ type: "tool_use", id: "facts", name: "respond_with_plan", input: { kind: "platform", listingRefs: [], topics: ["visitor_facts"] } }], stop_reason: "tool_use" }));
+    vi.stubGlobal("fetch", provider);
+    const response = await POST(freeRequest());
+    expect(response.status).toBe(200);
+    expect((await response.json()).message).toContain("are unconfirmed");
+    const [url, init] = provider.mock.calls[0];
+    const payload = JSON.parse(String(init.body));
+    expect(url).toBe("https://api.anthropic.com/v1/messages");
+    expect(payload.model).toBe(mocks.env.ANTHROPIC_CONCIERGE_MODEL);
+    expect(payload.max_tokens).toBe(1024);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(payload.system).toContain("including answers without tool calls");
+    expect(payload.system).toContain("Missing, null, hidden, or zero platform prices never prove free entry");
+    expect(payload.system).toContain("bookingEligible=false does not mean free");
+    expect(payload.system).toContain("do not present a place as satisfying a free-entry request");
+    expect(payload.system).toContain("explicit, current authoritative evidence for the exact place");
+    expect(payload.system).toContain("unless a tool called in this response explicitly returns bookingEligible=true");
+    expect(payload.system).not.toContain("Fort George");
+    expect(mocks.searchListings).not.toHaveBeenCalled();
+  });
+  it.each([null, 0, 25])("forwards explicit unconfirmed admission/access with a platform price of %j to the next provider turn", async price => {
+    const result = [{ title: "Synthetic outdoor stop", slug: "synthetic-outdoor-stop", island: "grenada", type: "tour", price, bookingEligible: price !== null, visitorFacts: unconfirmedVisitorFacts(), rating: null, image: null, url: "/grenada/synthetic-outdoor-stop" }];
+    mocks.searchListings.mockResolvedValue(result);
+    const provider = vi.fn<(_url: string, _init: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(Response.json({ content: [{ type: "tool_use", id: "find-place", name: "search_listings", input: { island: "grenada", q: "outdoor" } }], stop_reason: "tool_use" }))
+      .mockResolvedValueOnce(Response.json({ content: [{ type: "text", text: "This stop is in the directory, but its current admission fees and visitor access are unconfirmed." }], stop_reason: "end_turn" }));
+    vi.stubGlobal("fetch", provider);
+    expect((await POST(freeRequest())).status).toBe(200);
+    expect(mocks.searchListings).toHaveBeenCalledWith({ island: "grenada", q: "outdoor" });
+    const second = JSON.parse(String(provider.mock.calls[1][1].body));
+    const toolResult = JSON.parse(second.messages.at(-1).content[0].content);
+    expect(toolResult).toEqual(result);
+    expect(toolResult[0].visitorFacts).toEqual({ admission: "unconfirmed", currentAccess: "unconfirmed", openingHours: "unconfirmed", reservationRequirement: "unconfirmed", priceMeaning: "platform_booking_only" });
+    expect(second.system).toContain('label the corresponding current admission fees or visitor access as unconfirmed');
   });
 });

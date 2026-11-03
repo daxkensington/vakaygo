@@ -15,7 +15,6 @@ describe("constructWebhookEvent", () => {
     vi.doMock("stripe", () => {
       class StripeMock {
         webhooks = { constructEvent };
-        constructor(_key: string) {}
       }
       return { default: StripeMock };
     });
@@ -36,7 +35,6 @@ describe("constructWebhookEvent", () => {
     vi.doMock("stripe", () => {
       class StripeMock {
         webhooks = { constructEvent: () => ({}) };
-        constructor(_key: string) {}
       }
       return { default: StripeMock };
     });
@@ -56,7 +54,6 @@ describe("createCheckoutSession", () => {
       class StripeMock {
         checkout = { sessions: { create: sessionsCreate } };
         webhooks = { constructEvent: () => ({}) };
-        constructor(_key: string) {}
       }
       return { default: StripeMock };
     });

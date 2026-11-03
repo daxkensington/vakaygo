@@ -1,0 +1,90 @@
+{
+  "downloadedOn": "2026-10-16",
+  "source": "Official Google Fonts CSS API and fonts.gstatic.com, unmodified WOFF2 files",
+  "reason": {
+    "description": "Remove build-time Google Fonts requests after an intermittent Next.js 16.3.8 Turbopack font query parsing failure.",
+    "upstreamIssue": "https://github.com/vercel/next.js/issues/99114",
+    "affectedSource": "https://github.com/vercel/next.js/blob/v16.3.8/crates/next-core/src/next_font/google/mod.rs#L586-L596"
+  },
+  "cssRequests": [
+    "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400&display=swap"
+  ],
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
+  "configuration": {
+    "loader": "next/font/local",
+    "publicCssVariables": ["--font-sans", "--font-display"],
+    "familyOrder": "Latin, then Latin Extended, then the previous metric-adjusted system fallback",
+    "display": "swap",
+    "sansWeights": [400, 500, 600, 700],
+    "sansVariableWeightRange": "400 700",
+    "serifWeight": 400,
+    "style": "normal",
+    "preload": "Only the two Latin files; Latin Extended files load on glyph demand",
+    "baselineComparison": "All four binaries match SHA-256 hashes of assets emitted by the previous successful next/font/google build."
+  },
+  "payload": {
+    "totalBytes": 79816,
+    "preloadedLatinBytes": 54824,
+    "onDemandLatinExtendedBytes": 24992,
+    "fontBinaryByteChangeFromSuccessfulBaseline": 0
+  },
+  "files": [
+    {
+      "file": "DMSans-latin.woff2",
+      "family": "DM Sans",
+      "subset": "latin",
+      "url": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K6z9mXg.woff2",
+      "bytes": 36980,
+      "sha256": "468d56b6b25b05b70190b6c233d773f6f1770e8579827ce022a57f03fa8002fb",
+      "license": "OFL-DMSans.txt"
+    },
+    {
+      "file": "DMSans-latin-ext.woff2",
+      "family": "DM Sans",
+      "subset": "latin-ext",
+      "url": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K6z9mXgjU0.woff2",
+      "bytes": 18192,
+      "sha256": "219b02c7d8884817d3d6ad4c8771f2c000ce4c5669a67ef4e2e5617ffa25c4cc",
+      "license": "OFL-DMSans.txt"
+    },
+    {
+      "file": "DMSerifDisplay-latin.woff2",
+      "family": "DM Serif Display",
+      "subset": "latin",
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_Bx0vrx52g.woff2",
+      "bytes": 17844,
+      "sha256": "f273cf2c9ce9bc7d6b0f4fcb8aee72f8cf5a249991308b6a144217e0760c5d3f",
+      "license": "OFL-DMSerifDisplay.txt"
+    },
+    {
+      "file": "DMSerifDisplay-latin-ext.woff2",
+      "family": "DM Serif Display",
+      "subset": "latin-ext",
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_5x0vrx52jJ3Q.woff2",
+      "bytes": 6800,
+      "sha256": "dfea1d6549e78df6e55d942c1d1eba5e2f809496205bc0b3a9d684f268b60011",
+      "license": "OFL-DMSerifDisplay.txt"
+    }
+  ],
+  "licenses": [
+    {
+      "file": "OFL-DMSans.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dmsans/OFL.txt",
+      "formatting": "Trailing whitespace removed; license wording unchanged.",
+      "copyright": "Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)",
+      "license": "SIL Open Font License 1.1"
+    },
+    {
+      "file": "OFL-DMSerifDisplay.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dmserifdisplay/OFL.txt",
+      "copyright": "Copyright 2014-2018 Adobe; Reserved Font Name Source. Copyright 2019 Google LLC.",
+      "license": "SIL Open Font License 1.1"
+    }
+  ],
+  "fallbacks": {
+    "source": "Previous successful Next.js 16.3.8 Google-loader CSS; preserved verbatim in fallbacks.css",
+    "sans": { "local": "Arial", "ascentOverride": "94.9%", "descentOverride": "29.66%", "lineGapOverride": "0%", "sizeAdjust": "104.53%" },
+    "serif": { "local": "Times New Roman", "ascentOverride": "94.37%", "descentOverride": "30.51%", "lineGapOverride": "0%", "sizeAdjust": "109.78%" }
+  }
+}
