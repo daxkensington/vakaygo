@@ -157,6 +157,7 @@ const typeFallbacks: Record<string, string> = {
   transfer: "from-navy-500 to-navy-700",
   vip: "from-gold-500 to-gold-700",
   guide: "from-gold-400 to-teal-500",
+  spa: "from-teal-400 to-teal-600",
 };
 
 function getFaqs(name: string, slug: string) {
