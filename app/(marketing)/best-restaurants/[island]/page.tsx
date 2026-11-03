@@ -115,6 +115,7 @@ const heroImages: Record<string, string> = {
 function getPriceRange(priceAmount: string | null): string {
   if (!priceAmount) return "Varies";
   const p = parseFloat(priceAmount);
+  if (!Number.isFinite(p) || p <= 0) return "Varies";
   if (p < 20) return "$";
   if (p < 50) return "$$";
   if (p < 100) return "$$$";
@@ -179,8 +180,15 @@ export default async function BestRestaurantsPage({ params }: Props) {
   const priceDistribution: Record<string, number> = {};
   diningListings.forEach((l) => {
     const range = getPriceRange(l.priceAmount);
+    if (range === "Varies") return;
     priceDistribution[range] = (priceDistribution[range] || 0) + 1;
   });
+  const presentPriceTiers = ["$", "$$", "$$$", "$$$$"].filter(
+    (tier) => priceDistribution[tier] > 0
+  );
+  const priceRangeSummary = presentPriceTiers.length > 1
+    ? `${presentPriceTiers[0]} - ${presentPriceTiers[presentPriceTiers.length - 1]}`
+    : presentPriceTiers[0] || "Varies";
 
   // JSON-LD
   const jsonLd = {
@@ -293,9 +301,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <p className="text-2xl font-bold text-navy-700">
-                {Object.keys(priceDistribution).length > 0
-                  ? Object.keys(priceDistribution).sort().join(" - ")
-                  : "Varies"}
+                {priceRangeSummary}
               </p>
               <p className="text-xs text-navy-400 mt-1">Price Range</p>
             </div>
@@ -462,7 +468,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
         </section>
 
         {/* Price Guide */}
-        {Object.keys(priceDistribution).length > 0 && (
+        {presentPriceTiers.length > 0 && (
           <section className="py-12 bg-cream-50">
             <div className="mx-auto max-w-7xl px-6">
               <h2

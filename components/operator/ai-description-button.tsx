@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 

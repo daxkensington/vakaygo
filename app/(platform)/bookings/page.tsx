@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
+import { analytics } from "@/lib/analytics";
 import { formatBookingDateTime } from "@/lib/booking-time";
 import Link from "next/link";
 import {
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 import { ReviewModal } from "@/components/listings/review-modal";
 import { DisputeModal } from "@/components/disputes/dispute-modal";
+import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
 type Booking = {
   id: string;
@@ -41,6 +43,8 @@ type Booking = {
   paidAt: string | null;
   listingId: string;
   paymentEligible?: boolean;
+  cancellationPolicy: string | null;
+  listingTimezone: string | null;
 };
 
 function formatBookingAmount(amount: string, currency: string | null | undefined) {
@@ -91,6 +95,7 @@ function BookingsContent() {
     listingTitle: string;
   } | null>(null);
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+  const [cancellationNotice, setCancellationNotice] = useState<{ bookingId: string; message: string } | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -141,6 +146,13 @@ function BookingsContent() {
       });
       const data = await res.json();
       if (res.ok && data.url) {
+        try {
+          const checkoutUrl = new URL(data.url);
+          const booking = bookings.find(item => item.id === bookingId);
+          if (booking && checkoutUrl.protocol === "https:" && checkoutUrl.hostname === "checkout.stripe.com" && !checkoutUrl.username && !checkoutUrl.password) {
+            analytics.startCheckout({ listingId: booking.listingId, listingType: booking.listingType });
+          }
+        } catch { /* An invalid receipt must not count as a checkout. */ }
         window.location.href = data.url;
       } else {
         setBookings(previous => previous.map(booking => booking.id === bookingId ? { ...booking, paymentEligible: false } : booking));
@@ -169,6 +181,18 @@ function BookingsContent() {
         if (!res.ok) throw new Error("Booking status unavailable");
         if (refreshSequence.current === request) {
           setBookings(data.bookings || []);
+          const paidBooking = (data.bookings as Booking[] | undefined)?.find(booking => booking.bookingNumber === paidBookingNumber && booking.paidAt && ["confirmed", "completed"].includes(booking.status));
+          if (paidBooking) {
+            analytics.purchaseConfirmed({
+              transactionId: paidBooking.id,
+              listingId: paidBooking.listingId,
+              listingType: paidBooking.listingType,
+              currency: paidBooking.currency,
+              totalAmount: paidBooking.totalAmount,
+              status: paidBooking.status,
+              paidAt: paidBooking.paidAt,
+            });
+          }
           hasLoadedBookings.current = true;
           setLoadError(false);
         }
@@ -194,7 +218,7 @@ function BookingsContent() {
     document.addEventListener("visibilitychange", refresh);
     const interval = window.setInterval(() => { void fetchBookings(); }, 60_000);
     return () => { fetchBookingsRef.current = null; invalidatePendingRefresh(); window.clearInterval(interval); window.removeEventListener("focus", refresh); window.removeEventListener("pageshow", refresh); document.removeEventListener("visibilitychange", refresh); };
-  }, [user, invalidatePendingRefresh]);
+  }, [user, invalidatePendingRefresh, paidBookingNumber]);
 
   const retryLoad = useCallback(() => {
     const fetchCurrent = fetchBookingsRef.current;
@@ -477,6 +501,29 @@ function BookingsContent() {
                         <p className="text-sm text-navy-400">
                           Paid — waiting for operator confirmation
                         </p>
+                      </div>
+                    )}
+                    {cancellationNotice?.bookingId === booking.id && (
+                      <p role="status" className="mt-4 border-t border-cream-200 pt-4 text-sm text-teal-700">{cancellationNotice.message}</p>
+                    )}
+                    {!isPast && canCancelBooking(booking.status) && (
+                      <div className="mt-4 flex justify-end border-t border-cream-200 pt-4">
+                        <CancelBookingControl
+                          bookingId={booking.id}
+                          bookingNumber={booking.bookingNumber}
+                          status={booking.status}
+                          totalAmount={booking.totalAmount}
+                          currency={booking.currency}
+                          paidAt={booking.paidAt}
+                          startDate={booking.startDate}
+                          cancellationPolicy={booking.cancellationPolicy}
+                          listingTimezone={booking.listingTimezone}
+                          actor="traveler"
+                          onComplete={receipt => {
+                            setBookings(previous => previous.map(item => item.id === booking.id ? { ...item, status: receipt.status, paymentEligible: false } : item));
+                            setCancellationNotice({ bookingId: booking.id, message: receipt.message || (receipt.status === "refunded" ? "Booking cancelled and refunded." : "Booking cancelled.") });
+                          }}
+                        />
                       </div>
                     )}
                   </div>

@@ -4,6 +4,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, blogPosts } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
+import { getGrenadaExperiences } from "@/server/grenada-experiences";
+import { grenadaExperiencePath } from "@/lib/grenada-experience-routes";
 
 const BASE_URL = "https://vakaygo.com";
 
@@ -61,6 +63,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Programmatic SEO pages — things-to-do for all active islands
   const activeIslands = allIslands.filter((i) => i.isActive);
+  const grenadaExperiences: MetadataRoute.Sitemap = [];
+  if (activeIslands.some(island => island.slug === "grenada")) {
+    const directory = await getGrenadaExperiences();
+    if (directory.totalCount > 0) {
+      grenadaExperiences.push({ url: `${BASE_URL}${grenadaExperiencePath()}`, changeFrequency: "daily", priority: 0.8 });
+    }
+    for (const topic of directory.topics) {
+      if (topic.count > 0) grenadaExperiences.push({ url: `${BASE_URL}${grenadaExperiencePath(topic.slug)}`, changeFrequency: "daily", priority: 0.7 });
+    }
+  }
 
   const thingsToDoPages: MetadataRoute.Sitemap = activeIslands.map((island) => ({
     url: `${BASE_URL}/things-to-do-in-${island.slug}`,
@@ -180,6 +192,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...islandPages,
+    ...grenadaExperiences,
     ...explorePages,
     ...thingsToDoPages,
     ...restaurantPages,

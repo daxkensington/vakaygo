@@ -146,6 +146,92 @@ it("rejects late smart-search filters after the visitor changes the query", asyn
   expect(container.querySelector("h1")!.textContent).toBe("Explore Caribbean experiences");
 });
 
+it("clears the original sentence when AI selects a category without keyword filtering", async () => {
+  fetchMock.mockImplementation(async (url: string) => url === "/api/ai/smart-search"
+    ? response({ filters: { type: "tour" }, summary: "Directory tours for planning.", suggestions: [] })
+    : url.startsWith("/api/search-history") ? response({ searches: [] })
+    : url.startsWith("/api/listings/count") ? response({ count: 1 })
+    : response({ listings: [listing(30)] }));
+  await render();
+  const input = container.querySelector<HTMLInputElement>('input[aria-label="Search"]')!;
+  await change(input, "Find the best tours for a family"); await tick();
+  await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  await tick();
+  const last = fetchMock.mock.calls.filter(([url]) => url.startsWith("/api/listings?")).at(-1)![0];
+  const params = new URL(last, "https://vakaygo.com").searchParams;
+  expect(params.get("type")).toBe("tour"); expect(params.get("q")).toBeNull();
+  expect(input.value).toBe(""); expect(container.textContent).toContain("Listing 30");
+  expect(container.textContent).toContain("Directory tours for planning.");
+});
+
+async function relatedSuggestion(suggestion: string) {
+  let calls = 0;
+  fetchMock.mockImplementation(async (url: string) => url === "/api/ai/smart-search"
+    ? response(++calls === 1
+      ? { filters: { type: "dining", q: "dinner" }, summary: "Directory dining.", suggestions: [suggestion] }
+      : { filters: { type: "tour" }, summary: "Parsed tour intent.", suggestions: [] })
+    : url.startsWith("/api/search-history") ? response({ searches: [] })
+    : url.startsWith("/api/listings/count") ? response({ count: 1 })
+    : response({ listings: [listing(30)] }));
+  await render();
+  const search = container.querySelector<HTMLInputElement>('input[aria-label="Search"]')!;
+  await change(search, "best dinner");
+  await act(async () => search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  expect(button(suggestion)).toBeDefined();
+  await click(suggestion);
+  return search;
+}
+
+it("parses a short Related suggestion after its cleared filters settle instead of searching the whole phrase", async () => {
+  const search = await relatedSuggestion("Find tours");
+  expect(fetchMock.mock.calls.filter(([url]) => url === "/api/ai/smart-search")).toHaveLength(1);
+  await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+  const smartCalls = fetchMock.mock.calls.filter(([url]) => url === "/api/ai/smart-search");
+  expect(smartCalls).toHaveLength(2);
+  expect(JSON.parse(smartCalls[1][1].body).query).toBe("Find tours");
+  expect(search.value).toBe(""); expect(container.textContent).toContain("Parsed tour intent.");
+  // React commits the parsed filters after the queued callback's act phase;
+  // let their separate listing-fetch effect run before checking the URL.
+  await tick();
+  const last = fetchMock.mock.calls.filter(([url]) => url.startsWith("/api/listings?")).at(-1)![0];
+  const params = new URL(last, "https://vakaygo.com").searchParams;
+  expect(params.get("type")).toBe("tour"); expect(params.get("q")).toBeNull();
+});
+
+it.each(["query", "category"])("cancels a queued Related parse when the visitor changes the %s before it starts", async changeKind => {
+  const search = await relatedSuggestion("Find the best family tours");
+  if (changeKind === "query") await change(search, "boat");
+  else await click("Stays");
+  await tick();
+  expect(fetchMock.mock.calls.filter(([url]) => url === "/api/ai/smart-search")).toHaveLength(1);
+  expect(container.textContent).not.toContain("Parsed tour intent.");
+  expect(search.value).toBe(changeKind === "query" ? "boat" : "Find the best family tours");
+  if (changeKind === "category") expect(container.querySelector("h1")!.textContent).toBe("Stays in the Caribbean");
+});
+
+it("does not start a queued Related parse after Explore unmounts", async () => {
+  await relatedSuggestion("Find the best family tours");
+  await act(async () => root.render(<div>Another page</div>));
+  await tick();
+  expect(fetchMock.mock.calls.filter(([url]) => url === "/api/ai/smart-search")).toHaveLength(1);
+});
+
+it("starts a natural-language history parse only after the selected query is current", async () => {
+  auth.user = { id: "search-history-traveler" };
+  const term = "romantic dinner";
+  fetchMock.mockImplementation(async (url: string) => url === "/api/ai/smart-search"
+    ? response({ filters: { type: "dining", q: "dinner" }, summary: "Current dinner intent.", suggestions: [] })
+    : url.startsWith("/api/search-history") ? response({ userId: auth.user!.id, searches: [{ id: 1, userId: auth.user!.id, query: term, filters: null }] })
+    : url.startsWith("/api/listings/count") ? response({ count: 1 })
+    : response({ listings: [listing(30)] }));
+  await render(); const search = container.querySelector<HTMLInputElement>('input[aria-label="Search"]')!;
+  await act(async () => search.focus());
+  await click(term); await tick();
+  const smartCalls = fetchMock.mock.calls.filter(([url]) => url === "/api/ai/smart-search");
+  expect(smartCalls).toHaveLength(1); expect(JSON.parse(smartCalls[0][1].body).query).toBe(term);
+  expect(search.value).toBe("dinner"); expect(container.textContent).toContain("Current dinner intent.");
+});
+
 it("opens a labelled native filter dialog and returns focus to its trigger on Escape", async () => {
   await render(); const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Open filters"]')!;
   await act(async () => { trigger.focus(); trigger.click(); }); await tick();

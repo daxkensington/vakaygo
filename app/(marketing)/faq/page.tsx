@@ -12,7 +12,7 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
   "For Travelers": [
     {
       q: "How do I book an experience?",
-      a: "VakayGo is currently a directory. Online bookings and payments are disabled. Browse and save places or sign in to record interest. Messaging is available for businesses with verified ownership where supported. Recording interest or sending a message does not create a reservation.",
+      a: "Open the listing and check its current booking options. Online booking requires an eligible listing and available dates and capacity; use only the options shown for your selection. You can also browse and save places or sign in to record interest. Messaging is available for businesses with verified ownership where supported. Saving, recording interest or sending a message does not create a reservation.",
     },
     {
       q: "What is the cancellation policy?",
@@ -24,7 +24,7 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
     },
     {
       q: "Can I book as a guest without an account?",
-      a: "Guests can browse the directory and plan which places to explore. VakayGo bookings are currently unavailable. Sign in and verify your email to record interest or use available messaging features; neither action creates a booking.",
+      a: "Guests can browse listings and plan which places to explore. To book, check the listing's current eligibility and use only the account or guest options shown in its booking flow. Sign in and verify your email to record interest or use available messaging features; neither action creates a booking.",
     },
     {
       q: "How do I contact an operator?",
@@ -38,11 +38,11 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
     },
     {
       q: "What are VakayGo's commission rates?",
-      a: "Claiming an existing VakayGo listing is free. Online bookings and payments are currently disabled. Future booking fees and payment arrangements require final business and provider review before launch.",
+      a: "Claiming an existing VakayGo listing and managing its profile are free. Booking charges and operator commission are separate from profile management. Contact Partner Support for the applicable commercial terms and commission details before activating bookings, and review the totals shown for each booking.",
     },
     {
       q: "How do payouts work?",
-      a: "Listing claims and traveler interest do not create earnings or payouts. Payment services require separate business onboarding, approval for the actual company country and payout route, current provider verification and explicit activation. Directory launch does not establish payout availability or timing.",
+      a: "Listing claims and traveler interest do not create earnings or payouts. Payouts require completed business onboarding, an approved payment route for the actual company and country, current payment eligibility and activation. Review the setup and status shown in your operator dashboard. A claim or interest count does not guarantee bookings, earnings or payout timing.",
     },
     {
       q: "Can I manage my availability?",
@@ -56,11 +56,11 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
   "Bookings & Payments": [
     {
       q: "When am I charged?",
-      a: "Online bookings and payments are currently disabled. Browsing, recording interest or sending a message does not authorize a payment. If you arrange a service directly with a business, confirm its prices and payment terms with that business.",
+      a: "For an eligible booking, review the amount and payment steps shown in the booking flow before confirming. Browsing, saving, recording interest or sending a message does not authorize a payment.",
     },
     {
       q: "What payment methods are accepted?",
-      a: "VakayGo is not accepting new booking payments during the directory launch. Ask the business which methods it accepts for a service you arrange directly. Future VakayGo payment methods depend on the approved provider and company country.",
+      a: "Available payment methods are shown in the secure payment flow for an eligible booking and depend on the configured payment provider. Use only the options offered for that booking.",
     },
     {
       q: "How do refunds work?",
@@ -72,7 +72,7 @@ const FAQ_DATA: Record<string, FaqItem[]> = {
     },
     {
       q: "Is my payment information secure?",
-      a: "Online payment setup is currently unavailable during the directory launch. Do not put card or bank details in a listing message or contact form. Any future payment setup must use the approved provider's secure flow.",
+      a: "Use only the secure payment flow offered for an eligible booking. Do not put card or bank details in a listing message or contact form. Operator payment setup must use the secure flow shown in the dashboard.",
     },
   ],
   "Account & Safety": [

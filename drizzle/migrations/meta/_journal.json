@@ -85,6 +85,55 @@
       "when": 1792194999000,
       "tag": "0011_user_phone_challenges",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792476000000,
+      "tag": "0012_outreach_delivery_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792479600000,
+      "tag": "0013_outreach_campaign_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792560000000,
+      "tag": "0014_sendcorex_outreach",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792965600000,
+      "tag": "0015_operator_onboarding_nudges",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793059167539,
+      "tag": "0016_listing_inquiries",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793059853965,
+      "tag": "0017_specialty_booking_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793081795247,
+      "tag": "0018_operator_terms_revision",
+      "breakpoints": true
     }
   ]
 }

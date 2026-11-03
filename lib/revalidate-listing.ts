@@ -21,6 +21,11 @@ export async function revalidateListing(listingId: string): Promise<void> {
     logger.warn("Sitemap revalidation failed", { listingId });
   }
   try {
+    revalidatePath("/grenada/experiences/[[...segments]]", "page");
+  } catch {
+    logger.warn("Grenada experiences revalidation failed", { listingId });
+  }
+  try {
     const db = drizzle(neon(process.env.DATABASE_URL!));
     const [row] = await db
       .select({ slug: listings.slug, islandSlug: islands.slug })
