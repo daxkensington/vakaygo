@@ -34,12 +34,18 @@ function formatTime(dateStr: string) {
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const days = Math.floor(diff / 86400000);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekdayCutoff = new Date(today);
+  weekdayCutoff.setDate(weekdayCutoff.getDate() - 6);
 
-  if (days === 0) return formatTime(dateStr);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return d.toLocaleDateString([], { weekday: "short" });
+  if (d >= today && d < tomorrow) return formatTime(dateStr);
+  if (d >= yesterday && d < today) return "Yesterday";
+  if (d >= weekdayCutoff) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 

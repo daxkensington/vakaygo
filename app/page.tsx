@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = { alternates: { canonical: "https://vakaygo.com/" } };
 import { Hero } from "@/components/landing/hero";
-import { StatsBar } from "@/components/landing/stats-bar";
 import { MapAiSpotlight } from "@/components/landing/map-ai-spotlight";
-import { ValueProps } from "@/components/landing/value-props";
 import { FeaturedListings } from "@/components/landing/featured-listings";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Categories } from "@/components/landing/categories";
 import { IslandShowcase } from "@/components/landing/island-showcase";
 import { AudienceSplit } from "@/components/landing/audience-split";
-import { WaitlistSection } from "@/components/landing/waitlist-section";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { PersonalizedHome } from "@/components/landing/personalized-home";
@@ -23,7 +20,7 @@ export default function LandingPage() {
     "@type": "WebPage",
     name: "VakayGo — Global Sun & Sea Travel Platform",
     description:
-      "Discover verified stays, boat charters, tours, restaurants, and local experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees.",
+      "Discover stays, boat charters, tours, restaurants, and local experiences across 34 Caribbean, Latin American, and Mediterranean destinations. Explore listings, save favorites, and plan your trip.",
     url: "https://vakaygo.com",
     isPartOf: { "@id": "https://vakaygo.com/#website" },
     about: {
@@ -58,41 +55,16 @@ export default function LandingPage() {
       />
       <main>
         <Hero />
-        {/* Every section below is offscreen at first paint. Wrapping in
-            .defer-offscreen applies content-visibility:auto so the
-            browser skips their layout+paint until scroll nears them —
-            cuts mobile main-thread Style & Layout work by ~60% on the
-            landing page (was the ceiling keeping mobile LCP at ~4s). */}
-        <div className="defer-offscreen">
-          <PersonalizedHome />
-        </div>
-        <div className="defer-offscreen">
-          <StatsBar />
-        </div>
-        <div className="defer-offscreen">
-          <MapAiSpotlight />
-        </div>
-        <div className="defer-offscreen">
-          <FeaturedListings />
-        </div>
-        <div className="defer-offscreen">
-          <ValueProps />
-        </div>
-        <div className="defer-offscreen">
-          <HowItWorks />
-        </div>
-        <div className="defer-offscreen">
-          <Categories />
-        </div>
-        <div className="defer-offscreen">
-          <IslandShowcase />
-        </div>
-        <div className="defer-offscreen">
-          <AudienceSplit />
-        </div>
-        <div className="defer-offscreen">
-          <WaitlistSection />
-        </div>
+        <PersonalizedHome />
+        {/* These compact sections use normal layout so hash links do not
+            depend on offscreen size estimates. Images remain lazy-loaded. */}
+        <Categories />
+        <IslandShowcase />
+        <MapAiSpotlight />
+        <HowItWorks />
+        <AudienceSplit />
+        {/* Delayed public recommendations follow the static anchor targets. */}
+        <FeaturedListings />
       </main>
       <Footer />
     </>

@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users, islands, promoCodes, promoCodeUses, availability, pricingRules } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
+import { calculateTransferUnitPrice } from "@/lib/transfer-pricing";
 import { shouldRequestBooking } from "@/lib/booking-request";
 import { toWallClockDate } from "@/lib/booking-time";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
       includeInsurance = false,
       paymentMethod = "card",
       promoCode,
+      vehicleType = "sedan",
+      roundTrip = false,
+      reservationType,
     } = body;
 
     if (!listingId || !startDate || typeof startDate !== "string") {
@@ -158,13 +162,16 @@ export async function POST(request: Request) {
       db.select({ id: availability.id }).from(availability).where(and(eq(availability.listingId, listing.id), sql`${availability.priceOverride} is not null`)).limit(1),
       db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.listingId, listing.id), eq(pricingRules.isActive, true))).limit(1),
     ]);
-    const isRequest = overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
+    const isRequest = listing.type === "dining" && reservationType === "table" || overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
       typeData: listing.typeData,
       operatorEmail: listing.operatorEmail,
       priceAmount: listing.priceAmount,
     });
 
-    const pricePerUnit = parseFloat(listing.priceAmount || "0");
+    const basePricePerUnit = parseFloat(listing.priceAmount || "0");
+    const pricePerUnit = listing.type === "transfer"
+      ? calculateTransferUnitPrice(basePricePerUnit, vehicleType, roundTrip)
+      : basePricePerUnit;
 
     // Calculate quantity based on type
     let quantity = guestCount;
@@ -270,6 +277,8 @@ export async function POST(request: Request) {
         guestNotes,
         promoCodeId,
         discountAmount: discountAmount.toFixed(2),
+        transferVehicleType: listing.type === "transfer" ? vehicleType : null,
+        transferRoundTrip: listing.type === "transfer" ? roundTrip : null,
       })
       .returning({
         id: bookings.id,
@@ -343,6 +352,8 @@ export async function GET(request: Request) {
         checkoutStripeAccountId: bookings.checkoutStripeAccountId,
         paymentMode: bookings.paymentMode,
         cancellationRequestedAt: bookings.cancellationRequestedAt,
+        cancellationPolicy: sql<string>`coalesce(${bookings.cancellationPolicySnapshot}, ${listings.cancellationPolicy}, 'moderate')`,
+        listingTimezone: islands.timezone,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listingId, listings.id))
