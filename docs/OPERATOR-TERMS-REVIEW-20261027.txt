@@ -1,0 +1,99 @@
+VakayGo operator terms revision — proposed 2026-10-27
+
+Status: prepared for business review. This branch is a draft proposal, not approval
+of fees, legal sufficiency, provider coverage or a production launch. Production
+terms, balances, bookings, payout arrangements and launch flags have not changed.
+
+PROPOSED COMMERCIAL BASIS
+The revised agreement describes existing checkout behavior; pricing.ts is unchanged.
+Category                              Operator commission / traveler fee
+Stays                                 12% / 0%
+Tours and excursions                  15% / 0%
+Dining: table requests                 0% / 0%, no payment
+Dining: separate priced bookings      12% / 0%
+Events                                10% / 0%
+Transfers and transport               15% / 0%
+Guides, VIP and spa services          15% / 0%
+The September draft instead listed stays3/9, tours5/10, dining0/0, events3/5,
+transfers4/8, transport5/8 and guides/VIP/spa5/10. Those old terms remain archived.
+
+Promotions reduce the platform share first. A discount greater than the commission
+also reduces operator earnings. Example:100 subtotal /20 discount on a tour gives
+80 charged,80 operator earnings,0 platform fee, in the same booking currency.
+This proposal discloses that behavior; it does not change promotion economics.
+
+Card collection is separate from settlement. Connected-account charges use the
+verified Stripe route; platform collection requires a verified direct-settlement
+profile. PayPal/Wise/wire are possible operator settlement routes, not traveler
+checkout methods. Release and payout jobs record status/ledger entries, not a bank
+transfer. Direct settlement still needs human confirmation and a recorded reference.
+No guaranteed arrival date, automatic transfer, country coverage, payout currency,
+FX rate, external fee or minimum is inferred from a profile field or a weekly job.
+The current profile minimum field and cron threshold are not aligned; confirm the
+operational arrangement before enabling a route rather than promising automation.
+Full and partial refunds retain current code behavior; a partial refund need not
+reverse an application fee. Traveler cancellation policy snapshots are unchanged.
+
+REVIEW DECISIONS BEFORE PUBLICATION
+Approve or amend: (1) the complete fee table and free-table/priced-dining distinction;
+(2) promotion funding when discounts exceed commission; (3) manual settlement route,
+minimum/currency/FX/external-cost arrangements and disclosures; (4) existing refund
+commission treatment; (5) version2026-10-27 and renewed acceptance before new sales.
+The new receipt table follows the listing lifecycle: deletion cascades with listing
+deletion, and trusted DB staff can alter it. This is not a legally approved retention
+policy or cryptographic consent proof. It is exact application/database audit evidence.
+
+IMPLEMENTATION PREPARED
+- Fixed version/fee manifest; parity tests prevent silent contract/pricing drift.
+- Current terms plus a clearly labeled verbatim September6 archive; public access is
+  limited to those exact paths. Unknown nested routes remain protected.
+- Checkbox consent is tied to the displayed version, including refresh/save races.
+- App and SQL require the exact new version. Canonical activation checks/locks both
+  payment routes; app fallbacks cannot bypass it, including a stale database policy.
+- Migration0018 snapshots previous acceptance exactly and records later new consent
+  separately. It does not relabel existing signatures or rewrite financial records.
+- Reused checkout URLs get a final SQL/eligibility/calendar check after provider reads.
+  Revocation closes the exact link; failed expiry is reported for retry, not success.
+- Payout UI uses stored checkout earnings; missing historical earnings and mixed or
+  unknown currency totals require review. CSV rows retain their recorded currencies.
+
+READ-ONLY PRODUCTION SNAPSHOT —2026-10-27T06:26Z
+13 onboarding rows:5 record September6 acceptance,8 have no acceptance. No activation
+recorded and no open unpaid hosted checkout links at that instant. These aggregate
+counts do not prove runtime booking availability. Migration bookkeeping shows only
+0018 pending, and the configured preview database endpoint differs from production.
+Re-run these checks immediately before any approved cutover.
+
+CUTOVER AFTER APPROVAL
+1. Reconfirm exact project/team, reviewed head/tree, all required CI and preview;
+   recheck schema drift, versions, five consent records and pending links.
+2. Create the pre-migration Neon branch required by drizzle/MIGRATIONS.md; rehearse
+   0018 on that isolated branch. Do not reuse an expired restore point or replay an
+   earlier batch's one-use apply helper.
+3. Install0018 before deploying the matching application. The restrictive predicate
+   closes old-version eligibility during the transition; leave launch/provider flags
+   unchanged. A Git/Vercel deployment does not apply migrations automatically.
+4. Close any then-outstanding unpaid links using guarded expiry and retry failures;
+   preserve paid history and keep signed webhook/refund reconciliation available.
+5. Deploy the exact approved head normally. Verify db:check, current-version parity,
+   both payment routes, no old-version activation/checkout bypass, history/support,
+   and public terms/archive. Invalidate affected listing/island/explore/hotel caches;
+   fresh no-store eligibility remains authoritative during cache turnover.
+6. Each operator explicitly accepts the displayed revision and refreshes any required
+   payment verification. Canonical activation can follow an operator action or an
+   authorized admin payout-profile verification review; both paths check every
+   prerequisite and the current terms version. Do not enable listings solely from
+   a version bump/backfill or manufacture consent. Support existing paid services.
+7. Preserve receipt/financial history and fix forward. Rolling code/SQL back must not
+   reopen acceptance of an obsolete agreement or discard recorded new consent.
+
+VERIFICATION AND LIMITS
+Fresh and real0017-to-0018 PostgreSQL checks preserve exact old consent, booking,
+payout, refund, notification, profile, provider and launch records. Both routes
+require fresh consent and canonical activation. Real-route/real-SQL tests cover
+healthy hosted-link reuse and terms/cancellation races with mocked provider transport.
+No real customer charge, email, provider onboarding or bank settlement was performed.
+
+Provider references checked against the implemented routes (not coverage approval):
+https://docs.stripe.com/connect/destination-charges
+https://docs.stripe.com/connect/manage-payout-schedule

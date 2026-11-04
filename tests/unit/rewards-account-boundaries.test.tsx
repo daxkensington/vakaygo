@@ -29,6 +29,9 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 it("hides A's loaded ledger and referral link immediately when B starts loading, then ignores late A reads", async () => {
   reads("Private A ledger", "PRIVATE_A_CODE"); await render();
   expect(container.textContent).toContain("Private A ledger"); expect(container.textContent).toContain("PRIVATE_A_CODE");
+  const redemption = [...container.querySelectorAll("h3")].find(heading => heading.textContent === "Points redemption")?.parentElement;
+  expect(redemption?.textContent).toContain("You have 1,100 points. Points redemption is currently unavailable.");
+  expect(redemption?.textContent).not.toMatch(/\$|credit|Online booking/);
   const oldLoyalty = deferred(), oldReferrals = deferred();
   fetchMock.mockReturnValueOnce(oldLoyalty.promise).mockReturnValueOnce(oldReferrals.promise); await click("Earned");
   const oldSignal = fetchMock.mock.calls.at(-1)![1].signal as AbortSignal;
@@ -40,6 +43,11 @@ it("hides A's loaded ledger and referral link immediately when B starts loading,
   await act(async () => { oldLoyalty.resolve(loyalty("Obsolete A ledger")); oldReferrals.resolve(referrals("OBSOLETE_A_CODE")); });
   expect(container.textContent).toContain("Private B ledger"); expect(container.textContent).toContain("PRIVATE_B_CODE");
   expect(container.textContent).not.toContain("Obsolete A"); expect(container.textContent).not.toContain("OBSOLETE_A_CODE");
+  fetchMock.mockResolvedValueOnce(response({ ...loyalty("Empty B ledger"), transactions: [] })).mockResolvedValueOnce(response(referrals("PRIVATE_B_CODE")));
+  await click("Redeemed");
+  expect(container.textContent).toContain("No transactions yet.");
+  expect(container.textContent).toContain("check each listing for current booking options and availability");
+  expect(container.textContent).not.toContain("online bookings are unavailable");
 });
 
 it("aborts an account's pending referral-code mutation and never installs its late receipt in the next account", async () => {

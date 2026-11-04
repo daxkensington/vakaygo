@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch, operatorSignInHref } from "@/lib/operator-session";
+
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,7 +44,7 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
   const readTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const load = useCallback(async () => {
-    if (!userId) { router.replace(`/auth/signin?next=/operator/claim/${listingId}`); return; }
+    if (!userId) { router.replace(operatorSignInHref(`/operator/claim/${listingId}`)); return; }
     const request = ++requestSequence.current;
     requestController.current?.abort();
     if (readTimer.current !== null) clearTimeout(readTimer.current);
@@ -60,7 +62,7 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
     try {
       const response = await fetch(`/api/listings/claim?listingId=${encodeURIComponent(listingId)}`, { cache: "no-store", signal: controller.signal });
       if (!isCurrent() || controller.signal.aborted) return;
-      if (response.status === 401) { router.replace(`/auth/signin?next=/operator/claim/${listingId}`); return; }
+      if (response.status === 401) return;
       if (response.status === 403) {
         const data = await response.json().catch(() => ({}));
         if (!isCurrent() || controller.signal.aborted) return;
@@ -121,7 +123,7 @@ function ClaimListing({ listingId, userId }: { listingId: string; userId: string
       if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Invalid verification response");
       clearTimeout(timeout); if (actionTimer.current === timeout) actionTimer.current = null;
       responseReceived = true;
-      if (response.status === 401) { router.replace(`/auth/signin?next=/operator/claim/${listingId}`); return; }
+      if (response.status === 401) return;
       if (response.status === 403 && ["email_unverified", "role_required"].includes(data.code)) { setSummary(null); setBlocked(data.code === "email_unverified" ? "email" : "role"); return; }
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Verification could not be completed.");
       if (action === "become_operator") { window.location.reload(); return; }

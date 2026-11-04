@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { OPERATED_BY } from "@/lib/brand";
 
 export default function TermsPage() {
   return (
@@ -16,7 +17,7 @@ export default function TermsPage() {
             <div className="space-y-8 text-navy-600 leading-relaxed text-[15px]">
               <section>
                 <h2 className="text-xl font-bold text-navy-700 mb-3">1. Acceptance of Terms &amp; Intermediary Role</h2>
-                <p>By using VakayGo, you agree to these terms. VakayGo is an online marketplace that connects travelers with independent local businesses (&ldquo;Operators&rdquo;) across the Caribbean and global leisure destinations. VakayGo acts solely as an intermediary and limited payment-collection agent for Operators and is not the supplier, owner, or operator of any accommodation, excursion, transport, dining, or other service listed on the platform.</p>
+                <p>By using VakayGo, you agree to these terms. {OPERATED_BY} VakayGo is an online marketplace that connects travelers with independent local businesses (&ldquo;Operators&rdquo;) across the Caribbean and global leisure destinations. VakayGo acts solely as an intermediary and limited payment-collection agent for Operators and is not the supplier, owner, or operator of any accommodation, excursion, transport, dining, or other service listed on the platform.</p>
               </section>
 
               <section>
