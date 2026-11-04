@@ -232,7 +232,7 @@ export function Hero() {
         <p className="mt-8 text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
           Stays. Boat Charters. Tours. Dining. Transfers. Concierge.{" "}
           <br className="hidden md:block" />
-          Discover local places and plan your trip. Online bookings and payments are not available yet.
+          Discover local places and plan your trip. Booking options depend on verification, setup, and availability for each listing.
         </p>
 
         {/* Search Bar */}
