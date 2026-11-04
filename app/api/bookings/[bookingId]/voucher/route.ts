@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 import QRCode from "qrcode";
@@ -81,11 +81,30 @@ export async function GET(
     // Generate verification token if not already set
     let verificationToken = booking.verificationToken;
     if (!verificationToken) {
-      verificationToken = randomUUID();
-      await db
+      const candidate = randomUUID();
+      const [claimed] = await db
         .update(bookings)
-        .set({ verificationToken })
-        .where(eq(bookings.id, bookingId));
+        .set({ verificationToken: candidate })
+        .where(
+          and(eq(bookings.id, bookingId), isNull(bookings.verificationToken))
+        )
+        .returning({ verificationToken: bookings.verificationToken });
+
+      if (claimed?.verificationToken) {
+        verificationToken = claimed.verificationToken;
+      } else {
+        // A concurrent request already set the token; use the stored one
+        const [stored] = await db
+          .select({ verificationToken: bookings.verificationToken })
+          .from(bookings)
+          .where(eq(bookings.id, bookingId))
+          .limit(1);
+        verificationToken = stored?.verificationToken ?? null;
+      }
+
+      if (!verificationToken) {
+        throw new Error("Voucher verification token unavailable");
+      }
     }
 
     // Get traveler name
