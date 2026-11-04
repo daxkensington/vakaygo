@@ -65,8 +65,8 @@ export function validateAiSearchFilters(parsed: unknown, query: string): AiSearc
   if (typeof source.duration === "string" && DURATION_OPTIONS.includes(source.duration as DurationOption)) filters.duration = source.duration as DurationOption;
   const q = groundedQuery(source.q, query);
   if (q) filters.q = q;
-  // Invalid/non-JSON completions recover as a normal bounded user search.
-  if (!object(parsed)) filters.q = words(query).slice(0, 12).join(" ").slice(0, 120) || undefined;
+  // Completions with no usable filters recover as a normal bounded user search.
+  if (Object.keys(filters).length === 0) filters.q = words(query).slice(0, 12).join(" ").slice(0, 120) || undefined;
   return filters;
 }
 
