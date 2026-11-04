@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CalendarCheck, Loader2, ChevronLeft, ChevronRight, Search, Download } from "lucide-react";
+import { CancelBookingControl, canCancelBooking } from "@/components/bookings/cancel-booking-control";
 
 type Booking = {
   id: string;
@@ -14,6 +15,7 @@ type Booking = {
   serviceFee: string;
   totalAmount: string;
   currency: string;
+  paidAt: string | null;
   createdAt: string;
   listingTitle: string;
   travelerName: string | null;
@@ -82,20 +84,16 @@ export default function AdminBookingsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Outcome of a phoned-in request (unclaimed/unpriced listing). The API
-  // emails the traveler either way.
-  async function resolveRequest(id: string, status: "confirmed" | "cancelled") {
-    const prompt =
-      status === "confirmed"
-        ? "Business confirmed by phone? Optional note to include in the traveler's email:"
-        : "Reason to tell the traveler (optional):";
-    const text = window.prompt(prompt, "");
+  // emails the traveler when the business confirms by phone.
+  async function confirmRequest(id: string) {
+    const text = window.prompt("Business confirmed by phone? Optional note to include in the traveler's email:", "");
     if (text === null) return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/bookings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(status === "confirmed" ? { status, note: text } : { status, reason: text }),
+        body: JSON.stringify({ status: "confirmed", note: text }),
       });
       const body = await res.json();
       if (!res.ok) window.alert(body.error || "Failed");
@@ -301,25 +299,32 @@ export default function AdminBookingsPage() {
                         {formatDate(b.createdAt)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        {b.status === "requested" && (
-                          <div className="flex gap-2">
+                        <div className="flex gap-2">
+                          {b.status === "requested" && (
                             <button
-                              onClick={() => resolveRequest(b.id, "confirmed")}
+                              onClick={() => confirmRequest(b.id)}
                               disabled={busyId === b.id}
                               className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
                               title="The business confirmed by phone — emails the traveler"
                             >
                               Confirm
                             </button>
-                            <button
-                              onClick={() => resolveRequest(b.id, "cancelled")}
-                              disabled={busyId === b.id}
-                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        )}
+                          )}
+                          {canCancelBooking(b.status) && (
+                            <CancelBookingControl
+                              bookingId={b.id}
+                              bookingNumber={b.bookingNumber}
+                              status={b.status}
+                              totalAmount={b.totalAmount}
+                              currency={b.currency}
+                              paidAt={b.paidAt}
+                              startDate={b.startDate}
+                              actor="business"
+                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                              onComplete={fetchBookings}
+                            />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

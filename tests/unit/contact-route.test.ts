@@ -78,7 +78,8 @@ it("sends a static business onboarding auto-reply to real domains without echoin
   expect(autoReply.html).toContain("vakaygo.com/for-businesses");
   expect(autoReply.html).toContain("vakaygo.com/operator/listings/new");
   expect(autoReply.html).not.toContain("UNTRUSTED_PAYLOAD_MARKER");
-  expect(autoReply.html).toContain("New bookings, payments and payouts are unavailable");
+  expect(autoReply.html).toContain("Claiming a listing is free");
+  expect(autoReply.html).toContain("Bookings and payouts require completed business setup, an approved payment route, and listing activation");
   expect(autoReply.html).not.toMatch(/Wise|PayPal|Bank Wire|Stripe Connect|Payouts Supported/);
 });
 
