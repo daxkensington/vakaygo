@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#3A405A">
         <li><strong>Already in our directory?</strong> Search and claim your listing at <a href="https://vakaygo.com/for-businesses" style="color:#C8912E;font-weight:600">vakaygo.com/for-businesses</a>.</li>
         <li><strong>New business not listed yet?</strong> Create your free operator account and add your listing directly at <a href="https://vakaygo.com/auth/signup?role=operator&next=/operator/listings/new" style="color:#C8912E;font-weight:600">vakaygo.com/operator/listings/new</a>.</li>
-        <li><strong>Directory launch:</strong> New bookings, payments and payouts are unavailable. Verifying ownership of a listing does not activate them.</li>
+        <li><strong>Booking setup:</strong> Claiming a listing is free. Bookings and payouts require completed business setup, an approved payment route, and listing activation.</li>
       </ol>
     </div>
     <p style="margin:16px 0 0;font-size:13.5px;line-height:1.6;color:#6E7491">

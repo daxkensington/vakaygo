@@ -80,7 +80,33 @@ export async function POST(
 
     const events = parseICal(icalText);
     const now = new Date();
-    const futureEvents = events.filter((e) => e.end > now);
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+    const horizon = new Date(todayStart.getTime() + 730 * 86400000);
+    const futureEvents = events
+      .map((event) => ({
+        ...event,
+        start: new Date(Math.max(event.start.getTime(), todayStart.getTime())),
+        end: new Date(Math.min(event.end.getTime(), horizon.getTime())),
+      }))
+      .filter((event) => event.start < event.end);
+
+    // Check the entire request before writing any blocked dates.
+    let totalDays = 0;
+    for (const event of futureEvents) {
+      const current = new Date(event.start);
+      while (current < event.end) {
+        totalDays++;
+        if (totalDays > 730) {
+          return NextResponse.json(
+            { error: "iCal feed exceeds the 730-day limit" },
+            { status: 422 }
+          );
+        }
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+    }
 
     // Sync: create blocked dates for each event day
     let blockedCount = 0;

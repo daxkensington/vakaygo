@@ -1,5 +1,7 @@
 import { sendEmail } from "@/server/mail-client";
 import { TEAM_INBOX } from "@/lib/booking-request";
+import { NUDGE_MAX_PER_STAGE, type NextStepContent } from "@/lib/onboarding-nudges";
+import { EMAIL_FOOTER_LINE } from "@/lib/brand";
 
 /**
  * Emails for booking REQUESTS and listing CLAIMS.
@@ -32,7 +34,7 @@ function shell(inner: string, header: { eyebrow: string; title: string; tone?: "
   <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(28,35,51,0.08)">
     ${inner}
   </div>
-  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">VakayGo · Caribbean Travel Platform · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
+  <p style="text-align:center;color:#9A9DB0;font-size:11px;margin-top:24px">${EMAIL_FOOTER_LINE} · <a href="https://vakaygo.com" style="color:#C8912E">vakaygo.com</a></p>
 </div>
 </body></html>`.trim();
 }
@@ -212,15 +214,28 @@ export async function sendClaimDecision(params: {
   to: string;
   contactName: string;
   listingTitle: string;
+  /** Required for an approval: the welcome links straight to this listing's onboarding. */
+  listingId?: string;
   approved: boolean;
   adminNotes: string | null;
+  /** Days of availability opened by default at approval (0 when the listing already had dates). */
+  openedDays?: number;
 }) {
   const p = params;
+  const onboardingUrl = p.listingId ? `https://vakaygo.com/operator/onboarding/${encodeURIComponent(p.listingId)}` : "https://vakaygo.com/operator/listings";
+  const stepStyle = "color:#4A4F73;margin:0 0 10px;line-height:1.6";
   const body = p.approved
     ? `
     <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.contactName)},</p>
-    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your claim is approved. <strong>${esc(p.listingTitle)}</strong> now lives in your dashboard. Add photos, set prices and availability, and every booking will come to you.</p>
-    <p style="margin:24px 0 0;text-align:center"><a href="https://vakaygo.com/operator/listings" style="background:#C8912E;color:white;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600">Open my listing</a></p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Your claim is approved: <strong>${esc(p.listingTitle)}</strong> is now yours on VakayGo.${p.openedDays ? ` We opened the next ${p.openedDays} days for bookings; block any dates you cannot take in your calendar.` : ""}</p>
+    <p style="color:#1C2333;font-weight:600;margin:0 0 8px">Three steps stand between you and your first booking:</p>
+    <ol style="padding-left:20px;margin:0 0 16px">
+      <li style="${stepStyle}">Confirm your company details and accept the operator terms (about three minutes).</li>
+      <li style="${stepStyle}">Set your price, guest capacity and cancellation policy, and check your open dates.</li>
+      <li style="${stepStyle}">Tell us how you want to be paid: Wise, PayPal or bank transfer, or Stripe where supported.</li>
+    </ol>
+    <p style="margin:24px 0 0;text-align:center"><a href="${esc(onboardingUrl)}" style="background:#C8912E;color:white;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600">Start onboarding</a></p>
+    <p style="color:#4A4F73;margin:16px 0 0;line-height:1.6;font-size:14px">Stuck on any step? Reply to this email and a person on our team will help.</p>
     ${p.adminNotes ? `<p style="color:#9A9DB0;font-size:12px;margin:16px 0 0">${esc(p.adminNotes)}</p>` : ""}`
     : `
     <p style="color:#1C2333;margin:0 0 16px">Hi ${esc(p.contactName)},</p>
@@ -327,6 +342,154 @@ export async function sendDisputeToTeam(params: {
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6;white-space:pre-wrap">${esc(p.description)}</p>
     <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Reply-to is the traveler. Resolve in ${link("https://vakaygo.com/admin/disputes", "admin → disputes")}.</p>`,
       { eyebrow: "Dispute filed", title: p.bookingNumber, tone: "gold" }
+    ),
+  });
+}
+
+// ─── Operator onboarding reminders ────────────────────────────────
+
+/** Operator: the one next step to finish onboarding. lib/onboarding-nudges.ts decides which. */
+export async function sendOnboardingNudge(params: {
+  to: string;
+  operatorName: string | null;
+  listingTitle: string;
+  islandName: string;
+  next: NextStepContent;
+  checklist: { label: string; done: boolean }[];
+  completed: number;
+  total: number;
+  nudgeNumber: number;
+  final: boolean;
+  actionUrl: string;
+  stopUrl: string;
+}) {
+  const p = params;
+  const name = p.operatorName?.trim();
+  const greeting = name ? `Hi ${esc(name)},` : "Hello,";
+  const steps = p.checklist
+    .map(step => `<li style="margin:0 0 6px;color:${step.done ? "#1A6B6A" : "#4A4F73"}">${step.done ? "&#10003;" : "&#9675;"} ${esc(step.label)}</li>`)
+    .join("");
+  const closing = p.final
+    ? "This is our last reminder about this step; we will not email you about it again."
+    : "If this step is still open in a week, we will check in once more.";
+  return sendEmail({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `${p.next.title} — ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${greeting}</p>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">You claimed <strong>${esc(p.listingTitle)}</strong> in ${esc(p.islandName)} on VakayGo. ${esc(p.next.detail)}</p>
+    <p style="text-align:center;margin:24px 0"><a href="${esc(p.actionUrl)}" style="display:inline-block;background:#C8912E;color:#FFFFFF;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600">${esc(p.next.actionLabel)}</a></p>
+    <p style="color:#1C2333;font-weight:600;margin:0 0 8px">${p.completed} of ${p.total} steps done</p>
+    <ul style="list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:1.5">${steps}</ul>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Stuck or unsure? Reply to this email and a person on our team will help.</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Reminder ${p.nudgeNumber} of ${NUDGE_MAX_PER_STAGE}. ${esc(closing)} Finishing setup ends these reminders, or you can ${link(p.stopUrl, "stop setup reminders")}.</p>`,
+      { eyebrow: "Finish setting up", title: p.next.title, tone: "gold" }
+    ),
+  });
+}
+
+/** Team inbox: payout profiles and listings that have waited on VakayGo's own review. */
+export async function sendOnboardingReviewReminderToTeam(params: {
+  items: { kind: "payout_profile" | "listing"; title: string; islandName: string; waitingSince: string; detail: string | null }[];
+  payoutUrl: string;
+  listingsUrl: string;
+}) {
+  const p = params;
+  const now = Date.now();
+  const rows = p.items.map(item => {
+    const days = Math.max(0, Math.floor((now - new Date(item.waitingSince).getTime()) / 86_400_000));
+    const label = item.kind === "payout_profile" ? "Payout profile" : "Listing";
+    return row(`${label}: ${esc(item.title)}`, `${esc(item.islandName)}${item.detail ? ` · ${esc(item.detail)}` : ""} · waiting ${days} day${days === 1 ? "" : "s"}`);
+  }).join("");
+  const payouts = p.items.filter(item => item.kind === "payout_profile").length;
+  const listings = p.items.length - payouts;
+  return sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    subject: `ACTION: ${p.items.length} onboarding review${p.items.length === 1 ? "" : "s"} waiting on VakayGo`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">These businesses finished their part. Each item below has waited more than two days for our review, and until it is reviewed the business cannot take bookings.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">${rows}</table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${payouts ? link(p.payoutUrl, "Review payout profiles") : ""}${payouts && listings ? " · " : ""}${listings ? link(p.listingsUrl, "Review listings") : ""}</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Sent at most once a week per item while it waits.</p>`,
+      { eyebrow: "Onboarding review", title: `${p.items.length} waiting on VakayGo`, tone: "gold" }
+    ),
+  });
+}
+
+export async function sendListingInquiryToTeam(params: {
+  inquiryId: string;
+  listingTitle: string;
+  listingUrl: string;
+  islandName: string;
+  businessPhone: string | null;
+  businessWebsite: string | null;
+  whenText: string;
+  partySize: number;
+  message: string;
+  travelerEmail: string;
+}) {
+  const p = params;
+  await sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    replyTo: p.travelerEmail,
+    subject: `ACTION: availability inquiry — ${p.listingTitle} (${p.islandName})`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">A traveler asked about an <strong>unclaimed</strong> listing. This is not a booking. Try to reach the business, then reply to the traveler. The business has not received the traveler's details.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Business", link(p.listingUrl, p.listingTitle))}
+        ${row("Island", esc(p.islandName))}
+        ${row("Business phone", p.businessPhone ? esc(p.businessPhone) : "<em>none on file</em>")}
+        ${row("Website", p.businessWebsite ? esc(p.businessWebsite) : "—")}
+        ${row("Requested dates", esc(p.whenText))}
+        ${row("Party size", String(p.partySize))}
+        ${row("Message", p.message ? esc(p.message) : "—")}
+      </table>
+    </div>
+    <div style="background:#EAF4F4;border-radius:12px;padding:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Traveler email", link(`mailto:${p.travelerEmail}`, p.travelerEmail))}
+        ${row("Inquiry id", esc(p.inquiryId))}
+      </table>
+    </div>`,
+      { eyebrow: "Availability inquiry", title: p.listingTitle, tone: "gold" }
+    ),
+  });
+}
+
+export async function sendListingInquiryReceived(params: {
+  to: string;
+  listingTitle: string;
+  listingUrl: string;
+  whenText: string;
+  partySize: number;
+}) {
+  const p = params;
+  await sendEmail({
+    from: FROM,
+    to: p.to,
+    replyTo: TEAM_INBOX,
+    subject: `Inquiry received — ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">We received your availability inquiry for <strong>${esc(p.listingTitle)}</strong>. <strong>This is not a booking, nothing is reserved, and no payment was taken.</strong></p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">
+        ${row("Requested dates", esc(p.whenText))}
+        ${row("Party size", String(p.partySize))}
+      </table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Our team will try to contact the business and reply by email. We cannot guarantee that the business will respond or that your dates will be available. You can return to ${link(p.listingUrl, "the listing")} or reply to this email if your plans change.</p>`,
+      { eyebrow: "Inquiry received — not a booking", title: p.listingTitle, tone: "gold" }
     ),
   });
 }

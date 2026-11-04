@@ -5,6 +5,7 @@ import { expireListingPendingCheckouts } from "@/server/booking-checkout-safety"
 import { revalidateListing } from "@/lib/revalidate-listing";
 import { maskAccountNumber } from "@/server/payout-profiles";
 import { logger } from "@/lib/logger";
+import { OPERATOR_TERMS_VERSION } from "@/lib/operator-terms";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -134,6 +135,8 @@ export async function PATCH(request: Request) {
       }
 
       const listingId = updated.listing_id as string;
+      let listingActivated: boolean | null = false;
+      let activationWarning: string | undefined;
       if (decision !== "verified") {
         await sql.query(
           `UPDATE listing_onboarding SET activated_at = NULL, updated_at = now() WHERE listing_id = $1`,
@@ -141,19 +144,17 @@ export async function PATCH(request: Request) {
         );
         await expireListingPendingCheckouts(listingId);
       } else {
-        await sql.query(
-          `UPDATE listing_onboarding
-              SET activated_at = coalesce(activated_at, now()),
-                  updated_at = now()
-            WHERE listing_id = $1
-              AND suspended_at IS NULL
-              AND authority_accepted_at IS NOT NULL
-              AND terms_accepted_at IS NOT NULL
-              AND length(trim(coalesce(business_legal_name, ''))) >= 2
-              AND vakaygo_listing_claim_verified($1)
-              AND vakaygo_listing_setup_valid($1)`,
-          [listingId]
-        );
+        try {
+          const [activation] = await sql.query(
+            "SELECT CASE WHEN vakaygo_operator_terms_version()=$3::text THEN vakaygo_activate_listing($1::uuid,$2::uuid) ELSE false END AS activated",
+            [listingId, updated.operator_id, OPERATOR_TERMS_VERSION]
+          );
+          listingActivated = activation?.activated === true;
+        } catch (error) {
+          listingActivated = null;
+          activationWarning = "The payout profile was verified, but listing activation could not be confirmed. Review the onboarding page before accepting bookings.";
+          logger.error("Payout profile verified; listing activation unconfirmed", { listingId, error });
+        }
       }
       await revalidateListing(listingId);
 
@@ -165,7 +166,7 @@ export async function PATCH(request: Request) {
 
       if (decision === "verified") {
         const [opInfo] = await sql.query(
-          `SELECT u.email, u.name, l.title, vakaygo_listing_bookable(l.id) AS bookable
+          `SELECT u.email, u.name, l.title
              FROM listings l
              JOIN users u ON u.id = l.operator_id
             WHERE l.id = $1`,
@@ -181,18 +182,14 @@ export async function PATCH(request: Request) {
                 subject: `Your VakayGo payout profile for "${opInfo.title}" is verified!`,
                 html: `<p>Hi ${opInfo.name || "there"},</p>
 <p>Your payout profile for <strong>${opInfo.title}</strong> has been verified by our compliance team.</p>
-<p>${
-                  opInfo.bookable
-                    ? "Your listing is now <strong>active and accepting online bookings</strong> on VakayGo!"
-                    : `Finish any remaining listing details at <a href="https://vakaygo.com/operator/onboarding/${listingId}">your onboarding page</a> to go live for online bookings.`
-                }</p>`,
+<p>Review the current activation status and booking availability at <a href="https://vakaygo.com/operator/onboarding/${listingId}">your onboarding page</a>. Payout verification alone does not enable bookings.</p>`,
               })
             )
             .catch(() => {});
         }
       }
 
-      return NextResponse.json({ success: true, profile: updated });
+      return NextResponse.json({ success: true, profile: updated, listingActivated, ...(activationWarning ? { warning: activationWarning } : {}) });
     }
 
     if (body?.action === "complete_payout") {

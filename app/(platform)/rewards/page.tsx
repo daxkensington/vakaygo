@@ -344,7 +344,7 @@ function RewardsAccount() {
                     <div className="px-6 py-12 text-center">
                       <Sparkles size={32} className="text-navy-200 mx-auto mb-4" />
                       <p className="text-navy-400">No transactions yet.</p>
-                      <p className="text-navy-300 text-sm mt-1">Explore the directory while online bookings are unavailable.</p>
+                      <p className="text-navy-300 text-sm mt-1">Explore the directory and check each listing for current booking options and availability.</p>
                       <Link
                         href="/explore"
                         className="inline-flex items-center gap-2 mt-4 text-gold-700 font-medium text-sm hover:text-gold-600"
@@ -519,9 +519,9 @@ function RewardsAccount() {
               {/* Quick Redeem */}
               {loyalty && points !== undefined && points >= 500 && (
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
-                  <h3 className="font-bold mb-2">Ready to Redeem?</h3>
+                  <h3 className="font-bold mb-2">Points redemption</h3>
                   <p className="text-teal-100 text-sm mb-4">
-                    You have {points.toLocaleString()} points (${(points / 100).toFixed(2)} credit). Online booking and redemption are currently unavailable.
+                    You have {points.toLocaleString()} points. Points redemption is currently unavailable.
                   </p>
                   <Link
                     href="/explore"
