@@ -1,7 +1,9 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Save,
   Loader2,
@@ -42,7 +44,6 @@ type ListingData = {
 
 export default function EditListingPage() {
   const params = useParams();
-  const router = useRouter();
   const [listing, setListing] = useState<ListingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,7 +108,7 @@ export default function EditListingPage() {
       try {
         const res = await fetch(`/api/operator/listings/${encodeURIComponent(String(params.listingId))}`, { cache: "no-store", signal: controller.signal });
         if (!active) return;
-        if (res.status === 401) { router.replace(`/auth/signin?next=${encodeURIComponent(`/operator/listings/${params.listingId}`)}`); return; }
+        if (res.status === 401) return;
         const data = await res.json();
         if (!active) return;
         if (!res.ok) throw new Error(data.error || "Could not load this listing.");
@@ -140,7 +141,7 @@ export default function EditListingPage() {
     }
     if (params.listingId) fetchListing();
     return () => { active = false; controller.abort(); };
-  }, [params.listingId, loadAttempt, router]);
+  }, [params.listingId, loadAttempt]);
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   async function handleSave(e: React.FormEvent) {
@@ -177,7 +178,7 @@ export default function EditListingPage() {
       });
 
       const data = await res.json();
-      if (res.status === 401) { router.replace(`/auth/signin?next=${encodeURIComponent(`/operator/listings/${listing.id}`)}`); return; }
+      if (res.status === 401) return;
       if (!res.ok) throw new Error(data.error || "Your changes could not be saved. Please try again.");
       setListing(current => current ? { ...current, title, headline, description, address, parish, status, typeData: { ...current.typeData, included: includedItems, excluded: excludedItems, meetingPoint } } : current);
       setSaved(true);
@@ -271,7 +272,10 @@ export default function EditListingPage() {
       </div>
 
       {error && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{error} Your changes are still in the form.</p>}
-      <Link href={`/operator/onboarding/${listing.id}`} className="mb-5 inline-block font-semibold text-gold-700">Continue business onboarding</Link>
+      <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2">
+        <Link href={`/operator/onboarding/${listing.id}`} className="inline-block font-semibold text-gold-700">Continue business onboarding</Link>
+        <Link href={`/operator/listings/${listing.id}/calendar`} className="inline-block font-semibold text-gold-700">Open dates and calendar</Link>
+      </div>
       <form onSubmit={handleSave} className="space-y-6">
         <fieldset disabled={saving} className="space-y-6 min-w-0">
         {/* Status */}

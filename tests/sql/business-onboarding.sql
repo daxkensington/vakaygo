@@ -52,7 +52,7 @@ BEGIN
  UPDATE booking_provider_config SET environment='test',platform_account_id='acct_synthetic',allowed_countries='["CA"]';
  INSERT INTO availability(listing_id,date,spots,spots_remaining,is_blocked) VALUES(target,'2099-01-01',4,4,false);
  UPDATE listing_onboarding SET business_legal_name='Synthetic company',business_country='CA',business_address='123 Synthetic Road',
-  representative_name='Synthetic representative',authority_accepted_at=now(),terms_version='2026-09-06',terms_accepted_at=now(),
+  representative_name='Synthetic representative',authority_accepted_at=now(),terms_version='2026-10-27',terms_accepted_at=now(),
   stripe_account_id='acct_syntheticoperator',provider_environment='test',platform_account_id='acct_synthetic',provider_country='CA',
   charges_enabled=true,payouts_enabled=true,details_submitted=true,card_payments_active=true,transfers_active=true,provider_checked_at=now()
  WHERE listing_id=target;

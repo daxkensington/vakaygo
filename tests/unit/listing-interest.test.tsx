@@ -100,5 +100,7 @@ it("generates a factual invitation for the correct island without customer data"
   const draft = outreachDraft({ id: "listing-id", title: "Synthetic Cafe", islandName: "Aruba", islandSlug: "aruba", slug: "synthetic-cafe", interestedCustomers: 2, claimVerified: false });
   expect(draft).toContain("https://vakaygo.com/aruba/synthetic-cafe"); expect(draft).toContain("claim=listing-id");
   expect(draft).toContain("not reservations or booking requests"); expect(draft).toContain("unsubscribe");
-  expect(draft).not.toMatch(/weekly payouts|confirmed bookings|lowest commission|grenada/);
+  expect(draft).toContain("Claiming a listing does not activate bookings or checkout");
+  expect(draft).toContain("customer bookings and payments go through VakayGo");
+  expect(draft).not.toMatch(/weekly payouts|confirmed bookings|lowest commission|60 seconds|pay.on.the.day|book directly|grenada/);
 });
