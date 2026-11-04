@@ -10,9 +10,9 @@ BEGIN
  SELECT count(*) INTO before_mail FROM booking_mail_outbox;
  FOREACH change_sql IN ARRAY ARRAY[
    $$UPDATE feature_flags SET enabled=false WHERE key='booking_launch_enabled'$$,
-   $$UPDATE listing_claim_verifications SET status='pending'$$,
-   $$UPDATE listing_claim_verifications SET revoked_at=now()$$,
-   $$UPDATE listing_claim_verifications SET verified_at=NULL$$,
+   $$UPDATE listing_claim_verifications SET status='pending' WHERE listing_id='20000000-0000-4000-8000-000000000001'$$,
+   $$UPDATE listing_claim_verifications SET revoked_at=now() WHERE listing_id='20000000-0000-4000-8000-000000000001'$$,
+   $$UPDATE listing_claim_verifications SET verified_at=NULL WHERE listing_id='20000000-0000-4000-8000-000000000001'$$,
    $$UPDATE listing_onboarding SET operator_id='10000000-0000-4000-8000-000000000002'$$,
    $$UPDATE listing_onboarding SET business_legal_name=NULL$$,
    $$UPDATE listing_onboarding SET authority_accepted_at=NULL$$,
