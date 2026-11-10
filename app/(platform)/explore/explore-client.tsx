@@ -16,6 +16,9 @@ import {
   parseListingFilters,
   EXPLORE_PAGE_SIZE,
   TYPE_LABELS,
+  NO_EXPLORE_CAPABILITIES,
+  usableExploreFilters,
+  type ExploreCapabilities,
   type ListingFilters,
   type ListingResult,
   type ListingType,
@@ -122,6 +125,8 @@ export type ExploreInitial = {
   heading: string;
   /** false when the server could not reach the DB — the client fetches instead */
   loaded: boolean;
+  /** Which narrowing controls can match anything; absent means none of the optional ones. */
+  capabilities?: ExploreCapabilities;
 };
 
 type FilterState = {
@@ -223,6 +228,17 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
   const what = activeCategory === "all" ? "Experiences" : TYPE_LABELS[activeCategory as ListingType]?.plural ?? "Experiences";
   const heading = islandName ? `${what} in ${islandName}` : activeCategory === "all" ? "Explore Caribbean experiences" : `${what} in the Caribbean`;
 
+  // Offer a narrowing control only where it can return something. A filter
+  // that is already applied (from a link or an earlier scope) stays visible
+  // so it can be read and cleared.
+  const capabilities = initial.capabilities ?? NO_EXPLORE_CAPABILITIES;
+  const usable = usableExploreFilters(capabilities, { island: activeIsland || null, type: activeCategory });
+  const showDateFilter = usable.date || Boolean(selectedDate);
+  const showPriceFilter = usable.price || Boolean(minPrice) || Boolean(maxPrice);
+  const showPriceSort = usable.price || sortBy === "price-asc" || sortBy === "price-desc";
+  const showAmenityFilter = activeCategory === "stay" && (usable.amenities || selectedAmenities.length > 0);
+  const showDurationFilter = (activeCategory === "tour" || activeCategory === "excursion") && (usable.duration || Boolean(selectedDuration));
+
   const mobileFilterCount =
     (selectedDate ? 1 : 0) +
     (activeIsland ? 1 : 0) +
@@ -316,15 +332,21 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
       setAiSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions.filter((suggestion: unknown): suggestion is string => typeof suggestion === "string").slice(0, 5) : []);
 
       // Apply parsed filters
+      // A suggested budget, amenity or duration is only applied where it
+      // can match; otherwise the suggestion would empty the results.
+      const suggested = usableExploreFilters(capabilities, {
+        island: filters.island ?? (activeIsland || null),
+        type: filters.type ?? activeCategory,
+      });
       if (filters.type) setActiveCategory(filters.type);
       if (filters.island) setActiveIsland(filters.island);
-      if (filters.minPrice !== null) setMinPrice(String(filters.minPrice));
-      if (filters.maxPrice !== null) setMaxPrice(String(filters.maxPrice));
+      if (suggested.price && filters.minPrice !== null) setMinPrice(String(filters.minPrice));
+      if (suggested.price && filters.maxPrice !== null) setMaxPrice(String(filters.maxPrice));
       if (filters.minRating !== null) setMinRating(String(filters.minRating));
       if (filters.guests !== null) setGuestCount(String(filters.guests));
-      if (Array.isArray(filters.amenities) && filters.amenities.length > 0)
+      if (suggested.amenities && Array.isArray(filters.amenities) && filters.amenities.length > 0)
         setSelectedAmenities(filters.amenities);
-      if (filters.duration) setSelectedDuration(filters.duration);
+      if (suggested.duration && filters.duration) setSelectedDuration(filters.duration);
       setSearchQuery(filters.q ?? "");
     } catch {
       // Fall back to normal search
@@ -557,7 +579,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 )}
               </SheetTrigger>
               {/* Date + Island row on mobile */}
-              <div className="hidden md:flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
+              {showDateFilter && <div className="hidden md:flex items-center gap-2 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <Calendar size={16} className="text-navy-300 shrink-0" />
                 <input
                   type="date"
@@ -569,7 +591,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   min={new Date().toISOString().split("T")[0]}
                   placeholder="Any date"
                 />
-              </div>
+              </div>}
               <select
                 aria-label="Filter by island"
                 value={activeIsland}
@@ -613,7 +635,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <option value="hvar-split">🇭🇷 Hvar & Split</option>
               </select>
               {/* Price Range */}
-              <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
+              {showPriceFilter && <div className="hidden md:flex items-center gap-1.5 bg-cream-50 rounded-xl px-3 py-2 min-w-0 shrink-0">
                 <span className="text-xs font-semibold text-navy-500">USD</span>
                 <input
                   type="number"
@@ -634,7 +656,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                   className="w-16 min-w-[3.5rem] bg-transparent text-navy-700 placeholder:text-navy-300 outline-none text-sm"
                   min="0"
                 />
-              </div>
+              </div>}
               {/* Rating Filter */}
               <select
                 aria-label="Filter by minimum rating"
@@ -707,7 +729,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-navy-500">Price filters and sorting use USD estimates. Confirm the current price and price unit with the business.</p>
+            {(showPriceFilter || showPriceSort) && <p className="mt-2 text-xs text-navy-500">Price filters and sorting use USD estimates and cover listings with online booking. Confirm the current price and price unit with the business.</p>}
 
             {/* Active Filters Pills */}
             {(activeCategory !== "all" || activeIsland || searchQuery || selectedDate || minPrice || maxPrice || minRating || guestCount || selectedAmenities.length > 0 || selectedDuration || cuisineType) && (
@@ -861,7 +883,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
             </div>
 
             {/* Amenity Filters — visible when Stays selected */}
-            {activeCategory === "stay" && (
+            {showAmenityFilter && (
               <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
                 {amenityOptions.map((amenity) => {
                   const isSelected = selectedAmenities.includes(amenity.id);
@@ -891,7 +913,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
             )}
 
             {/* Duration Filter — visible when Tours or Excursions selected */}
-            {(activeCategory === "tour" || activeCategory === "excursion") && (
+            {showDurationFilter && (
               <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
                 <Clock size={14} className="text-navy-400 shrink-0 mt-1" />
                 {durationOptions.map((opt) => (
@@ -1027,8 +1049,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price (USD estimate): Low to High</option>
-                <option value="price-desc">Price (USD estimate): High to Low</option>
+                {showPriceSort && <option value="price-asc">Price (USD estimate): Low to High</option>}
+                {showPriceSort && <option value="price-desc">Price (USD estimate): High to Low</option>}
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1110,8 +1132,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
               >
                 <option value="recommended">Recommended</option>
                 <option value="rating">Highest Rated</option>
-                <option value="price-asc">Price (USD estimate): Low to High</option>
-                <option value="price-desc">Price (USD estimate): High to Low</option>
+                {showPriceSort && <option value="price-asc">Price (USD estimate): Low to High</option>}
+                {showPriceSort && <option value="price-desc">Price (USD estimate): High to Low</option>}
                 <option value="newest">Newest</option>
                 <option value="most-reviews">Most Reviews</option>
               </select>
@@ -1124,7 +1146,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 <Compass size={40} className="text-navy-200 mx-auto mb-4" />
                 <p className="text-navy-500 text-lg font-semibold">{selectedDate ? "No online availability for this date" : "No listings found"}</p>
                 <p className="text-navy-400 text-sm mt-2 max-w-md mx-auto">
-                  {selectedDate ? "The date filter checks online booking availability. Directory businesses may still be available: remove the date to browse and contact them directly." : "Try adjusting your filters, searching for something else, or exploring a different island."}
+                  {selectedDate ? "The date filter only covers listings that take online bookings. Directory businesses may still be available: remove the date to browse them and ask about your dates from the listing page." : (minPrice || maxPrice) ? "Price filters only cover listings that take online bookings. Clear the price range to browse every business." : "Try adjusting your filters, searching for something else, or exploring a different island."}
                 </p>
                 {selectedDate && <button onClick={() => setSelectedDate("")} className="mt-6 mr-3 text-gold-700 hover:text-gold-800 px-4 py-2.5 rounded-xl font-semibold text-sm underline">Browse without a date</button>}
                 <button
@@ -1173,7 +1195,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-              <div>
+              {showDateFilter && <div>
                 <label htmlFor="m-date" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
                   Date
                 </label>
@@ -1189,7 +1211,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
-              </div>
+              </div>}
 
               <div>
                 <label htmlFor="m-island" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
@@ -1239,7 +1261,7 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                 </select>
               </div>
 
-              <div>
+              {showPriceFilter && <div>
                 <span className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">
                   Price Range (USD estimates)
                 </span>
@@ -1265,8 +1287,8 @@ export function ExploreClient({ initial }: { initial: ExploreInitial }) {
                     min="0"
                   />
                 </div>
-                <p className="mt-2 text-xs text-navy-500">Filters use USD estimates. Confirm the current price and price unit with the business.</p>
-              </div>
+                <p className="mt-2 text-xs text-navy-500">Filters use USD estimates and cover listings with online booking. Confirm the current price and price unit with the business.</p>
+              </div>}
 
               <div>
                 <label htmlFor="m-rating" className="block text-xs font-semibold text-navy-400 uppercase tracking-wider mb-1.5">

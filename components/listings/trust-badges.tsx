@@ -9,12 +9,16 @@ type TrustBadgesProps = {
   reviewCount?: number | null;
   isFeatured?: boolean | null;
   type?: string;
-  /** Listing built from public data: no operator has verified it, nothing
-   *  can be cancelled, and the rating is Google's. */
+  /** No business has verified ownership of this listing: it is public
+   *  data, nothing can be cancelled, and the rating is Google's. */
   unclaimed?: boolean;
+  /** An approved claim verified who runs this business. */
+  claimVerified?: boolean;
+  /** Imported listings carry Google's rating, claimed or not. */
+  ratingSource?: "google" | "vakaygo";
 };
 
-export function TrustBadges({ isInstantBook, bookingEligible = false, avgRating, reviewCount, isFeatured, unclaimed = false }: TrustBadgesProps) {
+export function TrustBadges({ isInstantBook, bookingEligible = false, avgRating, reviewCount, isFeatured, unclaimed = false, claimVerified = false, ratingSource = "vakaygo" }: TrustBadgesProps) {
   const rating = avgRating ? parseFloat(avgRating) : 0;
   const badges: { icon: typeof Shield; label: string; color: string }[] = [];
 
@@ -51,8 +55,12 @@ export function TrustBadges({ isInstantBook, bookingEligible = false, avgRating,
     });
   }
 
-  // Top rated
-  if (rating >= 4.8 && (reviewCount || 0) >= 10) {
+  // A Google rating is named as one; "Top rated" is reserved for VakayGo reviews.
+  if (ratingSource === "google") {
+    if (rating >= 4.5 && (reviewCount || 0) >= 10) {
+      badges.push({ icon: Star, label: `${rating.toFixed(1)} on Google`, color: "bg-gold-50 text-gold-700" });
+    }
+  } else if (rating >= 4.8 && (reviewCount || 0) >= 10) {
     badges.push({
       icon: Award,
       label: "Top rated",
@@ -80,6 +88,11 @@ export function TrustBadges({ isInstantBook, bookingEligible = false, avgRating,
     icon: Shield,
     label: "Verified operator",
     color: "bg-cream-200 text-navy-600",
+  });
+  else if (claimVerified) badges.push({
+    icon: Shield,
+    label: "Ownership verified",
+    color: "bg-teal-50 text-teal-700",
   });
 
   return (
