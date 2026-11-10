@@ -76,6 +76,10 @@ export const outreachCampaignControl = pgTable("outreach_campaign_control", {
   healthCheckedAt: timestamp("health_checked_at", { withTimezone: true }),
   healthReady: boolean("health_ready").notNull().default(false),
   healthReason: text("health_reason").notNull().default("not_checked"),
+  // Delivery holds count bounces/failures after the last recorded review.
+  holdsReviewedAt: timestamp("holds_reviewed_at", { withTimezone: true }),
+  holdsReviewedBy: uuid("holds_reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  holdsReviewNote: text("holds_review_note"),
 }, t => [check("outreach_campaign_singleton", sql`${t.id}=true`),
   check("outreach_campaign_stage", sql`${t.stage} BETWEEN 0 AND 4`),
   check("outreach_campaign_provider", sql`${t.provider} IN ('resend','sendcorex','mailforge','infraforge')`)]);

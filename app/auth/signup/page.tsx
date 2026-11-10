@@ -36,6 +36,21 @@ function SignUpContent() {
   const [accountExists, setAccountExists] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [referrerName, setReferrerName] = useState("");
+  // The business a claim link points at, so the form says what is being claimed.
+  const [claimListing, setClaimListing] = useState<{ title: string; islandName: string; islandSlug: string; slug: string } | null>(null);
+
+  useEffect(() => {
+    if (!claimListingId) return;
+    const controller = new AbortController();
+    fetch(`/api/listings/claim-search?id=${encodeURIComponent(claimListingId)}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const listing = data?.listing;
+        if (listing && typeof listing.title === "string" && typeof listing.islandName === "string") setClaimListing(listing);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [claimListingId]);
 
   // Check for referral code in URL
   useEffect(() => {
@@ -198,6 +213,15 @@ function SignUpContent() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {claimListing && (
+                  <div className="rounded-xl border border-cream-200 bg-cream-50 p-4 text-sm text-navy-600" data-testid="claim-listing-context">
+                    <p className="font-semibold text-navy-700">You are claiming {claimListing.title} in {claimListing.islandName}</p>
+                    <p className="mt-1">
+                      <Link href={`/${claimListing.islandSlug}/${claimListing.slug}`} target="_blank" className="font-semibold text-gold-700 underline">View the listing</Link>
+                      {" "}before you create your account.
+                    </p>
+                  </div>
+                )}
                 <p className="text-sm text-navy-500">{claimListingId ? "After you confirm the link sent to your email, you return to this business to verify its phone. Claiming does not enable bookings." : "After creating your account, confirm the link sent to your email before signing in or claiming a business."}</p>
                 <div>
                   <label htmlFor="signup-name" className="block text-sm font-medium text-navy-600 mb-1.5">

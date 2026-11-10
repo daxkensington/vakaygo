@@ -28,7 +28,8 @@ visit(file);
 const bindings = {
   "-- SERVICE_GRANT_SQL": queries.filter(query => query.includes("INSERT INTO outreach_recipient_consents")),
   "-- SERVICE_REVOKE_SQL": queries.filter(query => query.includes("UPDATE outreach_recipient_consents")),
-  "-- SERVICE_CONTROL_SQL": queries.filter(query => query.includes("UPDATE outreach_campaign_control")),
+  "-- SERVICE_CONTROL_SQL": queries.filter(query => query.includes("UPDATE outreach_campaign_control") && query.includes("gate AS")),
+  "-- SERVICE_REVIEW_SQL": queries.filter(query => query.includes("UPDATE outreach_campaign_control") && query.includes("holds_reviewed_at=now()")),
   "-- SERVICE_REPORT_SQL": reportQueries,
 };
 let sql = fs.readFileSync(path.join(__dirname, "outreach-controls.sql"), "utf8");

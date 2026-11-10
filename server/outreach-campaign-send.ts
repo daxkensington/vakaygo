@@ -111,6 +111,11 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
   if (!reservation?.attempt_id) return { sent: false, email: recipient, reason: reservation?.reason || "reservation_unavailable" };
   const attemptId = String(reservation.attempt_id);
   try {
+    // Delivery holds mirror vakaygo_reserve_outreach_attempt and lib/outreach-campaign-policy.ts:
+    // counts run from the later of 7 days ago and the last recorded delivery review
+    // (read through to_jsonb so the query is valid before migration 0020 adds the column);
+    // under 50 accepted a hold needs 3 bounces or 5 soft failures, from 50 it is a 2% / 10% rate.
+    // One bounced or failed recipient is not re-sent: an address gets one attempt per campaign.
     const [eligible] = await sql.query(`SELECT a.id FROM outreach_email_attempts a JOIN outreach_campaign_control c ON c.id=true
       JOIN listings l ON l.id=a.listing_id JOIN islands i ON i.id=l.island_id
       WHERE a.id=$1::uuid AND a.state='reserved' AND c.enabled=true AND c.provider=a.provider
@@ -124,13 +129,15 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
           AND (h.state='uncertain' OR (h.state='reserved' AND h.reserved_at<now()-interval '20 minutes')))
         AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
           AND h.complained_at>=now()-interval '7 days')
-        AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
-          AND h.provider='sendcorex' AND h.accepted_at IS NOT NULL AND h.failed_at>=now()-interval '7 days')
         AND NOT EXISTS(SELECT 1 FROM (
-          SELECT count(*) FILTER(WHERE h.bounced_at>=now()-interval '7 days') AS bounced,
-            count(*) FILTER(WHERE h.accepted_at>=now()-interval '7 days') AS accepted
-          FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
-        ) health WHERE bounced>0 AND (accepted=0 OR bounced::numeric/greatest(accepted,1)>=0.02))
+          SELECT count(*) FILTER(WHERE h.bounced_at>=f.since) AS bounced,
+            count(*) FILTER(WHERE h.provider='sendcorex' AND h.accepted_at IS NOT NULL AND h.failed_at>=f.since) AS failed,
+            count(*) FILTER(WHERE h.accepted_at>=f.since) AS accepted
+          FROM outreach_email_attempts h CROSS JOIN (SELECT greatest(now()-interval '7 days',
+            coalesce((to_jsonb(c)->>'holds_reviewed_at')::timestamptz,'-infinity'::timestamptz)) AS since) f
+          WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
+        ) health WHERE (bounced>0 AND CASE WHEN accepted<50 THEN bounced>=3 ELSE bounced::numeric/accepted>=0.02 END)
+          OR (failed>0 AND CASE WHEN accepted<50 THEN failed>=5 ELSE failed::numeric/accepted>=0.1 END))
         AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts h WHERE h.campaign_key=a.campaign_key AND h.provider=a.provider
           AND h.accepted_at<now()-interval '24 hours' AND h.delivered_at IS NULL AND h.bounced_at IS NULL
           AND h.suppressed_at IS NULL AND h.failed_at IS NULL)`, [attemptId, input.islandSlug]);
