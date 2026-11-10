@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, listings, users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import crypto from "crypto";
 
@@ -119,14 +119,67 @@ export async function POST(
 ) {
   try {
     const { bookingId } = await params;
-    const { token } = await request.json();
+    const body: unknown = await request.json().catch(() => null);
+    const token =
+      body !== null && typeof body === "object" && "token" in body
+        ? body.token
+        : undefined;
+
+    if (typeof token !== "string" || !token) {
+      return NextResponse.json(
+        { error: "Booking not found", valid: false },
+        { status: 404 }
+      );
+    }
 
     const db = getDb();
 
     const [booking] = await db
       .select({
-        id: bookings.id,
         verificationToken: bookings.verificationToken,
+      })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (
+      !booking ||
+      !booking.verificationToken ||
+      !safeEqual(token, booking.verificationToken)
+    ) {
+      return NextResponse.json(
+        { error: "Booking not found", valid: false },
+        { status: 404 }
+      );
+    }
+
+    const [updated] = await db
+      .update(bookings)
+      .set({
+        checkedIn: true,
+        checkedInAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(bookings.id, bookingId),
+          eq(bookings.status, "confirmed"),
+          eq(bookings.checkedIn, false)
+        )
+      )
+      .returning({ checkedInAt: bookings.checkedInAt });
+
+    if (updated) {
+      return NextResponse.json({
+        success: true,
+        checkedIn: true,
+        checkedInAt: updated.checkedInAt,
+      });
+    }
+
+    const [currentBooking] = await db
+      .select({
+        id: bookings.id,
         status: bookings.status,
         checkedIn: bookings.checkedIn,
       })
@@ -134,51 +187,31 @@ export async function POST(
       .where(eq(bookings.id, bookingId))
       .limit(1);
 
-    if (!booking) {
+    if (!currentBooking) {
       return NextResponse.json(
-        { error: "Booking not found" },
+        { error: "Booking not found", valid: false },
         { status: 404 }
       );
     }
 
-    // Validate verification token
-    if (!booking.verificationToken || booking.verificationToken !== token) {
+    if (currentBooking.status !== "confirmed") {
       return NextResponse.json(
-        { error: "Invalid verification token" },
-        { status: 403 }
-      );
-    }
-
-    // Check booking status
-    if (booking.status !== "confirmed") {
-      return NextResponse.json(
-        { error: `Cannot check in a ${booking.status} booking` },
+        { error: `Cannot check in a ${currentBooking.status} booking` },
         { status: 400 }
       );
     }
 
-    if (booking.checkedIn) {
+    if (currentBooking.checkedIn) {
       return NextResponse.json(
         { error: "Already checked in", checkedIn: true },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
-    // Mark as checked in
-    await db
-      .update(bookings)
-      .set({
-        checkedIn: true,
-        checkedInAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(bookings.id, bookingId));
-
-    return NextResponse.json({
-      success: true,
-      checkedIn: true,
-      checkedInAt: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      { error: "Booking changed; please try again" },
+      { status: 409 }
+    );
   } catch (error) {
     logger.error("Check-in error", error);
     return NextResponse.json(

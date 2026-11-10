@@ -39,7 +39,7 @@ async function onboardingTasks(userId: string): Promise<OnboardingTask[]> {
   for (const row of rows) {
     try {
       const status = await getOnboardingStatus(row.id, userId);
-      const directReady = status.payoutProfile?.status === "verified" && status.payoutProfile.w8benCertified === true && !status.payoutProfile.revoked;
+      const directReady = status.payoutProfile?.status === "verified" && status.payoutProfile.w8benCertified === true && !status.payoutProfile.revoked && !status.stripe.connected;
       const requirements = { ...status.requirements, payments: status.requirements.payments || directReady };
       const step = nextOnboardingStep({
         requirements,
