@@ -6,6 +6,7 @@ import { guestCountOptions, localDateInputValue, resolveListingGuestCapacity } f
 import { useAuth } from "@/lib/auth-context";
 import { analytics } from "@/lib/analytics";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
+import { bookingSubtotal } from "@/lib/booking-quantity";
 import { CancellationPolicy } from "@/components/listings/cancellation-policy";
 import { useCurrency } from "@/lib/currency";
 import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
@@ -41,6 +42,34 @@ type BookingWidgetProps = {
   unclaimed?: boolean;
   bookingEligible?: boolean;
 };
+
+/** Calendar price overrides (YYYY-MM-DD -> price) for the months the chosen dates fall in. */
+function useDateOverrides(listingId: string, startDate: string, endDate: string): Record<string, string> {
+  const key = `${listingId}|${startDate}|${endDate}`;
+  const [loaded, setLoaded] = useState<{ key: string; overrides: Record<string, string> }>({ key: "", overrides: {} });
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return;
+    const months = [...new Set([startDate.slice(0, 7), /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? endDate.slice(0, 7) : startDate.slice(0, 7)])];
+    let cancelled = false;
+    Promise.all(months.map(month =>
+      fetch(`/api/availability?listingId=${encodeURIComponent(listingId)}&month=${month}`)
+        .then(res => res.ok ? res.json() : { availability: [] })
+        .catch(() => ({ availability: [] }))))
+      .then(results => {
+        if (cancelled) return;
+        const next: Record<string, string> = {};
+        for (const result of results) {
+          for (const day of (Array.isArray(result?.availability) ? result.availability : [])) {
+            if (typeof day?.date === "string" && day.priceOverride != null && Number(day.priceOverride) > 0) next[day.date] = String(day.priceOverride);
+          }
+        }
+        setLoaded({ key: `${listingId}|${startDate}|${endDate}`, overrides: next });
+      });
+    return () => { cancelled = true; };
+  }, [listingId, startDate, endDate]);
+  // Prices from an earlier date choice never apply to the current one.
+  return loaded.key === key ? loaded.overrides : {};
+}
 
 export function BookingWidget(props: BookingWidgetProps) {
   return <BookingEligibilityGate bookingEligible={props.bookingEligible} listingId={props.listing.id} operatorId={props.listing.operatorId} unclaimed={props.unclaimed}>
@@ -93,19 +122,22 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
   const pricePerUnit = parseFloat(listing.priceAmount || "0");
   const requestOnly = unclaimed || !(pricePerUnit > 0);
 
-  // Calculate quantity
-  let quantity = guests;
-  if (listing.type === "stay" && startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    quantity = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-  }
-  if (listing.priceUnit === "trip" || listing.priceUnit === "group") {
-    quantity = 1;
-  }
+  // Calendar price overrides for the chosen dates; the server prices the same way.
+  const overrides = useDateOverrides(listing.id, startDate, listing.type === "stay" ? endDate : "");
+  const priced = bookingSubtotal({
+    type: listing.type,
+    priceUnit: listing.priceUnit,
+    basePrice: pricePerUnit,
+    guestCount: guests,
+    startDate: startDate || "1970-01-01",
+    endDate: listing.type === "stay" && startDate && endDate && endDate > startDate ? endDate : null,
+    overrides,
+  });
+  const quantity = priced.quantity;
 
   const pricing = calculateBookingPrice({
-    pricePerUnit,
+    pricePerUnit: priced.unitPrice,
+    subtotal: priced.subtotal,
     quantity,
     listingType: listing.type,
     currency: listing.priceCurrency || "USD",
@@ -578,7 +610,7 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
         <div className="space-y-2 mb-6 text-sm">
           <div className="flex justify-between">
             <span className="text-navy-400">
-              {formatBase(pricePerUnit)} × {quantity} {listing.priceUnit}
+              {formatBase(priced.unitPrice)}{priced.usesOverride && listing.type === "stay" ? " avg" : ""} × {quantity} {listing.priceUnit}
               {quantity > 1 ? "s" : ""}
             </span>
             <span className="text-navy-700">{formatBase(pricing.subtotal)}</span>

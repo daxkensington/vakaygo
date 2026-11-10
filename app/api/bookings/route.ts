@@ -5,6 +5,7 @@ import { bookings, listings, users, islands, promoCodes, promoCodeUses, availabi
 import { eq, and, sql } from "drizzle-orm";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { calculateTransferUnitPrice } from "@/lib/transfer-pricing";
+import { bookingSubtotal } from "@/lib/booking-quantity";
 import { shouldRequestBooking } from "@/lib/booking-request";
 import { toWallClockDate } from "@/lib/booking-time";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
@@ -156,34 +157,55 @@ export async function POST(request: Request) {
       }
     }
 
-    // Only verified, fully onboarded businesses can receive requests. Until
-    // date-based quotes are displayed, custom pricing requires their approval.
-    const [overrides, rules] = await Promise.all([
-      db.select({ id: availability.id }).from(availability).where(and(eq(availability.listingId, listing.id), sql`${availability.priceOverride} is not null`)).limit(1),
+    // Only verified, fully onboarded businesses can receive requests. A calendar
+    // price override prices the dates it is set on (the widget shows the same
+    // price); overrides on other dates do not matter. Pricing rules still need
+    // the business's approval.
+    const startDay = start.toISOString().slice(0, 10);
+    const endDay = (end ?? start).toISOString().slice(0, 10);
+    const [overrideRows, rules] = await Promise.all([
+      db.select({ day: sql<string>`to_char(${availability.date}, 'YYYY-MM-DD')`, price: availability.priceOverride })
+        .from(availability)
+        .where(and(
+          eq(availability.listingId, listing.id),
+          sql`${availability.priceOverride} is not null`,
+          sql`${availability.date}::date >= ${startDay}::date`,
+          sql`${availability.date}::date <= ${endDay}::date`,
+        )),
       db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.listingId, listing.id), eq(pricingRules.isActive, true))).limit(1),
     ]);
-    const isRequest = listing.type === "dining" && reservationType === "table" || overrides.length > 0 || rules.length > 0 || shouldRequestBooking({
+    const isRequest = listing.type === "dining" && reservationType === "table" || rules.length > 0 || shouldRequestBooking({
       typeData: listing.typeData,
       operatorEmail: listing.operatorEmail,
       priceAmount: listing.priceAmount,
     });
 
     const basePricePerUnit = parseFloat(listing.priceAmount || "0");
+    const transferMultiplier = listing.type === "transfer" ? calculateTransferUnitPrice(1, vehicleType, roundTrip) : 1;
     const pricePerUnit = listing.type === "transfer"
       ? calculateTransferUnitPrice(basePricePerUnit, vehicleType, roundTrip)
       : basePricePerUnit;
 
-    // Calculate quantity based on type
-    let quantity = guestCount;
-    if (listing.type === "stay" && end) {
-      quantity = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    }
-    if (listing.priceUnit === "trip" || listing.priceUnit === "group") {
-      quantity = 1;
-    }
+    const priced = bookingSubtotal({
+      type: listing.type,
+      priceUnit: listing.priceUnit,
+      basePrice: pricePerUnit,
+      guestCount,
+      startDate: startDay,
+      endDate: end ? endDay : null,
+      // Several rows on one date: the lowest override wins (as in the trigger).
+      overrides: overrideRows.reduce<Record<string, number>>((map, row) => {
+        const price = Number(row.price);
+        if (Number.isFinite(price) && price > 0 && (!(row.day in map) || price < map[row.day])) map[row.day] = price;
+        return map;
+      }, {}),
+      multiplier: transferMultiplier,
+    });
+    const quantity = priced.quantity;
 
     const pricing = calculateBookingPrice({
-      pricePerUnit: isRequest ? 0 : pricePerUnit,
+      pricePerUnit: isRequest ? 0 : priced.unitPrice,
+      subtotal: isRequest ? 0 : priced.subtotal,
       quantity,
       listingType: listing.type,
       currency: listing.priceCurrency || "USD",

@@ -157,7 +157,8 @@ export default function OperatorPayoutsPage() {
     setBankName(p?.bankName || "");
     setBankCountry(p?.bankCountry || item.businessCountry || "GD");
     setSwiftBic(p?.bankSwiftBic || "");
-    setRoutingNumber(p?.bankRoutingOrBranch || "");
+    // Older saves copied the SWIFT code into this field; do not show it twice.
+    setRoutingNumber(p?.bankRoutingOrBranch && p.bankRoutingOrBranch !== p.bankSwiftBic ? p.bankRoutingOrBranch : "");
     setW8benCountryOfResidence(p?.w8benCountry || item.businessCountry || "GD");
     setW8benSignerName(p?.w8benSignedName || item.representativeName || "");
     setW8benCertified(Boolean(p?.w8benCertified));
@@ -244,7 +245,7 @@ export default function OperatorPayoutsPage() {
           bankAccountHolder: beneficiaryName,
           bankAccountNumber: payoutMethod === "bank_wire" ? accountNumber : null,
           bankSwiftBic: payoutMethod === "bank_wire" ? swiftBic : null,
-          bankRoutingOrBranch: routingNumber || null,
+          bankRoutingOrBranch: payoutMethod === "bank_wire" ? routingNumber || null : null,
           w8benCertified,
           w8benBeneficialOwner: beneficiaryName,
           w8benCountry: w8benCountryOfResidence,
@@ -470,6 +471,9 @@ export default function OperatorPayoutsPage() {
                   <option value="TTD">TTD — Trinidad &amp; Tobago Dollar</option>
                   <option value="DOP">DOP — Dominican Peso</option>
                   <option value="BSD">BSD — Bahamian Dollar</option>
+                  <option value="AWG">AWG — Aruban Florin</option>
+                  <option value="XCG">XCG — Caribbean Guilder (Curaçao, Sint Maarten)</option>
+                  <option value="ANG">ANG — Netherlands Antillean Guilder</option>
                 </select>
               </div>
             </div>
@@ -533,15 +537,24 @@ export default function OperatorPayoutsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-navy-500 mb-1">
-                    SWIFT / BIC or Routing
+                    SWIFT / BIC
                   </label>
                   <input
-                    value={swiftBic || routingNumber}
-                    onChange={(e) => {
-                      setSwiftBic(e.target.value.toUpperCase());
-                      setRoutingNumber(e.target.value);
-                    }}
-                    placeholder="8 or 11 char SWIFT/BIC"
+                    required
+                    value={swiftBic}
+                    onChange={(e) => setSwiftBic(e.target.value.toUpperCase().replace(/\s+/g, ""))}
+                    placeholder="8 or 11 characters, e.g. RBTTGDGD"
+                    className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm text-navy-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-navy-500 mb-1">
+                    Branch / routing number (optional)
+                  </label>
+                  <input
+                    value={routingNumber}
+                    onChange={(e) => setRoutingNumber(e.target.value)}
+                    placeholder="Local branch, transit or ABA number"
                     className="w-full rounded-xl border border-cream-300 px-3 py-2 text-sm text-navy-700"
                   />
                 </div>

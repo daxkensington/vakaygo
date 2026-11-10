@@ -162,6 +162,13 @@
       "when": 1794304094052,
       "tag": "0022_activation_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794320000000,
+      "tag": "0023_booking_pricing_payout_currencies",
+      "breakpoints": true
     }
   ]
 }
