@@ -18,20 +18,32 @@ export function DeferredIslandGrid({ islands }: { islands: DeferredIsland[] }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Wait until the browser is idle before inserting the rest of the
-    // grid. Lighthouse measures LCP against what's painted in the
-    // first ~3 s — mounting after idle keeps these 18+ cards out of
-    // that window so the h1 stays the LCP candidate. Users see the
-    // cards appear within one frame on any real device because the
-    // grid falls under the initial viewport on mobile anyway.
-    const ric = (window as unknown as {
-      requestIdleCallback?: (cb: () => void) => number;
-    }).requestIdleCallback;
-    if (ric) {
-      ric(() => setMounted(true));
-    } else {
-      setTimeout(() => setMounted(true), 200);
+    // Defer the remaining cards until idle, with a timeout so sustained
+    // browser activity cannot indefinitely delay the destination links.
+    let active = true;
+    const mount = () => {
+      if (active) setMounted(true);
+    };
+    const idleWindow = window as unknown as {
+      requestIdleCallback?: (cb: () => void, options: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const ric = idleWindow.requestIdleCallback;
+    const cancelIdle = idleWindow.cancelIdleCallback;
+
+    if (ric && cancelIdle) {
+      const idleId = ric.call(window, mount, { timeout: 2000 });
+      return () => {
+        active = false;
+        cancelIdle.call(window, idleId);
+      };
     }
+
+    const timerId = window.setTimeout(mount, 200);
+    return () => {
+      active = false;
+      window.clearTimeout(timerId);
+    };
   }, []);
 
   if (!mounted) return null;
