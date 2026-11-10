@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth-context";
 import { analytics } from "@/lib/analytics";
 import { formatBookingDateTime } from "@/lib/booking-time";
+import { classifyRequestedBooking, requestStatusCopy } from "@/lib/booking-request-expiry";
 import Link from "next/link";
 import {
   CalendarCheck,
@@ -350,8 +351,13 @@ function BookingsContent() {
           ) : (
             <div className="space-y-4 mt-8">
               {bookings.map((booking) => {
-                const status = statusConfig[booking.status] || statusConfig.pending;
                 const isPast = new Date(booking.startDate) < new Date();
+                // A request whose date has passed can no longer be confirmed; say so instead of "Request sent".
+                const requestCopy = requestStatusCopy(classifyRequestedBooking(booking));
+                const baseStatus = statusConfig[booking.status] || statusConfig.pending;
+                const status = booking.status === "requested" && requestCopy?.label === "Not confirmed"
+                  ? { label: requestCopy.label, color: "text-navy-600", bg: "bg-navy-50" }
+                  : baseStatus;
                 return (
                   <div
                     key={booking.id}
@@ -382,8 +388,8 @@ function BookingsContent() {
                       </div>
                       <div className="text-right">
                         {booking.status === "requested" ? (
-                          <p className="text-xs text-navy-400 max-w-[12rem]">
-                            We&apos;re confirming with the business — nothing charged yet
+                          <p data-testid="request-detail" className="text-xs text-navy-400 max-w-[14rem]">
+                            {requestCopy?.detail ?? "This is a request, not a reservation. Nothing has been charged."}
                           </p>
                         ) : (
                           <>

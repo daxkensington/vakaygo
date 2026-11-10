@@ -120,7 +120,7 @@ export function ListingCard(props: ListingCardProps) {
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs text-navy-400 flex items-center gap-1 truncate">
             <MapPin size={10} className="shrink-0" />
-            {props.parish ? `${props.parish}, ` : ""}{getIslandFlag(props.islandSlug)} {props.islandName}
+            {props.parish ? `${props.parish}, ` : ""}<span aria-hidden="true" className="flag-emoji">{getIslandFlag(props.islandSlug)} </span>{props.islandName}
           </p>
           {rating > 0 && (
             <div

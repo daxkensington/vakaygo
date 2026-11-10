@@ -168,18 +168,26 @@ function TripsContent({ actorRef }: { actorRef: RefObject<string | undefined> })
                 <Plane size={32} className="text-gold-700" />
               </div>
               <h2 className="text-xl font-semibold text-navy-700 mb-2">
-                Sign in to plan your trips
+                Trips are free with a VakayGo account
               </h2>
               <p className="text-navy-400 mb-6 text-center max-w-md">
                 Create AI-powered itineraries, save your plans, and share them
-                with travel companions.
+                with travel companions. An account is needed so your trips can be saved.
               </p>
-              <Link
-                href="/auth/signin?next=%2Ftrips"
-                className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
-              >
-                Sign In
-              </Link>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/auth/signup?next=%2Ftrips"
+                  className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
+                >
+                  Create a free account
+                </Link>
+                <Link
+                  href="/auth/signin?next=%2Ftrips"
+                  className="rounded-xl border border-cream-300 px-6 py-3 font-semibold text-navy-700 hover:bg-cream-100 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </div>
             </div>
           )}
 

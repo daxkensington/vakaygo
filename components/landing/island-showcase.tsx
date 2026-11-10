@@ -135,7 +135,7 @@ export function IslandShowcase() {
                 </div>
                 <div className="p-3">
                   <h3 className="text-sm font-semibold leading-5 text-navy-700">
-                    <span aria-hidden="true">{island.flag}</span>{" "}{island.name}
+                    <span aria-hidden="true" className="flag-emoji">{island.flag}</span>{" "}{island.name}
                   </h3>
                   <p className="mt-1 flex items-center gap-1 text-xs text-navy-500">
                     <MapPin size={12} aria-hidden="true" />
@@ -159,7 +159,7 @@ export function IslandShowcase() {
                 prefetch={false}
                 className="rounded-lg px-3 py-3 text-sm font-medium text-navy-600 transition-colors hover:bg-white hover:text-gold-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-700"
               >
-                <span aria-hidden="true">{island.flag}</span>{" "}{island.name}
+                <span aria-hidden="true" className="flag-emoji">{island.flag}</span>{" "}{island.name}
               </Link>
             ))}
           </div>

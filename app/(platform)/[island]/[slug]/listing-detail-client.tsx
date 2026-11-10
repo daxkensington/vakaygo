@@ -45,10 +45,12 @@ import { useSaved } from "@/lib/use-saved";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
 import { getImageUrl } from "@/lib/image-utils";
 import { getIslandFlag } from "@/lib/island-flags";
+import { Flag } from "@/components/shared/flag";
 import { analytics } from "@/lib/analytics";
 import { useCurrency } from "@/lib/currency";
 import { useListingViewBeacon } from "@/components/listings/use-listing-view-beacon";
-import { resolveListingGuestCapacity } from "@/lib/listing-capacity";
+import { displayedGuestCapacity } from "@/lib/listing-capacity";
+import { displayedHeadline, isNaturalPublicPlace, ratingCountLabel } from "@/lib/listing-display";
 import {
   Star,
   MapPin,
@@ -120,6 +122,8 @@ export type SimilarListing = {
   priceUnit: string | null;
   avgRating: string | null;
   reviewCount: number | null;
+  /** Whose rating this is; imported listings carry Google's. */
+  reviewSource?: "google" | "vakaygo";
   parish: string | null;
   latitude?: string | null;
   longitude?: string | null;
@@ -246,7 +250,12 @@ export function ListingDetailClient({
   const languages = Array.isArray(td.languages)
     ? td.languages.filter((item: unknown): item is string => typeof item === "string")
     : [];
-  const guestCapacity = resolveListingGuestCapacity(listing.maxGuests, td.maxGuests);
+  // Imported listings carry a type-default capacity nobody stated; only a verified business's is shown.
+  const guestCapacity = displayedGuestCapacity(listing.claimVerified, listing.maxGuests, td.maxGuests);
+  // Imported headlines are a category label ("Tours & activities in Grenada"), not the business's words.
+  const headline = displayedHeadline(listing.headline, listing.title);
+  // A beach or bay is not a business: no "claim this business", no availability inquiry.
+  const publicPlace = !listing.claimVerified && isNaturalPublicPlace(td);
   const images = listing.images.length > 0
     ? listing.images.map((img: { id: string; url: string; alt: string | null; type?: string | null }) => ({
         id: img.id,
@@ -283,7 +292,7 @@ export function ListingDetailClient({
           <Breadcrumbs
             items={[
               { label: "Home", href: "/" },
-              { label: `${getIslandFlag(listing.islandSlug)} ${listing.islandName}`, href: `/${listing.islandSlug}` },
+              { label: listing.islandName, href: `/${listing.islandSlug}` },
               { label: listing.title },
             ]}
           />
@@ -321,7 +330,7 @@ export function ListingDetailClient({
                       {listing.parish && listing.parish.trim().toLowerCase() !== listing.islandName.trim().toLowerCase()
                         ? `${listing.parish}, `
                         : ""}
-                      {getIslandFlag(listing.islandSlug)} {listing.islandName}
+                      <Flag>{getIslandFlag(listing.islandSlug)}</Flag> {listing.islandName}
                     </div>
                     {listing.avgRating && parseFloat(listing.avgRating) > 0 && (
                       <div className="flex items-center gap-1">
@@ -422,26 +431,35 @@ export function ListingDetailClient({
               </div>
 
               {/* Headline */}
-              {listing.headline && (
+              {headline && (
                 <p className="mt-4 text-lg text-navy-500 italic">
-                  &ldquo;{listing.headline}&rdquo;
+                  &ldquo;{headline}&rdquo;
                 </p>
               )}
 
               {/* Traveler contact comes before business-owner actions. */}
               <ContactInfo typeData={listing.typeData} listingId={listing.id} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
-              {!bookingEligible && !listing.claimVerified && (
+              {!bookingEligible && !listing.claimVerified && !publicPlace && (
                 <div className="mt-6 lg:hidden"><ListingInquiry listingId={listing.id} listingTitle={listing.title} /></div>
               )}
 
               {/* Operator / Claim Banner */}
-              {!listing.claimVerified ? (
+              {publicPlace ? (
+                <div data-testid="public-place-note" className="mt-8 rounded-2xl border border-cream-200 bg-white p-6">
+                  <h2 className="font-bold text-lg text-navy-700">A public place</h2>
+                  <p className="mt-1 text-sm text-navy-500">
+                    {listing.title} is a place to visit, not a business, so there is nothing to book here.
+                    The details on this page come from public data. If you manage this site officially and
+                    something is wrong, email support@vakaygo.com.
+                  </p>
+                </div>
+              ) : !listing.claimVerified ? (
                 <div className="mt-8 p-6 bg-gradient-to-r from-gold-700 to-gold-800 rounded-2xl text-white">
                   <h2 className="font-bold text-lg">Is this your business?</h2>
                   <p className="text-white/80 text-sm mt-1">
                     Business ownership has not been verified on VakayGo. Claim it for free
                     to manage its information and complete business onboarding.
-                    Online bookings and payments are currently unavailable.
+                    Online booking opens for a listing once its business finishes setup.
                   </p>
                   <a
                     href={claimStartHref(listing.id, Boolean(user))}
@@ -775,7 +793,7 @@ export function ListingDetailClient({
             </div>
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
-            {!bookingEligible ? (
+            {!bookingEligible && publicPlace ? null : !bookingEligible ? (
               <aside aria-label={!listing.claimVerified ? "Listing inquiry" : "Listing interest"} className={!listing.claimVerified ? "hidden lg:block lg:col-span-1" : "lg:col-span-1"}>
                 <div className="sticky top-24">
                   {!listing.claimVerified ? (
@@ -882,8 +900,8 @@ export function ListingDetailClient({
                               <span className="text-xs font-semibold">
                                 {parseFloat(item.avgRating).toFixed(1)}
                               </span>
-                              {item.reviewCount ? (
-                                <span className="text-xs text-navy-400">({item.reviewCount})</span>
+                              {ratingCountLabel(item.reviewCount, item.reviewSource ?? "vakaygo") ? (
+                                <span className="text-xs text-navy-400">({ratingCountLabel(item.reviewCount, item.reviewSource ?? "vakaygo")})</span>
                               ) : null}
                             </div>
                           )}

@@ -207,7 +207,7 @@ export default async function IslandsPage() {
 
                         <div className="absolute bottom-0 left-0 right-0 p-6">
                           <div className="flex items-center gap-3">
-                            <span className="text-3xl">{flag}</span>
+                            <span aria-hidden="true" className="flag-emoji text-3xl">{flag}</span>
                             <div>
                               <h3 className="text-xl font-bold text-white">
                                 {island.name}

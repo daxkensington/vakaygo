@@ -11,6 +11,7 @@ import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { AIConcierge } from "@/components/chat/ai-concierge";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
+import { FlagEmojiSupport } from "@/components/layout/flag-emoji-support";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import "./globals.css";
 
@@ -182,6 +183,7 @@ export default function RootLayout({
           }}
         />
         <LocaleHtmlAttrs />
+        <FlagEmojiSupport />
         <AuthProvider><SavedProvider><CurrencyProvider><ScrollToTop /><div id="site-announcements"><PromoBanner /><EmailVerificationBanner /></div><div id="main-content" tabIndex={-1}>{children}</div></CurrencyProvider></SavedProvider></AuthProvider>
         <AIConcierge />
         <ServiceWorkerRegister />

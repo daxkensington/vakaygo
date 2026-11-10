@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { Home, Compass, UtensilsCrossed, Music, Car, Users, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
+import { Flag } from "@/components/shared/flag";
+import { listingRatingSource } from "@/lib/listing-display";
 import {
   DEFAULT_DESTINATION_ESSENTIALS,
   getDestinationEssentials,
@@ -147,7 +149,7 @@ export default async function IslandPage({ params }: Props) {
             items={[
               { label: "Home", href: "/" },
               { label: "Destinations", href: "/islands" },
-              { label: `${getIslandFlag(islandSlug)} ${island.name}` },
+              { label: island.name },
             ]}
           />
         </div>
@@ -172,7 +174,7 @@ export default async function IslandPage({ params }: Props) {
           <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/30 to-transparent" />
           <div className="relative z-10 mx-auto max-w-7xl px-6 pb-12 w-full">
             <h1 className="text-4xl md:text-6xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-              {getIslandFlag(islandSlug)} {island.name}
+              <Flag>{getIslandFlag(islandSlug)}</Flag> {island.name}
             </h1>
             <p className="text-white/70 mt-2 max-w-2xl">{island.description}</p>
             <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/80">
@@ -340,6 +342,9 @@ export default async function IslandPage({ params }: Props) {
                 priceCurrency: l.priceCurrency,
                 priceUnit: l.priceUnit,
                 avgRating: l.avgRating,
+                reviewCount: l.reviewCount,
+                // Imported listings carry Google's rating; the card says so.
+                ratingSource: listingRatingSource(l.typeData),
               }))}
             />
           </div>

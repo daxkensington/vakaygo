@@ -4,7 +4,7 @@ import { listings, islands, media, listingOnboarding } from "@/drizzle/schema";
 import { eq, and, desc, asc, gte, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { parseSearchQuery, likeEscape } from "@/lib/search-terms";
-import { stayGuestCapacity } from "@/server/listing-capacity";
+import { stayFitsGuests } from "@/server/listing-capacity";
 import { getExchangeRates } from "@/server/exchange-rates";
 import { listingPriceInUsd } from "@/server/listing-prices";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";
@@ -79,9 +79,12 @@ function buildWhere(f: ListingFilters, bookingsEnabled: boolean, usdPrice: SQL):
   if (f.minRating != null) conditions.push(gte(listings.avgRating, String(f.minRating)));
 
   if (f.guests != null) {
+    // Imported stays carry a type-default capacity (4) that no business stated.
+    // Their capacity is unknown, so they stay in the results; only a stay whose
+    // business verified its ownership is held to its stated capacity.
     conditions.push(
       sql`(
-        (${listings.type} = 'stay' AND ${stayGuestCapacity} >= ${f.guests})
+        (${listings.type} = 'stay' AND ${stayFitsGuests(f.guests)})
         OR (${listings.type} IN ('tour', 'excursion') AND (
           ${listings.typeData}->>'groupSize' IS NULL
           OR (${importedListingInteger("groupSize")}) >= ${f.guests}
