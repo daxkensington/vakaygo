@@ -23,6 +23,8 @@ import {
 
 type Stats = {
   totals: { listings: number; users: number; bookings: number; waitlist: number };
+  /** Items waiting on the team: listings in review and payout profiles to verify. */
+  reviewQueue?: { listings: number; payoutProfiles: number };
   listingsByType: { type: string; count: number }[];
   listingsByIsland: { name: string; count: number }[];
   recentBookings: {
@@ -186,7 +188,8 @@ export default function AdminDashboard() {
   const maxIslandRevenue = Math.max(...revenue.byIsland.map((i) => i.revenue), 1);
 
   // Pending count for quick actions
-  const pendingBookings = stats.recentBookings.filter((b) => b.status === "pending").length;
+  const pendingListings = stats.reviewQueue?.listings ?? 0;
+  const pendingPayoutProfiles = stats.reviewQueue?.payoutProfiles ?? 0;
 
   return (
     <div>
@@ -451,17 +454,29 @@ export default function AdminDashboard() {
         </h2>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/admin/listings?status=pending"
+            href="/admin/listings?status=pending_review"
             className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-800"
           >
             <CheckCircle size={16} />
             Approve Pending Listings
-            {pendingBookings > 0 && (
+            {pendingListings > 0 && (
               <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/25 px-1.5 text-xs">
-                {pendingBookings}
+                {pendingListings}
               </span>
             )}
           </Link>
+          {pendingPayoutProfiles > 0 && (
+            <Link
+              href="/admin/payout-profiles"
+              className="inline-flex items-center gap-2 rounded-xl bg-gold-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-800"
+            >
+              <CheckCircle size={16} />
+              Review Payout Profiles
+              <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/25 px-1.5 text-xs">
+                {pendingPayoutProfiles}
+              </span>
+            </Link>
+          )}
           <Link
             href="/admin/users?sort=newest"
             className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-600"

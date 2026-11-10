@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { listings, users, bookings, islands, waitlist } from "@/drizzle/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { listings, users, bookings, islands, waitlist, operatorPayoutProfiles } from "@/drizzle/schema";
+import { and, eq, isNull, sql, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
@@ -18,6 +18,10 @@ export async function GET() {
     const [userCount] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
     const [bookingCount] = await db.select({ count: sql<number>`count(*)::int` }).from(bookings);
     const [waitlistCount] = await db.select({ count: sql<number>`count(*)::int` }).from(waitlist);
+    // What is waiting on the team, so the dashboard's review buttons count the right thing.
+    const [pendingListings] = await db.select({ count: sql<number>`count(*)::int` }).from(listings).where(eq(listings.status, "pending_review"));
+    const [pendingPayoutProfiles] = await db.select({ count: sql<number>`count(*)::int` }).from(operatorPayoutProfiles)
+      .where(and(eq(operatorPayoutProfiles.status, "pending_review"), isNull(operatorPayoutProfiles.revokedAt)));
 
     const listingsByType = await db
       .select({ type: listings.type, count: sql<number>`count(*)::int` })
@@ -53,6 +57,7 @@ export async function GET() {
         bookings: bookingCount.count,
         waitlist: waitlistCount.count,
       },
+      reviewQueue: { listings: pendingListings.count, payoutProfiles: pendingPayoutProfiles.count },
       listingsByType,
       listingsByIsland,
       recentBookings,

@@ -129,6 +129,21 @@ it("tells a business that accepted an earlier agreement to accept the new one, n
   expect(boxes.map(box => box.checked)).toEqual([true, false]);
 });
 
+it("tells the owner of a listing they created that it is in review instead of sending them to a claim they cannot make", async () => {
+  const created = { ...status, state: "unclaimed", reason: "unclaimed", stripe: { connected: false },
+    listing: { ...status.listing, status: "pending_review" },
+    requirements: { claim: false, business: false, representative: false, terms: false, listing: true, payments: false, activation: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(created)));
+  await renderPage();
+  expect(container.querySelector('[data-testid="listing-in-review"]')?.textContent).toContain("with our team for review");
+  expect(container.querySelector(`a[href="/operator/claim/${listingId}"]`)).toBeNull();
+  // An imported listing that was never claimed still gets the claim link.
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...created, listing: { ...status.listing, status: "active" } })));
+  await act(async () => root.unmount()); root = createRoot(container); await renderPage();
+  expect(container.querySelector('[data-testid="listing-in-review"]')).toBeNull();
+  expect(Array.from(container.querySelectorAll(`a[href="/operator/claim/${listingId}"]`)).map(item => item.textContent)).toContain("Verify the business claim");
+});
+
 it("points a business that never accepted the terms at the company form first", async () => {
   const stalled = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, representative: false, terms: false, listing: false } };
   fetchMock.mockImplementation(async () => new Response(JSON.stringify(stalled)));

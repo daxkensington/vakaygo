@@ -11,6 +11,7 @@ import {
 import { OPERATOR_TERMS_VERSION } from "@/server/business-onboarding";
 import { sendOnboardingNudge, sendOnboardingReviewReminderToTeam } from "@/server/email-requests";
 import { createNotification } from "@/server/notifications";
+import { createSetupLinkToken, setupLinkUrl } from "@/server/operator-setup-link";
 
 /**
  * Operator onboarding nudges — the I/O half of lib/onboarding-nudges.ts.
@@ -120,7 +121,8 @@ type CandidateRow = {
   charges_enabled: boolean; payouts_enabled: boolean; details_submitted: boolean; card_payments_active: boolean; transfers_active: boolean;
   activated_at: string | null; suspended_at: string | null; progress_at: string;
   claim_valid: boolean; listing_valid: boolean;
-  has_price: boolean; has_capacity: boolean; has_policy: boolean; has_open_dates: boolean;
+  has_price: boolean; has_capacity: boolean; has_policy: boolean; has_open_dates: boolean; has_price_unit: boolean;
+  session_version: number;
   payout_status: string | null; payout_revoked_at: string | null; w8ben_certified: boolean | null; w8ben_signed_at: string | null;
   opted_out: boolean; operator_last_nudged_at: string | null;
   history: { stage: string; sentAt: string }[];
@@ -130,7 +132,7 @@ async function candidates(): Promise<CandidateRow[]> {
   return query<CandidateRow>(`
     SELECT l.id listing_id,l.operator_id,l.title,l.status listing_status,
       i.slug island_slug,i.name island_name,i.timezone island_timezone,
-      u.email operator_email,u.name operator_name,u.business_name,coalesce(u.email_verified,false) email_verified,
+      u.email operator_email,u.name operator_name,u.business_name,coalesce(u.email_verified,false) email_verified,u.session_version,
       n.business_legal_name,n.business_country,n.business_address,n.representative_name,
       n.authority_accepted_at,n.terms_version,n.terms_accepted_at,
       n.stripe_account_id,n.provider_revoked_at,
@@ -138,6 +140,7 @@ async function candidates(): Promise<CandidateRow[]> {
       n.activated_at,n.suspended_at,n.updated_at progress_at,
       vakaygo_listing_claim_verified(l.id) claim_valid,vakaygo_listing_setup_valid(l.id) listing_valid,
       coalesce(l.price_amount>0,false) has_price,coalesce(l.max_guests>0,false) has_capacity,
+      coalesce(l.price_unit IN ('night','person','group','hour','day','trip','vehicle','event','session','meal','entry','ticket'),false) has_price_unit,
       l.cancellation_policy IN ('flexible','moderate','strict','non_refundable') has_policy,
       EXISTS(SELECT 1 FROM availability a WHERE a.listing_id=l.id AND a.date>=current_date AND a.is_blocked=false
         AND a.spots>0 AND a.spots_remaining>0 AND a.spots_remaining<=a.spots AND (a.price_override IS NULL OR a.price_override>0)) has_open_dates,
@@ -157,6 +160,27 @@ async function candidates(): Promise<CandidateRow[]> {
     ORDER BY n.updated_at ASC LIMIT 200`);
 }
 
+/**
+ * What the database allows. Migration 0022 adds the "agreement_update" stage
+ * to the stage CHECK and the one-time sign-in marker; a git deploy applies no
+ * migration, so each run asks instead of assuming.
+ */
+export interface NudgeCapabilities { agreementStage: boolean; setupLinks: boolean }
+export async function nudgeCapabilities(): Promise<NudgeCapabilities> {
+  try {
+    const [row] = await query<{ agreement_stage: boolean; setup_links: boolean }>(`
+      SELECT EXISTS(SELECT 1 FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid
+               WHERE t.relname='operator_onboarding_nudges' AND c.contype='c'
+                 AND pg_get_constraintdef(c.oid) LIKE '%agreement_update%') agreement_stage,
+             EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema()
+               AND table_name='operator_onboarding_nudges' AND column_name='signin_used_at') setup_links`);
+    return { agreementStage: row?.agreement_stage === true, setupLinks: row?.setup_links === true };
+  } catch (error) {
+    logger.warn("Onboarding nudge capabilities unavailable", { error });
+    return { agreementStage: false, setupLinks: false };
+  }
+}
+
 export interface NudgeRunResult {
   dryRun: boolean;
   candidates: number;
@@ -174,7 +198,7 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
   const now = options.now ?? new Date();
   const dryRun = options.dryRun === true;
   const origin = appOrigin();
-  const rows = await candidates();
+  const [rows, capabilities] = await Promise.all([candidates(), nudgeCapabilities()]);
   const result: NudgeRunResult = { dryRun, candidates: rows.length, sent: [], wouldSend: [], skipped: {}, outsideHours: [], failed: [], team: { items: 0, sent: false, dueListings: [] } };
   const skip = (reason: keyof NudgeRunResult["skipped"]) => { result.skipped[reason] = (result.skipped[reason] || 0) + 1; };
   const nudgedOperators = new Map<string, number>();
@@ -191,7 +215,10 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
       activatedAt: row.activated_at, suspendedAt: row.suspended_at,
       payoutStatus: row.payout_status, payoutRevokedAt: row.payout_revoked_at, w8benCertified: row.w8ben_certified, w8benSignedAt: row.w8ben_signed_at,
     }, OPERATOR_TERMS_VERSION);
-    const step = nextOnboardingStep(snapshot);
+    const policyStep = nextOnboardingStep(snapshot);
+    // Until the database accepts the new stage, a revised agreement is reminded under the old one (same copy, old count).
+    const step = policyStep.kind === "stage" && policyStep.stage === "agreement_update" && !capabilities.agreementStage
+      ? { kind: "stage" as const, stage: "business_details" as const } : policyStep;
     const operatorLast = nudgedOperators.get(row.operator_id) ?? (row.operator_last_nudged_at ? Date.parse(row.operator_last_nudged_at) : null);
     const decision = decideNudge({
       step, progressAt: row.progress_at, optedOut: row.opted_out, email: row.operator_email, emailVerified: row.email_verified,
@@ -200,7 +227,7 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
     if (!decision.send) { skip(decision.reason); continue; }
     const content = describeNextStep(step, {
       listingId: row.listing_id, stripeConnected: snapshot.stripeConnected,
-      listingGaps: listingGapsFromFlags({ hasPrice: row.has_price, hasCapacity: row.has_capacity, hasPolicy: row.has_policy, hasOpenDates: row.has_open_dates }),
+      listingGaps: listingGapsFromFlags({ hasPrice: row.has_price, hasCapacity: row.has_capacity, hasPolicy: row.has_policy, hasOpenDates: row.has_open_dates, hasPriceUnit: row.has_price_unit }),
       agreement: agreementContext(snapshot.requirements, row.terms_accepted_at ? row.terms_version : null, OPERATOR_TERMS_VERSION),
     });
     if (!content) { skip("not_actionable"); continue; }
@@ -226,6 +253,11 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
       [row.listing_id, row.operator_id, decision.stage, to, now.toISOString()]);
     if (!claimed.length) { skip("claimed_elsewhere"); continue; }
     nudgedOperators.set(row.operator_id, now.getTime());
+    // The button signs the business in (one use, seven days) when the database can record that use.
+    const setupToken = capabilities.setupLinks
+      ? createSetupLinkToken({ nudgeId: claimed[0].id, operatorId: row.operator_id, sessionVersion: Number(row.session_version), sentAt: now, next: content.href })
+      : null;
+    const actionUrl = setupToken ? setupLinkUrl(origin, setupToken, content.href) : origin + content.href;
     try {
       const delivery = await paced(() => sendOnboardingNudge({
         to,
@@ -238,7 +270,8 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
         total: ONBOARDING_CHECKLIST.length,
         nudgeNumber: decision.nudgeNumber,
         final: decision.final,
-        actionUrl: origin + content.href,
+        actionUrl,
+        signsIn: setupToken !== null,
         stopUrl: nudgeStopUrl(row.operator_id, origin),
       }));
       const messageId = delivery?.data?.id;

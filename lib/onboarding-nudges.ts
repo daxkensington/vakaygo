@@ -17,8 +17,17 @@ export type OnboardingRequirements = Record<OnboardingStepKey, boolean>;
 export type PayoutProfileStatus = "pending_review" | "verified" | "rejected";
 
 /** Steps the operator can act on, in funnel order. */
-export type OnboardingStage = "business_details" | "listing_setup" | "payout_setup" | "payout_rejected" | "activate";
-export const ONBOARDING_STAGES: readonly OnboardingStage[] = ["business_details", "listing_setup", "payout_setup", "payout_rejected", "activate"];
+export type OnboardingStage = "business_details" | "agreement_update" | "listing_setup" | "payout_setup" | "payout_rejected" | "activate";
+export const ONBOARDING_STAGES: readonly OnboardingStage[] = ["business_details", "agreement_update", "listing_setup", "payout_setup", "payout_rejected", "activate"];
+/**
+ * A revised agreement is a new ask, not the old one repeated: a business that
+ * finished its company details and accepted an earlier version gets its own
+ * stage, with its own three reminders, instead of inheriting the count of
+ * "finish your company details" reminders it had already acted on.
+ * Needs migration 0022 (the stage CHECK); the sender falls back to
+ * "business_details" on a database that does not allow it yet.
+ */
+export const AGREEMENT_UPDATE_STAGE: OnboardingStage = "agreement_update";
 
 export interface OnboardingSnapshot {
   requirements: OnboardingRequirements;
@@ -29,6 +38,8 @@ export interface OnboardingSnapshot {
   /** A Stripe Connect account exists; the operator may still have to finish Stripe's own checks. */
   stripeConnected: boolean;
   suspended: boolean;
+  /** An earlier agreement version was accepted; only meaningful while `requirements.terms` is false. */
+  acceptedEarlierTerms?: boolean;
 }
 
 export type OnboardingNextStep =
@@ -43,7 +54,10 @@ export function nextOnboardingStep(s: OnboardingSnapshot): OnboardingNextStep {
   if (!r.claim) return { kind: "blocked", reason: "unclaimed" };
   if (s.suspended) return { kind: "blocked", reason: "suspended" };
   if (r.activation) return { kind: "done" };
-  if (!r.business || !r.representative || !r.terms) return { kind: "stage", stage: "business_details" };
+  if (!r.business || !r.representative || !r.terms) {
+    if (r.business && r.representative && s.acceptedEarlierTerms === true) return { kind: "stage", stage: "agreement_update" };
+    return { kind: "stage", stage: "business_details" };
+  }
   if (!r.listing || s.listingStatus !== "active") {
     if (r.listing && s.listingStatus === "pending_review") return { kind: "waiting", on: "listing_review" };
     return { kind: "stage", stage: "listing_setup" };
@@ -110,6 +124,7 @@ export function snapshotFromOnboardingRow(row: OnboardingRowLike, currentTermsVe
     payoutProfileRevoked: !!row.payoutRevokedAt,
     stripeConnected,
     suspended: !!row.suspendedAt,
+    acceptedEarlierTerms: !!row.termsAcceptedAt && !!row.termsVersion?.trim() && row.termsVersion.trim() !== currentTermsVersion,
   };
 }
 
@@ -138,18 +153,22 @@ export interface NextStepContent {
 }
 
 /** What `vakaygo_listing_setup_valid` is still missing; `true` means missing. Unknown when not loaded. */
-export interface ListingGaps { price: boolean; capacity: boolean; policy: boolean; openDates: boolean }
+export interface ListingGaps { price: boolean; capacity: boolean; policy: boolean; openDates: boolean; /** Price has no unit, or one bookings cannot use. Absent when not loaded. */ unit?: boolean }
 
-export function listingGapsFromFlags(flags: { hasPrice?: boolean | null; hasCapacity?: boolean | null; hasPolicy?: boolean | null; hasOpenDates?: boolean | null } | null | undefined): ListingGaps | null {
+export function listingGapsFromFlags(flags: { hasPrice?: boolean | null; hasCapacity?: boolean | null; hasPolicy?: boolean | null; hasOpenDates?: boolean | null; hasPriceUnit?: boolean | null } | null | undefined): ListingGaps | null {
   if (!flags) return null;
   const known = [flags.hasPrice, flags.hasCapacity, flags.hasPolicy, flags.hasOpenDates].every(value => typeof value === "boolean");
   if (!known) return null;
-  return { price: !flags.hasPrice, capacity: !flags.hasCapacity, policy: !flags.hasPolicy, openDates: !flags.hasOpenDates };
+  return {
+    price: !flags.hasPrice, capacity: !flags.hasCapacity, policy: !flags.hasPolicy, openDates: !flags.hasOpenDates,
+    // Only a unit known to be missing counts; an older caller that never loaded it reports no gap.
+    ...(typeof flags.hasPriceUnit === "boolean" ? { unit: !flags.hasPriceUnit } : {}),
+  };
 }
 
 /** Only the calendar is left: price, capacity and policy are all set. */
 export function onlyDatesMissing(gaps: ListingGaps | null | undefined): boolean {
-  return !!gaps && gaps.openDates && !gaps.price && !gaps.capacity && !gaps.policy;
+  return !!gaps && gaps.openDates && !gaps.price && !gaps.capacity && !gaps.policy && gaps.unit !== true;
 }
 
 /**
@@ -192,6 +211,16 @@ export function agreementVersionDate(version: string | null | undefined): string
   return `${MONTHS[month - 1]} ${day}, ${match[1]}`;
 }
 
+function agreementUpdateContent(encodedListingId: string, currentVersion: string | null | undefined): NextStepContent {
+  const dated = agreementVersionDate(currentVersion);
+  return {
+    title: "Accept the updated operator agreement",
+    detail: `We updated the operator agreement${dated ? ` on ${dated}` : ""}, and an earlier acceptance does not carry over to the new version. Your company details are saved; nothing needs retyping. Read the new version, tick the acceptance box and save. It takes about a minute, and your listing cannot open for bookings until it is done.`,
+    actionLabel: "Review and accept",
+    href: `/operator/onboarding/${encodedListingId}`,
+  };
+}
+
 export interface NextStepContext { listingId: string; stripeConnected: boolean; listingGaps?: ListingGaps | null; agreement?: AgreementContext | null }
 
 /** Copy and link for a stage. `null` for waiting/done/blocked — nothing for the operator to do. */
@@ -199,17 +228,11 @@ export function describeNextStep(step: OnboardingNextStep, ctx: NextStepContext)
   if (step.kind !== "stage") return null;
   const id = encodeURIComponent(ctx.listingId);
   switch (step.stage) {
+    case "agreement_update":
+      return agreementUpdateContent(id, ctx.agreement?.currentVersion);
     case "business_details":
       if (ctx.agreement?.onlyAgreementMissing) {
-        const dated = agreementVersionDate(ctx.agreement.currentVersion);
-        if (ctx.agreement.acceptedEarlierVersion) {
-          return {
-            title: "Accept the updated operator agreement",
-            detail: `We updated the operator agreement${dated ? ` on ${dated}` : ""}, and an earlier acceptance does not carry over to the new version. Your company details are saved; nothing needs retyping. Read the new version, tick the acceptance box and save. It takes about a minute, and your listing cannot open for bookings until it is done.`,
-            actionLabel: "Review and accept",
-            href: `/operator/onboarding/${id}`,
-          };
-        }
+        if (ctx.agreement.acceptedEarlierVersion) return agreementUpdateContent(id, ctx.agreement.currentVersion);
         return {
           title: "Accept the operator agreement",
           detail: "Your company details are saved. The one thing left on this step is to read the operator agreement, tick the acceptance box and save. It takes about a minute.",
@@ -234,12 +257,12 @@ export function describeNextStep(step: OnboardingNextStep, ctx: NextStepContext)
       }
       const gaps = ctx.listingGaps;
       const missing = gaps
-        ? [gaps.price && "a price", gaps.capacity && "guest capacity", gaps.policy && "a cancellation policy", gaps.openDates && "open dates"].filter((item): item is string => typeof item === "string")
+        ? [gaps.price && "a price", gaps.unit === true && "what the price is per (person, night, trip…)", gaps.capacity && "guest capacity", gaps.policy && "a cancellation policy", gaps.openDates && "open dates"].filter((item): item is string => typeof item === "string")
         : ["a price", "guest capacity", "a cancellation policy", "open dates"];
       const list = missing.length <= 1 ? missing.join("") : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
       return {
         title: "Set your price and open dates",
-        detail: `Travelers can see your page but cannot book it yet. Still missing: ${list || "listing details"}. Price, capacity and policy live on the listing page; open dates live in its calendar.`,
+        detail: `Travelers can see your page but cannot book it yet. Still missing: ${list || "listing details"}. Price, what it is per, capacity and policy live on the listing page; open dates live in its calendar.`,
         actionLabel: "Set price and availability",
         href: `/operator/listings/${id}`,
       };

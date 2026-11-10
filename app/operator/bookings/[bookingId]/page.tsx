@@ -236,13 +236,9 @@ export default function OperatorBookingDetailPage({
           {(canCancelBooking(booking.status) || booking.status === "confirmed") && (
             <div className="flex flex-wrap gap-2 self-start">
               {booking.status === "pending" && (
-                <button
-                  onClick={() => updateStatus("confirmed")}
-                  disabled={saving}
-                  className="bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-                >
-                  Accept
-                </button>
+                <p data-testid="awaiting-payment" className="self-center text-sm text-navy-500">
+                  <span className="font-semibold text-navy-700">Awaiting traveler payment.</span> This booking confirms automatically once it is paid.
+                </p>
               )}
               {booking.status === "confirmed" && (
                 <button

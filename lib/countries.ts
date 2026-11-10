@@ -28,5 +28,7 @@ export function isCountryCode(value: unknown): value is string {
 }
 
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
-export const COUNTRIES = COUNTRY_CODES.map(code => ({ code, name: countryNames.of(code) || code }))
+// The standard name for BQ is "Caribbean Netherlands", which a business on Bonaire does not look for.
+const COUNTRY_NAME_OVERRIDES: Record<string, string> = { BQ: "Bonaire, Sint Eustatius & Saba (Caribbean Netherlands)" };
+export const COUNTRIES = COUNTRY_CODES.map(code => ({ code, name: COUNTRY_NAME_OVERRIDES[code] || countryNames.of(code) || code }))
   .sort((a, b) => a.name.localeCompare(b.name, "en"));
