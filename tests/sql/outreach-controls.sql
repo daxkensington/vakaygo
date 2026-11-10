@@ -170,12 +170,13 @@ END $$;
 DO $$
 DECLARE lost uuid; found uuid; done uuid;
 BEGIN
+ -- One attempt per listing and campaign: each fixture uses its own campaign key.
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state)
- VALUES('64000000-0000-4000-8000-000000000001','reconcile-lost@audit.invalid','listing-claims-v2','reconcile-lost','sendcorex','uncertain') RETURNING id INTO lost;
+ VALUES('64000000-0000-4000-8000-000000000001','reconcile-lost@audit.invalid','reconcile-lost','reconcile-lost','sendcorex','uncertain') RETURNING id INTO lost;
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state)
- VALUES('64000000-0000-4000-8000-000000000001','reconcile-found@audit.invalid','listing-claims-v2','reconcile-found','sendcorex','uncertain') RETURNING id INTO found;
+ VALUES('64000000-0000-4000-8000-000000000001','reconcile-found@audit.invalid','reconcile-found','reconcile-found','sendcorex','uncertain') RETURNING id INTO found;
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state,provider_email_id,accepted_at)
- VALUES('64000000-0000-4000-8000-000000000001','reconcile-done@audit.invalid','listing-claims-v2','reconcile-done','sendcorex','accepted','msg_done',now()) RETURNING id INTO done;
+ VALUES('64000000-0000-4000-8000-000000000001','reconcile-done@audit.invalid','reconcile-done','reconcile-done','sendcorex','accepted','msg_done',now()) RETURNING id INTO done;
  IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000002',0,'control-owner@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'A non-admin reconciled an attempt'; END IF;
  IF NOT (SELECT changed AND audited=1 FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'Not-sent reconciliation failed'; END IF;
  IF (SELECT state<>'failed' OR error_code<>'admin_reconciled_not_sent' OR failed_at IS NULL FROM outreach_email_attempts WHERE id=lost) THEN RAISE EXCEPTION 'Not-sent reconciliation recorded the wrong outcome'; END IF;
