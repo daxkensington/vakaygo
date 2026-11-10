@@ -429,7 +429,9 @@ export function ListingDetailClient({
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
                   type={listing.type}
-                  unclaimed={td.unclaimed === true || td.source === "google-places"}
+                  unclaimed={!listing.claimVerified}
+                  claimVerified={listing.claimVerified === true}
+                  ratingSource={td.unclaimed === true || td.source === "google-places" ? "google" : "vakaygo"}
                 />
               </div>
 
@@ -469,12 +471,12 @@ export function ListingDetailClient({
               ) : (
                 <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
                   <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-xl">
-                    {String(listing.operatorName || "V").charAt(0)}
+                    {String(listing.operatorName || listing.title || "V").trim().charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-navy-700">
-                        {String(listing.operatorName || "Local Operator")}
+                        {String(listing.operatorName || listing.title || "Local Operator")}
                       </p>
                       {listing.operatorSuperhost && (
                         <SuperhostBadge variant="small" />
@@ -730,7 +732,7 @@ export function ListingDetailClient({
                 <div className="mt-8">
                   <ContactOperator
                     operatorId={listing.operatorId}
-                    operatorName={String(listing.operatorName || "Operator")}
+                    operatorName={String(listing.operatorName || listing.title || "Operator")}
                     listingId={listing.id}
                     listingTitle={listing.title}
                     listingPath={`/${listing.islandSlug}/${listing.slug}`}

@@ -1,7 +1,7 @@
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { createDb } from "@/server/db";
-import { listings, islands, media } from "@/drizzle/schema";
-import { eq, and, desc, asc, gte, inArray, sql, type SQL } from "drizzle-orm";
+import { listings, islands, media, listingOnboarding } from "@/drizzle/schema";
+import { eq, and, desc, asc, gte, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import { getImageUrl } from "@/lib/image-utils";
 import { parseSearchQuery, likeEscape } from "@/lib/search-terms";
 import { stayGuestCapacity } from "@/server/listing-capacity";
@@ -9,10 +9,12 @@ import { getExchangeRates } from "@/server/exchange-rates";
 import { listingPriceInUsd } from "@/server/listing-prices";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { importedListingInteger, importedMultiDay } from "@/server/listing-import-values";
-import { currentListingBookable } from "@/server/listing-bookability-sql";
+import { currentListingBookable, currentListingClaimVerified } from "@/server/listing-bookability-sql";
 import { isQuarantinedLocation } from "@/server/location-quarantine";
 import {
   filtersToSearchParams,
+  NO_EXPLORE_CAPABILITIES,
+  type ExploreCapabilities,
   type ListingFilters,
   type ListingResult,
 } from "@/lib/listing-filters";
@@ -94,7 +96,8 @@ function buildWhere(f: ListingFilters, bookingsEnabled: boolean, usdPrice: SQL):
   }
 
   for (const amenity of f.amenities) {
-    conditions.push(sql`${listings.typeData}->'amenities' @> ${JSON.stringify([amenity])}::jsonb`);
+    // type_data is a json column; json has no containment operator.
+    conditions.push(sql`(${listings.typeData})::jsonb->'amenities' @> ${JSON.stringify([amenity])}::jsonb`);
   }
 
   const durationMinutes = importedListingInteger("durationMinutes");
@@ -119,7 +122,14 @@ function buildWhere(f: ListingFilters, bookingsEnabled: boolean, usdPrice: SQL):
   return { where: and(...conditions)!, relevance };
 }
 
-function orderFor(f: ListingFilters, relevance: SQL | null, usdPrice: SQL): SQL[] {
+function orderFor(f: ListingFilters, relevance: SQL | null, usdPrice: SQL, bookingsEnabled: boolean): SQL[] {
+  // Recommended leads with what a traveler can act on: listings that take
+  // online bookings, then businesses that verified their ownership, then
+  // the public-data directory.
+  const actionable: SQL[] = [
+    ...(bookingsEnabled ? [sql`(${currentListingBookable()}) DESC`] : []),
+    sql`(${currentListingClaimVerified()}) DESC`,
+  ];
   const primary: SQL[] =
     f.sort === "price-asc" ? [sql`${usdPrice} ASC NULLS LAST`]
     : f.sort === "price-desc" ? [sql`${usdPrice} DESC NULLS LAST`]
@@ -127,6 +137,7 @@ function orderFor(f: ListingFilters, relevance: SQL | null, usdPrice: SQL): SQL[
     : f.sort === "newest" ? [sql`${listings.createdAt} DESC NULLS LAST`]
     : f.sort === "most-reviews" ? [sql`${listings.reviewCount} DESC NULLS LAST`, sql`${listings.avgRating} DESC NULLS LAST`]
     : [
+        ...actionable,
         sql`${listings.isFeatured} DESC NULLS LAST`,
         sql`${listings.reviewCount} DESC NULLS LAST`,
         sql`${listings.avgRating} DESC NULLS LAST`,
@@ -179,7 +190,7 @@ export async function searchListings(f: ListingFilters, db: Db = createDb()): Pr
     .from(listings)
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(where)
-    .orderBy(...orderFor(f, relevance, usdPrice))
+    .orderBy(...orderFor(f, relevance, usdPrice, bookingsEnabled))
     .limit(f.limit)
     .offset(f.offset);
 
@@ -220,22 +231,66 @@ export async function countListings(f: ListingFilters, db: Db = createDb()): Pro
   return row?.count ?? 0;
 }
 
+/**
+ * Which narrowing controls can match anything. Date, price and price sort
+ * only work where a listing takes online bookings; the amenity and
+ * duration chips only where listings carry that data (as of November
+ * 2026 none do). The page offers a control only when it can return
+ * something, instead of a filter that empties every destination.
+ */
+export async function loadExploreCapabilities(db: Db = createDb()): Promise<ExploreCapabilities> {
+  const bookingsEnabled = await bookingLaunchEnabled();
+  const stayAmenities = sql`(${listings.type} = 'stay' AND CASE WHEN json_typeof(${listings.typeData}->'amenities') = 'array'
+    THEN json_array_length(${listings.typeData}->'amenities') > 0 ELSE false END)`;
+  const tourDuration = sql`(${listings.type} IN ('tour', 'excursion')
+    AND ((${importedListingInteger("durationMinutes")}) IS NOT NULL OR (${importedMultiDay}) IS NOT NULL))`;
+  const [bookable, data] = await Promise.all([
+    bookingsEnabled
+      ? db
+          .selectDistinct({ island: islands.slug, type: listings.type })
+          .from(listingOnboarding)
+          .innerJoin(listings, eq(listingOnboarding.listingId, listings.id))
+          .innerJoin(islands, eq(listings.islandId, islands.id))
+          .where(and(
+            isNotNull(listingOnboarding.activatedAt),
+            publicDirectoryListings(),
+            sql`vakaygo_listing_bookable(${listings.id})`,
+          ))
+      : Promise.resolve([]),
+    db
+      .select({
+        amenityData: sql<boolean>`coalesce(bool_or(${stayAmenities}), false)`,
+        durationData: sql<boolean>`coalesce(bool_or(${tourDuration}), false)`,
+      })
+      .from(listings)
+      .where(and(eq(listings.status, "active"), inArray(listings.type, ["stay", "tour", "excursion"]))),
+  ]);
+  return {
+    bookable: bookable.map((b) => ({ island: b.island, type: b.type })),
+    amenityData: data[0]?.amenityData === true,
+    durationData: data[0]?.durationData === true,
+  };
+}
+
 export type ExploreData = {
   listings: ListingResult[];
   totalCount: number;
   island: { slug: string; name: string } | null;
+  capabilities: ExploreCapabilities;
 };
 
 async function loadExploreData(f: ListingFilters): Promise<ExploreData> {
   const db = createDb();
-  const [results, totalCount, islandRow] = await Promise.all([
+  const [results, totalCount, islandRow, capabilities] = await Promise.all([
     searchListings(f, db),
     countListings(f, db),
     f.island
       ? db.select({ slug: islands.slug, name: islands.name }).from(islands).where(eq(islands.slug, f.island)).limit(1)
       : Promise.resolve([]),
+    // A failed capability read hides the optional controls; it never fails the page.
+    loadExploreCapabilities(db).catch(() => NO_EXPLORE_CAPABILITIES),
   ]);
-  return { listings: results, totalCount, island: islandRow[0] ?? null };
+  return { listings: results, totalCount, island: islandRow[0] ?? null, capabilities };
 }
 
 // Eligibility includes revocation and expiry. Never reuse a positive cached result.
