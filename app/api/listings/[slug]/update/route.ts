@@ -7,6 +7,7 @@ import { requireOperator } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
+import { isBookablePriceUnit } from "@/lib/listing-price-units";
 
 export async function PATCH(
   request: Request,
@@ -22,7 +23,7 @@ export async function PATCH(
 
     // Verify ownership
     const matches = await db
-      .select({ id: listings.id, operatorId: listings.operatorId, status: listings.status })
+      .select({ id: listings.id, operatorId: listings.operatorId, status: listings.status, priceUnit: listings.priceUnit })
       .from(listings)
       .where(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(slug) ? eq(listings.id, slug) : and(eq(listings.slug, slug), auth.role === "admin" ? undefined : eq(listings.operatorId, auth.userId)))
       .limit(2);
@@ -47,7 +48,13 @@ export async function PATCH(
       }
     }
     if (body.priceAmount !== undefined) updateData.priceAmount = body.priceAmount?.toString();
-    if (body.priceUnit) updateData.priceUnit = body.priceUnit;
+    if (body.priceUnit) {
+      // Only units bookings can use; a legacy unit already on the listing may be saved back unchanged.
+      if (typeof body.priceUnit !== "string" || (!isBookablePriceUnit(body.priceUnit) && body.priceUnit !== listing.priceUnit)) {
+        return NextResponse.json({ error: "Choose what the price is per from the list." }, { status: 400 });
+      }
+      updateData.priceUnit = body.priceUnit;
+    }
     if (body.typeData) updateData.typeData = body.typeData;
     if (body.status !== undefined) {
       // SECURITY: operators must NOT be able to self-publish past moderation.

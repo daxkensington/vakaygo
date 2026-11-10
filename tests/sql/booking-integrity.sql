@@ -104,6 +104,10 @@ BEGIN
  PERFORM audit_book('refund-full','2099-12-05');
  SELECT id INTO target_booking FROM bookings WHERE booking_number='refund-full';
  UPDATE bookings SET status='confirmed',payment_id='pi_mail_full',paid_at=now() WHERE id=target_booking;
+ IF (SELECT string_agg(recipient,',' ORDER BY recipient) FROM booking_mail_outbox
+     WHERE booking_id=target_booking AND kind IN ('confirmed','request_confirmed'))
+     IS DISTINCT FROM 'operator,team,traveler'
+ THEN RAISE EXCEPTION 'A confirmed booking must notify the traveler, the business and the team'; END IF;
  UPDATE bookings SET status='cancelled',cancellation_requested_at=now(),cancellation_refund_cents=7150 WHERE id=target_booking;
  UPDATE bookings SET status='refunded',refund_id='re_mail_full',refund_status='succeeded' WHERE id=target_booking;
  UPDATE booking_mail_outbox SET delivered_at=prior_delivery WHERE booking_id=target_booking AND kind IN ('cancelled','refunded');
@@ -113,7 +117,7 @@ BEGIN
      IS DISTINCT FROM 'operator,team,traveler'
  THEN RAISE EXCEPTION 'A failed full refund must queue distinct traveler, operator and support notifications'; END IF;
  IF (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking
-     AND kind IN ('cancelled','refunded') AND delivered_at=prior_delivery)<>4
+     AND kind IN ('cancelled','refunded') AND delivered_at=prior_delivery)<>6
  THEN RAISE EXCEPTION 'Failure must preserve previously delivered cancellation and refund mail'; END IF;
  IF NOT EXISTS(SELECT 1 FROM bookings WHERE id=target_booking AND status='cancelled'
      AND payment_id='pi_mail_full' AND refund_id='re_mail_full' AND cancellation_refund_cents=7150)
@@ -139,7 +143,7 @@ BEGIN
      IS DISTINCT FROM 'operator,team,traveler'
  THEN RAISE EXCEPTION 'A partial refund failure must notify even without a booking status change'; END IF;
  IF NOT EXISTS(SELECT 1 FROM bookings WHERE id=target_booking AND status='cancelled' AND cancellation_refund_cents=3575)
-     OR (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='cancelled' AND delivered_at=prior_delivery)<>2
+     OR (SELECT count(*) FROM booking_mail_outbox WHERE booking_id=target_booking AND kind='cancelled' AND delivered_at=prior_delivery)<>3
  THEN RAISE EXCEPTION 'Partial failure must preserve cancellation state and prior mail'; END IF;
 
  PERFORM audit_book('refund-immediate-failure','2099-12-07');

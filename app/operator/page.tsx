@@ -378,9 +378,9 @@ export default function OperatorDashboard() {
                 step: "1",
                 title: "Add your business",
                 description:
-                  "Already listed on VakayGo? Open your business page and choose “Claim this business”. Otherwise create a new stay, tour, restaurant, event, or service listing.",
-                action: "Create Listing",
-                href: "/operator/listings/new",
+                  "Already listed on VakayGo? Search for your business and claim its page. Otherwise create a new stay, tour, restaurant, event, or service listing.",
+                action: "Find or add it",
+                href: "/operator/listings#find-listing",
                 icon: ListPlus,
               },
               {

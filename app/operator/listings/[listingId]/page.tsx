@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
+import { CANCELLATION_POLICIES } from "@/lib/cancellation";
+import { BOOKABLE_PRICE_UNITS, bookingFieldGaps, isBookablePriceUnit, priceUnitLabel } from "@/lib/listing-price-units";
 import Link from "next/link";
 import PhotoUploader from "@/components/operator/photo-uploader";
 import { AIDescriptionButton } from "@/components/operator/ai-description-button";
@@ -182,7 +184,7 @@ export default function EditListingPage() {
       if (!res.ok) throw new Error(data.error || "Your changes could not be saved. Please try again.");
       setListing(current => current ? { ...current, title, headline, description, address, parish, status, typeData: { ...current.typeData, included: includedItems, excluded: excludedItems, meetingPoint } } : current);
       setSaved(true);
-      saveTimer.current = setTimeout(() => setSaved(false), 3000);
+      saveTimer.current = setTimeout(() => setSaved(false), 8000);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Your changes could not be saved. Check your connection and try again.");
     } finally {
@@ -707,13 +709,8 @@ export default function EditListingPage() {
                 className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 appearance-none"
               >
                 <option value="">Select...</option>
-                <option value="night">Night</option>
-                <option value="person">Person</option>
-                <option value="group">Group</option>
-                <option value="trip">Trip</option>
-                <option value="hour">Hour</option>
-                <option value="avg meal">Avg Meal</option>
-                <option value="ticket">Ticket</option>
+                {BOOKABLE_PRICE_UNITS.map(unit => <option key={unit} value={unit}>{priceUnitLabel(unit)}</option>)}
+                {priceUnit && !isBookablePriceUnit(priceUnit) && <option value={priceUnit}>{priceUnitLabel(priceUnit)} (cannot be booked: choose another)</option>}
               </select>
             </div>
           </div>
@@ -740,10 +737,10 @@ export default function EditListingPage() {
           <h2 className="font-bold text-navy-700 mb-4">Cancellation Policy</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { value: "flexible", label: "Flexible", desc: "Free cancel 24h before" },
-              { value: "moderate", label: "Moderate", desc: "Free cancel 7 days before" },
-              { value: "strict", label: "Strict", desc: "50% refund 14 days before" },
-              { value: "non_refundable", label: "Non-Refundable", desc: "No refunds" },
+              { value: "flexible", label: "Flexible", desc: CANCELLATION_POLICIES.flexible.summary },
+              { value: "moderate", label: "Moderate", desc: CANCELLATION_POLICIES.moderate.summary },
+              { value: "strict", label: "Strict", desc: CANCELLATION_POLICIES.strict.summary },
+              { value: "non_refundable", label: "Non-Refundable", desc: CANCELLATION_POLICIES.non_refundable.summary },
             ].map((p) => (
               <button
                 key={p.value}
@@ -815,8 +812,10 @@ export default function EditListingPage() {
                 value={maxGuests}
                 onChange={(e) => setMaxGuests(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
-                placeholder="Unlimited"
+                placeholder="e.g. 8"
+                aria-describedby="edit-maxGuests-help"
               />
+              <p id="edit-maxGuests-help" className="mt-1 text-xs text-navy-400">Needed before travelers can book.</p>
             </div>
           </div>
         </div>
@@ -953,7 +952,12 @@ export default function EditListingPage() {
             Delete Listing
           </button>
           <div className="flex items-center gap-4">
-            {saved && <span role="status" className="text-sm text-teal-600 font-medium">Saved!</span>}
+            {saved && (() => {
+              const missing = bookingFieldGaps({ price, unit: priceUnit, maxGuests, policy: cancellationPolicy });
+              return missing.length
+                ? <span role="status" data-testid="booking-gaps" className="max-w-xs text-right text-sm font-medium text-gold-800">Saved. Before travelers can book, add: {missing.join(", ")}.</span>
+                : <span role="status" className="text-sm text-teal-600 font-medium">Saved!</span>;
+            })()}
             <button
               type="submit"
               disabled={saving}

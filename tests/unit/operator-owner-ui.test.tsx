@@ -41,10 +41,10 @@ it("retains edits on save failure and explicitly clears optional text and tour f
   await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Remove included item: Water"]')!.click(); container.querySelector<HTMLButtonElement>('[aria-label="Remove excluded item: Lunch"]')!.click(); });
   await submit(); expect(container.querySelector('[role="alert"]')?.textContent).toContain("status changed");
   expect(fetchMock.mock.calls[1][0]).toBe(`/api/listings/${listing.id}/update`);
-  expect(container.querySelector<HTMLInputElement>("#edit-title")?.value).toBe("Owner's revised title"); expect(container.textContent).not.toContain("Saved!");
+  expect(container.querySelector<HTMLInputElement>("#edit-title")?.value).toBe("Owner's revised title"); expect(container.textContent).not.toMatch(/Saved[.!]/);
   await submit(); const body = JSON.parse(fetchMock.mock.calls[2][1].body);
   expect(body).toMatchObject({ title: "Owner's revised title", description: "", headline: "", address: "", parish: "", typeData: { included: [], excluded: [], meetingPoint: "" } });
-  expect(container.querySelector('[role="alert"]')).toBeNull(); expect(container.textContent).toContain("Saved!");
+  expect(container.querySelector('[role="alert"]')).toBeNull(); expect(container.querySelector('[data-testid="booking-gaps"]')?.textContent).toBe("Saved. Before travelers can book, add: maximum guests.");
 });
 it("allows failed private listing reads to retry without inventing a listing", async () => {
   fetchMock.mockResolvedValueOnce(response({ error: "Listing temporarily unavailable" }, 503)).mockResolvedValueOnce(response({ listing }));

@@ -314,16 +314,11 @@ function OperatorBookings({ userId, authLoading }: { userId: string | undefined;
                     </div>
 
                     {booking.status === "pending" && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void updateStatus(booking.id, "confirmed")}
-                          disabled={pending !== null || loading || needsReload}
-                          aria-label={`Accept booking ${booking.bookingNumber}`}
-                          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
+                      <div className="flex items-center gap-3">
+                        {/* A card booking confirms itself when the traveler pays; there is nothing to accept. */}
+                        <p data-testid="awaiting-payment" className="max-w-[13rem] text-right text-xs text-navy-500">
+                          <span className="font-semibold text-navy-700">Awaiting traveler payment.</span> It confirms automatically once paid. Declining cancels their checkout.
+                        </p>
                         <button
                           type="button"
                           onClick={() => void updateStatus(booking.id, "cancelled")}

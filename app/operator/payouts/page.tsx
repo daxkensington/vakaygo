@@ -637,7 +637,7 @@ export default function OperatorPayoutsPage() {
             <span className="font-semibold">
               Fees depend on the listing category
             </span>{" "}
-            Review the <Link href="/operator/onboarding/terms" className="underline">operator terms draft</Link> for the current commission schedule.
+            Review the <Link href="/operator/onboarding/terms" className="underline">operator terms</Link> for the current commission schedule.
           </p>
         </div>
       </div>

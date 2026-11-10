@@ -19,6 +19,8 @@ import {
   Check,
 } from "lucide-react";
 import { CATEGORY_RATES } from "@/lib/pricing";
+import { CANCELLATION_POLICIES } from "@/lib/cancellation";
+import { priceUnitsForType, priceUnitLabel } from "@/lib/listing-price-units";
 import PhotoUploader from "@/components/operator/photo-uploader";
 import { AIDescriptionButton } from "@/components/operator/ai-description-button";
 
@@ -159,18 +161,6 @@ export default function NewListingPage() {
   const isTourType = ["tour", "excursion", "vip", "guide"].includes(type);
   const totalSteps = 5;
 
-  const priceUnits: Record<string, string[]> = {
-    stay: ["night", "week", "month"],
-    excursion: ["person", "group", "boat"],
-    tour: ["person", "group"],
-    dining: ["avg meal"],
-    event: ["ticket", "table"],
-    transfer: ["trip", "person", "vehicle"],
-    transport: ["trip", "person", "day"],
-    vip: ["hour", "day", "person", "event"],
-    guide: ["person", "hour", "group"],
-    spa: ["treatment", "hour", "package"],
-  };
 
   async function handleSubmit() {
     setSubmissionError("");
@@ -245,8 +235,8 @@ export default function NewListingPage() {
           Listing submitted!
         </h1>
         <p className="text-navy-400 mt-4 max-w-md mx-auto">
-          Your listing is being reviewed and will be live within 24 hours.
-          We&apos;ll notify you by email when it&apos;s published.
+          Your listing is with our team for review. We&apos;ll email you when it is published;
+          until then it is not visible to travelers.
         </p>
         <Link prefetch={false}
           href="/operator/listings"
@@ -306,7 +296,7 @@ export default function NewListingPage() {
                   key={lt.id}
                   onClick={() => {
                     setType(lt.id);
-                    setPriceUnit(priceUnits[lt.id]?.[0] || "unit");
+                    setPriceUnit(priceUnitsForType(lt.id)[0]);
                   }}
                   className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
                     type === lt.id ? lt.activeColor : `${lt.color} hover:border-navy-200`
@@ -495,9 +485,9 @@ export default function NewListingPage() {
                     onChange={(e) => setPriceUnit(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50 appearance-none"
                   >
-                    {(priceUnits[type] || ["unit"]).map((unit) => (
+                    {priceUnitsForType(type).map((unit) => (
                       <option key={unit} value={unit}>
-                        {unit}
+                        {priceUnitLabel(unit)}
                       </option>
                     ))}
                   </select>
@@ -554,10 +544,10 @@ export default function NewListingPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { value: "flexible", label: "Flexible", desc: "Free cancel 24h before" },
-                    { value: "moderate", label: "Moderate", desc: "Free cancel 7 days before" },
-                    { value: "strict", label: "Strict", desc: "50% refund 14 days before" },
-                    { value: "non_refundable", label: "Non-Refundable", desc: "No refunds" },
+                    { value: "flexible", label: "Flexible", desc: CANCELLATION_POLICIES.flexible.summary },
+                    { value: "moderate", label: "Moderate", desc: CANCELLATION_POLICIES.moderate.summary },
+                    { value: "strict", label: "Strict", desc: CANCELLATION_POLICIES.strict.summary },
+                    { value: "non_refundable", label: "Non-Refundable", desc: CANCELLATION_POLICIES.non_refundable.summary },
                   ].map((p) => (
                     <button
                       key={p.value}
@@ -610,8 +600,10 @@ export default function NewListingPage() {
                     value={maxGuests}
                     onChange={(e) => setMaxGuests(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-cream-50 text-navy-700 outline-none focus:ring-2 focus:ring-gold-500/50"
-                    placeholder="Unlimited"
+                    placeholder="e.g. 8"
+                    aria-describedby="new-maxGuests-help"
                   />
+                  <p id="new-maxGuests-help" className="mt-1 text-xs text-navy-400">Needed before travelers can book.</p>
                 </div>
               </div>
 

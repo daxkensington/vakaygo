@@ -63,6 +63,39 @@ describe("booking offers in automated mail", () => {
     expect(await response.json()).toMatchObject({ delivered: 1, suppressed: 0 });
     expect(state.send).toHaveBeenCalledTimes(1);
   });
+  it("does not send a business the notice of an unpaid checkout it cannot act on", async () => {
+    state.kind = "received";
+    Object.assign(state.booking, { status: "pending", booking_eligible: true });
+    state.query.mockImplementation(async (strings: TemplateStringsArray) => {
+      const text = strings.join("?");
+      if (text.includes("RETURNING *")) return [
+        { id: "job-operator", booking_id: "synthetic-booking", kind: "received", recipient: "operator" },
+        { id: "job-traveler", booking_id: "synthetic-booking", kind: "received", recipient: "traveler" },
+      ];
+      if (text.includes("SELECT b.*")) return [state.booking];
+      return [];
+    });
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 1, failed: 0, suppressed: 1 });
+    expect(state.send).toHaveBeenCalledTimes(1);
+    expect((state.send.mock.calls[0] as unknown as [{ to: string }])[0].to).toBe("traveler@example.invalid");
+  });
+  it("tells the team a booking was paid, with the payment state", async () => {
+    state.kind = "confirmed";
+    Object.assign(state.booking, { status: "confirmed", paid_at: new Date(), payment_method: "card", booking_eligible: true });
+    state.query.mockImplementation(async (strings: TemplateStringsArray) => {
+      const text = strings.join("?");
+      if (text.includes("RETURNING *")) return [{ id: "job-team", booking_id: "synthetic-booking", kind: "confirmed", recipient: "team" }];
+      if (text.includes("SELECT b.*")) return [state.booking];
+      return [];
+    });
+    const response = await bookingMail(request());
+    expect(await response.json()).toMatchObject({ delivered: 1, suppressed: 0 });
+    const [message] = state.send.mock.calls[0] as unknown as [{ to: string; text: string }];
+    expect(message.to).toBe("bookings@vakaygo.com");
+    expect(message.text).toContain("Payment: paid (card)");
+    expect(message.text).toContain("https://vakaygo.com/admin/bookings");
+  });
   it("does not query or offer price-drop bookings while launch is disabled", async () => {
     vi.stubEnv("BOOKINGS_ENABLED", "false");
     const response = await priceAlerts(request());
