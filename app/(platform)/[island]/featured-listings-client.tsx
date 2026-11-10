@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import { getImageUrl } from "@/lib/image-utils";
 import { ImageWithFallback } from "@/components/shared/image-fallback";
 import { useCurrency } from "@/lib/currency";
+import { ratingCountLabel } from "@/lib/listing-display";
 
 export type FeaturedListing = {
   id: string;
@@ -17,6 +18,9 @@ export type FeaturedListing = {
   priceCurrency: string | null;
   priceUnit: string | null;
   avgRating: string | null;
+  reviewCount?: number | null;
+  /** Whose rating this is; imported listings carry Google's. */
+  ratingSource?: "google" | "vakaygo";
 };
 
 export function FeaturedListingsClient({
@@ -69,6 +73,9 @@ export function FeaturedListingsClient({
                   <div className="flex items-center gap-1">
                     <Star size={12} className="text-gold-700 fill-gold-500" />
                     <span className="text-xs font-semibold">{parseFloat(listing.avgRating).toFixed(1)}</span>
+                    {ratingCountLabel(listing.reviewCount, listing.ratingSource ?? "vakaygo") && (
+                      <span className="text-xs text-navy-400">({ratingCountLabel(listing.reviewCount, listing.ratingSource ?? "vakaygo")})</span>
+                    )}
                   </div>
                 )}
               </div>

@@ -120,7 +120,14 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   // Load persisted currency selection + cached rates
   useEffect(() => {
-    const stored = localStorage.getItem(LOCALSTORAGE_CURRENCY_KEY);
+    // Storage access throws in some private modes and when site data is blocked.
+    // This provider wraps every page, so a throw here would blank the whole site.
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(LOCALSTORAGE_CURRENCY_KEY);
+    } catch {
+      stored = null;
+    }
     if (stored && FALLBACK_RATES[stored] !== undefined) {
       setCurrencyState(stored);
     }
@@ -168,7 +175,11 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const setCurrency = useCallback((code: string) => {
     if (FALLBACK_RATES[code] !== undefined) {
       setCurrencyState(code);
-      localStorage.setItem(LOCALSTORAGE_CURRENCY_KEY, code);
+      try {
+        localStorage.setItem(LOCALSTORAGE_CURRENCY_KEY, code);
+      } catch {
+        // The choice still applies for this visit; it just is not remembered.
+      }
     }
   }, []);
 

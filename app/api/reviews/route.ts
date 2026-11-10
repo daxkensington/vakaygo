@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
 import { revalidateListing } from "@/lib/revalidate-listing";
+import { listingRatingIsGoogleSql } from "@/server/listing-review-source";
 
 export async function GET(request: Request) {
   try {
@@ -267,6 +268,11 @@ export async function POST(request: Request) {
       .from(reviews)
       .where(and(eq(reviews.listingId, listingId), eq(reviews.isPublished, true)));
 
+    // On an imported listing these columns hold Google's rating and count, and
+    // every page labels them "Google". Writing the VakayGo average over them
+    // would show one VakayGo review as "5.0 (1 Google reviews)" and lose
+    // Google's figures for good. VakayGo reviews on such a listing are shown
+    // by the reviews section, which computes its own average.
     if (ratingResult[0]) {
       await db
         .update(listings)
@@ -274,7 +280,7 @@ export async function POST(request: Request) {
           avgRating: parseFloat(ratingResult[0].avg).toFixed(2),
           reviewCount: ratingResult[0].count,
         })
-        .where(eq(listings.id, listingId));
+        .where(and(eq(listings.id, listingId), sql`NOT ${listingRatingIsGoogleSql}`));
     }
     await revalidateListing(listingId);
 

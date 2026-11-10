@@ -44,6 +44,7 @@ import {
   Zap,
 } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
+import { Flag } from "@/components/shared/flag";
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -536,16 +537,29 @@ function TripPlanner() {
 
           {/* Auth gate */}
           {!authLoading && !user && (
-            <div className="flex flex-col items-center justify-center py-24">
-              <h2 className="text-xl font-semibold text-navy-700 mb-2">
-                Sign in to plan a trip
-              </h2>
-              <Link
-                href={signInUrl}
-                className="mt-4 bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
-              >
-                Sign In
-              </Link>
+            <div data-testid="trip-planner-gate" className="flex flex-col items-center justify-center py-24 text-center">
+              <h1 className="text-xl font-semibold text-navy-700 mb-2">
+                The AI Trip Planner is free with a VakayGo account
+              </h1>
+              <p className="max-w-md text-navy-500">
+                Tell it where you are going, your dates and what you like, and it drafts a day-by-day
+                itinerary from the places listed on VakayGo. An account is needed so your trip can be
+                saved and shared. Your destination choice is kept while you sign in.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href={signInUrl.replace(/^\/auth\/signin/, "/auth/signup")}
+                  className="bg-gold-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gold-800 transition-colors"
+                >
+                  Create a free account
+                </Link>
+                <Link
+                  href={signInUrl}
+                  className="rounded-xl border border-cream-300 px-6 py-3 font-semibold text-navy-700 hover:bg-cream-100 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </div>
             </div>
           )}
 
@@ -623,7 +637,7 @@ function TripPlanner() {
                           }`}
                         >
                           <span className="block font-semibold text-sm truncate">
-                            {getIslandFlag(island.slug)} {island.name}
+                            <Flag>{getIslandFlag(island.slug)}</Flag> {island.name}
                           </span>
                           <span
                             className={`block text-xs mt-1 ${

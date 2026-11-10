@@ -212,3 +212,11 @@ img {
   content-visibility: auto;
   contain-intrinsic-size: 1px 900px;
 }
+
+/* Country-flag emoji on a platform that cannot draw them (Windows outside
+   Firefox) show as letter pairs, e.g. "GD Grenada". components/layout/
+   flag-emoji-support.tsx marks the document; flags are decorative and the
+   name always sits beside them, so they are simply not shown there. */
+html.no-flag-emoji .flag-emoji {
+  display: none;
+}

@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
+import { formatBookingDate } from "@/lib/booking-time";
 import { ListingCard } from "@/components/listings/listing-card";
 import { RecommendedListings } from "@/components/recommendations/recommended-listings";
 import { TrendingListings } from "@/components/recommendations/trending-listings";
@@ -149,7 +150,7 @@ function SavedTrips() {
               </h3>
               {trip.startDate && (
                 <p className="text-sm text-navy-400">
-                  {new Date(trip.startDate).toLocaleDateString("en-US", {
+                  {formatBookingDate(trip.startDate, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
