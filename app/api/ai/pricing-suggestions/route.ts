@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { cookies } from "next/headers";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { listings, islands } from "@/drizzle/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { assertListingOwnership } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
@@ -83,9 +83,11 @@ export async function POST(request: Request) {
       .from(listings)
       .where(
         and(
+          ne(listings.id, listingId),
           eq(listings.type, listing.type),
           eq(listings.islandId, listing.islandId),
           eq(listings.status, "active"),
+          listing.priceUnit ? eq(listings.priceUnit, listing.priceUnit) : undefined,
           sql`${listings.priceAmount} IS NOT NULL AND ${listings.priceAmount} > 0`
         )
       );
