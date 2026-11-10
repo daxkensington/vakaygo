@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { claimStartHref } from "@/lib/claim-return";
 import { useParams } from "next/navigation";
@@ -47,6 +47,7 @@ import { getImageUrl } from "@/lib/image-utils";
 import { getIslandFlag } from "@/lib/island-flags";
 import { analytics } from "@/lib/analytics";
 import { useCurrency } from "@/lib/currency";
+import { useListingViewBeacon } from "@/components/listings/use-listing-view-beacon";
 import { resolveListingGuestCapacity } from "@/lib/listing-capacity";
 import {
   Star,
@@ -157,7 +158,6 @@ export function ListingDetailClient({
   const [relatedGuides, setRelatedGuides] = useState<RelatedGuide[]>([]);
   const [loading, setLoading] = useState(!initialListing);
   const { isSaved, toggle } = useSaved();
-  const viewTracked = useRef(false);
 
   useEffect(() => {
     // The server component already fetched the listing — only fetch
@@ -188,25 +188,11 @@ export function ListingDetailClient({
       .catch(() => {});
   }, [listing]);
 
-  // Track listing view (once per page load)
-  useEffect(() => {
-    if (!params.slug || viewTracked.current) return;
-    viewTracked.current = true;
-
-    const source = document.referrer.includes("/explore")
-      ? "explore"
-      : document.referrer.includes("/search")
-        ? "search"
-        : document.referrer.includes(`/${params.island}`)
-          ? "island"
-          : "direct";
-
-    fetch(`/api/listings/${params.slug}/view`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source }),
-    }).catch(() => {});
-  }, [params.slug, params.island]);
+  // Count the view once a person is actually looking at the page.
+  useListingViewBeacon(
+    typeof params.slug === "string" ? params.slug : undefined,
+    typeof params.island === "string" ? params.island : undefined,
+  );
 
   // Track recently viewed in localStorage
   useEffect(() => {
