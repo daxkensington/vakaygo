@@ -5,6 +5,16 @@ import { cookies, headers } from "next/headers";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { listings, listingViews } from "@/drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import {
+  cleanCountry,
+  cleanReferrerHost,
+  cleanUtmSource,
+  cleanViewSource,
+  declaredBotUserAgent,
+  networkBotReason,
+  uaFamily,
+} from "@/lib/view-attribution";
+import { recordListingView } from "@/server/listing-view-attribution";
 
 import { logger } from "@/lib/logger";
 
@@ -14,13 +24,15 @@ export async function POST(
 ) {
   try {
     const ua = request.headers.get("user-agent") || "";
-    if (/bot|crawl|spider|slurp|facebookexternalhit|whatsapp|headless|lighthouse|prerender|ahrefs|semrush|bytespider|gptbot|claudebot/i.test(ua)) {
+    if (declaredBotUserAgent(ua)) {
       return NextResponse.json({ tracked: false, reason: "bot" });
     }
 
     const { slug } = await params;
     const body = await request.json().catch(() => ({}));
-    const source = body.source || "direct";
+    const source = cleanViewSource(body?.source);
+    const referrerHost = cleanReferrerHost(body?.referrerHost);
+    const utmSource = cleanUtmSource(body?.utmSource);
 
     const db = drizzle(neon(process.env.DATABASE_URL!));
 
@@ -72,12 +84,20 @@ export async function POST(
       return NextResponse.json({ tracked: false, reason: "rate_limited" });
     }
 
-    // Insert view
-    await db.insert(listingViews).values({
+    // A browser on a crawler or hosting network is kept for audit but
+    // flagged, so trending and operator numbers count people only.
+    const botReason = networkBotReason({ ip: viewerIp, asn: hdrs.get("x-vercel-ip-as-number") });
+
+    await recordListingView(db, {
       listingId: listing.id,
       viewerIp,
       userId,
       source,
+      uaFamily: uaFamily(ua),
+      referrerHost,
+      utmSource,
+      country: cleanCountry(hdrs.get("x-vercel-ip-country")),
+      botReason,
     });
 
     return NextResponse.json({ tracked: true });

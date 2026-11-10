@@ -5,58 +5,11 @@ import { claimInvitationUrl, unsubscribeInvitationUrl } from "@/server/outreach-
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
 import { OPERATING_BUSINESS } from "@/lib/brand";
+import { isValidBusinessEmail } from "@/lib/outreach-email-validation";
+import { evaluateOutreachCountryGate, requiresSolicitationNotice, type OutreachPermissionRecord } from "@/lib/outreach-country-policy";
 
+export { isValidBusinessEmail };
 
-const BLOCKED_EMAIL_DOMAINS = new Set([
-  "example.com",
-  "example.org",
-  "example.net",
-  "domain.com",
-  "yoursite.com",
-  "company.com",
-  "email.com",
-  "sentry.io",
-  "sentry.wixpress.com",
-  "wixpress.com",
-  "wix.com",
-  "squarespace.com",
-  "godaddy.com",
-  "wordpress.org",
-  "wordpress.com",
-  "schema.org",
-  "w3.org",
-  "googleapis.com",
-  "googleusercontent.com",
-  "gstatic.com",
-  "cloudflare.com",
-  "facebook.com",
-  "instagram.com",
-  "twitter.com",
-  "x.com",
-  "tiktok.com",
-  "tripadvisor.com",
-  "booking.com",
-  "airbnb.com",
-  "expedia.com",
-  "viator.com",
-  "vakaygo.com",
-]);
-
-const BLOCKED_LOCAL_PREFIXES = [
-  "noreply",
-  "no-reply",
-  "donotreply",
-  "do-not-reply",
-  "postmaster",
-  "hostmaster",
-  "webmaster",
-  "abuse",
-  "privacy",
-  "legal",
-  "dmca",
-  "security",
-  "mailer-daemon",
-];
 
 const PREFERRED_LOCAL_PREFIXES = [
   "bookings",
@@ -109,29 +62,6 @@ export function verifyOutreachUnsubscribeToken(listingId: string, token: string)
   } catch {
     return false;
   }
-}
-
-export function isValidBusinessEmail(raw: unknown): raw is string {
-  if (typeof raw !== "string") return false;
-  const email = raw.trim().toLowerCase();
-  if (email.length < 6 || email.length > 254) return false;
-  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/.test(email)) return false;
-
-  const [local, domain] = email.split("@");
-  if (!local || !domain) return false;
-  if (domain.endsWith(".invalid") || domain.endsWith(".local") || domain.endsWith(".test")) return false;
-  if (/^(?:badmail|honeypot|spamtrap)\./i.test(domain)) return false;
-  if (/\.(png|jpg|jpeg|gif|svg|webp|avif|css|js|woff|woff2|ttf|eot|mp4|pdf|zip)$/i.test(domain)) return false;
-  if (BLOCKED_EMAIL_DOMAINS.has(domain)) return false;
-  for (const blocked of BLOCKED_EMAIL_DOMAINS) {
-    if (domain.endsWith(`.${blocked}`)) return false;
-  }
-  if (BLOCKED_LOCAL_PREFIXES.some((prefix) => local === prefix || local.startsWith(`${prefix}+`) || local.startsWith(`${prefix}.`))) {
-    return false;
-  }
-  // Reject UUID-like or hex-hash local parts (e.g. Sentry ingest addresses)
-  if (/^[0-9a-f]{20,}$/.test(local)) return false;
-  return true;
 }
 
 function decodeCfEmail(hex: string): string {
@@ -357,11 +287,22 @@ export async function sendBusinessInterestOutreachEmail(
   }
 
   const db = neon(process.env.DATABASE_URL);
+  // One read. The address-level history check keeps a business that was already
+  // emailed (or opted out) for one listing from being invited again for another.
   const [row] = await db.query(
-    `SELECT l.id, l.title, l.status AS "listingStatus", l.type_data->>'email' AS email,
+    `SELECT l.id, l.title, l.slug AS "listingSlug", l.status AS "listingStatus", l.type_data->>'email' AS email,
             i.slug AS "islandSlug", i.name AS "islandName", i.country AS "islandCountry",
             i.is_active AS "islandActive", o.status AS "outreachStatus", o.contacted_at AS "contactedAt",
-            vakaygo_listing_claim_verified(l.id) AS "claimVerified"
+            vakaygo_listing_claim_verified(l.id) AS "claimVerified",
+            (SELECT coalesce(json_agg(json_build_object('kind',p.permission_kind,'country',p.recipient_country)),'[]'::json)
+               FROM outreach_recipient_consents p JOIN outreach_campaign_control cc ON cc.id=true AND cc.provider=p.provider
+              WHERE p.listing_id=l.id AND p.recipient_email=lower(btrim(l.type_data->>'email'))
+                AND p.revoked_at IS NULL AND p.granted_at<=now()) AS permissions,
+            EXISTS(SELECT 1 FROM business_outreach lo JOIN listings ll ON ll.id=lo.listing_id
+              WHERE lo.listing_id<>l.id AND (lo.status='do_not_contact' OR lo.contacted_at IS NOT NULL)
+                AND (lower(btrim(ll.type_data->>'email'))=lower(btrim(l.type_data->>'email'))
+                  OR lower(btrim(l.type_data->>'email')) IN (SELECT lower(m[1])
+                    FROM regexp_matches(lo.notes,'Claim invitation emailed to ([^[:space:]]+)','g') m))) AS "addressAlreadyContacted"
        FROM listings l
        JOIN islands i ON i.id=l.island_id
        LEFT JOIN business_outreach o ON o.listing_id=l.id
@@ -375,6 +316,16 @@ export async function sendBusinessInterestOutreachEmail(
   if (row.outreachStatus === "do_not_contact") return { sent: false, reason: "suppressed" };
   if (row.contactedAt) return { sent: false, reason: "already_contacted" };
   if (!isValidBusinessEmail(row.email)) return { sent: false, reason: "no_email_on_file" };
+  if (row.addressAlreadyContacted === true) return { sent: false, reason: "address_already_contacted" };
+
+  // Country policy applies to every caller before an attempt is reserved, so a
+  // refused destination never consumes the one-invitation-per-address slot.
+  const islandSlug = String(row.islandSlug || "");
+  const countryGate = evaluateOutreachCountryGate({
+    islandSlug,
+    permissions: Array.isArray(row.permissions) ? row.permissions as OutreachPermissionRecord[] : [],
+  });
+  if (!countryGate.allowed) return { sent: false, reason: countryGate.reason };
 
   // Existing contact data is evidence, not permission. The delivery helper
   // rechecks recipient consent, suppression, caps, local hours and transport
@@ -386,7 +337,7 @@ export async function sendBusinessInterestOutreachEmail(
   return deliverClaimInvitation({
     listingId,
     recipient,
-    islandSlug: String(row.islandSlug || ""),
+    islandSlug,
     islandCountry: String(row.islandCountry || ""),
     buildMessage: (attemptId: string) => {
       const claimUrl = claimInvitationUrl(attemptId, listingId);
@@ -396,10 +347,17 @@ export async function sendBusinessInterestOutreachEmail(
       const title = String(row.title || "").replace(/[\r\n]+/g, " ").trim().slice(0, 160);
       const island = String(row.islandName || "").replace(/[\r\n]+/g, " ").trim().slice(0, 100);
       if (!title || !island) throw new Error("Listing name and destination are required");
+      const listingSlug = String(row.listingSlug || "");
+      const listingUrl = /^[a-z0-9-]{1,200}$/.test(islandSlug) && /^[a-z0-9-]{1,200}$/.test(listingSlug)
+        ? `https://vakaygo.com/${islandSlug}/${listingSlug}` : null;
+      // US law (CAN-SPAM) requires a commercial message to say that it is one.
+      const solicitation = requiresSolicitationNotice(islandSlug)
+        ? `This message is a business solicitation from VakayGo, operated by ${OPERATING_BUSINESS}.` : null;
       const text = [
         `Hello ${title} team,`,
         "",
-        `We are inviting your team to review the existing ${title} listing in ${island} on VakayGo.`,
+        `VakayGo is a travel marketplace where visitors look for places to stay, tours, dining and transport in ${island}. ${title} already has a public listing there, and we are inviting your team to review it.`,
+        ...(listingUrl ? ["You can see the listing here:", listingUrl, ""] : [""]),
         "If you represent this business, you can start a free listing claim and complete ownership verification here:",
         claimUrl,
         "",
@@ -412,6 +370,7 @@ export async function sendBusinessInterestOutreachEmail(
         "The VakayGo Team",
         "support@vakaygo.com",
         "",
+        ...(solicitation ? [solicitation, ""] : []),
         OPERATING_BUSINESS + " · VakayGo",
         postalAddress,
         "",
@@ -421,17 +380,20 @@ export async function sendBusinessInterestOutreachEmail(
       const eIsland = escapeHtml(island);
       const html = `<div style="font-family:Arial,sans-serif;max-width:560px;line-height:1.6">
   <p>Hello <strong>${eTitle}</strong> team,</p>
-  <p>We are inviting your team to review the existing ${eTitle} listing in ${eIsland} on VakayGo.</p>
+  <p>VakayGo is a travel marketplace where visitors look for places to stay, tours, dining and transport in ${eIsland}. ${eTitle} already has a public listing there, and we are inviting your team to review it.</p>${listingUrl ? `
+  <p><a href="${escapeHtml(listingUrl)}">See the ${eTitle} listing</a></p>` : ""}
   <p>If you represent this business, you can <a href="${escapeHtml(claimUrl)}">start a free listing claim</a> and complete ownership verification.</p>
   <p>A listing claim is free. After ownership verification, you can review the business profile and how traveler inquiries are handled.</p>
   <p>An inquiry is not a reservation. Accepting bookings requires separate supplier onboarding and activation; bookings and checkout must take place through VakayGo. We are not confirming that booking or payment is enabled for your listing.</p>
   <p>If the listing details are incorrect or you need help with the claim, reply to this email.</p>
   <p>The VakayGo Team<br>support@vakaygo.com</p>
-  <hr>
+  <hr>${solicitation ? `
+  <p>${escapeHtml(solicitation)}</p>` : ""}
   <p>${escapeHtml(OPERATING_BUSINESS)} · VakayGo<br>${escapeHtml(postalAddress).replace(/\r?\n/g, "<br>")}</p>
   <p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from these listing invitations</a></p>
 </div>`;
-      return { subject: `Review your ${title} listing on VakayGo (${island})`, text, html };
+      // The subject names the public listing without implying an existing account.
+      return { subject: `${title} is listed on VakayGo (${island}): free to claim`, text, html };
     },
   });
 }

@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { env } from "@/lib/env";
 import { OUTREACH_CAMPAIGN_KEY, OUTREACH_DAILY_CAPS, evaluateCampaignHealth, getOutreachPrerequisites, providerAllowsPermission } from "@/lib/outreach-campaign-policy";
 import type { CampaignAdminAction, CampaignControl, CampaignPermission, CampaignReport } from "@/lib/outreach-campaign-admin";
+import { outreachCountryStatus } from "@/lib/outreach-country-policy";
 
 export type CampaignAdminActor = { userId: string; sessionVersion: number; email: string };
 export class CampaignControlError extends Error {
@@ -16,7 +17,14 @@ const ACTOR = `actor AS MATERIALIZED (SELECT id FROM users WHERE id=$1::uuid AND
 
 // Provider acceptance, server delivery and engagement remain separate facts.
 // Legacy mutable outreach notes are deliberately excluded from this ledger.
-const HEALTH_CTES = `control AS MATERIALIZED (SELECT * FROM outreach_campaign_control WHERE id=true),
+// hold_since: delivery holds count bad outcomes from the last 7 days, or since an
+// administrator last recorded a delivery review, whichever is shorter. The review
+// columns arrive with migration 0020; reading them through to_jsonb keeps this
+// query valid on a database that does not have them yet (it then reads as "never reviewed").
+const HEALTH_CTES = `control AS MATERIALIZED (SELECT c0.*,
+  greatest(now()-interval '7 days',coalesce((to_jsonb(c0)->>'holds_reviewed_at')::timestamptz,'-infinity'::timestamptz)) AS hold_since,
+  (to_jsonb(c0)->>'holds_reviewed_at') AS reviewed_at_text,(to_jsonb(c0)->>'holds_review_note') AS review_note_text
+  FROM outreach_campaign_control c0 WHERE c0.id=true),
  window_stats AS (SELECT
   (SELECT count(*)::int FROM outreach_email_attempts all_providers
    WHERE all_providers.campaign_key=$11 AND all_providers.reserved_at>=now()-interval '24 hours') AS reserved_24h,
@@ -27,6 +35,9 @@ const HEALTH_CTES = `control AS MATERIALIZED (SELECT * FROM outreach_campaign_co
   (SELECT count(*)::int FROM outreach_email_attempts all_providers WHERE all_providers.campaign_key=$11
    AND (all_providers.state='uncertain' OR (all_providers.state='reserved' AND all_providers.reserved_at<now()-interval '20 minutes'))) AS uncertain,
   count(*) FILTER(WHERE a.accepted_at>=now()-interval '7 days' AND a.failed_at IS NOT NULL)::int AS failed,
+  count(*) FILTER(WHERE a.accepted_at>=c.hold_since)::int AS hold_accepted,
+  count(*) FILTER(WHERE a.bounced_at>=c.hold_since)::int AS hold_bounced,
+  count(*) FILTER(WHERE a.accepted_at IS NOT NULL AND a.failed_at>=c.hold_since)::int AS hold_failed,
   count(*) FILTER(WHERE a.accepted_at>=now()-interval '7 days' AND a.opened_at IS NOT NULL)::int AS opened,
   count(*) FILTER(WHERE a.accepted_at>=now()-interval '7 days' AND a.clicked_at IS NOT NULL)::int AS clicked,
   count(*) FILTER(WHERE a.accepted_at<now()-interval '24 hours' AND a.delivered_at IS NULL
@@ -43,6 +54,7 @@ type Snapshot = CampaignControl & {
   telemetryHealthy: boolean; healthReason: string; accepted: number; delivered: number; bounced: number;
   complained: number; uncertain: number; failed: number; opened: number; clicked: number;
   matureAccepted: number; matureResolved: number; overdue: number; reserved24h: number;
+  holdAccepted: number; holdBounced: number; holdFailed: number; holdsReviewedAt: string | null; holdsReviewNote: string | null;
   activePermissions: number; suppressions: number;
   linkVisits: number; approvedClaimsFromLinks: number;
 };
@@ -61,6 +73,8 @@ export async function readCampaignReport(): Promise<CampaignReport> {
     pause_reason AS "pauseReason",coalesce(telemetry_healthy,false) AS "telemetryHealthy",health_reason AS "healthReason",
     reserved_24h AS "reserved24h",accepted,delivered,bounced,complained,uncertain,failed,opened,clicked,overdue,
     mature_accepted AS "matureAccepted",mature_resolved AS "matureResolved",
+    hold_accepted AS "holdAccepted",hold_bounced AS "holdBounced",hold_failed AS "holdFailed",
+    reviewed_at_text AS "holdsReviewedAt",review_note_text AS "holdsReviewNote",
     (SELECT count(*)::int FROM outreach_email_suppressions) AS suppressions,
     (SELECT count(*)::int FROM outreach_claim_attributions t JOIN outreach_email_attempts a ON a.id=t.attempt_id
       WHERE a.provider=s.provider AND a.campaign_key=$1) AS "linkVisits",
@@ -72,7 +86,10 @@ export async function readCampaignReport(): Promise<CampaignReport> {
   if (rows.length !== 1) throw new CampaignControlError("Campaign controls are unavailable. Apply the reviewed migration before use.", 503);
   const snapshot = rows[0] as Snapshot;
   const prerequisites = reportPrerequisites(snapshot.provider);
-  const health = evaluateCampaignHealth({ ...snapshot, prerequisitesReady: prerequisites.ready, prerequisiteReasons: prerequisites.reasons });
+  // The soft-failure hold applies to the Sendcorex transport only, as before.
+  const health = evaluateCampaignHealth({ ...snapshot, holdFailed: snapshot.provider === "sendcorex" ? snapshot.holdFailed : 0,
+    failed: snapshot.provider === "sendcorex" ? snapshot.failed : 0,
+    prerequisitesReady: prerequisites.ready, prerequisiteReasons: prerequisites.reasons });
   const permissions = await sql.query(`SELECT p.id,p.listing_id AS "listingId",l.title AS "listingTitle",p.recipient_email AS "recipientEmail",
     p.provider,p.permission_kind AS "permissionKind",p.recipient_country AS "recipientCountry",p.evidence,
     p.policy_reference AS "policyReference",p.granted_at::text AS "grantedAt",p.granted_by AS "grantedBy",
@@ -87,6 +104,8 @@ export async function readCampaignReport(): Promise<CampaignReport> {
       complained: snapshot.complained, uncertain: snapshot.uncertain, failed: snapshot.failed, opened: snapshot.opened, clicked: snapshot.clicked,
       matureAccepted: snapshot.matureAccepted, matureResolved: snapshot.matureResolved, suppressions: snapshot.suppressions, activePermissions: snapshot.activePermissions,
       linkVisits: snapshot.linkVisits, approvedClaimsFromLinks: snapshot.approvedClaimsFromLinks },
+    deliveryReview: { reviewedAt: snapshot.holdsReviewedAt ?? null, note: snapshot.holdsReviewNote ?? null,
+      acceptedSince: snapshot.holdAccepted, bouncedSince: snapshot.holdBounced, failedSince: snapshot.holdFailed },
     // Link visits include scanners and forwarded links. Claims remain verified
     // through the normal ownership checks; this is association, not causation.
     permissions: permissions as CampaignPermission[],
@@ -96,6 +115,14 @@ export async function readCampaignReport(): Promise<CampaignReport> {
 export async function applyCampaignAdminAction(actor: CampaignAdminActor, action: CampaignAdminAction): Promise<void> {
   if (action.action === "grant_consent" && !providerAllowsPermission(action.provider, action.permissionKind)) {
     throw new CampaignControlError("This provider does not allow the recorded permission basis.", 400);
+  }
+  if (action.action === "grant_consent" && action.permissionKind === "business_outreach_permission") {
+    // Implied business permission is not a lawful basis everywhere. Only the
+    // recipient's own explicit opt-in may be recorded for these countries.
+    const status = outreachCountryStatus(action.recipientCountry);
+    if (status === "prior_opt_in") throw new CampaignControlError("This country requires the recipient's prior opt-in for marketing email. Record an explicit opt-in instead.", 400);
+    if (status === "held") throw new CampaignControlError("Business outreach to this country is on hold until the owner releases it.", 400);
+    if (status === "unknown") throw new CampaignControlError("Select the recipient country.", 400);
   }
   const sql = neon(env.DATABASE_URL);
   const identity = [actor.userId, actor.sessionVersion, actor.email];
@@ -123,12 +150,23 @@ export async function applyCampaignAdminAction(actor: CampaignAdminActor, action
        UPDATE outreach_recipient_consents p SET revoked_at=now(),revoked_by=actor.id,revocation_reason=$5
        FROM actor WHERE p.id=$4::uuid AND p.revoked_at IS NULL RETURNING p.id)
        SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed`, [...identity, action.consentId, action.reason]));
+    } else if (action.action === "acknowledge_delivery_review") {
+      // Records that an administrator reviewed the bounces and failures counted so
+      // far. Later holds count only outcomes after this moment. It does not enable
+      // sending, change a stage, or clear a complaint, uncertain or overdue hold.
+      statements.push(tx.query(`WITH ${ACTOR}, changed AS (
+       UPDATE outreach_campaign_control c SET holds_reviewed_at=now(),holds_reviewed_by=actor.id,holds_review_note=$5,
+        version=c.version+1,updated_by=actor.id,updated_at=now()
+       FROM actor WHERE c.id=true AND c.version=$4 RETURNING c.id)
+       SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed`, [...identity, action.expectedVersion, action.note]));
     } else {
       statements.push(tx.query(`WITH ${ACTOR}, ${HEALTH_CTES}, gate AS (
        SELECT *,($9::boolean AND provider IN ('resend','sendcorex') AND provider=$10 AND telemetry_healthy=true AND stage BETWEEN 0 AND 4
         AND stage_started_at<=now() AND complained=0 AND uncertain=0 AND overdue=0
-        AND (provider<>'sendcorex' OR failed=0)
-        AND (bounced=0 OR (accepted>0 AND bounced::numeric/greatest(accepted,1)<0.02))) AS healthy FROM snapshot),
+        AND NOT (provider='sendcorex' AND hold_failed>0 AND CASE WHEN hold_accepted<50 THEN hold_failed>=5 ELSE hold_failed::numeric/hold_accepted>=0.1 END)
+        AND NOT (hold_bounced>0 AND CASE WHEN hold_accepted<50 THEN hold_bounced>=3 ELSE hold_bounced::numeric/hold_accepted>=0.02 END)) AS healthy,
+        ((provider<>'sendcorex' OR failed=0)
+        AND (bounced=0 OR (accepted>0 AND bounced::numeric/greatest(accepted,1)<0.02))) AS promotable FROM snapshot),
        changed AS (UPDATE outreach_campaign_control c SET
         enabled=CASE WHEN $5='pause' THEN false WHEN $5='enable' THEN true ELSE c.enabled END,
         stage=CASE WHEN $5='select_provider' THEN 0 WHEN $5='request_stage' THEN $6::int ELSE c.stage END,
@@ -142,7 +180,7 @@ export async function applyCampaignAdminAction(actor: CampaignAdminActor, action
         version=c.version+1,updated_by=actor.id,updated_at=now()
        FROM actor,gate g WHERE c.id=true AND c.version=$4 AND (
         $5='pause' OR ($5='select_provider' AND c.enabled=false) OR ($5='enable' AND g.healthy=true)
-        OR ($5='request_stage' AND g.healthy=true AND $6::int=c.stage+1 AND c.stage<4
+        OR ($5='request_stage' AND g.healthy=true AND g.promotable=true AND $6::int=c.stage+1 AND c.stage<4
          AND c.stage_started_at<=now()-interval '72 hours' AND g.mature_accepted>=50 AND g.mature_resolved=g.mature_accepted))
        RETURNING c.id)
        SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed`,

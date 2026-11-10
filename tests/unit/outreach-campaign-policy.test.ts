@@ -18,10 +18,28 @@ describe("measured campaign growth", () => {
     expect(providerAllowsPermission("mailforge", "business_outreach_permission")).toBe(true);
     expect(providerAllowsPermission("unknown", "explicit_opt_in")).toBe(false);
   });
-  it("holds recent bounces with no accepted denominator and uses the strict two-percent boundary", () => {
-    expect(evaluateCampaignHealth({ ...healthy, accepted: 0, bounced: 1 }).ready).toBe(false);
+  it("needs three bounces on a small sample, then uses the strict two-percent boundary", () => {
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 0, bounced: 1 }).ready).toBe(true);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 18, bounced: 2 }).ready).toBe(true);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 18, bounced: 3 }).reasons).toContain("bounce_rate_hold");
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 49, bounced: 2 }).ready).toBe(true);
     expect(evaluateCampaignHealth({ ...healthy, accepted: 50, bounced: 1 }).ready).toBe(false);
     expect(evaluateCampaignHealth({ ...healthy, accepted: 51, bounced: 1 }).ready).toBe(true);
+  });
+  it("treats soft failures as recipient outcomes until they pass their own limit", () => {
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 18, bounced: 0, failed: 1 }).ready).toBe(true);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 18, bounced: 0, failed: 4 }).ready).toBe(true);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 18, bounced: 0, failed: 5 }).reasons).toEqual(["failure_rate_hold"]);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 100, bounced: 0, failed: 9 }).ready).toBe(true);
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 100, bounced: 0, failed: 10 }).ready).toBe(false);
+  });
+  it("counts holds since the recorded delivery review but keeps promotion on the full window", () => {
+    const reviewed = evaluateCampaignHealth({ ...healthy, accepted: 100, bounced: 5, failed: 2, holdAccepted: 0, holdBounced: 0, holdFailed: 0 });
+    expect(reviewed.ready).toBe(true);
+    expect(reviewed.nextStageAllowed).toBe(false);
+    expect(reviewed.promotionReasons).toEqual(expect.arrayContaining(["bounce_rate_hold", "failed_delivery_in_window"]));
+    expect(evaluateCampaignHealth({ ...healthy, accepted: 100, bounced: 1, holdAccepted: 10, holdBounced: 3 }).ready).toBe(false);
+    expect(evaluateCampaignHealth({ ...healthy, holdBounced: -1 }).reasons).toContain("invalid_health_counts");
   });
 });
 describe("campaign local hours", () => {

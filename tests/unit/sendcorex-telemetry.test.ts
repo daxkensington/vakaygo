@@ -30,6 +30,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Sendcorex reconciliation", () => {
+  it("keeps health ready after a single failed recipient and holds only past the shared failure limit", async () => {
+    await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).resolves.toBeUndefined();
+    const holdSql = mocks.query.mock.calls.map(([q]) => String(q)).find(q => q.startsWith("SELECT 1 AS held"));
+    expect(holdSql).toContain("failed>0 AND CASE WHEN accepted<50 THEN failed>=5 ELSE failed::numeric/accepted>=0.1 END");
+    expect(holdSql).toContain("(to_jsonb(c)->>'holds_reviewed_at')::timestamptz");
+    expect(holdSql).toContain("h.provider='sendcorex' AND h.campaign_key=$1");
+    const base = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation((text: string, ...rest: unknown[]) => text.startsWith("SELECT 1 AS held") ? [{ held: 1 }] : base(text, ...rest));
+    await expect(refreshSendcorexTelemetry("hello@vakaygo.com")).rejects.toMatchObject({ code: "sendcorex_failure_review_required" });
+  });
   it("checks readiness, binds delivery, and advances only the durable feedback cursor", async () => {
     await refreshSendcorexTelemetry("hello@vakaygo.com");
     expect(mocks.verify).toHaveBeenCalledWith("hello@vakaygo.com", "wh_fixture");

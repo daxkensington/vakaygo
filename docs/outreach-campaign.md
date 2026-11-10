@@ -105,20 +105,67 @@ is limited to known destination time zones, Monday–Friday 09:00–17:00 local 
 Unknown destinations hold. Both scheduled and administrator sends use the same
 reservation and final dispatch gates; `force` cannot bypass them.
 
+The candidate query only reads destinations that are inside their sending window
+right now and that the country policy allows, so a destination that cannot be sent
+to cannot fill the candidate window and stall the rest. Every destination slug in
+`lib/island-flags.ts` must have a time zone (`lib/outreach-timezone.ts`) and a
+country code (`lib/outreach-country-policy.ts`); a unit test fails otherwise.
+
+### Country policy
+
+Reviewed business permission (`business_outreach_permission`) is implied consent
+from a published address. It is not used where the recipient's law requires prior
+opt-in for marketing email to businesses:
+
+- **Prior opt-in, never sent on business permission:** Greece, Spain, Italy,
+  Croatia, Costa Rica. Changing this list is a code change in
+  `lib/outreach-country-policy.ts` and migration SQL, after legal review.
+- **Held until the owner releases them:** Martinique, Guadeloupe (French copy and
+  a GDPR Art. 14 notice are still missing) and Colombia. Release with the
+  environment variable `OUTREACH_RELEASED_COUNTRIES` (comma-separated ISO codes,
+  for example `CO`). Only these three codes are accepted.
+- Everything else is open. Puerto Rico and US Virgin Islands messages carry a
+  solicitation line (CAN-SPAM).
+
+A recipient's recorded explicit opt-in is honoured everywhere. The gate applies
+when permission is recorded, in the cron candidate query, in the shared sender
+before an attempt is reserved, and (prior opt-in list only) inside
+`vakaygo_reserve_outreach_attempt`. An address that an earlier campaign already
+emailed, or that opted out, for any listing is never invited again.
+
 Daily stages are 18, 24, 32, 44 and 60 per rolling 24 hours, with at most 6 per hour and at
 least 10 minutes between reservations. Reservations count even when a later send
 fails. A unique campaign/address and campaign/listing reservation prevents
 duplicates. Provider requests carry a stable idempotency key.
 
-Any complaint in 7 days, bounce rate at least 2%, uncertain transport, reservation
-older than 20 minutes, unresolved delivery older than 24 hours, stale telemetry or
-missing prerequisites holds sending. Recent bounces count even when the original
-acceptance is older than 7 days; zero accepted messages cannot hide a bounce.
-Provider rejection pauses the control. Never blindly retry an uncertain outcome.
+Any complaint in 7 days, uncertain transport, reservation older than 20 minutes,
+unresolved delivery older than 24 hours, stale telemetry or missing prerequisites
+holds sending. Provider rejection pauses the control. Never blindly retry an
+uncertain outcome.
+
+A bounce or a soft failure (soft bounce, block, rate limit) is first of all an
+outcome for that one recipient, who is not written to again: an address gets one
+attempt per campaign, and a hard bounce also suppresses it everywhere. The campaign
+itself holds only when bad outcomes pass a limit:
+
+| Outcome | Fewer than 50 accepted | 50 or more accepted |
+|---|---|---|
+| Bounces | 3 or more | 2% or more |
+| Soft failures (Sendcorex) | 5 or more | 10% or more |
+
+Counts run from the later of 7 days ago and the last recorded delivery review.
+Recent bounces count even when the original acceptance is older than that. An
+administrator who has looked at the bad addresses records a review in the campaign
+panel ("Delivery holds and review", note required). That restarts the counts; it
+does not enable sending, raise a stage, or remove anything from the report, and it
+cannot clear a complaint, uncertain or unresolved-delivery hold. The limits are
+constants in `lib/outreach-campaign-policy.ts` and are repeated in the dispatch
+gate, the admin gate and `vakaygo_reserve_outreach_attempt` (migration 0020).
 
 Promotion requires at least 72 hours in the stage and at least 50 accepted messages
 from that stage in the last 7 days, each aged 24 hours and delivered or bounced.
-There must be zero complaints, bounce rate below 2%, and complete fresh evidence.
+There must be zero complaints, bounce rate below 2% and no failed delivery over the
+full 7 days (a delivery review does not shorten this window), and complete fresh evidence.
 Promotion is manual and advances only one stage. These are internal cautious
 limits, not a promise of inbox placement or a replacement for provider policy.
 
@@ -138,6 +185,19 @@ continue to be reviewed in InboxHQ; they are not automatically counted here.
 New and legacy opt-out links block the recipient globally and revoke permissions
 across providers, including after listing deletion or address change. Do not
 clear or bypass those blocks during a provider switch.
+
+Opening an opt-out link (GET) only shows a confirmation page with an Unsubscribe
+button; the opt-out is recorded on POST. Mail security scanners open every link in
+a message, and would otherwise unsubscribe businesses that never asked. The mail
+client's one-click request (RFC 8058, `List-Unsubscribe-Post`) is a POST and still
+takes effect immediately.
+
+Legacy records: migration 0020 turns the do-not-contact rows of the October 2026
+per-listing run into address-level suppressions. The addresses that bounced or were
+provider-suppressed in that run are only known to the mail provider; import them
+once with `node scripts/import-legacy-outreach-suppressions.mjs` (dry run by
+default, `--apply` to write). The provider keeps about 30 days of history, so run
+it before mid-November 2026.
 
 ## Rollback
 

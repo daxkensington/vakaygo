@@ -4,6 +4,7 @@ import { verifyCurrentSessionToken } from "./server/session-validation";
 import { rateLimit, getEndpointType, getClientIp } from "./lib/rate-limit";
 import "./lib/env";
 import { isRouteWithin } from "./lib/route-access";
+import { canonicalHostRedirect } from "./lib/canonical-host";
 
 /**
  * Security headers applied to every response.
@@ -67,6 +68,18 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const method = request.method;
+
+  // www and the .vercel.app production alias 308 to the apex (pages only;
+  // see lib/canonical-host.ts for what is exempt and why).
+  const canonicalUrl = canonicalHostRedirect(
+    request.headers.get("host") ?? request.nextUrl.host,
+    pathname,
+    request.nextUrl.search,
+    method,
+  );
+  if (canonicalUrl) {
+    return applySecurityHeaders(NextResponse.redirect(canonicalUrl, 308));
+  }
 
   // Rate limit API routes
   if (pathname.startsWith("/api")) {

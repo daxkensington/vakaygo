@@ -59,6 +59,22 @@ function PermissionRow({ permission, onSaved }: { permission: CampaignPermission
       {permission.revokedAt ? <p className="mt-2">Revoked {new Date(permission.revokedAt).toLocaleString()}: {permission.revocationReason}</p> : <form onSubmit={revoke} className="mt-3 flex flex-wrap gap-2"><input name="reason" required minLength={5} maxLength={500} aria-label={"Revocation reason for " + permission.listingTitle} placeholder="Reason for revoking permission" disabled={busy} className="min-w-48 flex-1 rounded-lg border border-cream-300 px-3 py-2" /><button disabled={busy} className={buttonClass}>Revoke permission</button></form>}</details>{error && <p role="alert" className="mt-2 text-red-700">{error}</p>}</li>;
 }
 
+function DeliveryReview({ report, busy, onChange }: { report: CampaignReport; busy: boolean; onChange: (action: CampaignAdminAction) => Promise<void> }) {
+  const review = report.deliveryReview;
+  const held = report.health.reasons.some(reason => reason === "bounce_rate_hold" || reason === "failure_rate_hold");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onChange({ action: "acknowledge_delivery_review", expectedVersion: report.control.version, note: String(new FormData(form).get("note") || "") });
+    form.reset();
+  }
+  return <details className="mt-4 rounded-xl border border-cream-200 p-4" open={held}><summary className="cursor-pointer text-sm font-semibold text-navy-700">Delivery holds and review</summary>
+    <p className="mt-3 text-sm text-navy-500">A bounced or failed message is an outcome for that one recipient, who is not emailed again in this campaign. Sending holds when bounces reach 3 (or 2% once 50 messages were accepted) or soft failures reach 5 (or 10%), counted over the last 7 days or since the last recorded review. A complaint, an uncertain send or an unresolved delivery still holds on its own and cannot be cleared here.</p>
+    {review && <p className="mt-2 text-sm text-navy-700">Counted for holds: {review.acceptedSince} accepted, {review.bouncedSince} bounced, {review.failedSince} failed{review.reviewedAt ? ` since the review recorded ${new Date(review.reviewedAt).toLocaleString()}` : " in the last 7 days"}.{review.note ? ` Review note: ${review.note}` : ""}</p>}
+    <form onSubmit={submit} className="mt-3 flex flex-wrap gap-2"><input name="note" required minLength={20} maxLength={500} aria-label="Delivery review note" placeholder="What you checked: which addresses bounced or failed, and why it is safe to continue" disabled={busy} className="min-w-48 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm" /><button disabled={busy} className={buttonClass}>Record delivery review</button></form>
+    <p className="mt-2 text-xs text-navy-500">Recording a review restarts the hold counts from now. It does not enable the campaign, raise a stage, or remove any bounce from the report; enable the campaign afterwards if the gates allow it.</p></details>;
+}
+
 export function CampaignPanel() {
   const [report, setReport] = useState<CampaignReport | null>(null), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [revision, setRevision] = useState(0), [provider, setProvider] = useState("");
@@ -83,6 +99,7 @@ export function CampaignPanel() {
       {report.control.pauseReason && <p className="mt-2 text-sm text-navy-600">Pause reason: {report.control.pauseReason}</p>}
       {reasons.length > 0 && <div role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p className="font-semibold">Sending gates need review</p><ul className="mt-1 list-inside list-disc">{reasons.map(reason => <li key={reason}>{reason.replaceAll("_", " ")}</li>)}</ul></div>}
       <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busy || report.control.enabled || !report.health.ready} onClick={() => change({ action: "enable", expectedVersion: report.control.version })} className={buttonClass}>Enable reviewed campaign</button><button type="button" disabled={busy || !report.control.enabled} onClick={() => change({ action: "pause", expectedVersion: report.control.version, reason: "Paused by an administrator for review." })} className={buttonClass}>Pause campaign</button><button type="button" disabled={busy || !report.health.nextStageAllowed || report.control.stage >= report.caps.length - 1} onClick={() => change({ action: "request_stage", expectedVersion: report.control.version, stage: report.control.stage + 1 })} className={buttonClass}>Request next stage{report.control.stage < report.caps.length - 1 ? ` (${report.caps[report.control.stage + 1]}/day)` : ""}</button></div>
+      <DeliveryReview report={report} busy={busy} onChange={change} />
       <p className="mt-2 text-xs text-navy-500">A stage increase requires at least 3 days of observation and 50 accepted messages from this stage in the last week, aged at least 24 hours, each delivered or bounced. Bounce rate must stay below 2%, with zero complaints and a healthy event feed. Stages never increase automatically.</p>
       {!report.health.nextStageAllowed && report.health.promotionReasons?.length ? <p className="mt-2 text-xs text-navy-500">Next stage: {report.health.promotionReasons.map(reason => reason.replaceAll("_", " ")).join(", ")}.</p> : null}
       <div className="mt-4 flex flex-wrap items-end gap-2"><label className="text-sm font-semibold text-navy-700">Provider for reviewed campaign<select value={provider || report.control.provider} disabled={busy || report.control.enabled} onChange={event => setProvider(event.target.value)} className={inputClass}>{OUTREACH_PERMISSION_PROVIDERS.map(value => <option key={value}>{value}</option>)}</select></label><button type="button" disabled={busy || report.control.enabled || !provider || provider === report.control.provider} onClick={() => change({ action: "select_provider", expectedVersion: report.control.version, provider: provider as OutreachPermissionProvider })} className={buttonClass}>Select while paused</button></div>

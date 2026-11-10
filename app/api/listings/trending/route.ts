@@ -7,6 +7,7 @@ import { getImageUrl } from "@/lib/image-utils";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { bookingLaunchEnabled } from "@/server/business-onboarding";
 import { currentListingBookable } from "@/server/listing-bookability-sql";
+import { humanViews, viewAttributionReady } from "@/server/listing-view-attribution";
 
 import { logger } from "@/lib/logger";
 function getDb() {
@@ -17,8 +18,9 @@ export async function GET() {
   try {
     const db = getDb();
     const bookingsEnabled = await bookingLaunchEnabled();
+    const people = humanViews(await viewAttributionReady(db));
 
-    // Get top 12 listings by view count in the last 7 days
+    // Get top 12 listings by view count in the last 7 days (people only)
     const trending = await db
       .select({
         id: listings.id,
@@ -46,6 +48,7 @@ export async function GET() {
       .where(
         and(
           publicDirectoryListings(),
+          people,
           sql`${listingViews.createdAt} >= now() - interval '7 days'`
         )
       )

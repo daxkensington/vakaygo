@@ -9,6 +9,10 @@ CREATE FUNCTION pg_temp.control_change(uuid,integer,text,integer,text,integer,te
  RETURNS TABLE("actorExists" boolean,changed boolean) LANGUAGE sql VOLATILE AS $service$
 -- SERVICE_CONTROL_SQL
 $service$;
+CREATE FUNCTION pg_temp.review_change(uuid,integer,text,integer,text)
+ RETURNS TABLE("actorExists" boolean,changed boolean) LANGUAGE sql VOLATILE AS $service$
+-- SERVICE_REVIEW_SQL
+$service$;
 CREATE FUNCTION pg_temp.permission_grant(uuid,integer,text,uuid,text,text,text,text,text,text,text)
  RETURNS TABLE("actorExists" boolean,changed boolean) LANGUAGE sql VOLATILE AS $service$
 -- SERVICE_GRANT_SQL
@@ -98,6 +102,26 @@ BEGIN
     (pg_temp.campaign_report('listing-claims-v2')->>'matureAccepted')::int<>51 OR
     (pg_temp.campaign_report('listing-claims-v2')->>'bounced')::int<>1 THEN RAISE EXCEPTION 'Report did not preserve exact acceptance/mature/bounce facts'; END IF;
  IF NOT pg_temp.change('request_stage',5,2) THEN RAISE EXCEPTION 'Healthy less-than-2-percent sample could not promote'; END IF;
+ -- Sending holds use a minimum sample and count from the last recorded delivery review.
+ UPDATE outreach_campaign_control SET holds_reviewed_at=now()-interval '10 minutes',holds_review_note='Synthetic earlier review of fixture bounces';
+ IF (pg_temp.campaign_report('listing-claims-v2')->>'holdAccepted')::int<>0 OR
+    (pg_temp.campaign_report('listing-claims-v2')->>'holdBounced')::int<>1 OR
+    (pg_temp.campaign_report('listing-claims-v2')->>'bounced')::int<>1 THEN RAISE EXCEPTION 'Report did not separate reviewed-era counts from the 7-day facts'; END IF;
+ IF NOT pg_temp.change('enable',6) THEN RAISE EXCEPTION 'One bounce on a small sample blocked enabling'; END IF;
+ IF NOT pg_temp.change('pause',7) THEN RAISE EXCEPTION 'Pause after small-sample enable failed'; END IF;
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider_email_id,state,reserved_at,accepted_at,bounced_at)
+ SELECT 'control-small-'||n||'@audit.invalid','listing-claims-v2','control-small-'||n,'control-small-'||n,'accepted',now()-interval '6 minutes',now()-interval '5 minutes',now()-interval '1 minute' FROM generate_series(1,2) n;
+ IF pg_temp.change('enable',8) THEN RAISE EXCEPTION 'Enabled with three bounces on a small sample'; END IF;
+ IF (SELECT changed FROM pg_temp.review_change('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',7,'Synthetic review of three bounced fixtures')) THEN RAISE EXCEPTION 'Delivery review ignored the version CAS'; END IF;
+ IF (SELECT "actorExists" FROM pg_temp.review_change('63000000-0000-4000-8000-000000000002',0,'control-owner@audit.invalid',8,'Synthetic review of three bounced fixtures')) THEN RAISE EXCEPTION 'Non-admin recorded a delivery review'; END IF;
+ IF NOT (SELECT changed FROM pg_temp.review_change('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',8,'Synthetic review of three bounced fixtures')) THEN RAISE EXCEPTION 'Delivery review could not be recorded'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM outreach_campaign_control WHERE version=9 AND NOT enabled AND stage=2 AND holds_reviewed_at=now()
+   AND holds_reviewed_by='63000000-0000-4000-8000-000000000001' AND holds_review_note='Synthetic review of three bounced fixtures') THEN RAISE EXCEPTION 'Delivery review changed more than the review record'; END IF;
+ IF (pg_temp.campaign_report('listing-claims-v2')->>'bounced')::int<>3 THEN RAISE EXCEPTION 'Delivery review erased recorded bounces from the report'; END IF;
+ UPDATE outreach_campaign_control SET stage_started_at=now()-interval '73 hours';
+ IF pg_temp.change('request_stage',9,3) THEN RAISE EXCEPTION 'Delivery review shortened the promotion window'; END IF;
+ IF NOT pg_temp.change('enable',9) THEN RAISE EXCEPTION 'Reviewed bounces still blocked enabling'; END IF;
+ IF NOT pg_temp.change('pause',10) THEN RAISE EXCEPTION 'Pause after reviewed enable failed'; END IF;
  IF pg_temp.grant_permission('changed@audit.invalid') THEN RAISE EXCEPTION 'Grant ignored reviewed-email CAS'; END IF;
  IF NOT pg_temp.grant_permission() THEN RAISE EXCEPTION 'Reviewed explicit opt-in could not be recorded'; END IF;
  IF pg_temp.grant_permission() THEN RAISE EXCEPTION 'Duplicate active permission recorded'; END IF;
@@ -135,5 +159,5 @@ BEGIN
   (pg_temp.campaign_report('listing-claims-v2')->>'approvedClaimsFromLinks')::int<>1 THEN RAISE EXCEPTION 'Claim link report mixed campaign/provider scopes'; END IF;
  IF EXISTS(SELECT 1 FROM listing_onboarding WHERE listing_id='64000000-0000-4000-8000-000000000001') OR EXISTS(SELECT 1 FROM bookings WHERE listing_id='64000000-0000-4000-8000-000000000001') THEN RAISE EXCEPTION 'Campaign controls changed booking/onboarding state'; END IF;
 END $$;
-SELECT 'PASS: actual campaign control/consent SQL, default pause, identity/version CAS, prerequisites, provider isolation, one-step mature ramp, bounce/complaint/uncertainty/feed gates, reviewed recipient, irreversible suppression and revocation';
+SELECT 'PASS: actual campaign control/consent SQL, default pause, identity/version CAS, prerequisites, provider isolation, one-step mature ramp, bounce/complaint/uncertainty/feed gates, minimum-sample holds and recorded delivery review, reviewed recipient, irreversible suppression and revocation';
 ROLLBACK;

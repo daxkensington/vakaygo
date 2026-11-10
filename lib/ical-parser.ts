@@ -2,6 +2,7 @@
  * Simple iCal parser — no external dependencies.
  * Parses a VCALENDAR string and extracts VEVENT entries.
  * Handles DATE (YYYYMMDD) and DATE-TIME (YYYYMMDDTHHMMSSZ / YYYYMMDDTHHMMSS) formats.
+ * Events without DTEND end via DURATION, one day for DATE starts, or at their start (RFC 5545).
  */
 
 export type ICalEvent = {
@@ -46,8 +47,49 @@ function parseICalDate(value: string): Date {
     );
   }
 
-  // Fallback: try native parsing
+  // Fallback: try native parsing; an Invalid Date is rejected by parseICal
   return new Date(trimmed);
+}
+
+/**
+ * Parse an iCal DURATION value (e.g. P1W, P3D, PT1H30M, P1DT2H) into milliseconds.
+ * Returns null for malformed, empty or negative durations.
+ */
+function parseICalDuration(value: string): number | null {
+  const trimmed = value.trim();
+  const match = trimmed.match(
+    /^([+-])?P(?:(\d+)W|(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?)$/
+  );
+  if (!match) return null;
+
+  const [, sign, weeks, days, hours, minutes, seconds] = match;
+  if (sign === "-") return null;
+  if (
+    weeks === undefined &&
+    days === undefined &&
+    hours === undefined &&
+    minutes === undefined &&
+    seconds === undefined
+  ) {
+    return null;
+  }
+  if (
+    trimmed.includes("T") &&
+    hours === undefined &&
+    minutes === undefined &&
+    seconds === undefined
+  ) {
+    return null;
+  }
+
+  const n = (part: string | undefined) => (part ? parseInt(part, 10) : 0);
+  return (
+    n(weeks) * 604_800_000 +
+    n(days) * 86_400_000 +
+    n(hours) * 3_600_000 +
+    n(minutes) * 60_000 +
+    n(seconds) * 1_000
+  );
 }
 
 /**
@@ -67,6 +109,8 @@ export function parseICal(icalText: string): ICalEvent[] {
 
   let inEvent = false;
   let current: Partial<ICalEvent> = {};
+  let startIsDate = false;
+  let durationMs: number | null = null;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -74,15 +118,35 @@ export function parseICal(icalText: string): ICalEvent[] {
     if (trimmed === "BEGIN:VEVENT") {
       inEvent = true;
       current = {};
+      startIsDate = false;
+      durationMs = null;
       continue;
     }
 
     if (trimmed === "END:VEVENT") {
       inEvent = false;
-      if (current.start && current.end) {
+      const start = current.start;
+      let end: Date | undefined;
+      if (current.end && !Number.isNaN(current.end.getTime())) {
+        end = current.end;
+      } else if (start && durationMs !== null) {
+        end = new Date(start.getTime() + durationMs);
+      } else if (start && startIsDate) {
+        end = new Date(start.getTime() + 86_400_000);
+      } else if (start) {
+        end = new Date(start.getTime());
+      }
+
+      if (
+        start &&
+        end &&
+        !Number.isNaN(start.getTime()) &&
+        !Number.isNaN(end.getTime()) &&
+        end.getTime() >= start.getTime()
+      ) {
         events.push({
-          start: current.start,
-          end: current.end,
+          start,
+          end,
           summary: current.summary || "Blocked",
           uid: current.uid || "",
         });
@@ -105,9 +169,18 @@ export function parseICal(icalText: string): ICalEvent[] {
     switch (propName) {
       case "DTSTART":
         current.start = parseICalDate(value);
+        startIsDate =
+          propPart
+            .split(";")
+            .slice(1)
+            .some((param) => param.trim().toUpperCase() === "VALUE=DATE") ||
+          /^\d{8}$/.test(value.trim());
         break;
       case "DTEND":
         current.end = parseICalDate(value);
+        break;
+      case "DURATION":
+        durationMs = parseICalDuration(value);
         break;
       case "SUMMARY":
         current.summary = value;

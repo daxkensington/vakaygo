@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { TEAM_INBOX } from "@/lib/booking-request";
 import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import {
-  adminReviewDue, completedSteps, decideNudge, describeNextStep, listingGapsFromFlags, nextOnboardingStep, snapshotFromOnboardingRow,
+  adminReviewDue, agreementContext, completedSteps, decideNudge, describeNextStep, listingGapsFromFlags, nextOnboardingStep, snapshotFromOnboardingRow,
   ONBOARDING_CHECKLIST, type NudgeSkipReason, type OnboardingStage,
 } from "@/lib/onboarding-nudges";
 import { OPERATOR_TERMS_VERSION } from "@/server/business-onboarding";
@@ -201,6 +201,7 @@ export async function runOnboardingNudges(options: { now?: Date; dryRun?: boolea
     const content = describeNextStep(step, {
       listingId: row.listing_id, stripeConnected: snapshot.stripeConnected,
       listingGaps: listingGapsFromFlags({ hasPrice: row.has_price, hasCapacity: row.has_capacity, hasPolicy: row.has_policy, hasOpenDates: row.has_open_dates }),
+      agreement: agreementContext(snapshot.requirements, row.terms_accepted_at ? row.terms_version : null, OPERATOR_TERMS_VERSION),
     });
     if (!content) { skip("not_actionable"); continue; }
 

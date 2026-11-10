@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { isCountryCode } from "@/lib/countries";
+import { isValidBusinessEmail } from "@/lib/outreach-email-validation";
 
 export const OUTREACH_PERMISSION_PROVIDERS = ["resend", "sendcorex", "mailforge", "infraforge"] as const;
 export type OutreachPermissionProvider = typeof OUTREACH_PERMISSION_PROVIDERS[number];
 const version = z.number().int().min(0).max(2_147_483_646);
 const uuid = z.string().uuid();
-const email = z.string().trim().toLowerCase().max(254).regex(/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/);
+const email = z.string().trim().toLowerCase().max(254).regex(/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/)
+  // Permission is never recorded for an address the scrape validator would reject.
+  .refine(isValidBusinessEmail, "This address cannot receive business email.");
 const explanation = z.string().trim().min(20).max(2000);
 const country = z.string().trim().toUpperCase().refine(isCountryCode, "Select an assigned country code.");
 
@@ -28,6 +31,8 @@ const actionSchema = z.union([
   z.object({ action: z.literal("enable"), expectedVersion: version }).strict(),
   z.object({ action: z.literal("select_provider"), expectedVersion: version, provider: z.enum(OUTREACH_PERMISSION_PROVIDERS) }).strict(),
   z.object({ action: z.literal("request_stage"), expectedVersion: version, stage: z.number().int().min(1).max(4) }).strict(),
+  // Records a reviewed set of bounces/failures so a delivery hold counts only later outcomes.
+  z.object({ action: z.literal("acknowledge_delivery_review"), expectedVersion: version, note: z.string().trim().min(20).max(500) }).strict(),
   grant,
   z.object({ action: z.literal("revoke_consent"), consentId: uuid, reason: z.string().trim().min(5).max(500) }).strict(),
 ]);
@@ -59,5 +64,7 @@ export type CampaignReport = {
     matureAccepted: number; matureResolved: number; suppressions: number; activePermissions: number;
     linkVisits: number; approvedClaimsFromLinks: number;
   };
+  /** Counts since the last recorded delivery review (or the last 7 days), which the sending holds use. */
+  deliveryReview?: { reviewedAt: string | null; note: string | null; acceptedSince: number; bouncedSince: number; failedSince: number };
   permissions: CampaignPermission[];
 };

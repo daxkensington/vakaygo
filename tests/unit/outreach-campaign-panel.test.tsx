@@ -52,3 +52,16 @@ it("cannot present a business outreach permission as a Resend option", async () 
   expect(container.querySelector<HTMLOptionElement>('option[value="business_outreach_permission"]')?.disabled).toBe(true);
   expect(container.querySelector('input[type="checkbox"]')).toBeNull(); expect(fetchMock).not.toHaveBeenCalled();
 });
+it("records a delivery review with the current version and a written note, without enabling", async () => {
+  const held = report(); held.prerequisites = { ready: true, reasons: [] }; held.health = { ready: false, reasons: ["bounce_rate_hold"], nextStageAllowed: false };
+  held.deliveryReview = { reviewedAt: null, note: null, acceptedSince: 20, bouncedSince: 3, failedSince: 0 };
+  fetchMock.mockImplementation(() => response(held)); await act(async () => root.render(<CampaignPanel />));
+  expect(button("Enable").disabled).toBe(true);
+  expect(container.textContent).toContain("Counted for holds: 20 accepted, 3 bounced, 0 failed in the last 7 days");
+  const form = button("Record delivery review").closest("form")!;
+  (form.elements.namedItem("note") as HTMLInputElement).value = "Checked the three bounced addresses: dead domains.";
+  await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  const posts = fetchMock.mock.calls.filter(call => call[1]?.method === "POST");
+  expect(posts).toHaveLength(1); expect(posts[0][0]).toBe(endpoint);
+  expect(JSON.parse(posts[0][1].body)).toEqual({ action: "acknowledge_delivery_review", expectedVersion: 8, note: "Checked the three bounced addresses: dead domains." });
+});

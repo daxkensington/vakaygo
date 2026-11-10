@@ -3,8 +3,12 @@
 // Cache strategy:
 //   - /api/* and HTML pages: network-first, fall back to cached HTML / offline
 //   - /_next/static/* and asset extensions: cache-first
-//   - Listing detail pages (/{island}/{slug}): network-first into DYNAMIC_CACHE,
-//     fall back to FAVORITES_CACHE (operator-saved offline reads)
+//   - Listing detail pages (/{island}/{slug}) and the listing API
+//     (/api/listings/{slug}): network-first into DYNAMIC_CACHE, fall back to
+//     FAVORITES_CACHE (operator-saved offline reads)
+//   - Every other /api/* path (including reserved /api/listings/* sub-routes
+//     such as my and eligibility) is never written to any cache; it only falls
+//     back to existing cache entries or /offline when the network fails.
 //
 // Update flow:
 //   - skipWaiting is NOT called on install; the new SW stays in `waiting`
@@ -14,7 +18,7 @@
 //   - Bump CACHE_VERSION on every release that changes cached behavior; the
 //     activate handler purges any cache whose key doesn't match the current
 //     version prefix.
-const CACHE_VERSION = "vakaygo-v4";
+const CACHE_VERSION = "vakaygo-v5";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const FAVORITES_CACHE = `${CACHE_VERSION}-favorites`;
@@ -41,10 +45,35 @@ function isNeverCachePath(pathname) {
 }
 
 // Listing detail = /{island-slug}/{listing-slug}, two non-empty segments,
-// no leading admin/auth/etc.
+// no leading admin/auth/etc. /api/* paths are excluded so per-user API
+// responses (/api/messages, /api/saved, ...) are never cached.
 const LISTING_DETAIL_RE = /^\/[a-z0-9-]+\/[a-z0-9-]+$/;
 function isListingDetail(pathname) {
-  return LISTING_DETAIL_RE.test(pathname) && !isNeverCachePath(pathname);
+  return (
+    !pathname.startsWith("/api/") &&
+    LISTING_DETAIL_RE.test(pathname) &&
+    !isNeverCachePath(pathname)
+  );
+}
+
+// Listing API detail = /api/listings/{slug}. Reserved names mirror the static
+// app/api/listings/* routes, which can return per-user data.
+const LISTING_API_DETAIL_RE = /^\/api\/listings\/([^/]+)$/;
+const RESERVED_LISTING_API_SEGMENTS = new Set([
+  "my",
+  "eligibility",
+  "count",
+  "autocomplete",
+  "inquiries",
+  "interest",
+  "claim",
+  "claim-search",
+  "preview-prices",
+  "trending",
+]);
+function isListingApiDetail(pathname) {
+  const match = LISTING_API_DETAIL_RE.exec(pathname);
+  return !!match && !RESERVED_LISTING_API_SEGMENTS.has(match[1]);
 }
 
 // Install: pre-cache static assets + offline page. Does NOT skipWaiting —
@@ -81,7 +110,7 @@ self.addEventListener("fetch", (event) => {
 
   // Listing detail pages and the listing API: cache for offline favorites
   if (
-    url.pathname.match(/^\/api\/listings\/[^/]+$/) ||
+    isListingApiDetail(url.pathname) ||
     isListingDetail(url.pathname)
   ) {
     event.respondWith(
