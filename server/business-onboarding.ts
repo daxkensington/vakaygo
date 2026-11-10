@@ -29,6 +29,10 @@ async function query<T>(text: string, values: unknown[] = []): Promise<T[]> {
 export function onboardingErrorResponse(error: unknown) {
   if (error instanceof OnboardingError) return NextResponse.json({ error: error.message }, { status: error.status });
   const message = error instanceof Error ? error.message : "";
+  // A CHECK or NOT NULL violation means a submitted value is not accepted: say so, do not report an outage.
+  const failure = error as { code?: string; cause?: { code?: string } } | null;
+  const code = failure?.code ?? failure?.cause?.code;
+  if (code === "23514" || code === "23502") return NextResponse.json({ error: "One of the values you entered is not accepted. Check the currency and details, then try again." }, { status: 400 });
   const expected = message.match(/VG_ONBOARDING:([^\n]+)/)?.[1];
   return NextResponse.json({ error: expected || "Business onboarding is temporarily unavailable" }, { status: expected ? 409 : 503 });
 }

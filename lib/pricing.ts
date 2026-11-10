@@ -144,6 +144,8 @@ export function calculateBookingPrice(params: {
   listingType?: string;
   currency?: string;
   includeInsurance?: boolean;
+  /** Exact subtotal when units are not all the same price (stays with nightly overrides). */
+  subtotal?: number;
 }): BookingPriceBreakdown {
   const {
     pricePerUnit,
@@ -154,7 +156,7 @@ export function calculateBookingPrice(params: {
   } = params;
 
   const rates = CATEGORY_RATES[listingType] || CATEGORY_RATES.tour;
-  const subtotal = pricePerUnit * quantity;
+  const subtotal = typeof params.subtotal === "number" && Number.isFinite(params.subtotal) ? params.subtotal : pricePerUnit * quantity;
 
   const serviceFee = Math.round(subtotal * rates.travelerFee * 100) / 100;
   const operatorCommission = Math.round(subtotal * rates.operatorFee * 100) / 100;
