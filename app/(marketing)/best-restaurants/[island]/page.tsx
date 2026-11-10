@@ -11,6 +11,8 @@ import {
   getIslandStats,
 } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
+import { buildBestRestaurantsFaqs, hubTitleYear } from "@/lib/destination-faqs";
+import { buildHubListItem } from "@/lib/hub-structured-data";
 import {
   Star,
   MapPin,
@@ -43,8 +45,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const island = await getIslandBySlug(slug);
   if (!island) return { title: "Not Found" };
 
-  const title = `Best Restaurants in ${island.name} (2026) — Top Dining & Food Guide`;
-  const description = `Find the best restaurants in ${island.name}. Explore top-rated dining, local cuisine, seafood, and Caribbean food. Browse restaurant information on VakayGo.`;
+  const title = `Best Restaurants in ${island.name} (${hubTitleYear()}) — Top Dining & Food Guide`;
+  const description = `Find the best restaurants in ${island.name}. Explore top-rated dining, local cuisine, and seafood. Browse restaurant information on VakayGo.`;
 
   return {
     title,
@@ -137,27 +139,6 @@ function getCuisineTypes(typeData: Record<string, unknown> | null): string[] {
   return [];
 }
 
-function getFaqs(name: string) {
-  return [
-    {
-      q: `What are the best restaurants in ${name}?`,
-      a: `${name} has a vibrant dining scene featuring Caribbean cuisine, fresh seafood, local favorites, and international options. VakayGo lists restaurants with published information and review ratings.`,
-    },
-    {
-      q: `What local food should I try in ${name}?`,
-      a: `Caribbean islands are known for fresh seafood, jerk dishes, roti, callaloo, rice and peas, and tropical fruits. Each island has its own specialties. Ask your VakayGo operator for local recommendations.`,
-    },
-    {
-      q: `Do I need reservations at restaurants in ${name}?`,
-      a: `Popular restaurants during peak season (December-April) can fill up. Contact the restaurant to check its current reservation arrangements. VakayGo is not currently accepting table reservations.`,
-    },
-    {
-      q: `What is the average cost of dining in ${name}?`,
-      a: `Dining costs vary widely. Local eateries may cost $5-15 per meal, mid-range restaurants $15-40, and fine dining $40+. VakayGo shows prices upfront so you can plan your budget.`,
-    },
-  ];
-}
-
 // ─── Page ───────────────────────────────────────────────────────
 export default async function BestRestaurantsPage({ params }: Props) {
   const { island: slug } = await params;
@@ -168,12 +149,16 @@ export default async function BestRestaurantsPage({ params }: Props) {
   const diningListings = await getTopListingsByType(island.id, "dining", 12);
   const diningCount = stats.typeCounts["dining"] || 0;
   const heroImg = heroImages[slug] || "/images/hero/caribbean-hero.jpg";
-  const faqs = getFaqs(island.name);
 
   // Collect cuisine types from all dining listings
   const allCuisines = new Set<string>();
   diningListings.forEach((l) => {
     getCuisineTypes(l.typeData).forEach((c) => allCuisines.add(c));
+  });
+  const faqs = buildBestRestaurantsFaqs({
+    name: island.name,
+    slug,
+    cuisines: Array.from(allCuisines),
   });
 
   // Price distribution
@@ -201,25 +186,9 @@ export default async function BestRestaurantsPage({ params }: Props) {
     itemListElement: diningListings.map((listing, idx) => ({
       "@type": "ListItem",
       position: idx + 1,
-      item: {
-        "@type": "Restaurant",
-        name: listing.title,
-        url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-        address: {
-          "@type": "PostalAddress",
-          addressLocality: listing.parish || island.name,
-          addressCountry: island.country,
-        },
-        ...(listing.avgRating && parseFloat(listing.avgRating) > 0
-          ? {
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: listing.avgRating,
-                reviewCount: listing.reviewCount || 1,
-              },
-            }
-          : {}),
-      },
+      // Imported Google ratings are deliberately not marked up; see
+      // lib/hub-structured-data.ts.
+      item: buildHubListItem("Restaurant", listing, island),
     })),
   };
 
@@ -596,8 +565,8 @@ export default async function BestRestaurantsPage({ params }: Props) {
               Hungry for {island.name}?
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
-              Browse restaurant information, explore local cuisine, and
-              experience authentic Caribbean dining.
+              Browse restaurant information and explore local cuisine in{" "}
+              {island.name}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link

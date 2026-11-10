@@ -148,12 +148,67 @@ BEGIN
  DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
  INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider_email_id,state,reserved_at,accepted_at,bounced_at)
  VALUES(tag||'zero-denominator@audit.invalid','listing-claims-v2',tag||'zero-denominator',tag||'provider-zero-denominator','accepted',now()-interval '8 days',now()-interval '8 days',now());
+ -- Below the 50-message sample a bounce is an outcome for that recipient, not a campaign hold.
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider_email_id,state,reserved_at,accepted_at,bounced_at)
+ SELECT tag||'small-'||n||'@audit.invalid','listing-claims-v2',tag||'small-'||n,tag||'provider-small-'||n,'accepted',now()-interval '26 hours',now()-interval '25 hours',now()-interval '1 minute' FROM generate_series(1,2)n;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE id=ident;
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider_email_id,state,reserved_at,accepted_at,bounced_at)
+ VALUES(tag||'small-3@audit.invalid','listing-claims-v2',tag||'small-3',tag||'provider-small-3','accepted',now()-interval '26 hours',now()-interval '25 hours',now()-interval '1 minute');
  PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'bounce_rate_hold');
+ -- A recorded delivery review restarts the count for later outcomes; the facts stay in the ledger.
+ UPDATE outreach_campaign_control SET holds_reviewed_at=now(),holds_review_note='Synthetic review of three bounced fixtures' WHERE id=true;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ IF (SELECT count(*) FROM outreach_email_attempts WHERE recipient LIKE tag||'small-%' AND bounced_at IS NOT NULL)<>3 THEN RAISE EXCEPTION 'Delivery review altered recorded bounces'; END IF;
+ UPDATE outreach_campaign_control SET holds_reviewed_at=NULL,holds_review_note=NULL WHERE id=true;
  DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
  INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider_email_id,state,reserved_at,accepted_at)
  VALUES(tag||'overdue@audit.invalid','listing-claims-v2',tag||'overdue',tag||'provider-overdue','accepted',now()-interval '26 hours',now()-interval '25 hours');
  PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'unresolved_delivery_hold');
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
+ -- An address an earlier campaign emailed, or that opted out, for another listing is not invited again.
+ UPDATE listings SET type_data=json_build_object('email',email_a) WHERE id=listing_b;
+ INSERT INTO business_outreach(listing_id,status,contacted_at,notes) VALUES(listing_b,'contacted',now(),'Synthetic earlier campaign');
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'address_already_contacted');
+ UPDATE business_outreach SET status='do_not_contact',contacted_at=NULL,notes='Synthetic opt-out' WHERE listing_id=listing_b;
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'address_already_contacted');
+ UPDATE listings SET type_data=json_build_object('email',email_b) WHERE id=listing_b;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
+ UPDATE business_outreach SET status='contacted',contacted_at=now(),notes='[2026-10-16] Claim invitation emailed to '||email_a||' (cron, 0 interested).' WHERE listing_id=listing_b;
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'address_already_contacted');
+ DELETE FROM business_outreach WHERE listing_id=listing_b;
+ -- Prior opt-in countries: the recipient's explicit opt-in is honoured, reviewed business permission is not.
+ UPDATE islands SET country='Greece' WHERE id=island;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
+ UPDATE outreach_campaign_control SET provider='sendcorex' WHERE id=true;
+ INSERT INTO outreach_recipient_consents(listing_id,recipient_email,provider,permission_kind,recipient_country,policy_reference,evidence)
+ VALUES(listing_a,email_a,'sendcorex','business_outreach_permission','GR','Synthetic dated provider and jurisdiction review','Synthetic public business source and relevant recipient review');
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'country_requires_explicit_opt_in');
+ UPDATE islands SET country='Synthetic' WHERE id=island;
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'country_requires_explicit_opt_in');
+ UPDATE outreach_recipient_consents SET recipient_country='GD' WHERE listing_id=listing_a AND provider='sendcorex';
+ UPDATE islands SET country='Costa Rica' WHERE id=island;
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'country_requires_explicit_opt_in');
+ UPDATE islands SET country='Synthetic' WHERE id=island;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
+ -- Soft failures hold the Sendcorex transport only once they pass the shared limit.
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider,provider_email_id,state,reserved_at,accepted_at,failed_at)
+ SELECT tag||'soft-'||n||'@audit.invalid','listing-claims-v2',tag||'soft-'||n,'sendcorex',tag||'provider-soft-'||n,'accepted',now()-interval '26 hours',now()-interval '25 hours',now()-interval '1 minute' FROM generate_series(1,4)n;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ DELETE FROM outreach_email_attempts WHERE id=ident;
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider,provider_email_id,state,reserved_at,accepted_at,failed_at)
+ VALUES(tag||'soft-5@audit.invalid','listing-claims-v2',tag||'soft-5','sendcorex',tag||'provider-soft-5','accepted',now()-interval '26 hours',now()-interval '25 hours',now()-interval '1 minute');
+ PERFORM pg_temp.expect_reservation_denied(listing_a,email_a,'failure_rate_hold');
+ UPDATE outreach_campaign_control SET holds_reviewed_at=now(),holds_review_note='Synthetic review of five soft failures' WHERE id=true;
+ ident:=pg_temp.expect_reservation_allowed(listing_a,email_a);
+ UPDATE outreach_campaign_control SET holds_reviewed_at=NULL,holds_review_note=NULL,provider='resend' WHERE id=true;
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'%';
  IF EXISTS(SELECT 1 FROM bookings WHERE listing_id IN(listing_a,listing_b)) OR EXISTS(SELECT 1 FROM listing_onboarding WHERE listing_id IN(listing_a,listing_b)) THEN RAISE EXCEPTION 'Reservation altered booking/onboarding state'; END IF;
 END $$;
-SELECT 'PASS: actual reservation SQL; default pause, consent/revocation, opt-out, recipient suppression, listing/claim/email eligibility, provider/health isolation, namespace dedupe, rolling18/day6/hour10-minute caps and negative-signal holds';
+SELECT 'PASS: actual reservation SQL; default pause, consent/revocation, opt-out, recipient suppression, listing/claim/email eligibility, provider/health isolation, namespace dedupe, rolling18/day6/hour10-minute caps, negative-signal holds with a minimum sample and recorded review, address-level history and prior opt-in countries';
 ROLLBACK;

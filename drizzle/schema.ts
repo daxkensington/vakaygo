@@ -76,6 +76,10 @@ export const outreachCampaignControl = pgTable("outreach_campaign_control", {
   healthCheckedAt: timestamp("health_checked_at", { withTimezone: true }),
   healthReady: boolean("health_ready").notNull().default(false),
   healthReason: text("health_reason").notNull().default("not_checked"),
+  // Delivery holds count bounces/failures after the last recorded review.
+  holdsReviewedAt: timestamp("holds_reviewed_at", { withTimezone: true }),
+  holdsReviewedBy: uuid("holds_reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  holdsReviewNote: text("holds_review_note"),
 }, t => [check("outreach_campaign_singleton", sql`${t.id}=true`),
   check("outreach_campaign_stage", sql`${t.stage} BETWEEN 0 AND 4`),
   check("outreach_campaign_provider", sql`${t.provider} IN ('resend','sendcorex','mailforge','infraforge')`)]);
@@ -719,8 +723,16 @@ export const listingViews = pgTable("listing_views", {
   listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
   viewerIp: varchar("viewer_ip", { length: 64 }),
   userId: uuid("user_id").references(() => users.id),
-  source: varchar("source", { length: 32 }), // explore, search, direct, island
+  source: varchar("source", { length: 32 }), // see lib/view-attribution.ts VIEW_SOURCES
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Attribution (migration 0019). Written through server/listing-view-attribution.ts,
+  // which also works on a database that has not run 0019 yet.
+  uaFamily: varchar("ua_family", { length: 24 }),
+  referrerHost: varchar("referrer_host", { length: 128 }),
+  utmSource: varchar("utm_source", { length: 64 }),
+  country: varchar("country", { length: 2 }),
+  isBot: boolean("is_bot").default(false).notNull(),
+  botReason: varchar("bot_reason", { length: 24 }),
 }, (t) => [
   index("listing_views_listing_idx").on(t.listingId),
   index("listing_views_created_idx").on(t.createdAt),

@@ -134,6 +134,20 @@
       "when": 1793081795247,
       "tag": "0018_operator_terms_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794294960593,
+      "tag": "0019_listing_view_attribution",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794296787925,
+      "tag": "0020_outreach_delivery_holds",
+      "breakpoints": true
     }
   ]
 }

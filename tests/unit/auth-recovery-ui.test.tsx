@@ -36,8 +36,15 @@ it("shows account-created email recovery after provider failure without claiming
 
 it("offers inbox recovery instead of a second signup when the account already exists and names its form controls", async () => {
   navigation.query = `role=operator&claim=20000000-0000-4000-8000-000000000009`;
-  fetchMock.mockResolvedValueOnce(response({ error: "An account with this email already exists" }, 409));
-  await render(<SignUpPage />); await submit();
+  // A claim link names its business: the page looks it up and shows what is being claimed.
+  fetchMock.mockImplementation(async (url: string) => String(url).startsWith("/api/listings/claim-search?id=20000000-0000-4000-8000-000000000009")
+    ? response({ listing: { id: "20000000-0000-4000-8000-000000000009", title: "Synthetic Cafe", slug: "synthetic-cafe", islandSlug: "barbados", islandName: "Barbados" } })
+    : response({ error: "An account with this email already exists" }, 409));
+  await render(<SignUpPage />);
+  const claimContext = container.querySelector('[data-testid="claim-listing-context"]')!;
+  expect(claimContext.textContent).toContain("You are claiming Synthetic Cafe in Barbados");
+  expect(claimContext.querySelector("a")?.getAttribute("href")).toBe(listing);
+  await submit();
   expect(container.querySelector('[role="alert"] a')?.getAttribute("href")).toBe("/auth/signin?method=email&next=/operator/claim/20000000-0000-4000-8000-000000000009");
   for (const label of Array.from(container.querySelectorAll("label"))) expect(document.getElementById(label.htmlFor)).not.toBeNull();
   expect(container.querySelector<HTMLInputElement>("#signup-password")!.minLength).toBe(8);

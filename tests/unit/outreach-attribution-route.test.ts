@@ -147,29 +147,45 @@ describe("public opt-out", () => {
       ? `https://vakaygo.com/api/outreach/unsubscribe?listingId=${listingId}&token=invalid`
       : "https://vakaygo.com/api/outreach/unsubscribe?context=forged";
     expect((await unsubscribe(new NextRequest(url))).status).toBe(400);
+    expect((await unsubscribePost(new NextRequest(url, { method: "POST" }))).status).toBe(400);
     expect(mocks.query).not.toHaveBeenCalled(); expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+  it.each(["signed", "legacy"])("only asks for confirmation when a %s link is opened, so a mail scanner cannot opt a business out", async kind => {
+    const url = kind === "signed" ? unsubscribeInvitationUrl(attemptId)
+      : `https://vakaygo.com/api/outreach/unsubscribe?listingId=${listingId}&token=fixture-legacy-authorized&injected=%22%3E%3Cscript%3E`;
+    const response = await unsubscribe(new NextRequest(url));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('<form method="post" action="/api/outreach/unsubscribe?');
+    expect(html).toContain(kind === "signed" ? `context=${encodeURIComponent(context(url))}` : `listingId=${listingId}&amp;token=fixture-legacy-authorized`);
+    expect(html).not.toContain("injected"); expect(html).not.toContain("<script");
+    expect(html).not.toContain("You Have Been Unsubscribed");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(mocks.query).not.toHaveBeenCalled(); expect(mocks.transaction).not.toHaveBeenCalled(); expect(mocks.network).not.toHaveBeenCalled();
   });
   it("acknowledges global recipient opt-out even when its original listing is deleted", async () => {
     // No business_outreach row can be returned for a deleted listing; attempt remains.
     mocks.transaction.mockResolvedValueOnce([[], [], [{ id: attemptId }]]);
-    const response = await unsubscribe(new NextRequest(unsubscribeInvitationUrl(attemptId)));
-    expect(response.status).toBe(200); expect((await response.text()).includes("business@audit.invalid")).toBe(false);
+    const response = await unsubscribePost(new NextRequest(unsubscribeInvitationUrl(attemptId), { method: "POST" }));
+    expect(response.status).toBe(200); const html = await response.text();
+    expect(html).toContain("You Have Been Unsubscribed"); expect(html.includes("business@audit.invalid")).toBe(false);
     expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "ReadCommitted" });
   });
-  it("uses the same signed opt-out handler for one-click POST", async () => {
-    expect((await unsubscribePost(new NextRequest(unsubscribeInvitationUrl(attemptId), { method: "POST" }))).status).toBe(200);
+  it("records the opt-out for a mail client's one-click POST (RFC 8058)", async () => {
+    expect((await unsubscribePost(new NextRequest(unsubscribeInvitationUrl(attemptId), { method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" }))).status).toBe(200);
     expect(mocks.txQuery.mock.calls[0][0].includes("pg_advisory_xact_lock")).toBe(true);
     expect(mocks.txQuery.mock.calls.some(([sql]) => sql.includes("INSERT INTO outreach_email_suppressions"))).toBe(true);
   });
   it("fails safely and does not report an unknown attempt as unsubscribed", async () => {
     mocks.transaction.mockResolvedValueOnce([[], [], []]);
-    expect((await unsubscribe(new NextRequest(unsubscribeInvitationUrl(attemptId)))).status).toBe(404);
+    expect((await unsubscribePost(new NextRequest(unsubscribeInvitationUrl(attemptId), { method: "POST" }))).status).toBe(404);
     mocks.transaction.mockRejectedValueOnce(new Error("private database detail"));
-    const response = await unsubscribe(new NextRequest(unsubscribeInvitationUrl(attemptId)));
+    const response = await unsubscribePost(new NextRequest(unsubscribeInvitationUrl(attemptId), { method: "POST" }));
     expect(response.status).toBe(503); expect((await response.text()).includes("private")).toBe(false);
   });
   it("retains the valid legacy opt-out path without contacting external providers", async () => {
-    const response = await unsubscribe(new NextRequest(`https://vakaygo.com/api/outreach/unsubscribe?listingId=${listingId}&token=fixture-legacy-authorized`));
+    const response = await unsubscribePost(new NextRequest(`https://vakaygo.com/api/outreach/unsubscribe?listingId=${listingId}&token=fixture-legacy-authorized`, { method: "POST" }));
     expect(response.status).toBe(200); expect(mocks.network).not.toHaveBeenCalled();
     expect(mocks.query).not.toHaveBeenCalled();
     expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "ReadCommitted" });

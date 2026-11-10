@@ -12,7 +12,7 @@ import { CampaignControlError } from "@/server/outreach-campaign-control";
 import { parseCampaignAdminAction } from "@/lib/outreach-campaign-admin";
 
 const actor = { ok: true, userId: "63000000-0000-4000-8000-000000000001", email: "reviewer@audit.invalid", sessionVersion: 3, role: "admin", emailVerified: true };
-const grant = { action: "grant_consent", listingId: "64000000-0000-4000-8000-000000000001", recipientEmail: "business@audit.invalid", expectedListingEmail: "business@audit.invalid", provider: "resend", permissionKind: "explicit_opt_in", evidence: "Dated signed request from this recipient for VakayGo listing outreach." };
+const grant = { action: "grant_consent", listingId: "64000000-0000-4000-8000-000000000001", recipientEmail: "business@audit.example", expectedListingEmail: "business@audit.example", provider: "resend", permissionKind: "explicit_opt_in", evidence: "Dated signed request from this recipient for VakayGo listing outreach." };
 const request = (body: unknown, origin = "https://vakaygo.com", contentType = "application/json") => new NextRequest("https://vakaygo.com/api/admin/outreach/campaign", {
   method: "POST", headers: { origin, "content-type": contentType }, body: JSON.stringify(body),
 });
@@ -43,7 +43,7 @@ describe("admin campaign boundary", () => {
     { action: "request_stage", expectedVersion: 0, stage: 5 },
     { action: "request_stage", expectedVersion: -1, stage: 1 },
     { ...grant, permissionKind: "business_outreach_permission", recipientCountry: "CA", policyReference: "Reviewed provider and country policy" },
-    { ...grant, recipientEmail: "another@audit.invalid" },
+    { ...grant, recipientEmail: "another@audit.example" },
     { ...grant, provider: "mailforge", permissionKind: "business_outreach_permission", recipientCountry: "ZZ", policyReference: "Reviewed provider and country policy" },
     { ...grant, provider: "mailforge", permissionKind: "business_outreach_permission", recipientCountry: "CA" },
   ])("rejects client attempts to bypass policy: %j", async body => {
@@ -71,6 +71,6 @@ describe("admin campaign boundary", () => {
 });
 
 it("normalizes the exact reviewed recipient without treating a different email as permission", () => {
-  expect(parseCampaignAdminAction({ ...grant, recipientEmail: " Business@Audit.Invalid ", expectedListingEmail: "BUSINESS@audit.invalid" })).toMatchObject({ recipientEmail: "business@audit.invalid", expectedListingEmail: "business@audit.invalid" });
-  expect(parseCampaignAdminAction({ ...grant, recipientEmail: "unreviewed@audit.invalid" })).toBeNull();
+  expect(parseCampaignAdminAction({ ...grant, recipientEmail: " Business@Audit.Example ", expectedListingEmail: "BUSINESS@audit.example" })).toMatchObject({ recipientEmail: "business@audit.example", expectedListingEmail: "business@audit.example" });
+  expect(parseCampaignAdminAction({ ...grant, recipientEmail: "unreviewed@audit.example" })).toBeNull();
 });

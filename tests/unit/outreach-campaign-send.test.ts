@@ -103,7 +103,8 @@ describe("claim campaign dispatch", () => {
   });
   it.each([
     ["complaint", "h.complained_at>=now()-interval '7 days'"],
-    ["recent bounce with no accepted sample", "accepted=0 OR bounced::numeric/greatest(accepted,1)>=0.02"],
+    ["bounce count past the small-sample limit or the two-percent rate", "bounced>0 AND CASE WHEN accepted<50 THEN bounced>=3 ELSE bounced::numeric/accepted>=0.02 END"],
+    ["soft-failure count past its limit", "failed>0 AND CASE WHEN accepted<50 THEN failed>=5 ELSE failed::numeric/accepted>=0.1 END"],
     ["uncertain outcome from another provider", "h.state='uncertain'"],
     ["reservation stale for 20 minutes", "h.reserved_at<now()-interval '20 minutes'"],
     ["unresolved acceptance overdue for 24 hours", "h.accepted_at<now()-interval '24 hours'"],
@@ -124,8 +125,13 @@ describe("claim campaign dispatch", () => {
     expect(mocks.query.mock.calls.filter(([text]) => text.startsWith("SELECT * FROM vakaygo_reserve"))).toHaveLength(1);
     const finalGate = mocks.query.mock.calls.find(([text]) => text.startsWith("SELECT a.id FROM outreach_email_attempts"))?.[0];
     expect(finalGate).toContain("h.campaign_key=a.campaign_key");
-    expect(finalGate).toContain("h.bounced_at>=now()-interval '7 days'");
-    expect(finalGate).toContain("h.accepted_at>=now()-interval '7 days'");
+    // Holds count from the later of 7 days ago and the last recorded delivery review.
+    expect(finalGate).toContain("h.bounced_at>=f.since");
+    expect(finalGate).toContain("h.accepted_at>=f.since");
+    expect(finalGate).toContain("greatest(now()-interval '7 days',");
+    expect(finalGate).toContain("(to_jsonb(c)->>'holds_reviewed_at')::timestamptz");
+    // One soft failure is no longer a campaign-wide 7-day stop.
+    expect(finalGate).not.toContain("h.failed_at>=now()-interval '7 days')");
     expect(finalGate).toContain("h.suppressed_at IS NULL AND h.failed_at IS NULL");
   });
   it("binds the provider envelope and stable idempotency key to the reservation", async () => {

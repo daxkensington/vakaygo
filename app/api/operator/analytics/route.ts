@@ -6,6 +6,7 @@ import { eq, and, sql, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { requireOperator } from "@/server/admin-auth";
+import { humanViews, viewAttributionReady } from "@/server/listing-view-attribution";
 export async function GET() {
   try {
     const __auth = await requireOperator();
@@ -41,6 +42,8 @@ export async function GET() {
     }
 
     const listingIds = operatorListings.map((l) => l.id);
+    // Crawlers are not interest in the business: count people only.
+    const people = humanViews(await viewAttributionReady(db));
 
     // Per-listing stats
     const listingStats = await Promise.all(
@@ -49,7 +52,7 @@ export async function GET() {
         const [totalViewsResult] = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(listingViews)
-          .where(eq(listingViews.listingId, listingId));
+          .where(and(eq(listingViews.listingId, listingId), people));
 
         // Views last 7 days
         const [views7d] = await db
@@ -58,6 +61,7 @@ export async function GET() {
           .where(
             and(
               eq(listingViews.listingId, listingId),
+              people,
               sql`${listingViews.createdAt} >= now() - interval '7 days'`
             )
           );
@@ -69,6 +73,7 @@ export async function GET() {
           .where(
             and(
               eq(listingViews.listingId, listingId),
+              people,
               sql`${listingViews.createdAt} >= now() - interval '30 days'`
             )
           );
@@ -129,6 +134,7 @@ export async function GET() {
             listingIds.map((id) => sql`${id}::uuid`),
             sql`, `
           )}]`})`,
+          people,
           sql`${listingViews.createdAt} >= now() - interval '30 days'`
         )
       )

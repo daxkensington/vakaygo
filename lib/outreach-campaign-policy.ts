@@ -7,6 +7,25 @@ export const OUTREACH_HOURLY_CAP = 6;
 export const OUTREACH_MIN_INTERVAL_SECONDS = 600;
 export const OUTREACH_HEALTH_MAX_AGE_MS = 20 * 60_000;
 
+/**
+ * Delivery holds. A percentage means nothing on a handful of sends, so below the
+ * minimum sample a hold needs an absolute number of bad outcomes; at or above it
+ * the rate applies. Counts cover the last 7 days, or the time since an
+ * administrator last recorded a delivery review, whichever is shorter.
+ * The same numbers are written into vakaygo_reserve_outreach_attempt (migration
+ * 0020) and the SQL gates in server/outreach-campaign-*.ts: change them together.
+ */
+export const OUTREACH_RATE_HOLD_MIN_SAMPLE = 50;
+export const OUTREACH_BOUNCE_RATE_LIMIT = 0.02;
+export const OUTREACH_BOUNCE_ABSOLUTE_LIMIT = 3;
+export const OUTREACH_FAILURE_RATE_LIMIT = 0.1;
+export const OUTREACH_FAILURE_ABSOLUTE_LIMIT = 5;
+
+export function outreachRateHold(count: number, accepted: number, absoluteLimit: number, rateLimit: number): boolean {
+  if (!(count > 0)) return false;
+  return accepted < OUTREACH_RATE_HOLD_MIN_SAMPLE ? count >= absoluteLimit : count / accepted >= rateLimit;
+}
+
 export function checkCampaignSendingWindow(islandSlug: string, now = new Date()) {
   const timeZone = DESTINATION_TIMEZONES[islandSlug.trim().toLowerCase()];
   if (!timeZone || !Number.isFinite(now.getTime())) return { allowed: false, timeZone: null, localTime: null };
@@ -32,6 +51,12 @@ export interface CampaignHealthSnapshot {
   overdue: number;
   matureAccepted: number;
   matureResolved: number;
+  /** Soft failures, blocks and rate limits on accepted messages in the window. */
+  failed?: number;
+  /** Counts since the last recorded delivery review; default to the 7-day counts. */
+  holdAccepted?: number;
+  holdBounced?: number;
+  holdFailed?: number;
   prerequisiteReasons?: string[];
 }
 
@@ -41,18 +66,28 @@ export function evaluateCampaignHealth(snapshot: CampaignHealthSnapshot) {
   const started = new Date(snapshot.stageStartedAt).getTime();
   if (!Number.isInteger(snapshot.stage) || snapshot.stage < 0 || snapshot.stage >= OUTREACH_DAILY_CAPS.length) reasons.push("invalid_stage");
   if (!Number.isFinite(started) || started > now.getTime()) reasons.push("invalid_stage_time");
-  const counters = [snapshot.accepted, snapshot.bounced, snapshot.complained, snapshot.uncertain, snapshot.overdue, snapshot.matureAccepted, snapshot.matureResolved];
+  const holdAccepted = snapshot.holdAccepted ?? snapshot.accepted;
+  const holdBounced = snapshot.holdBounced ?? snapshot.bounced;
+  const holdFailed = snapshot.holdFailed ?? snapshot.failed ?? 0;
+  const counters = [snapshot.accepted, snapshot.bounced, snapshot.complained, snapshot.uncertain, snapshot.overdue, snapshot.matureAccepted, snapshot.matureResolved, holdAccepted, holdBounced, holdFailed];
   if (counters.some(value => !Number.isInteger(value) || value < 0)) reasons.push("invalid_health_counts");
   if (!snapshot.prerequisitesReady) reasons.push(...(snapshot.prerequisiteReasons?.length ? snapshot.prerequisiteReasons : ["prerequisites_incomplete"]));
   if (!snapshot.telemetryHealthy) reasons.push("telemetry_unavailable");
   if (snapshot.complained > 0) reasons.push("complaint_hold");
   if (snapshot.uncertain > 0) reasons.push("uncertain_transport_hold");
   if (snapshot.overdue > 0) reasons.push("unresolved_delivery_hold");
-  // Strictly below 2%, tighter than the provider ceiling. A single complaint
-  // holds this small campaign, rather than hiding it inside a percentage.
-  if (snapshot.bounced > 0 && (snapshot.accepted === 0 || snapshot.bounced / snapshot.accepted >= 0.02)) reasons.push("bounce_rate_hold");
+  // Strictly below 2% once the sample is large enough, tighter than the provider
+  // ceiling. A single complaint still holds this small campaign. One bounce or
+  // soft failure is an outcome for that recipient, who is never emailed twice in
+  // a campaign; it is not a reason to stop writing to everyone else.
+  if (outreachRateHold(holdBounced, holdAccepted, OUTREACH_BOUNCE_ABSOLUTE_LIMIT, OUTREACH_BOUNCE_RATE_LIMIT)) reasons.push("bounce_rate_hold");
+  if (outreachRateHold(holdFailed, holdAccepted, OUTREACH_FAILURE_ABSOLUTE_LIMIT, OUTREACH_FAILURE_RATE_LIMIT)) reasons.push("failure_rate_hold");
   const ready = reasons.length === 0;
   const promotionReasons = [...reasons];
+  // A larger daily cap needs a clean 7-day record. A recorded delivery review
+  // restarts the sending holds; it does not shorten this window.
+  if (snapshot.bounced > 0 && (snapshot.accepted === 0 || snapshot.bounced / snapshot.accepted >= OUTREACH_BOUNCE_RATE_LIMIT)) promotionReasons.push("bounce_rate_hold");
+  if ((snapshot.failed ?? 0) > 0) promotionReasons.push("failed_delivery_in_window");
   if (now.getTime() - started < 72 * 60 * 60_000) promotionReasons.push("stage_observation_period");
   if (snapshot.matureAccepted < 50) promotionReasons.push("insufficient_mature_sample");
   if (snapshot.matureResolved !== snapshot.matureAccepted) promotionReasons.push("mature_delivery_coverage_incomplete");

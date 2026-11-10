@@ -7,6 +7,7 @@ import { listings, bookings, reviews, listingViews } from "@/drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
+import { humanViews, viewAttributionReady } from "@/server/listing-view-attribution";
 
 // Cache per operator
 const insightsCache = new Map<
@@ -64,8 +65,9 @@ export async function GET() {
     }
 
     const listingIds = operatorListings.map((l) => l.id);
+    const people = humanViews(await viewAttributionReady(db));
 
-    // Views per listing (last 7 days)
+    // Views per listing (last 7 days, people only)
     const viewCounts = await db
       .select({
         listingId: listingViews.listingId,
@@ -76,7 +78,7 @@ export async function GET() {
         sql`${listingViews.listingId} IN (${sql.join(
           listingIds.map((id) => sql`${id}`),
           sql`, `
-        )}) AND ${listingViews.createdAt} >= now() - interval '7 days'`
+        )}) AND ${people} AND ${listingViews.createdAt} >= now() - interval '7 days'`
       )
       .groupBy(listingViews.listingId);
 

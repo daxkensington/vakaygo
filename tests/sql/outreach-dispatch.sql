@@ -56,13 +56,20 @@ BEGIN
  UPDATE outreach_email_attempts SET complained_at=now()-interval '7 days 1 second' WHERE id=health_id;
  PERFORM pg_temp.expect_dispatch(ident,target_slug,true,'complaint older than7days');
  UPDATE outreach_email_attempts SET state='accepted',complained_at=NULL,provider_email_id=tag||'health-provider',accepted_at=now()-interval '8 days',bounced_at=now() WHERE id=health_id;
- PERFORM pg_temp.expect_dispatch(ident,target_slug,false,'recent bounce from old acceptance with zero denominator');
+ PERFORM pg_temp.expect_dispatch(ident,target_slug,true,'one late bounce on an empty sample is a recipient outcome');
  INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider,state,provider_email_id,accepted_at,delivered_at)
  SELECT tag||'sample-'||n||'@audit.invalid','listing-claims-v2',tag||'sample-'||n,'resend','accepted',tag||'provider-'||n,now()-interval '1 hour',now()-interval '59 minutes' FROM generate_series(1,50)n;
  PERFORM pg_temp.expect_dispatch(ident,target_slug,false,'bounce exactly2percent');
  INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider,state,provider_email_id,accepted_at,delivered_at)
  VALUES(tag||'sample-51@audit.invalid','listing-claims-v2',tag||'sample-51','resend','accepted',tag||'provider-51',now()-interval '1 hour',now()-interval '59 minutes');
  PERFORM pg_temp.expect_dispatch(ident,target_slug,true,'bounce1of51 below2percent');
+ DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'sample-%';
+ INSERT INTO outreach_email_attempts(recipient,campaign_key,idempotency_key,provider,state,provider_email_id,reserved_at,accepted_at,bounced_at)
+ SELECT tag||'sample-b'||n||'@audit.invalid','listing-claims-v2',tag||'sample-b'||n,'resend','accepted',tag||'provider-b'||n,now()-interval '3 hours',now()-interval '2 hours',now()-interval '1 minute' FROM generate_series(1,2)n;
+ PERFORM pg_temp.expect_dispatch(ident,target_slug,false,'three bounces on a small sample');
+ UPDATE outreach_campaign_control SET holds_reviewed_at=now(),holds_review_note='Synthetic review of three bounced fixtures' WHERE id=true;
+ PERFORM pg_temp.expect_dispatch(ident,target_slug,true,'recorded delivery review restarts the bounce count');
+ UPDATE outreach_campaign_control SET holds_reviewed_at=NULL,holds_review_note=NULL WHERE id=true;
  DELETE FROM outreach_email_attempts WHERE recipient LIKE tag||'sample-%';
  UPDATE outreach_email_attempts SET bounced_at=NULL,accepted_at=now()-interval '24 hours' WHERE id=health_id;
  PERFORM pg_temp.expect_dispatch(ident,target_slug,true,'acceptance exact24hour boundary');
