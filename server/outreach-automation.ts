@@ -5,6 +5,7 @@ import { claimInvitationUrl, unsubscribeInvitationUrl } from "@/server/outreach-
 import { safeWebUrl } from "@/lib/listing-structured-data";
 import { isListingId } from "@/lib/listing-interest";
 import { OPERATING_BUSINESS } from "@/lib/brand";
+import { buildInvitationMessage } from "@/lib/outreach-invitation-copy";
 import { isValidBusinessEmail } from "@/lib/outreach-email-validation";
 import { evaluateOutreachCountryGate, requiresSolicitationNotice, type OutreachPermissionRecord } from "@/lib/outreach-country-policy";
 
@@ -31,15 +32,6 @@ const PREFERRED_LOCAL_PREFIXES = [
   "inquiries",
   "enquiries",
 ];
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 function getHmacSecret(): string {
   return process.env.AUTH_SECRET || process.env.CRON_SECRET || "vakaygo-outreach-default-secret";
@@ -350,50 +342,13 @@ export async function sendBusinessInterestOutreachEmail(
       const listingSlug = String(row.listingSlug || "");
       const listingUrl = /^[a-z0-9-]{1,200}$/.test(islandSlug) && /^[a-z0-9-]{1,200}$/.test(listingSlug)
         ? `https://vakaygo.com/${islandSlug}/${listingSlug}` : null;
-      // US law (CAN-SPAM) requires a commercial message to say that it is one.
-      const solicitation = requiresSolicitationNotice(islandSlug)
-        ? `This message is a business solicitation from VakayGo, operated by ${OPERATING_BUSINESS}.` : null;
-      const text = [
-        `Hello ${title} team,`,
-        "",
-        `VakayGo is a travel marketplace where visitors look for places to stay, tours, dining and transport in ${island}. ${title} already has a public listing there, and we are inviting your team to review it.`,
-        ...(listingUrl ? ["You can see the listing here:", listingUrl, ""] : [""]),
-        "If you represent this business, you can start a free listing claim and complete ownership verification here:",
-        claimUrl,
-        "",
-        "A listing claim is free. After ownership verification, you can review the business profile and how traveler inquiries are handled.",
-        "An inquiry is not a reservation. Accepting bookings requires separate supplier onboarding and activation; bookings and checkout must take place through VakayGo.",
-        "We are not confirming that booking or payment is enabled for your listing.",
-        "",
-        "If the listing details are incorrect or you need help with the claim, reply to this email.",
-        "",
-        "The VakayGo Team",
-        "support@vakaygo.com",
-        "",
-        ...(solicitation ? [solicitation, ""] : []),
-        OPERATING_BUSINESS + " · VakayGo",
-        postalAddress,
-        "",
-        `To stop these listing invitations, unsubscribe here: ${unsubscribeUrl}`,
-      ].join("\n");
-      const eTitle = escapeHtml(title);
-      const eIsland = escapeHtml(island);
-      const html = `<div style="font-family:Arial,sans-serif;max-width:560px;line-height:1.6">
-  <p>Hello <strong>${eTitle}</strong> team,</p>
-  <p>VakayGo is a travel marketplace where visitors look for places to stay, tours, dining and transport in ${eIsland}. ${eTitle} already has a public listing there, and we are inviting your team to review it.</p>${listingUrl ? `
-  <p><a href="${escapeHtml(listingUrl)}">See the ${eTitle} listing</a></p>` : ""}
-  <p>If you represent this business, you can <a href="${escapeHtml(claimUrl)}">start a free listing claim</a> and complete ownership verification.</p>
-  <p>A listing claim is free. After ownership verification, you can review the business profile and how traveler inquiries are handled.</p>
-  <p>An inquiry is not a reservation. Accepting bookings requires separate supplier onboarding and activation; bookings and checkout must take place through VakayGo. We are not confirming that booking or payment is enabled for your listing.</p>
-  <p>If the listing details are incorrect or you need help with the claim, reply to this email.</p>
-  <p>The VakayGo Team<br>support@vakaygo.com</p>
-  <hr>${solicitation ? `
-  <p>${escapeHtml(solicitation)}</p>` : ""}
-  <p>${escapeHtml(OPERATING_BUSINESS)} · VakayGo<br>${escapeHtml(postalAddress).replace(/\r?\n/g, "<br>")}</p>
-  <p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from these listing invitations</a></p>
-</div>`;
-      // The subject names the public listing without implying an existing account.
-      return { subject: `${title} is listed on VakayGo (${island}): free to claim`, text, html };
+      // Copy in the language businesses at the destination use; US law (CAN-SPAM)
+      // requires a commercial message to say that it is one (lib/outreach-invitation-copy.ts).
+      const { subject, text, html } = buildInvitationMessage({
+        title, island, islandSlug, listingUrl, claimUrl, unsubscribeUrl,
+        operator: OPERATING_BUSINESS, postalAddress, solicitationRequired: requiresSolicitationNotice(islandSlug),
+      });
+      return { subject, text, html };
     },
   });
 }

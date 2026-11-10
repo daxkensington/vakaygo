@@ -100,7 +100,7 @@ describe("dedicated claim invitation drip cron", () => {
     }
     const candidateSql = mocks.query.mock.calls[1][0];
     // Destinations that cannot be sent to now are excluded before the LIMIT, so they cannot stall the queue.
-    expect(candidateSql).toMatch(/i\.slug=ANY\(\$3::text\[\]\)[\s\S]*i\.slug=ANY\(\$4::text\[\]\) AND c\.permission_kind='explicit_opt_in'[\s\S]*ORDER BY l\.id LIMIT 200/);
+    expect(candidateSql).toMatch(/i\.slug=ANY\(\$3::text\[\]\)[\s\S]*i\.slug=ANY\(\$4::text\[\]\) AND c\.permission_kind='explicit_opt_in'[\s\S]*ORDER BY CASE WHEN l\.type IN \('tour','excursion','vip','transfer','spa'\)[\s\S]*review_count DESC NULLS LAST[\s\S]*LIMIT 200/);
     expect(candidateSql).toContain("Claim invitation emailed to");
     expect(candidateSql).toContain("outreach_recipient_consents");
     expect(candidateSql).toContain("vakaygo_outreach_permission_allowed(c.provider,c.permission_kind)");

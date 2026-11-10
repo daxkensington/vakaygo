@@ -521,3 +521,25 @@ export async function sendListingSubmittedToTeam(params: {
     ),
   });
 }
+
+/** Team inbox: the claim invitation campaign stopped sending (a hold or an automatic pause). */
+export async function sendOutreachHoldAlert(params: { kind: "health_hold" | "auto_pause"; reasons: string[]; adminUrl: string }) {
+  const reasons = params.reasons.length ? params.reasons : ["unknown"];
+  const list = reasons.map(reason => `<li style="margin:0 0 4px">${esc(reason.replaceAll("_", " "))}</li>`).join("");
+  const what = params.kind === "auto_pause"
+    ? "The claim invitation campaign paused itself after a provider request it could not confirm. It stays paused until someone reviews it and enables it again."
+    : "The claim invitation campaign stopped sending because a sending gate is no longer met. It resumes on its own once the gate clears; holds that need a review stay until one is recorded.";
+  return sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    subject: params.kind === "auto_pause" ? "ACTION: claim invitations paused" : "Claim invitations on hold",
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${what}</p>
+    <ul style="color:#4A4F73;margin:0 0 16px;padding-left:20px;line-height:1.5">${list}</ul>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${link(params.adminUrl, "Open the campaign controls")}</p>
+    <p style="color:#9A9DB0;font-size:12px;margin:16px 0 0;line-height:1.5">Sent once each time the campaign goes from sending to held.</p>`,
+      { eyebrow: "Outreach", title: params.kind === "auto_pause" ? "Invitations paused" : "Invitations on hold", tone: "gold" }
+    ),
+  });
+}

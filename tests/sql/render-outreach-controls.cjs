@@ -27,7 +27,9 @@ function visit(node) {
 visit(file);
 const bindings = {
   "-- SERVICE_GRANT_SQL": queries.filter(query => query.includes("INSERT INTO outreach_recipient_consents")),
-  "-- SERVICE_REVOKE_SQL": queries.filter(query => query.includes("UPDATE outreach_recipient_consents")),
+  "-- SERVICE_REVOKE_SQL": queries.filter(query => query.includes("UPDATE outreach_recipient_consents") && !query.includes("outreach_email_suppressions")),
+  "-- SERVICE_RECONCILE_SQL": queries.filter(query => query.includes("outreach_reconcile_attempt")),
+  "-- SERVICE_SUPPRESS_SQL": queries.filter(query => query.includes("outreach_suppress_address")),
   "-- SERVICE_CONTROL_SQL": queries.filter(query => query.includes("UPDATE outreach_campaign_control") && query.includes("gate AS")),
   "-- SERVICE_REVIEW_SQL": queries.filter(query => query.includes("UPDATE outreach_campaign_control") && query.includes("holds_reviewed_at=now()")),
   "-- SERVICE_REPORT_SQL": reportQueries,

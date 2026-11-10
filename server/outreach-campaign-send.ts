@@ -5,6 +5,7 @@ import { OUTREACH_CAMPAIGN_KEY, checkCampaignSendingWindow, getOutreachPrerequis
 import { normalizeOutreachRecipient, parseResendOutreachEvent, recordOutreachAccepted, recordOutreachFailure, recordOutreachProviderEvent, suppressOutreachRecipient } from "@/server/outreach-tracking";
 import { SendcorexClient, SendcorexError } from "@/server/sendcorex-client";
 import { refreshSendcorexTelemetry } from "@/server/sendcorex-telemetry";
+import { logger } from "@/lib/logger";
 
 const REQUIRED_EVENTS = ["email.sent", "email.delivered", "email.bounced", "email.complained", "email.delivery_delayed", "email.failed", "email.suppressed"];
 const CAMPAIGN_ORIGIN = "https://vakaygo.com";
@@ -50,6 +51,17 @@ function webhookSecretMatches(observed: unknown): boolean {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+/** Tells the team inbox the campaign stopped sending. Never throws: an alert failure must not change the send outcome. */
+async function alertOutreachHold(kind: "health_hold" | "auto_pause", reasons: string[]): Promise<void> {
+  try {
+    const { sendOutreachHoldAlert } = await import("@/server/email-requests");
+    await sendOutreachHoldAlert({ kind, reasons, adminUrl: `${CAMPAIGN_ORIGIN}/admin/outreach` });
+  } catch (error) {
+    logger.error("Outreach hold alert failed", { kind, reasons, error });
+  }
+  logger.warn("Claim invitation campaign stopped sending", { kind, reasons });
+}
+
 /** Provider observations reconcile missed webhooks; no message is sent here. */
 export async function refreshOutreachTelemetry(): Promise<{ ready: boolean; reasons: string[] }> {
   const sql = neon(env.DATABASE_URL);
@@ -91,8 +103,13 @@ export async function refreshOutreachTelemetry(): Promise<{ ready: boolean; reas
   }
   const ready = reasons.length === 0;
   // Compare selected provider: health from one provider never enables another.
-  await sql.query(`UPDATE outreach_campaign_control SET health_checked_at=now(),health_ready=$1,health_reason=$2
-    WHERE id=true AND provider=$3`, [ready, [...new Set(reasons)].join(",") || "provider_metadata_verified", prerequisites.provider]);
+  // The sub-select reads the row as it was before this update, so a change from
+  // sending to held is seen exactly once and the team is told about it.
+  const [previous] = await sql.query(`UPDATE outreach_campaign_control c SET health_checked_at=now(),health_ready=$1,health_reason=$2
+    FROM (SELECT health_ready AS was_ready,enabled AS was_enabled FROM outreach_campaign_control WHERE id=true) p
+    WHERE c.id=true AND c.provider=$3 RETURNING p.was_ready AS "wasReady",p.was_enabled AS "wasEnabled"`,
+  [ready, [...new Set(reasons)].join(",") || "provider_metadata_verified", prerequisites.provider]);
+  if (!ready && previous?.wasReady === true && previous?.wasEnabled === true) await alertOutreachHold("health_hold", [...new Set(reasons)]);
   return { ready, reasons: [...new Set(reasons)] };
 }
 
@@ -161,6 +178,7 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
         await sql.query(`UPDATE outreach_campaign_control SET enabled=false,health_ready=false,health_reason='provider_request_rejected',
           pause_reason='Provider outcome requires review before resuming.',version=version+1,updated_at=now()
           WHERE id=true AND provider='sendcorex'`);
+        await alertOutreachHold("auto_pause", [failure.code]);
         return { sent: false, email: recipient, reason: failure.code, attemptId };
       }
     }
@@ -175,6 +193,7 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
       await sql.query(`UPDATE outreach_campaign_control SET enabled=false,health_ready=false,health_reason='provider_request_rejected',
         pause_reason='Provider rejected a campaign request; review the recorded attempt before resuming.',version=version+1,updated_at=now()
         WHERE id=true AND provider='resend'`);
+      await alertOutreachHold("auto_pause", ["provider_request_rejected"]);
       return { sent: false, email: recipient, reason: "provider_request_rejected", attemptId };
     }
     const accepted = await response.json();

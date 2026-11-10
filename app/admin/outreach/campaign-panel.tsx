@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { COUNTRIES } from "@/lib/countries";
-import { OUTREACH_PERMISSION_PROVIDERS, type CampaignAdminAction, type CampaignPermission, type CampaignReport, type OutreachPermissionProvider } from "@/lib/outreach-campaign-admin";
+import { OUTREACH_PERMISSION_PROVIDERS, type CampaignAdminAction, type CampaignPermission, type CampaignReport, type CampaignUnresolvedAttempt, type OutreachPermissionProvider } from "@/lib/outreach-campaign-admin";
 
 const ENDPOINT = "/api/admin/outreach/campaign";
 const inputClass = "mt-1 w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm font-normal";
@@ -15,8 +15,8 @@ async function saveAction(action: CampaignAdminAction) {
 
 export function OutreachPermissionForm({ listingId, title, email, onSaved }: { listingId: string; title: string; email: string | null; onSaved: () => void }) {
   const id = useId();
-  const [provider, setProvider] = useState<OutreachPermissionProvider>("resend");
-  const [kind, setKind] = useState<"explicit_opt_in" | "business_outreach_permission">("explicit_opt_in");
+  const [provider, setProvider] = useState<OutreachPermissionProvider>("sendcorex");
+  const [kind, setKind] = useState<"explicit_opt_in" | "business_outreach_permission">("business_outreach_permission");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -75,6 +75,41 @@ function DeliveryReview({ report, busy, onChange }: { report: CampaignReport; bu
     <p className="mt-2 text-xs text-navy-500">Recording a review restarts the hold counts from now. It does not enable the campaign, raise a stage, or remove any bounce from the report; enable the campaign afterwards if the gates allow it.</p></details>;
 }
 
+function UnresolvedAttemptRow({ attempt, busy, onChange }: { attempt: CampaignUnresolvedAttempt; busy: boolean; onChange: (action: CampaignAdminAction) => Promise<void> }) {
+  const [outcome, setOutcome] = useState<"sent" | "not_sent">("not_sent");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    await onChange({ action: "reconcile_attempt", attemptId: attempt.id, outcome,
+      providerEmailId: outcome === "sent" ? String(values.get("providerEmailId") || "").trim() : null, note: String(values.get("note") || "") });
+  }
+  return <li className="border-t border-cream-200 py-3 text-sm text-navy-600">
+    <p className="font-semibold">{attempt.listingTitle} · {attempt.recipient}</p>
+    <p>{attempt.provider} · {attempt.state}{attempt.errorCode ? ` (${attempt.errorCode.replaceAll("_", " ")})` : ""} · reserved {new Date(attempt.reservedAt).toLocaleString()}</p>
+    <form onSubmit={submit} className="mt-2 space-y-2">
+      <fieldset className="flex flex-wrap gap-4"><legend className="sr-only">What the provider log shows</legend>
+        <label className="flex items-center gap-2"><input type="radio" name="outcome" checked={outcome === "not_sent"} onChange={() => setOutcome("not_sent")} disabled={busy} />Not in the provider log: never sent</label>
+        <label className="flex items-center gap-2"><input type="radio" name="outcome" checked={outcome === "sent"} onChange={() => setOutcome("sent")} disabled={busy} />Sent: the provider log shows it</label></fieldset>
+      {outcome === "sent" && <input name="providerEmailId" required pattern="[A-Za-z0-9_-]{1,128}" aria-label={"Provider message id for " + attempt.recipient} placeholder="Provider message id from its log" disabled={busy} className={inputClass} />}
+      <input name="note" required minLength={20} maxLength={500} aria-label={"Reconciliation note for " + attempt.recipient} placeholder="Where you checked and what it showed" disabled={busy} className={inputClass} />
+      <button disabled={busy} className={buttonClass}>Record outcome</button>
+    </form></li>;
+}
+
+function SuppressAddress({ busy, onChange }: { busy: boolean; onChange: (action: CampaignAdminAction) => Promise<void> }) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget, values = new FormData(form);
+    await onChange({ action: "suppress_address", recipientEmail: String(values.get("email") || "").trim().toLowerCase(), reason: String(values.get("reason") || "") });
+    form.reset();
+  }
+  return <details className="mt-4 rounded-xl border border-cream-200 p-4"><summary className="cursor-pointer text-sm font-semibold text-navy-700">Record an opt-out received by reply or phone</summary>
+    <p className="mt-3 text-sm text-navy-500">The address is never invited again for any listing, and every permission recorded for it is revoked. Honour opt-outs within 2 business days.</p>
+    <form onSubmit={submit} className="mt-3 flex flex-wrap gap-2"><input name="email" type="email" required maxLength={254} aria-label="Address that opted out" placeholder="name@business.com" disabled={busy} className="min-w-48 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+      <input name="reason" required minLength={5} maxLength={500} aria-label="How the opt-out arrived" placeholder="e.g. Replied asking to stop, 2026-11-10" disabled={busy} className="min-w-48 flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm" />
+      <button disabled={busy} className={buttonClass}>Suppress address</button></form></details>;
+}
+
 export function CampaignPanel() {
   const [report, setReport] = useState<CampaignReport | null>(null), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [revision, setRevision] = useState(0), [provider, setProvider] = useState("");
@@ -100,12 +135,16 @@ export function CampaignPanel() {
       {reasons.length > 0 && <div role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p className="font-semibold">Sending gates need review</p><ul className="mt-1 list-inside list-disc">{reasons.map(reason => <li key={reason}>{reason.replaceAll("_", " ")}</li>)}</ul></div>}
       <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busy || report.control.enabled || !report.health.ready} onClick={() => change({ action: "enable", expectedVersion: report.control.version })} className={buttonClass}>Enable reviewed campaign</button><button type="button" disabled={busy || !report.control.enabled} onClick={() => change({ action: "pause", expectedVersion: report.control.version, reason: "Paused by an administrator for review." })} className={buttonClass}>Pause campaign</button><button type="button" disabled={busy || !report.health.nextStageAllowed || report.control.stage >= report.caps.length - 1} onClick={() => change({ action: "request_stage", expectedVersion: report.control.version, stage: report.control.stage + 1 })} className={buttonClass}>Request next stage{report.control.stage < report.caps.length - 1 ? ` (${report.caps[report.control.stage + 1]}/day)` : ""}</button></div>
       <DeliveryReview report={report} busy={busy} onChange={change} />
+      {report.unresolvedAttempts?.length ? <details open className="mt-4 rounded-xl border border-amber-200 bg-amber-50/40 p-4"><summary className="cursor-pointer text-sm font-semibold text-navy-700">Sends with an unknown outcome ({report.unresolvedAttempts.length})</summary>
+        <p className="mt-2 text-sm text-navy-500">Each one holds the campaign. Check the provider’s log for the recipient and time, then record what happened. The campaign stays paused until you enable it.</p>
+        <ul className="mt-2">{report.unresolvedAttempts.map(attempt => <UnresolvedAttemptRow key={attempt.id} attempt={attempt} busy={busy} onChange={change} />)}</ul></details> : null}
+      <SuppressAddress busy={busy} onChange={change} />
       <p className="mt-2 text-xs text-navy-500">A stage increase requires at least 3 days of observation and 50 accepted messages from this stage in the last week, aged at least 24 hours, each delivered or bounced. Bounce rate must stay below 2%, with zero complaints and a healthy event feed. Stages never increase automatically.</p>
       {!report.health.nextStageAllowed && report.health.promotionReasons?.length ? <p className="mt-2 text-xs text-navy-500">Next stage: {report.health.promotionReasons.map(reason => reason.replaceAll("_", " ")).join(", ")}.</p> : null}
       <div className="mt-4 flex flex-wrap items-end gap-2"><label className="text-sm font-semibold text-navy-700">Provider for reviewed campaign<select value={provider || report.control.provider} disabled={busy || report.control.enabled} onChange={event => setProvider(event.target.value)} className={inputClass}>{OUTREACH_PERMISSION_PROVIDERS.map(value => <option key={value}>{value}</option>)}</select></label><button type="button" disabled={busy || report.control.enabled || !provider || provider === report.control.provider} onClick={() => change({ action: "select_provider", expectedVersion: report.control.version, provider: provider as OutreachPermissionProvider })} className={buttonClass}>Select while paused</button></div>
       <p className="mt-2 text-xs text-navy-500">Changing provider resets stage and health validation. Future providers cannot be enabled until a validated transport and event adapter is available.</p>
       <dl className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{[
-        ["Reserved, last 24h", report.metrics.reserved24h], ["Accepted, 7 days", report.metrics.accepted], ["Delivered, 7 days", report.metrics.delivered], ["Bounced, 7 days", report.metrics.bounced], ["Complaints, 7 days", report.metrics.complained], ["Failed, 7 days", report.metrics.failed], ["Uncertain / stale", report.metrics.uncertain], ["Observed opens, 7 days", report.metrics.opened], ["Observed clicks, 7 days", report.metrics.clicked], ["Mature stage sample", report.metrics.matureAccepted], ["Resolved mature sample", report.metrics.matureResolved], ["Recorded active permissions", report.metrics.activePermissions], ["Suppressed recipients", report.metrics.suppressions], ["Link visits (includes scanners)", report.metrics.linkVisits], ["Approved claims linked to invitations", report.metrics.approvedClaimsFromLinks],
+        ["Reserved, last 24h", report.metrics.reserved24h], ["Accepted, 7 days", report.metrics.accepted], ["Delivered, 7 days", report.metrics.delivered], ["Bounced, 7 days", report.metrics.bounced], ["Complaints, 7 days", report.metrics.complained], ["Failed, 7 days", report.metrics.failed], ["Uncertain / stale", report.metrics.uncertain], ...(report.control.provider === "sendcorex" ? [] : [["Observed opens, 7 days", report.metrics.opened]] as [string, number][]), ...(report.control.provider === "sendcorex" ? [] : [["Observed clicks, 7 days", report.metrics.clicked]] as [string, number][]), ["Mature stage sample", report.metrics.matureAccepted], ["Resolved mature sample", report.metrics.matureResolved], ["Recorded active permissions", report.metrics.activePermissions], ["Suppressed recipients", report.metrics.suppressions], ["Link visits (includes scanners)", report.metrics.linkVisits], ["Approved claims linked to invitations", report.metrics.approvedClaimsFromLinks],
       ].map(([label, value]) => <div key={label} className="rounded-lg bg-cream-50 p-3"><dt className="text-navy-500">{label}</dt><dd className="mt-1 text-lg font-bold text-navy-800">{value}</dd></div>)}</dl>
       <p className="mt-3 text-xs text-navy-500">Accepted means the provider accepted the message; delivered means a receiving mail server accepted it. Opens and clicks can include scanners or proxies. Link visits can also include automated scanners or forwarded links; linked claims show association, not booking conversions or proof that email caused a claim. Replies are reviewed in InboxHQ. These metrics cover the new rollout ledger; historical outreach notes are not backfilled.</p>
       <details className="mt-5"><summary className="cursor-pointer font-semibold text-navy-700">Latest permission reviews ({report.permissions.length}, maximum 50)</summary><ul className="mt-3">{report.permissions.map(permission => <PermissionRow key={permission.id} permission={permission} onSaved={refresh} />)}</ul>{report.permissions.length === 0 && <p className="mt-3 text-sm text-navy-500">No permission evidence recorded. Review a business below to record its recipient and listing permission.</p>}</details>

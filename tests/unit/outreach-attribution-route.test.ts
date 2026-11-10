@@ -64,7 +64,9 @@ describe("public invitation continuation", () => {
     if (kind === "wrong-purpose") url = unsubscribeInvitationUrl(attemptId).replace("/unsubscribe?", "/claim?");
     if (kind === "expired") vi.setSystemTime(new Date("2026-11-21T12:00:00Z"));
     const response = await visit(new Request(url));
-    expect(response.status).toBe(400);
+    // A broken or expired invitation sends the business to the business page, never a JSON error.
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://vakaygo.com/for-businesses");
     expect(response.cookies.getAll().length).toBe(0);
     expect(mocks.query).not.toHaveBeenCalled(); expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.network).not.toHaveBeenCalled();
@@ -79,6 +81,7 @@ describe("public invitation continuation", () => {
     expect(target.origin).toBe("https://vakaygo.com"); expect(target.pathname).toBe("/auth/signup");
     expect(target.searchParams.get("role")).toBe("operator"); expect(target.searchParams.get("claim")).toBe(listingId);
     expect(target.searchParams.has("context")).toBe(false); expect(target.searchParams.has("next")).toBe(false);
+    expect(target.searchParams.get("utm_source")).toBe("outreach"); expect(target.searchParams.get("utm_campaign")).toBe("listing-claims-v2");
     const cookie = response.headers.get("set-cookie") || "";
     for (const flag of ["HttpOnly", "Secure", "SameSite=lax", "Max-Age=604800", "Path=/"]) expect(cookie.includes(flag)).toBe(true);
     expect(response.cookies.getAll().map(item => item.name)).toEqual([OUTREACH_CONTEXT_COOKIE]);
@@ -92,7 +95,8 @@ describe("public invitation continuation", () => {
   it("does not set context for an unavailable or unaccepted invitation", async () => {
     mocks.query.mockResolvedValueOnce([]);
     const response = await visit(new Request(invitation()));
-    expect(response.status).toBe(404); expect(response.cookies.getAll().length).toBe(0);
+    expect(response.status).toBe(302); expect(response.headers.get("location")).toBe("https://vakaygo.com/for-businesses");
+    expect(response.cookies.getAll().length).toBe(0);
   });
   it("returns a safe retry response when recording the visit fails", async () => {
     mocks.query.mockRejectedValueOnce(new Error("private database detail"));

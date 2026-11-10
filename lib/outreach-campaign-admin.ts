@@ -35,6 +35,24 @@ const actionSchema = z.union([
   z.object({ action: z.literal("acknowledge_delivery_review"), expectedVersion: version, note: z.string().trim().min(20).max(500) }).strict(),
   grant,
   z.object({ action: z.literal("revoke_consent"), consentId: uuid, reason: z.string().trim().min(5).max(500) }).strict(),
+  // An attempt whose transport outcome is unknown ("uncertain", or a reservation that
+  // never finished) holds the whole campaign. An administrator who has checked the
+  // provider's own log records what actually happened. "sent" needs the provider's
+  // message id so later delivery events attach to the attempt.
+  z.object({
+    action: z.literal("reconcile_attempt"), attemptId: uuid, outcome: z.enum(["sent", "not_sent"]),
+    providerEmailId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,128}$/).nullable().optional(),
+    note: z.string().trim().min(20).max(500),
+  }).strict().superRefine((value, ctx) => {
+    if (value.outcome === "sent" && !value.providerEmailId) ctx.addIssue({ code: "custom", message: "Enter the provider's message id for a message that was sent." });
+    if (value.outcome === "not_sent" && value.providerEmailId) ctx.addIssue({ code: "custom", message: "A message that was not sent has no provider message id." });
+  }),
+  // An opt-out that arrives by reply or phone applies to the address on every listing.
+  z.object({
+    action: z.literal("suppress_address"),
+    recipientEmail: z.string().trim().toLowerCase().min(6).max(254).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+    reason: z.string().trim().min(5).max(500),
+  }).strict(),
 ]);
 
 export type CampaignAdminAction = z.infer<typeof actionSchema>;
@@ -53,6 +71,9 @@ export type CampaignPermission = {
   evidence: string; policyReference: string | null; grantedAt: string; grantedBy: string | null;
   revokedAt: string | null; revocationReason: string | null; suppressed: boolean;
 };
+export type CampaignUnresolvedAttempt = {
+  id: string; recipient: string; listingTitle: string; provider: string; state: string; reservedAt: string; errorCode: string | null;
+};
 export type CampaignReport = {
   control: CampaignControl;
   caps: readonly number[];
@@ -67,4 +88,6 @@ export type CampaignReport = {
   /** Counts since the last recorded delivery review (or the last 7 days), which the sending holds use. */
   deliveryReview?: { reviewedAt: string | null; note: string | null; acceptedSince: number; bouncedSince: number; failedSince: number };
   permissions: CampaignPermission[];
+  /** Sends whose outcome is unknown; each holds the campaign until reconciled. */
+  unresolvedAttempts?: CampaignUnresolvedAttempt[];
 };
