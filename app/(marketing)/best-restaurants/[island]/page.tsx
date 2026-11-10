@@ -10,6 +10,7 @@ import {
   getTopListingsByType,
   getIslandStats,
 } from "@/server/seo-queries";
+import { formatCurrency } from "@/lib/pricing";
 import { getImageUrl } from "@/lib/image-utils";
 import { buildBestRestaurantsFaqs, hubTitleYear } from "@/lib/destination-faqs";
 import { buildHubListItem } from "@/lib/hub-structured-data";
@@ -415,8 +416,7 @@ export default async function BestRestaurantsPage({ params }: Props) {
                           parseFloat(listing.priceAmount) > 0 && (
                             <p className="mt-2">
                               <span className="font-bold text-navy-700">
-                                $
-                                {parseFloat(listing.priceAmount).toFixed(0)}
+                                {formatCurrency(Math.round(parseFloat(listing.priceAmount)), listing.priceCurrency || "USD")}
                               </span>
                               {typeof listing.priceUnit === "string" &&
                                 listing.priceUnit.length > 0 && (

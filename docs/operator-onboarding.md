@@ -43,7 +43,7 @@ The workers below use the schedules in `vercel.json` and require `Authorization:
 | Worker | Responsibility | Investigate |
 |---|---|---|
 | `/api/cron/availability` | Daily, append missing tail dates through the next 90 days for claimed listings without changing existing calendar choices. | HTTP 500, stale listing horizons, or an inserted count that remains unexpectedly high. |
-| `/api/cron/onboarding-readiness` | Refresh up to 50 activated provider accounts per run. Stale readiness closes the gate after 15 minutes. | Refresh failures, oldest check age approaching expiry, sustained backlog. |
+| `/api/cron/onboarding-readiness` | Runs every 10 minutes and refreshes up to 50 activated provider accounts. Stale readiness closes the gate after 15 minutes, so the interval must stay below that. | Refresh failures, oldest check age approaching expiry, sustained backlog. |
 | `/api/cron/checkout-safety` | Independently retry closure of persisted unpaid hosted links for ineligible, changed, or cancelled bookings, even while the global launch switch is off. | `failed > 0`, HTTP 503, or old open links. A missing/mismatched platform identity blocks expiry and must be corrected. |
 | `/api/cron/booking-refunds` | Retry canonical cancellations and the separate rejected-payment refund ledger. | Pending age and `needsReview > 0`; failed/canceled refunds require support review. |
 | `/api/cron/booking-mail` | Deliver the durable outbox with retry and stale-message checks. | Undelivered queue age, repeated attempts, sender/provider failures. |

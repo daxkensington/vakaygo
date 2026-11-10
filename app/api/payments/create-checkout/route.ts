@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 import { logger } from "@/lib/logger";
 import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { expireBookingCheckout, isBookingCalendarAvailable } from "@/server/booking-checkout-safety";
+import { PAYMENT_LINK_MAX_AGE_MS } from "@/lib/booking-payment-eligibility";
 
 function checkoutReturnUrl(outcome: "paid" | "cancelled", bookingNumber: string): string {
   let origin = "https://vakaygo.com";
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
       if (!currentBooking) return rejectReusedCheckout();
       return NextResponse.json({ url: existingSession.url });
     }
-    if (Date.now() - booking.createdAt.getTime() > 23 * 3600000) return NextResponse.json({ error: "This payment link has expired. Cancel this unpaid booking and book again." }, { status: 409 });
+    if (Date.now() - booking.createdAt.getTime() > PAYMENT_LINK_MAX_AGE_MS) return NextResponse.json({ error: "This payment link has expired. Cancel this unpaid booking and book again." }, { status: 409 });
 
     // Get listing and operator
     const [listing] = await db

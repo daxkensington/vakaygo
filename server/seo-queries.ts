@@ -4,6 +4,7 @@ import { islands, listings, media, listingTypeEnum } from "@/drizzle/schema";
 import { eq, and, sql, count, avg } from "drizzle-orm";
 
 import { publicDirectoryListings, publicDestinations as publicIsland } from "@/server/public-listing-eligibility";
+import { currentListingBookable } from "@/server/listing-bookability-sql";
 
 export type SeoListing = {
   id: string;
@@ -189,7 +190,8 @@ export async function getTopListingsByType(
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
-      priceAmount: listings.priceAmount,
+      // Imported listings carry type-default placeholder prices; show a price only where it is bookable (as explore does).
+      priceAmount: sql<string | null>`CASE WHEN (${currentListingBookable()}) THEN ${listings.priceAmount} ELSE NULL END`,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
       avgRating: listings.avgRating,
@@ -236,7 +238,8 @@ export async function getTopListingsForIsland(
       slug: listings.slug,
       type: listings.type,
       headline: listings.headline,
-      priceAmount: listings.priceAmount,
+      // Imported listings carry type-default placeholder prices; show a price only where it is bookable (as explore does).
+      priceAmount: sql<string | null>`CASE WHEN (${currentListingBookable()}) THEN ${listings.priceAmount} ELSE NULL END`,
       priceCurrency: listings.priceCurrency,
       priceUnit: listings.priceUnit,
       avgRating: listings.avgRating,
