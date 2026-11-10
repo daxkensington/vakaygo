@@ -8,20 +8,12 @@ import { alias } from "drizzle-orm/pg-core";
 
 import { logger } from "@/lib/logger";
 import { requireAdmin } from "@/server/admin-auth";
-
-function escapeCsv(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
+import { csvRow } from "@/lib/csv";
 
 function toCsv(headers: string[], rows: Record<string, unknown>[], keys: string[]): string {
   const lines = [headers.join(",")];
   for (const row of rows) {
-    lines.push(keys.map((k) => escapeCsv(row[k])).join(","));
+    lines.push(csvRow(keys.map((k) => row[k])));
   }
   return lines.join("\n");
 }

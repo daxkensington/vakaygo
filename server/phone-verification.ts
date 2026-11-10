@@ -2,18 +2,20 @@ import { createHmac, randomInt, randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { env, SESSION_SECRET } from "@/lib/env";
 import type { SessionPayload } from "@/server/session-validation";
+import { isAllowedSmsDestination } from "@/lib/phone-destinations";
 
 export type PhoneActor = SessionPayload & { sessionVersion: number };
 export class PhoneVerificationError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
+export const UNSUPPORTED_SMS_DESTINATION = "We cannot send verification texts to numbers in that country yet. You can keep using VakayGo without a verified phone, or contact hello@vakaygo.com.";
 export const validPhone = (phone: unknown): phone is string => typeof phone === "string" && /^\+[1-9][0-9]{7,14}$/.test(phone);
 export const validPhoneCode = (code: unknown): code is string => typeof code === "string" && /^[0-9]{6}$/.test(code);
 export function phoneCodeHash(actor: PhoneActor, code: string): string {
   return createHmac("sha256", SESSION_SECRET()).update(JSON.stringify(["vakaygo-personal-phone-v1", actor.userId, actor.sessionVersion, code])).digest("hex");
 }
 const identity = `WITH actor AS MATERIALIZED (
- SELECT id,phone,phone_verified FROM users WHERE id=$1::uuid AND session_version=$2
+ SELECT id,phone,phone_verified,email_verified FROM users WHERE id=$1::uuid AND session_version=$2
  AND role=$3 AND email=$4 AND (email_verified=true OR role='traveler')
 )`;
 type Result = { actorExists: boolean; [key: string]: unknown };
@@ -52,10 +54,12 @@ export async function updatePhoneAwareProfile(actor: PhoneActor, update: { name?
 }
 export async function reservePhoneCode(actor: PhoneActor, phone: string) {
   if (!validPhone(phone)) throw new PhoneVerificationError("Enter a phone number in international format, for example +14735551234.");
+  if (!isAllowedSmsDestination(phone)) throw new PhoneVerificationError(UNSUPPORTED_SMS_DESTINATION);
   const id = randomUUID(), code = randomInt(100000, 1000000).toString();
   const row = await transaction(actor, `, reserved AS (
     INSERT INTO user_phone_challenges(user_id,challenge_id,phone,code_hash,session_version,profile_phone_snapshot,state,expires_at,attempts,next_send_at,send_window_started_at,send_count)
     SELECT id,$5::uuid,$6,$7,$2,phone,'sending',now()+interval '5 minutes',0,now()+interval '1 minute',now(),1 FROM actor
+    WHERE email_verified=true
     ON CONFLICT(user_id) DO UPDATE SET challenge_id=excluded.challenge_id,phone=excluded.phone,code_hash=excluded.code_hash,
       session_version=excluded.session_version,profile_phone_snapshot=excluded.profile_phone_snapshot,state='sending',expires_at=excluded.expires_at,
       attempts=0,next_send_at=excluded.next_send_at,updated_at=now(),
@@ -63,7 +67,11 @@ export async function reservePhoneCode(actor: PhoneActor, phone: string) {
       send_count=CASE WHEN user_phone_challenges.send_window_started_at<=now()-interval '1 hour' THEN 1 ELSE user_phone_challenges.send_count+1 END
     WHERE user_phone_challenges.next_send_at<=now() AND(user_phone_challenges.send_window_started_at<=now()-interval '1 hour' OR user_phone_challenges.send_count<5)
     RETURNING challenge_id
-  ) SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",(SELECT challenge_id FROM reserved) AS "challengeId"`, [id, phone, phoneCodeHash(actor, code)]);
+  ) SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",(SELECT challenge_id FROM reserved) AS "challengeId",
+    coalesce((SELECT email_verified FROM actor),false) AS "emailVerified"`, [id, phone, phoneCodeHash(actor, code)]);
+  // A text costs money and goes to a number the caller typed. Only an account that
+  // has proved its email address may trigger one; a guest session cannot.
+  if (row.emailVerified !== true) throw new PhoneVerificationError("Verify your email address before adding a phone number. Check your inbox for the verification link.", 403);
   if (row.challengeId !== id) throw new PhoneVerificationError("Please wait before requesting another code. You can request up to five codes per hour.", 429);
   return { id, code };
 }

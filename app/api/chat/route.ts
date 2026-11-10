@@ -13,6 +13,7 @@ import { verifySession, type SessionPayload } from "@/server/admin-auth";
 
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
+import { budgetCaller, budgetRefusal, consumeUsageBudget } from "@/server/usage-budget";
 import { RESPONSE_PLAN_TOOL, hasConciergeActionResult, renderConciergeResponse, type ConciergeToolResult } from "@/server/concierge-response";
 
 const unavailable = () => NextResponse.json({
@@ -413,6 +414,12 @@ export async function POST(request: Request) {
 
     // Get authenticated user for memory
     const actor = await verifySession();
+
+    // Anonymous visitors can use the concierge, so the paid provider loop is
+    // counted against a durable daily budget (per caller and for the whole
+    // site) before the first model call. See lib/usage-budget-policy.ts.
+    const budget = await consumeUsageBudget("concierge", budgetCaller(request, actor?.userId));
+    if (!budget.allowed) return budgetRefusal("concierge", budget);
 
     // Load user memories if logged in
     const memoryContext = actor ? await loadMemories(actor) : "";

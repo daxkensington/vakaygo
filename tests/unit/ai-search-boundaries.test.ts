@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+// The durable daily budget has its own tests (usage-budget*.test.ts); here every call fits.
+vi.mock("@/server/usage-budget", () => ({ consumeUsageBudget: async () => ({ allowed: true, durable: true }), budgetCaller: () => ({ ip: "203.0.113.9", userId: null }), budgetRefusal: () => { throw new Error("unexpected budget refusal"); } }));
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 import { POST as smartSearch } from "@/app/api/ai/smart-search/route";
 import { POST as searchSummary } from "@/app/api/ai/search-summary/route";

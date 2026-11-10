@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import twilio from "twilio";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
-import { PhoneVerificationError, consumePhoneCode, finishPhoneSend, phoneStatus, reservePhoneCode, validPhone, type PhoneActor } from "@/server/phone-verification";
+import { PhoneVerificationError, UNSUPPORTED_SMS_DESTINATION, consumePhoneCode, finishPhoneSend, phoneStatus, reservePhoneCode, validPhone, type PhoneActor } from "@/server/phone-verification";
+import { isAllowedSmsDestination } from "@/lib/phone-destinations";
+import { budgetCaller, budgetRefusal, consumeUsageBudget } from "@/server/usage-budget";
 import { logger } from "@/lib/logger";
 
 const headers = { "Cache-Control": "private, no-store" };
@@ -38,9 +40,17 @@ export async function POST(request: Request) {
     const current = await actor(), data = await body(request);
     fence(data.expectedUserId, current);
     if (!validPhone(data.phone)) throw new PhoneVerificationError("Enter a phone number in international format, for example +14735551234.");
+    if (!isAllowedSmsDestination(data.phone)) throw new PhoneVerificationError(UNSUPPORTED_SMS_DESTINATION);
     const { TWILIO_ACCOUNT_SID: sid, TWILIO_AUTH_TOKEN: auth, TWILIO_PHONE_NUMBER: from } = process.env;
     if (!sid || !auth || !from) return json({ error: "SMS service unavailable" }, 503);
     const challenge = await reservePhoneCode(current, data.phone);
+    // Counted only for a text that is about to be sent: a daily limit per account
+    // and a site-wide ceiling, shared by every instance (lib/usage-budget-policy.ts).
+    const budget = await consumeUsageBudget("phone_sms", budgetCaller(request, current.userId));
+    if (!budget.allowed) {
+      await finishPhoneSend(current, challenge.id, false).catch(() => {});
+      return budgetRefusal("phone_sms", budget);
+    }
     try {
       await twilio(sid, auth, { timeout: 10_000, autoRetry: false }).messages.create({ body: `Your VakayGo verification code is: ${challenge.code}. It expires in 5 minutes.`, from, to: data.phone });
     } catch {

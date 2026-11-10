@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   currentUser: vi.fn(), execute: vi.fn(),
   secret: "synthetic-concierge-session-test-secret-at-least-32-characters",
 }));
+// The durable daily budget has its own tests (usage-budget*.test.ts); here every call fits.
+vi.mock("@/server/usage-budget", () => ({ consumeUsageBudget: async () => ({ allowed: true, durable: true }), budgetCaller: () => ({ ip: "203.0.113.9", userId: null }), budgetRefusal: () => { throw new Error("unexpected budget refusal"); } }));
 vi.mock("@/lib/env", () => ({
   env: { DATABASE_URL: "postgresql://synthetic:synthetic@localhost/offline", ANTHROPIC_API_KEY: "synthetic-unused-key", ANTHROPIC_CONCIERGE_MODEL: "synthetic-model" },
   SESSION_SECRET: () => new TextEncoder().encode(state.secret),

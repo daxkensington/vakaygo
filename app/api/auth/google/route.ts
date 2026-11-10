@@ -83,8 +83,6 @@ export async function GET(request: Request) {
     response_type: "code",
     scope: "openid email profile",
     state,
-    access_type: "offline",
-    prompt: "consent",
   });
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;

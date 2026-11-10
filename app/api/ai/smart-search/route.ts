@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
+import { budgetCaller, budgetRefusal, consumeUsageBudget } from "@/server/usage-budget";
 import { SMART_SEARCH_SYSTEM_PROMPT, parseSearchCompletion, renderAiSearchResponse, validateAiSearchFilters, withAiSearchDeadline } from "@/server/ai-search-response";
 export async function POST(request: Request) {
   try {
@@ -14,9 +15,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Bound input to cap per-request cost (this endpoint is public so the
-    // per-IP 'ai' rate limit + this cap are the abuse controls).
+    // This endpoint is public. Input is bounded here, and the paid call below
+    // is counted against a durable daily budget shared by every instance
+    // (lib/usage-budget-policy.ts); the per-IP 'ai' rate limit only smooths bursts.
     const query = rawQuery.trim().slice(0, 400);
+    const budget = await consumeUsageBudget("smart_search", budgetCaller(request));
+    if (!budget.allowed) return budgetRefusal("smart_search", budget);
 
     const systemPrompt = SMART_SEARCH_SYSTEM_PROMPT;
 

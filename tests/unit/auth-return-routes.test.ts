@@ -89,6 +89,19 @@ describe("Google auth continuation", () => {
     expect(location(cancelled).searchParams.get("error")).toBe("google_denied");
   });
 
+  it("stores no Google access, refresh or ID token and asks for no offline access", async () => {
+    fetchMock.mockReset()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "synthetic-access", refresh_token: "synthetic-refresh", id_token: "synthetic-id", expires_in: 3600, token_type: "Bearer", scope: "openid email profile" })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "synthetic-google", email: state.identity.email, verified_email: true, name: state.identity.name })));
+    prepareCallback(null); state.rows = [[]];
+    await finishGoogle(new Request("https://vakaygo.com/api/auth/google/callback?code=synthetic-code&state=synthetic-state"));
+    const link = state.writes.find(value => (value as { provider?: string }).provider === "google") as Record<string, unknown>;
+    expect(link).toMatchObject({ provider: "google", providerAccountId: "synthetic-google", accessToken: null, refreshToken: null, idToken: null, expiresAt: null, tokenType: null, scope: null });
+    expect(JSON.stringify(state.writes)).not.toMatch(/synthetic-(access|refresh|id)"/);
+    const started = location(await startGoogle(new Request("https://vakaygo.com/api/auth/google")));
+    expect(started.searchParams.has("access_type")).toBe(false); expect(started.searchParams.has("prompt")).toBe(false);
+  });
+
   it("binds a valid listing return to the generated OAuth state using a short HttpOnly cookie", async () => {
     const response = await startGoogle(new Request(`https://vakaygo.com/api/auth/google?next=${encodeURIComponent(listing)}`));
     const oauth = location(response);

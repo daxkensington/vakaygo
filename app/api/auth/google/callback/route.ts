@@ -11,6 +11,19 @@ import { safeAuthNext } from "@/lib/auth-return";
 import { setSessionCookie } from "@/server/admin-auth";
 import { establishEmailIdentity } from "@/server/email-identity";
 
+// Sign-in only needs Google's verified identity at the moment of the callback.
+// Nothing reads the provider's access, refresh or ID token afterwards, so none
+// is kept: a new link stores no tokens, and signing in again clears any that an
+// earlier version of this route stored.
+const GOOGLE_ACCOUNT_LINK = {
+  accessToken: null,
+  refreshToken: null,
+  expiresAt: null,
+  tokenType: null,
+  scope: null,
+  idToken: null,
+} as const;
+
 function getRedirectUri(requestUrl: string): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL || new URL(requestUrl).origin;
@@ -190,26 +203,14 @@ export async function GET(request: Request) {
           type: "oauth",
           provider: "google",
           providerAccountId: googleId,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token || null,
-          expiresAt: tokens.expires_in
-            ? Math.floor(Date.now() / 1000) + tokens.expires_in
-            : null,
-          tokenType: tokens.token_type || null,
-          scope: tokens.scope || null,
-          idToken: tokens.id_token || null,
+          ...GOOGLE_ACCOUNT_LINK,
         });
       } else {
         // Update tokens on existing account
         await db
           .update(accounts)
           .set({
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token || existingAccount.refreshToken,
-            expiresAt: tokens.expires_in
-              ? Math.floor(Date.now() / 1000) + tokens.expires_in
-              : existingAccount.expiresAt,
-            idToken: tokens.id_token || existingAccount.idToken,
+            ...GOOGLE_ACCOUNT_LINK,
           })
           .where(eq(accounts.id, existingAccount.id));
       }
@@ -240,14 +241,7 @@ export async function GET(request: Request) {
         type: "oauth",
         provider: "google",
         providerAccountId: googleId,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || null,
-        expiresAt: tokens.expires_in
-          ? Math.floor(Date.now() / 1000) + tokens.expires_in
-          : null,
-        tokenType: tokens.token_type || null,
-        scope: tokens.scope || null,
-        idToken: tokens.id_token || null,
+        ...GOOGLE_ACCOUNT_LINK,
       });
     }
 

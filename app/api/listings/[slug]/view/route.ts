@@ -17,6 +17,7 @@ import {
 import { recordListingView } from "@/server/listing-view-attribution";
 
 import { logger } from "@/lib/logger";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -47,12 +48,11 @@ export async function POST(
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    // Get viewer IP
+    // The address the platform saw, not the first X-Forwarded-For entry: a
+    // client can write that entry itself, which would let one visitor count as
+    // many and defeat the hourly dedup below.
     const hdrs = await headers();
-    const viewerIp =
-      hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      hdrs.get("x-real-ip") ||
-      "unknown";
+    const viewerIp = getClientIp(hdrs);
 
     // Get userId from JWT cookie (optional)
     let userId: string | null = null;

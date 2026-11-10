@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
+import { budgetCaller, budgetRefusal, consumeUsageBudget } from "@/server/usage-budget";
 // OpenAI TTS voices mapped to concierge personalities
 // Each voice has a distinct character that matches the personality
 const PERSONALITY_VOICES: Record<string, { voice: string; speed: number }> = {
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
   try {
     // NOTE: the AI concierge that calls this is mounted in the root layout and
     // is usable by anonymous visitors, so we do NOT hard-gate behind auth.
-    // Cost is bounded by the per-IP 'ai' rate limit (see lib/rate-limit.ts)
-    // plus the hard text-length cap below.
+    // Cost is bounded by the text-length cap below and by a durable daily
+    // budget of calls and characters, per caller and for the whole site
+    // (lib/usage-budget-policy.ts). The per-IP 'ai' rate limit only smooths bursts.
     const { text, personality } = await request.json() as {
       text: string;
       personality?: string;
@@ -43,6 +45,10 @@ export async function POST(request: Request) {
     if (!clean) {
       return NextResponse.json({ error: "No speakable text" }, { status: 400 });
     }
+
+    // Speech is billed per character, so the characters are what is budgeted.
+    const budget = await consumeUsageBudget("tts", budgetCaller(request), clean.length);
+    if (!budget.allowed) return budgetRefusal("tts", budget);
 
     const config = PERSONALITY_VOICES[personality || "coral"] || PERSONALITY_VOICES.coral;
 

@@ -52,7 +52,8 @@ npx playwright test tests/e2e/homepage.spec.ts
 - **`lib/env.ts`** — Zod-validated env vars. `DATABASE_URL` and `AUTH_SECRET` are required. Import `env` from here, not `process.env`.
 - **`lib/logger.ts`** — Structured logging. Routes to Sentry in prod, console in dev. Use `logger.{debug,info,warn,error}`.
 - **`server/admin-auth.ts`** — `requireUser()`, `requireAdmin()`, `requireOperator()`, `assertListingOwnership()`, `createSessionToken()`, `verifySessionToken()`, `setSessionCookie()`, `clearSessionCookie()`.
-- **`lib/rate-limit.ts`** — Token-bucket rate limiter. Already wired in `proxy.ts` for all `/api/*`.
+- **`lib/rate-limit.ts`** — Token-bucket rate limiter. Already wired in `proxy.ts` for all `/api/*`. It is per server instance and only smooths bursts; it does not cap spend.
+- **`server/usage-budget.ts`** — Durable daily budgets (Postgres, shared by every instance) for paid calls a visitor can trigger: concierge, AI search, text-to-speech, verification texts. Limits in `lib/usage-budget-policy.ts`. Any new public route that calls a paid provider must call `consumeUsageBudget()` first.
 - **`lib/pricing.ts`** — Category-specific fee rates (traveler + operator). Each listing type has its own rates.
 - **`lib/image-utils.ts`** — `getImageUrl()` routes external images through `/api/images/proxy`. Always use this for Google Places, Facebook CDN, and Yelp CDN URLs.
 
@@ -114,6 +115,7 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 | price-alerts | Daily 9am UTC | Notify travelers of price drops |
 | tax-documents | Jan 15 8am UTC | Generate annual tax documents |
 | onboarding-nudges | Every 4h (:15) | Claimed businesses stalled before activation: one next-step email, first after 48h then weekly, max 3 per step, recipient business hours; weekly team reminder for payout profiles/listings waiting on review — `lib/onboarding-nudges.ts`, kill switch flag `operator_onboarding_nudges_enabled` |
+| privacy-retention | Daily 4:27am UTC | Shortens visitor addresses on listing views older than 30 days to their network and deletes usage-budget counters older than 35 days — `server/privacy-retention.ts`; `?dryRun=1` counts only |
 
 ## Data Enrichment Scripts
 

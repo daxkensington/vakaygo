@@ -54,7 +54,7 @@ beforeEach(() => {
   vi.clearAllMocks(); forgetViewAttributionState();
   state.migrated = true; state.recent = []; state.executed = []; state.selects = []; state.failInsertOnce = null;
   state.listing = [{ id: "11111111-1111-4111-8111-111111111111" }];
-  state.headers = new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1", "x-vercel-ip-country": "ca", "x-vercel-ip-as-number": "812" });
+  state.headers = new Headers({ "x-real-ip": "203.0.113.9", "x-forwarded-for": "203.0.113.9, 10.0.0.1", "x-vercel-ip-country": "ca", "x-vercel-ip-as-number": "812" });
 });
 
 describe("POST /api/listings/[slug]/view", () => {
@@ -64,6 +64,13 @@ describe("POST /api/listings/[slug]/view", () => {
     const [insert] = inserts();
     expect(insert.sql).toContain("ua_family, referrer_host, utm_source, country, is_bot, bot_reason");
     expect(insert.params).toEqual(["11111111-1111-4111-8111-111111111111", "203.0.113.9", null, "google", "chrome", "www.google.com", null, "CA", false, null]);
+  });
+
+  it("keys the view on the address the platform saw, not on a forwarded-for value the client wrote", async () => {
+    state.headers = new Headers({ "x-real-ip": "203.0.113.9", "x-forwarded-for": "198.51.100.77, 203.0.113.9" });
+    await send({ source: "direct" });
+    expect(inserts()[0].params[1]).toBe("203.0.113.9");
+    expect(JSON.stringify(state.selects) + JSON.stringify(state.executed)).not.toContain("198.51.100.77");
   });
 
   it("keeps a campaign tag such as ChatGPT's", async () => {
@@ -77,10 +84,10 @@ describe("POST /api/listings/[slug]/view", () => {
   });
 
   it("keeps a browser on a crawler or hosting network for audit, flagged as a bot", async () => {
-    state.headers = new Headers({ "x-forwarded-for": "116.179.33.47" });
+    state.headers = new Headers({ "x-real-ip": "116.179.33.47" });
     await send({ source: "direct" });
     expect(inserts()[0].params.slice(8)).toEqual([true, "crawler_network"]);
-    state.executed = []; state.headers = new Headers({ "x-forwarded-for": "203.0.113.10", "x-vercel-ip-as-number": "132203", "x-vercel-ip-country": "CN" });
+    state.executed = []; state.headers = new Headers({ "x-real-ip": "203.0.113.10", "x-vercel-ip-as-number": "132203", "x-vercel-ip-country": "CN" });
     await send({ source: "direct" });
     expect(inserts()[0].params.slice(7)).toEqual(["CN", true, "hosting_network"]);
   });
