@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { env } from "@/lib/env";
 import { OUTREACH_CAMPAIGN_KEY, OUTREACH_DAILY_CAPS, evaluateCampaignHealth, getOutreachPrerequisites, providerAllowsPermission } from "@/lib/outreach-campaign-policy";
-import type { CampaignAdminAction, CampaignControl, CampaignPermission, CampaignReport } from "@/lib/outreach-campaign-admin";
+import type { CampaignAdminAction, CampaignControl, CampaignPermission, CampaignReport, CampaignUnresolvedAttempt } from "@/lib/outreach-campaign-admin";
 import { outreachCountryStatus } from "@/lib/outreach-country-policy";
 
 export type CampaignAdminActor = { userId: string; sessionVersion: number; email: string };
@@ -96,6 +96,11 @@ export async function readCampaignReport(): Promise<CampaignReport> {
     p.revoked_at::text AS "revokedAt",p.revocation_reason AS "revocationReason",
     EXISTS(SELECT 1 FROM outreach_email_suppressions x WHERE x.recipient=p.recipient_email) AS suppressed
    FROM outreach_recipient_consents p JOIN listings l ON l.id=p.listing_id ORDER BY p.granted_at DESC,p.id LIMIT 50`);
+  // Attempts whose transport outcome is unknown hold the campaign until reconciled.
+  const unresolved = await sql.query(`SELECT a.id,a.recipient,l.title AS "listingTitle",a.provider,a.state,a.reserved_at::text AS "reservedAt",a.error_code AS "errorCode"
+   FROM outreach_email_attempts a JOIN listings l ON l.id=a.listing_id
+   WHERE a.campaign_key=$1 AND (a.state='uncertain' OR (a.state='reserved' AND a.reserved_at<now()-interval '20 minutes'))
+   ORDER BY a.reserved_at,a.id LIMIT 20`, [OUTREACH_CAMPAIGN_KEY]);
   return {
     control: { enabled: snapshot.enabled, stage: snapshot.stage, provider: snapshot.provider, version: snapshot.version,
       stageStartedAt: snapshot.stageStartedAt, updatedAt: snapshot.updatedAt, pauseReason: snapshot.pauseReason },
@@ -109,6 +114,7 @@ export async function readCampaignReport(): Promise<CampaignReport> {
     // Link visits include scanners and forwarded links. Claims remain verified
     // through the normal ownership checks; this is association, not causation.
     permissions: permissions as CampaignPermission[],
+    unresolvedAttempts: unresolved as CampaignUnresolvedAttempt[],
   };
 }
 
@@ -147,9 +153,47 @@ export async function applyCampaignAdminAction(actor: CampaignAdminActor, action
         action.recipientCountry || null, action.policyReference || null, action.expectedListingEmail]));
     } else if (action.action === "revoke_consent") {
       statements.push(tx.query(`WITH ${ACTOR}, changed AS (
-       UPDATE outreach_recipient_consents p SET revoked_at=now(),revoked_by=actor.id,revocation_reason=$5
+       UPDATE outreach_recipient_consents p SET revoked_at=now(),revoked_by=actor.id,revocation_reason=$5::text
        FROM actor WHERE p.id=$4::uuid AND p.revoked_at IS NULL RETURNING p.id)
        SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed`, [...identity, action.consentId, action.reason]));
+    } else if (action.action === "reconcile_attempt") {
+      // Only an attempt whose outcome is unknown can be reconciled; accepted, failed
+      // and delivered attempts are facts from the provider and stay as they are.
+      // The campaign stays paused: an administrator re-enables it separately.
+      statements.push(tx.query(`WITH ${ACTOR}, changed AS (
+       UPDATE outreach_email_attempts a SET
+        state=CASE WHEN $5::text='sent' THEN 'accepted' ELSE 'failed' END,
+        provider_email_id=CASE WHEN $5='sent' THEN $6::text ELSE a.provider_email_id END,
+        accepted_at=CASE WHEN $5='sent' THEN coalesce(a.accepted_at,a.reserved_at,now()) ELSE a.accepted_at END,
+        failed_at=CASE WHEN $5='sent' THEN NULL ELSE coalesce(a.failed_at,now()) END,
+        error_code=CASE WHEN $5='sent' THEN NULL ELSE 'admin_reconciled_not_sent' END,
+        updated_at=now()
+       FROM actor WHERE a.id=$4::uuid AND (a.state='uncertain' OR (a.state='reserved' AND a.reserved_at<now()-interval '20 minutes'))
+        AND ($5<>'sent' OR NOT EXISTS(SELECT 1 FROM outreach_email_attempts o WHERE o.provider=a.provider AND o.provider_email_id=$6 AND o.id<>a.id))
+       RETURNING a.id,a.provider),
+       audited AS (INSERT INTO audit_log(admin_id,action,target_type,target_id,details)
+        SELECT actor.id,'outreach_reconcile_attempt','outreach_attempt',$4::text,json_build_object('outcome',$5::text,'providerEmailId',$6::text,'note',$7::text)
+        FROM actor,changed RETURNING id)
+       SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM changed) AS changed,(SELECT count(*) FROM audited) AS audited`,
+      [...identity, action.attemptId, action.outcome, action.providerEmailId || null, action.note]));
+      // Webhook events that arrived for this message id before it was known attach now
+      // (a separate statement, so it sees the update above).
+      if (action.outcome === "sent") statements.push(tx.query(`SELECT vakaygo_apply_outreach_events(provider,provider_email_id) AS applied
+        FROM outreach_email_attempts WHERE id=$1::uuid AND state='accepted' AND provider_email_id=$2`, [action.attemptId, action.providerEmailId]));
+    } else if (action.action === "suppress_address") {
+      // The address is suppressed for every listing and every permission for it is
+      // revoked, so no listing that shares it can be invited again.
+      statements.push(tx.query(`WITH ${ACTOR}, suppressed AS (
+       INSERT INTO outreach_email_suppressions(recipient,reason,source_event_id)
+       SELECT $4::text,'manual','admin:'||actor.id::text FROM actor
+       ON CONFLICT(recipient) DO UPDATE SET reason=outreach_email_suppressions.reason RETURNING recipient),
+       revoked AS (UPDATE outreach_recipient_consents p SET revoked_at=now(),revoked_by=actor.id,revocation_reason=$5::text
+        FROM actor WHERE p.recipient_email=$4::text AND p.revoked_at IS NULL RETURNING p.id),
+       audited AS (INSERT INTO audit_log(admin_id,action,target_type,target_id,details)
+        SELECT actor.id,'outreach_suppress_address','outreach_recipient',md5($4::text),json_build_object('reason',$5::text,'revokedPermissions',(SELECT count(*) FROM revoked))
+        FROM actor,suppressed RETURNING id)
+       SELECT EXISTS(SELECT 1 FROM actor) AS "actorExists",EXISTS(SELECT 1 FROM suppressed) AS changed,(SELECT count(*) FROM audited) AS audited`,
+      [...identity, action.recipientEmail, action.reason]));
     } else if (action.action === "acknowledge_delivery_review") {
       // Records that an administrator reviewed the bounces and failures counted so
       // far. Later holds count only outcomes after this moment. It does not enable
@@ -190,7 +234,7 @@ export async function applyCampaignAdminAction(actor: CampaignAdminActor, action
     }
     return statements;
   }, { isolationLevel: "ReadCommitted" });
-  const result = results[results.length - 1][0];
+  const result = results.map(rows => rows[0]).reverse().find(row => row && "actorExists" in row);
   if (result?.actorExists !== true) throw new CampaignControlError("Your admin session changed. Sign in again.", 401);
   if (result?.changed !== true) throw new CampaignControlError("The record changed or a permission, suppression, or health gate blocked this action. Refresh and review the report.", 409);
 }

@@ -22,7 +22,7 @@ describe("Sendcorex transport", () => {
     expect(options.redirect).toBe("error");
     expect(options.headers.Authorization).toBe("fixture-secret");
     const body = JSON.parse(options.body);
-    expect(body).toMatchObject({ to: recipient, from: "hello@vakaygo.com", senderName: "Vakaygo", replyTo: "support@vakaygo.com", transactional: false });
+    expect(body).toMatchObject({ to: recipient, from: "hello@vakaygo.com", senderName: "VakayGo", replyTo: "support@vakaygo.com", transactional: false });
     expect(body.headers).toEqual({ "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" });
     expect(body.cc).toBeUndefined(); expect(body.bcc).toBeUndefined();
   });
@@ -89,10 +89,12 @@ describe("Sendcorex delivery evidence", () => {
     const now = new Date(timestamp);
     expect(parseSendcorexLog({ id, to: recipient, status: "delivered", sent_at: "2026-10-20T00:00:00Z" }, recipient, now)).toMatchObject({ occurredAt: timestamp, eventType: "email.delivered" });
     expect(() => parseSendcorexLog({ id, to: "wrong@audit.invalid", status: "delivered" }, recipient)).toThrow();
-    expect(() => parseSendcorexLog({ id, to: recipient, status: "queued" }, recipient)).toThrow();
+    // In-progress or unknown statuses are not events and must not stop the poll.
+    expect(parseSendcorexLog({ id, to: recipient, status: "queued" }, recipient)).toBeNull();
+    expect(parseSendcorexLog({ id, to: recipient, status: "something_new" }, recipient)).toBeNull();
   });
   it.each(["bounced", "spam"])("holds a generic %s log without inferring a hard bounce or complaint", status => {
-    expect(parseSendcorexLog({ id, to: recipient, status }, recipient).eventType).toBe("email.failed");
+    expect(parseSendcorexLog({ id, to: recipient, status }, recipient)?.eventType).toBe("email.failed");
   });
   it("records unsubscribe and stable bounded event identity while stripping private content", () => {
     const event = parseSendcorexWebhook({ event: "unsubscribe", emailId: id, timestamp, data: { recipientEmail: recipient, private: "secret body" } })!;

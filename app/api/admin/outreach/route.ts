@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
       coalesce(tc.phone, l.type_data->>'phone') phone,
       coalesce(tc.source, CASE WHEN coalesce(l.type_data->>'phone','')<>'' THEN 'directory' ELSE NULL END) "contactSource",
       tc.source_reference "contactSourceReference",
-      o.status,o.notes,o.updated_at::text "updatedAt",o.contacted_at "contactedAt",
+      -- A campaign invitation is a contact even though it is recorded as an attempt, not on the outreach row.
+      CASE WHEN o.status IN ('new','reviewing') AND (SELECT max(a.accepted_at) FROM outreach_email_attempts a WHERE a.listing_id=l.id AND a.accepted_at IS NOT NULL) IS NOT NULL THEN 'contacted' ELSE o.status END status,
+      o.notes,o.updated_at::text "updatedAt",coalesce(o.contacted_at,(SELECT max(a.accepted_at) FROM outreach_email_attempts a WHERE a.listing_id=l.id AND a.accepted_at IS NOT NULL)) "contactedAt",
       coalesce(d.interested_customers,0)::int "interestedCustomers",d.last_interest "lastInterest",
       vakaygo_listing_claim_verified(l.id) "claimVerified"
       FROM business_outreach o JOIN listings l ON l.id=o.listing_id JOIN islands i ON i.id=l.island_id
@@ -32,8 +34,9 @@ export async function GET(request: NextRequest) {
       LEFT JOIN LATERAL (SELECT count(*)::int interested_customers,max(li.updated_at) last_interest
         FROM listing_interest li JOIN users u ON u.id=li.user_id
         WHERE li.listing_id=l.id AND li.active=true AND u.email_verified=true AND u.role<>'admin' AND u.id<>l.operator_id) d ON true
-      WHERE ($1='all' OR o.status=$1)
+      WHERE ($1='all' OR o.status=$1 OR ($1='contacted' AND (SELECT max(a.accepted_at) FROM outreach_email_attempts a WHERE a.listing_id=l.id AND a.accepted_at IS NOT NULL) IS NOT NULL))
         AND ($1 NOT IN ('new','reviewing') OR (l.status='active' AND i.is_active=true))
+        AND ($1 NOT IN ('new','reviewing') OR (SELECT max(a.accepted_at) FROM outreach_email_attempts a WHERE a.listing_id=l.id AND a.accepted_at IS NOT NULL) IS NULL)
         AND ($3='all' OR i.slug=$3)
         AND ($4='all' OR l.type::text=$4)
         AND ($5='' OR l.title ILIKE '%'||$5||'%' OR coalesce(l.type_data->>'email','') ILIKE '%'||$5||'%')

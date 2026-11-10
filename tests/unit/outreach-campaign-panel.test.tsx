@@ -41,14 +41,19 @@ it("does not offer permission for a business without a saved recipient", async (
 it("records exact per-listing recipient evidence without sending or enabling", async () => {
   const saved = vi.fn(); fetchMock.mockImplementation(() => response({ saved: true }));
   await act(async () => root.render(<OutreachPermissionForm listingId="64000000-0000-4000-8000-000000000001" title="Synthetic business" email="reviewed@audit.invalid" onSaved={saved} />));
+  const provider = container.querySelector<HTMLSelectElement>("select")!;
+  await act(async () => { provider.value = "resend"; provider.dispatchEvent(new Event("change", { bubbles: true })); });
   const form = container.querySelector("form")!; (form.elements.namedItem("evidence") as HTMLTextAreaElement).value = "Signed opt-in from reviewed recipient on 20 October 2026";
   await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(fetchMock).toHaveBeenCalledTimes(1); expect(fetchMock.mock.calls[0][0]).toBe(endpoint);
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ action: "grant_consent", recipientEmail: "reviewed@audit.invalid", expectedListingEmail: "reviewed@audit.invalid", provider: "resend", permissionKind: "explicit_opt_in" });
   expect(saved).toHaveBeenCalledTimes(1); expect(container.textContent).toContain("This did not send an email");
 });
-it("cannot present a business outreach permission as a Resend option", async () => {
+it("defaults to the campaign transport and basis, and cannot present a business outreach permission as a Resend option", async () => {
   await act(async () => root.render(<OutreachPermissionForm listingId="64000000-0000-4000-8000-000000000001" title="Synthetic business" email="reviewed@audit.invalid" onSaved={vi.fn()} />));
+  const [provider, kind] = Array.from(container.querySelectorAll<HTMLSelectElement>("select"));
+  expect(provider.value).toBe("sendcorex"); expect(kind.value).toBe("business_outreach_permission");
+  await act(async () => { provider.value = "resend"; provider.dispatchEvent(new Event("change", { bubbles: true })); });
   expect(container.querySelector<HTMLOptionElement>('option[value="business_outreach_permission"]')?.disabled).toBe(true);
   expect(container.querySelector('input[type="checkbox"]')).toBeNull(); expect(fetchMock).not.toHaveBeenCalled();
 });

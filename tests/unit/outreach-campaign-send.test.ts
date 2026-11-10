@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(), window: vi.fn(), prerequisites: vi.fn(), fetch: vi.fn(),
-  accepted: vi.fn(), failure: vi.fn(), event: vi.fn(), suppress: vi.fn(), unsubscribe: vi.fn(),
+  accepted: vi.fn(), failure: vi.fn(), event: vi.fn(), suppress: vi.fn(), unsubscribe: vi.fn(), alert: vi.fn(),
 }));
 vi.mock("@neondatabase/serverless", () => ({ neon: () => ({ query: mocks.query }) }));
 vi.mock("@/lib/env", () => ({ env: new Proxy({}, { get: (_target, key) => process.env[String(key)] }) }));
@@ -17,6 +17,7 @@ vi.mock("@/server/outreach-tracking", async () => ({
   recordOutreachFailure: mocks.failure, recordOutreachProviderEvent: mocks.event, suppressOutreachRecipient: mocks.suppress,
 }));
 vi.mock("@/server/outreach-attribution", () => ({ unsubscribeInvitationUrl: mocks.unsubscribe }));
+vi.mock("@/server/email-requests", () => ({ sendOutreachHoldAlert: mocks.alert }));
 
 import { deliverClaimInvitation, preserveCampaignSuppression, refreshOutreachTelemetry } from "@/server/outreach-campaign-send";
 
@@ -241,6 +242,27 @@ describe("provider telemetry and historical blocks", () => {
     expect(mocks.fetch.mock.calls.length).toBeLessThanOrEqual(2);
     expect(mocks.fetch.mock.calls.every(([, options]) => options.method === "GET")).toBe(true);
     expect(mocks.query.mock.calls.find(([text]) => text.startsWith("UPDATE outreach_campaign_control"))?.[1][0]).toBe(false);
+  });
+  it("tells the team once when a sending campaign goes on hold, and not while it stays held", async () => {
+    mocks.prerequisites.mockReturnValue(ready());
+    mocks.fetch.mockImplementation(() => response({ data: [] }));
+    mocks.query.mockImplementation(async (text: string) => text.startsWith("UPDATE outreach_campaign_control") ? [{ wasReady: true, wasEnabled: true }] : []);
+    expect((await refreshOutreachTelemetry()).ready).toBe(false);
+    expect(mocks.alert).toHaveBeenCalledTimes(1);
+    expect(mocks.alert.mock.calls[0][0]).toMatchObject({ kind: "health_hold", adminUrl: "https://vakaygo.com/admin/outreach" });
+    // Already held (or paused): no second alert.
+    mocks.query.mockImplementation(async (text: string) => text.startsWith("UPDATE outreach_campaign_control") ? [{ wasReady: false, wasEnabled: true }] : []);
+    await refreshOutreachTelemetry();
+    mocks.query.mockImplementation(async (text: string) => text.startsWith("UPDATE outreach_campaign_control") ? [{ wasReady: true, wasEnabled: false }] : []);
+    await refreshOutreachTelemetry();
+    expect(mocks.alert).toHaveBeenCalledTimes(1);
+  });
+  it("still records a hold when the alert email fails", async () => {
+    mocks.prerequisites.mockReturnValue(ready());
+    mocks.fetch.mockImplementation(() => response({ data: [] }));
+    mocks.alert.mockRejectedValueOnce(new Error("mail down"));
+    mocks.query.mockImplementation(async (text: string) => text.startsWith("UPDATE outreach_campaign_control") ? [{ wasReady: true, wasEnabled: true }] : []);
+    expect((await refreshOutreachTelemetry()).ready).toBe(false);
   });
   it("stops metadata enumeration after five pages and holds incomplete readiness", async () => {
     mocks.fetch.mockImplementation(() => response({ data: [{ id: `domain-page-${mocks.fetch.mock.calls.length}` }], has_more: true }));

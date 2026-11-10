@@ -21,7 +21,9 @@ export async function refreshSendcorexTelemetry(from: string): Promise<void> {
     const attempt = pending.find(row => row.provider_email_id === log.id);
     if (!attempt) throw new SendcorexError("sendcorex_logs_mismatch");
     const event = parseSendcorexLog(log, attempt.recipient);
-    await recordOutreachProviderEvent(`poll_${event.providerEmailId}_${event.eventType}`, event, "sendcorex", "provider_poll");
+    // Still queued or retrying: nothing to record yet. Every polled message is
+    // marked below, so a slow one moves behind the others instead of holding the queue.
+    if (event) await recordOutreachProviderEvent(`poll_${event.providerEmailId}_${event.eventType}`, event, "sendcorex", "provider_poll");
   }
   for (const attempt of pending) await sql.query("UPDATE outreach_email_attempts SET last_polled_at=now() WHERE id=$1::uuid AND provider='sendcorex'", [attempt.id]);
   const [saved] = await sql.query("SELECT cursor FROM outreach_provider_cursors WHERE provider='sendcorex'");

@@ -53,7 +53,7 @@ export class SendcorexClient {
     try { url = new URL(input.unsubscribe); } catch { throw new SendcorexError("sendcorex_invalid_unsubscribe", false); }
     if (!to || !/^[a-z0-9._%+-]+@vakaygo\.com$/i.test(input.from) || url.protocol !== "https:" || url.hostname !== "vakaygo.com" || url.username || url.password || /[\r\n<>]/.test(input.unsubscribe)) throw new SendcorexError("sendcorex_invalid_envelope", false);
     const result = await this.request("https://mail.sendcorex.com/v3.0/send", {
-      from: input.from, to, replyTo: "support@vakaygo.com", senderName: "Vakaygo", subject: input.subject, body: input.html, transactional: false,
+      from: input.from, to, replyTo: "support@vakaygo.com", senderName: "VakayGo", subject: input.subject, body: input.html, transactional: false,
       headers: { "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
     });
     if (result.success !== true || result.code !== "EMAIL_QUEUED_SUCCESS" || typeof result.id !== "string" || !EMAIL_ID.test(result.id) ||
@@ -83,13 +83,18 @@ export function sendcorexEvidence(emailId: unknown, recipient: unknown, type: st
   return { providerEmailId: emailId, recipientHash: createHash("sha256").update(email).digest("hex"), eventType: type, occurredAt: occurredAt.toISOString(), bounceType };
 }
 
-export function parseSendcorexLog(log: Json, recipient: string, now = new Date()): OutreachProviderEvent {
+/**
+ * A final status as an event, or null while the message is still in progress
+ * (queued, retrying) or the status is one this code does not know. Only a
+ * recipient mismatch is an error: an in-progress message must not stop the poll.
+ */
+export function parseSendcorexLog(log: Json, recipient: string, now = new Date()): OutreachProviderEvent | null {
   if (normalizeOutreachRecipient(log.to) !== recipient) throw new InvalidOutreachEvent();
   // A generic bounced log does not distinguish hard and soft bounces. Only
   // explicit hard-bounce feedback establishes a recipient-wide bounce block.
   const types: Record<string, string> = { delivered: "email.delivered", bounced: "email.failed", spam: "email.failed", rate_limited: "email.failed" };
   const type = types[String(log.status)];
-  if (!type) throw new InvalidOutreachEvent();
+  if (!type) return null;
   // Polling is an observation, not an invented historical delivery timestamp.
   return sendcorexEvidence(log.id, log.to, type, now.toISOString());
 }

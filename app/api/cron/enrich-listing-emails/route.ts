@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Read existing contact data with reviewed provider-bound permission only. Never scrape, seed listings,
     // create outreach rows, alter claims/onboarding or touch booking controls.
     const candidates = await db.query(
-      `SELECT DISTINCT l.id, i.slug AS island_slug, lower(btrim(l.type_data->>'email')) AS email
+      `SELECT l.id, i.slug AS island_slug, lower(btrim(l.type_data->>'email')) AS email
          FROM listings l
          JOIN islands i ON i.id=l.island_id AND i.is_active=true
          JOIN outreach_recipient_consents c ON c.listing_id=l.id
@@ -80,7 +80,13 @@ export async function GET(request: NextRequest) {
             WHERE s.recipient=lower(btrim(l.type_data->>'email')))
           AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts a WHERE a.campaign_key=$2
             AND (a.listing_id=l.id OR a.recipient=lower(btrim(l.type_data->>'email'))))
-        ORDER BY l.id LIMIT 200`,
+        -- Most valuable first: types that can take bookings (and brought every past claim),
+        -- then an address on the business's own website domain, then how established it is.
+        -- One active permission per listing and provider, so no DISTINCT is needed.
+        ORDER BY CASE WHEN l.type IN ('tour','excursion','vip','transfer','spa') THEN 0 ELSE 1 END,
+          CASE WHEN coalesce(l.type_data->>'website','') ILIKE '%'||split_part(lower(btrim(l.type_data->>'email')),'@',2)||'%' THEN 0 ELSE 1 END,
+          l.review_count DESC NULLS LAST, l.avg_rating DESC NULLS LAST, l.id
+        LIMIT 200`,
       [control.provider, OUTREACH_CAMPAIGN_KEY, openSlugs, optInOnlySlugs, restrictedOutreachCountries()]
     );
     // The window is rechecked here, and an address the validator rejects is
