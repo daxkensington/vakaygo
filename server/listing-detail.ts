@@ -6,7 +6,7 @@ import { getListingBookingEligibility } from "@/server/business-onboarding";
 import { getImageUrl } from "@/lib/image-utils";
 import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { publicListingTypeData } from "@/lib/listing-public-data";
-import { currentListingBookable } from "@/server/listing-bookability-sql";
+import { currentListingBookable, currentListingClaimVerified } from "@/server/listing-bookability-sql";
 import { isQuarantinedLocation } from "@/server/location-quarantine";
 
 function getDb() {
@@ -42,7 +42,9 @@ export function similarListingsQuery(db: ReturnType<typeof getDb>, listing: Pick
         ne(listings.id, listing.id)
       )
     )
-    .orderBy(sql`${listings.avgRating} DESC NULLS LAST`, sql`${listings.reviewCount} DESC NULLS LAST`, asc(listings.id))
+    // Suggestions lead with what a traveler can act on: bookable, then ownership-verified.
+    .orderBy(sql`(${currentListingBookable()}) DESC`, sql`(${currentListingClaimVerified()}) DESC`,
+      sql`${listings.avgRating} DESC NULLS LAST`, sql`${listings.reviewCount} DESC NULLS LAST`, asc(listings.id))
     .limit(6);
 }
 

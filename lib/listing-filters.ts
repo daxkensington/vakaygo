@@ -81,6 +81,42 @@ export type ListingResult = {
   reviewSource: "google" | "vakaygo";
 };
 
+/**
+ * What the catalogue can actually answer right now. A date, price or
+ * price-sort control only means something where a listing takes online
+ * bookings (prices and availability are hidden everywhere else), and the
+ * amenity/duration chips only where listings carry that data. Controls
+ * that cannot match anything are not offered.
+ */
+export type ExploreCapabilities = {
+  /** Destination slug + type of every listing that takes online bookings now. */
+  bookable: { island: string; type: string }[];
+  /** At least one stay lists amenities. */
+  amenityData: boolean;
+  /** At least one tour or excursion states a duration. */
+  durationData: boolean;
+};
+
+export const NO_EXPLORE_CAPABILITIES: ExploreCapabilities = { bookable: [], amenityData: false, durationData: false };
+
+/** True when a listing in the visitor's current destination/type scope takes online bookings. */
+export function scopeHasOnlineBooking(
+  caps: ExploreCapabilities,
+  scope: { island?: string | null; type?: string | null },
+): boolean {
+  const type = scope.type && scope.type !== "all" ? scope.type : null;
+  return caps.bookable.some((b) => (!scope.island || b.island === scope.island) && (!type || b.type === type));
+}
+
+/** Which narrowing controls can return something in this scope. */
+export function usableExploreFilters(
+  caps: ExploreCapabilities,
+  scope: { island?: string | null; type?: string | null },
+): { date: boolean; price: boolean; amenities: boolean; duration: boolean } {
+  const online = scopeHasOnlineBooking(caps, scope);
+  return { date: online, price: online, amenities: caps.amenityData, duration: caps.durationData };
+}
+
 type ParamSource =
   | URLSearchParams
   | Record<string, string | string[] | undefined>;

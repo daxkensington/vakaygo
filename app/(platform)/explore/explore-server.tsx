@@ -6,6 +6,7 @@ import {
   isIndexableFilterSet,
   TYPE_LABELS,
   EXPLORE_PAGE_SIZE,
+  NO_EXPLORE_CAPABILITIES,
   type ListingFilters,
 } from "@/lib/listing-filters";
 import { getExploreData, exploreCacheKey, type ExploreData } from "@/server/listings-search";
@@ -108,6 +109,7 @@ export async function ExploreServer({ filters, data }: { filters: ListingFilters
         islandName: data?.island?.name ?? null,
         heading: title,
         loaded: data !== null,
+        capabilities: data?.capabilities ?? NO_EXPLORE_CAPABILITIES,
       }}
     />
   );
