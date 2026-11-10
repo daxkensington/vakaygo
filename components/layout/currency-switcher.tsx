@@ -49,7 +49,7 @@ export function CurrencySwitcher() {
             : "text-navy-600"
         }`}
       >
-        <span className="text-base leading-none">{CURRENCY_FLAGS[code]}</span>
+        <span aria-hidden="true" className="flag-emoji text-base leading-none">{CURRENCY_FLAGS[code]}</span>
         <span className="font-semibold w-12">{CURRENCY_SYMBOLS[code]}</span>
         <span className="font-medium">{code}</span>
         <span className="text-navy-300 text-xs ml-auto">
@@ -63,7 +63,7 @@ export function CurrencySwitcher() {
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        aria-label={`${CURRENCY_FLAGS[currency]} ${CURRENCY_SYMBOLS[currency]} ${currency}: Select currency`}
+        aria-label={`${CURRENCY_SYMBOLS[currency]} ${currency}: Select currency`}
         aria-expanded={open}
         title={
           ratesUpdatedAt
@@ -74,7 +74,7 @@ export function CurrencySwitcher() {
         }
         className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-gold-500"
       >
-        <span className="text-base leading-none">{CURRENCY_FLAGS[currency]}</span>
+        <span aria-hidden="true" className="flag-emoji text-base leading-none">{CURRENCY_FLAGS[currency]}</span>
         <span className="font-semibold">{CURRENCY_SYMBOLS[currency]}</span>
         <span className="hidden sm:inline">{currency}</span>
       </button>

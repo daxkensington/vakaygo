@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { guestCountOptions, localDateInputValue, resolveListingGuestCapacity } from "@/lib/listing-capacity";
 import { useAuth } from "@/lib/auth-context";
 import { analytics } from "@/lib/analytics";
 import { calculateBookingPrice, formatCurrency } from "@/lib/pricing";
@@ -33,6 +34,8 @@ type BookingWidgetProps = {
     reviewCount: number | null;
     isInstantBook: boolean | null;
     cancellationPolicy?: string | null;
+    maxGuests?: number | null;
+    typeData?: Record<string, unknown> | null;
   };
   /** Listing built from public data — nobody at the business sees bookings. */
   unclaimed?: boolean;
@@ -51,6 +54,12 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [guests, setGuests] = useState(1);
+  // The server accepts up to the listing's capacity, so the picker offers exactly that
+  // range: a 2-person spa stops at 2 and a 99-seat tour is not capped at 8.
+  const guestChoices = guestCountOptions(resolveListingGuestCapacity(listing.maxGuests, listing.typeData?.maxGuests));
+  // Earliest selectable day, set after mount so server and client markup agree.
+  const [minDate, setMinDate] = useState<string | undefined>(undefined);
+  useEffect(() => { setMinDate(localDateInputValue(new Date())); }, []);
   const includeInsurance = false;
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -459,6 +468,7 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
                 type="date"
                 aria-label={listing.type === "stay" ? "Check-in date" : "Date"}
                 value={startDate}
+                min={minDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full bg-transparent text-navy-700 outline-none text-sm"
               />
@@ -475,6 +485,7 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
                   type="date"
                   aria-label="Check-out date"
                   value={endDate}
+                  min={startDate || minDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-transparent text-navy-700 outline-none text-sm"
                 />
@@ -493,7 +504,7 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
                 onChange={(e) => setGuests(parseInt(e.target.value))}
                 className="w-full bg-transparent text-navy-700 outline-none text-sm appearance-none"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                {guestChoices.map((n) => (
                   <option key={n} value={n}>
                     {n} guest{n > 1 ? "s" : ""}
                   </option>
@@ -609,12 +620,6 @@ function EligibleBookingWidget({ listing, unclaimed = false }: BookingWidgetProp
               )}
             </span>
           </div>
-          {pricing.subtotal > 0 && (
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-gold-50/80 border border-gold-200/70 px-3 py-1.5 text-xs text-navy-700">
-              <span className="font-medium">✨ VakayCash Reward (2% back)</span>
-              <span className="font-bold text-gold-700">+{formatBase(pricing.subtotal * 0.02)} credit</span>
-            </div>
-          )}
         </div>
 
         </>}

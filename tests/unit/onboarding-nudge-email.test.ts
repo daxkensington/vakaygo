@@ -7,6 +7,24 @@ import { describeNextStep } from "@/lib/onboarding-nudges";
 
 const hostile = '<img src=x onerror="alert(1)">Tours';
 
+it("says the button signs in only when it is a one-time setup link", async () => {
+  const next = describeNextStep({ kind: "stage", stage: "agreement_update" }, { listingId: "11111111-1111-4111-8111-111111111111", stripeConnected: false })!;
+  const base = {
+    to: "owner@example.invalid", operatorName: "Ronnie", listingTitle: "Faro a Colón", islandName: "Dominican Republic", next,
+    checklist: [{ label: "Operator terms accepted", done: false }], completed: 3, total: 6, nudgeNumber: 1, final: false,
+    stopUrl: "https://vakaygo.com/api/onboarding-nudges/stop?token=abc.def",
+  };
+  sendEmail.mockClear();
+  await sendOnboardingNudge({ ...base, actionUrl: "https://vakaygo.com/auth/setup-link?token=t&next=%2Foperator", signsIn: true });
+  await sendOnboardingNudge({ ...base, actionUrl: "https://vakaygo.com" + next.href });
+  const [withLink] = sendEmail.mock.calls[0]; const [plain] = sendEmail.mock.calls[1];
+  expect(withLink.subject).toBe("Accept the updated operator agreement — Faro a Colón");
+  expect(withLink.html).toContain("The button signs you in and works once, for 7 days. Please do not forward this email.");
+  expect(withLink.html).toContain('href="https://vakaygo.com/auth/setup-link?token=t&amp;next=%2Foperator"');
+  expect(plain.html).not.toContain("signs you in");
+  sendEmail.mockClear();
+});
+
 it("renders the operator reminder as text-safe HTML with the action, the checklist and a stop link", async () => {
   const next = describeNextStep({ kind: "stage", stage: "listing_setup" }, { listingId: "11111111-1111-4111-8111-111111111111", stripeConnected: false })!;
   const result = await sendOnboardingNudge({

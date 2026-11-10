@@ -26,7 +26,7 @@ export function ReviewModal({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [photos, setPhotos] = useState<{ file: File; preview: string; uploading: boolean; url?: string }[]>([]);
+  const [photos, setPhotos] = useState<{ file: File; preview: string; uploading: boolean; url?: string; failed?: boolean }[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,15 +100,30 @@ export function ReviewModal({
     setError("");
 
     try {
-      // Upload all photos first
+      // Upload all photos first. A booking can be reviewed once, so a review
+      // must not go out with photos silently missing: when any upload fails
+      // nothing is submitted, and the traveler removes that photo or retries.
+      // Photos that did upload keep their URL and are not sent again.
       let photoUrls: { url: string; alt?: string }[] = [];
       if (photos.length > 0) {
-        const uploadResults = await Promise.all(
-          photos.map((p) => uploadPhoto(p.file))
+        const uploaded = await Promise.all(
+          photos.map(async (p) => (p.url ? p.url : (await uploadPhoto(p.file))?.url ?? null))
         );
-        photoUrls = uploadResults
-          .filter((r): r is { url: string } => r !== null)
-          .map((r) => ({ url: r.url }));
+        const snapshot = photos;
+        setPhotos((prev) => prev.map((p) => {
+          const index = snapshot.indexOf(p);
+          if (index === -1) return p;
+          const url = uploaded[index];
+          return url ? { ...p, url, failed: false } : { ...p, failed: true };
+        }));
+        const failed = uploaded.filter((url) => url === null).length;
+        if (failed > 0) {
+          setError(
+            `${failed === 1 ? "1 photo" : `${failed} photos`} could not be uploaded, so your review has not been submitted yet. Remove ${failed === 1 ? "that photo" : "those photos"} or try again.`
+          );
+          return;
+        }
+        photoUrls = uploaded.map((url) => ({ url: url as string }));
       }
 
       const res = await fetch("/api/reviews", {
@@ -292,10 +307,16 @@ export function ReviewModal({
                           className="object-cover"
                           sizes="72px"
                         />
+                        {photo.failed && (
+                          <span data-testid="photo-upload-failed" className="absolute inset-x-0 bottom-0 bg-red-600/90 px-1 py-0.5 text-center text-[10px] font-semibold text-white">
+                            Upload failed
+                          </span>
+                        )}
                         <button
                           type="button"
+                          aria-label={`Remove photo ${i + 1}`}
                           onClick={() => removePhoto(i)}
-                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className={`absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-red-600 rounded-full flex items-center justify-center transition-opacity ${photo.failed ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"}`}
                         >
                           <Trash2 size={10} className="text-white" />
                         </button>
@@ -346,7 +367,7 @@ export function ReviewModal({
               </div>
 
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                <p role="alert" className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
                   {error}
                 </p>
               )}

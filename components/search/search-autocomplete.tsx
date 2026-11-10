@@ -339,7 +339,7 @@ export function SearchAutocomplete({
                     onMouseDown={(e) => e.preventDefault()}
                     onMouseEnter={() => setActiveIndex(flatIdx)}
                   >
-                    <span className="text-base shrink-0">{getIslandFlag(island.slug)}</span>
+                    <span aria-hidden="true" className="flag-emoji text-base shrink-0">{getIslandFlag(island.slug)}</span>
                     <span className="text-sm font-medium text-navy-700">
                       {island.name}
                     </span>
@@ -386,7 +386,7 @@ export function SearchAutocomplete({
                         {listing.title}
                       </p>
                       <p className="text-xs text-navy-400 truncate">
-                        {getIslandFlag(listing.islandSlug)} {listing.island}
+                        <span aria-hidden="true" className="flag-emoji">{getIslandFlag(listing.islandSlug)}</span> {listing.island}
                       </p>
                     </div>
                     <span

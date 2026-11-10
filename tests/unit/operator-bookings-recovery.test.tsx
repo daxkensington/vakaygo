@@ -23,15 +23,25 @@ const button = (label: string) => Array.from(container.querySelectorAll("button"
 const row = (id = "booking-a") => container.querySelector(`article[aria-label="Booking ${id}"]`)!;
 async function click(label: string) { expect(button(label), label).toBeDefined(); await act(async () => button(label).click()); }
 
-it("keeps a rejected acceptance pending and out of revenue when the API closes booking eligibility", async () => {
+it("keeps a rejected decline pending and out of revenue when the API closes booking eligibility", async () => {
   fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })).mockResolvedValueOnce(response({ code: "BOOKING_UNAVAILABLE", error: "Synthetic business gate" }, 409));
-  await render(); await click("Accept booking booking-a");
+  await render(); await click("Decline booking booking-a");
   expect(fetchMock.mock.calls[1][0]).toBe("/api/bookings/booking-a");
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ status: "confirmed" });
-  expect(row().textContent).toContain("Pending"); expect(row().textContent).not.toContain("Confirmed");
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ status: "cancelled" });
+  expect(row().textContent).toContain("Pending"); expect(row().textContent).not.toContain("Cancelled");
   expect(container.querySelector('section[aria-label="Revenue by recorded currency"]')?.textContent).toContain("No confirmed revenue");
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("not accepting bookings");
-  expect(button("Accept booking booking-a").disabled).toBe(true); expect(button("Reload bookings").disabled).toBe(false);
+  expect(button("Decline booking booking-a").disabled).toBe(true); expect(button("Reload bookings").disabled).toBe(false);
+});
+
+it("offers nothing to accept on an unpaid booking, which confirms itself when the traveler pays", async () => {
+  fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] }));
+  await render();
+  expect(Array.from(container.querySelectorAll("button")).some(item => /accept/i.test(item.getAttribute("aria-label") || item.textContent || ""))).toBe(false);
+  expect(row().querySelector('[data-testid="awaiting-payment"]')?.textContent).toContain("Awaiting traveler payment");
+  expect(row().textContent).toContain("Declining cancels their checkout");
+  expect(button("Decline booking booking-a").disabled).toBe(false);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
 it("keeps a schema-valid historical booking with an unknown guest count visible alongside other bookings", async () => {
@@ -39,7 +49,7 @@ it("keeps a schema-valid historical booking with an unknown guest count visible 
   await render();
   expect(row().textContent).toContain("Guest count unavailable");
   expect(row("booking-b").textContent).toContain("2 guests");
-  expect(button("Accept booking booking-a").disabled).toBe(false);
+  expect(button("Decline booking booking-a").disabled).toBe(false);
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
 
@@ -56,14 +66,14 @@ it.each([
 });
 
 it.each([
-  { status: 503, body: { booking: { id: "booking-a", status: "confirmed" } } },
-  { status: 200, body: { booking: { id: "another-booking", status: "confirmed" } } },
+  { status: 503, body: { booking: { id: "booking-a", status: "cancelled" } } },
+  { status: 200, body: { booking: { id: "another-booking", status: "cancelled" } } },
   { status: 200, body: { booking: { id: "booking-a", status: "pending" } } },
   { status: 200, body: { ok: true } },
 ])("requires the successful matching server receipt before changing local status ($status)", async ({ status, body }) => {
   fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })).mockResolvedValueOnce(response(body, status));
-  await render(); await click("Accept booking booking-a");
-  expect(row().textContent).toContain("Pending"); expect(row().textContent).not.toContain("Confirmed");
+  await render(); await click("Decline booking booking-a");
+  expect(row().textContent).toContain("Pending"); expect(row().textContent).not.toContain("Cancelled");
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not be confirmed");
 });
 
@@ -84,16 +94,16 @@ it("prevents duplicate or opposing writes while one confirmation is in flight", 
   const receipt = deferred();
   fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })).mockReturnValueOnce(receipt.promise);
   await render();
-  await act(async () => { button("Accept booking booking-a").click(); button("Accept booking booking-a").click(); button("Decline booking booking-a").click(); });
+  await act(async () => { button("Decline booking booking-a").click(); button("Decline booking booking-a").click(); button("Decline booking booking-a").click(); });
   expect(fetchMock).toHaveBeenCalledTimes(2); expect(row().getAttribute("aria-busy")).toBe("true");
   expect(row().textContent).toContain("Pending");
-  await act(async () => receipt.resolve(response({ booking: { id: "booking-a", status: "confirmed" } })));
-  expect(row().textContent).toContain("Confirmed"); expect(container.querySelector('section[aria-label="Revenue by recorded currency"]')?.textContent).toContain("USD 65.00");
+  await act(async () => receipt.resolve(response({ booking: { id: "booking-a", status: "cancelled" } })));
+  expect(row().textContent).toContain("Cancelled"); expect(container.querySelector('section[aria-label="Revenue by recorded currency"]')?.textContent).toContain("No confirmed revenue");
 });
 
 it("does not accept a non-JSON successful response as a confirmed change", async () => {
   fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })).mockResolvedValueOnce(new Response("<html>not a booking receipt</html>"));
-  await render(); await click("Accept booking booking-a");
+  await render(); await click("Decline booking booking-a");
   expect(row().textContent).toContain("Pending"); expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
 
@@ -110,9 +120,9 @@ it("isolates a late old account mutation from the next operator's bookings", asy
   const old = deferred();
   fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })).mockReturnValueOnce(old.promise)
     .mockResolvedValueOnce(response({ bookings: [booking("booking-b", "Operator B tour")] }));
-  await render(); await click("Accept booking booking-a"); const signal = fetchMock.mock.calls[1][1].signal;
+  await render(); await click("Decline booking booking-a"); const signal = fetchMock.mock.calls[1][1].signal;
   auth.user = { id: "operator-b", role: "operator" }; await render(); expect(signal.aborted).toBe(true);
-  await act(async () => old.resolve(response({ booking: { id: "booking-a", status: "confirmed" } })));
+  await act(async () => old.resolve(response({ booking: { id: "booking-a", status: "cancelled" } })));
   expect(row("booking-b").textContent).toContain("Pending"); expect(container.textContent).not.toContain("Operator A tour");
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
@@ -130,7 +140,7 @@ it.each(["read", "write"] as const)("bounds a stalled %s and leaves recovery ava
   const stalled = (_url: string, options: { signal: AbortSignal }) => new Promise<Response>((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true }));
   if (operation === "write") {
     fetchMock.mockResolvedValueOnce(response({ bookings: [booking()] })); await render();
-    fetchMock.mockImplementationOnce(stalled); vi.useFakeTimers(); await click("Accept booking booking-a");
+    fetchMock.mockImplementationOnce(stalled); vi.useFakeTimers(); await click("Decline booking booking-a");
   } else { fetchMock.mockImplementationOnce(stalled); vi.useFakeTimers(); await render(); }
   await act(async () => vi.advanceTimersByTimeAsync(20_000));
   expect(container.querySelector('[role="alert"]')).not.toBeNull(); expect(button("Reload bookings").disabled).toBe(false);

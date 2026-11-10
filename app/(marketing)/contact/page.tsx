@@ -3,7 +3,7 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
-import { Mail, Clock, MessageCircle, Send, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Clock, Send, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const CATEGORIES = [
@@ -298,21 +298,6 @@ export default function ContactPage() {
                   <p className="text-teal-600 font-semibold text-sm">
                     Check your inbox and spam folder
                   </p>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] p-6">
-                  <div className="w-10 h-10 bg-navy-50 rounded-xl flex items-center justify-center mb-4">
-                    <MessageCircle size={20} className="text-navy-400" />
-                  </div>
-                  <h3 className="font-bold text-navy-700 mb-1">Social</h3>
-                  <p className="text-navy-400 text-sm mb-3">
-                    Follow us and stay connected
-                  </p>
-                  <div className="flex gap-4">
-                    <span className="text-navy-300 text-sm">Instagram</span>
-                    <span className="text-navy-300 text-sm">Facebook</span>
-                    <span className="text-navy-300 text-sm">X / Twitter</span>
-                  </div>
                 </div>
 
                 {/* FAQ Quick Link */}

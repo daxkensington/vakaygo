@@ -424,7 +424,11 @@ export async function completeEnhancedClaimVerification(listingId: string, opera
     return { claim: { id: claimId, status: "approved" }, verification: { state: "verified" }, onboardingUrl: "/operator/onboarding/" + listingId };
   }
 
-  return completeClaimVerification(listingId, operatorId, code);
+  // SMS and voice codes are the usual route (most trusted contacts are phone numbers). They finish in the
+  // audited module, which has no follow-through of its own, so the welcome and default dates happen here.
+  const verified = await completeClaimVerification(listingId, operatorId, code);
+  await afterClaimApproved(listingId, operatorId);
+  return verified;
 }
 
 export async function completeInstantDomainClaim(listingId: string, operatorId: string, operatorEmail: string) {

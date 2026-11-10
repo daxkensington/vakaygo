@@ -8,6 +8,7 @@ import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { publicListingTypeData } from "@/lib/listing-public-data";
 import { currentListingBookable, currentListingClaimVerified } from "@/server/listing-bookability-sql";
 import { isQuarantinedLocation } from "@/server/location-quarantine";
+import { listingReviewSourceSql } from "@/server/listing-review-source";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -26,6 +27,7 @@ export function similarListingsQuery(db: ReturnType<typeof getDb>, listing: Pick
       avgRating: listings.avgRating,
       priceCurrency: listings.priceCurrency,
       reviewCount: listings.reviewCount,
+      reviewSource: listingReviewSourceSql,
       parish: listings.parish,
       latitude: listings.latitude,
       longitude: listings.longitude,

@@ -32,7 +32,10 @@ export async function GET(request: Request) {
         || (job.kind === "received" && b.status !== "pending")
         || (job.kind === "confirmed" && !["confirmed","completed"].includes(b.status));
       const recipient = job.recipient === "team" ? "bookings@vakaygo.com" : job.recipient === "operator" ? b.operator_email : b.email;
-      if (!stale && !(job.recipient === "operator" && recipient.includes("unclaimed"))) {
+      // An unpaid checkout is nothing a business can act on: it cannot accept it, and the traveler may never pay.
+      // The business hears about the booking when payment confirms it.
+      const notActionable = job.recipient === "operator" && job.kind === "received";
+      if (!stale && !notActionable && !(job.recipient === "operator" && recipient.includes("unclaimed"))) {
         const request = ["requested","request_confirmed"].includes(job.kind);
         const heading = job.kind === "refund_failed" ? "Refund could not be completed — support review needed" : job.kind === "requested" ? "Request received — nothing confirmed or charged" : job.kind === "request_confirmed" ? "Business confirmed your request — arrange price and payment with the business" : job.kind === "confirmed" ? "Booking confirmed" : job.kind === "received" ? "Booking received — complete payment" : "Booking "+job.kind;
         const refundAmount = (b.cancellation_refund_cents/100).toFixed(2)+" "+b.currency;
@@ -47,6 +50,7 @@ export async function GET(request: Request) {
           request ? "VakayGo does not collect payment for this request." : "Booking total: "+b.total_amount+" "+b.currency,
           !request ? CANCELLATION_POLICIES[cancellationPolicyKey(b.cancellation_policy_snapshot)].summary : "",
           job.recipient === "team" ? "Traveler: "+b.name+" / "+b.email+" / "+(b.phone||"")+"\nNotes: "+(b.guest_notes||"")+"\nBusiness phone: "+(b.type_data?.phone||"") : "",
+          job.recipient === "team" && !request ? "Payment: "+(b.paid_at ? "paid" : "not paid")+(b.payment_method ? " ("+b.payment_method+")" : "") : "",
           b.cancellation_reason || "",
           refundUpdate,
           "Manage your booking: https://vakaygo.com/"+(job.recipient === "team" ? "admin/bookings" : job.recipient === "operator" ? "operator/bookings" : "bookings"),

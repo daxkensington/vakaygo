@@ -361,9 +361,14 @@ export async function sendOnboardingNudge(params: {
   nudgeNumber: number;
   final: boolean;
   actionUrl: string;
+  /** The button is a one-time sign-in link (server/operator-setup-link.ts). */
+  signsIn?: boolean;
   stopUrl: string;
 }) {
   const p = params;
+  const signInNote = p.signsIn
+    ? `<p style="color:#9A9DB0;font-size:12px;margin:-12px 0 20px;line-height:1.5;text-align:center">The button signs you in and works once, for 7 days. Please do not forward this email.</p>`
+    : "";
   const name = p.operatorName?.trim();
   const greeting = name ? `Hi ${esc(name)},` : "Hello,";
   const steps = p.checklist
@@ -381,7 +386,7 @@ export async function sendOnboardingNudge(params: {
       `
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${greeting}</p>
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">You claimed <strong>${esc(p.listingTitle)}</strong> in ${esc(p.islandName)} on VakayGo. ${esc(p.next.detail)}</p>
-    <p style="text-align:center;margin:24px 0"><a href="${esc(p.actionUrl)}" style="display:inline-block;background:#C8912E;color:#FFFFFF;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600">${esc(p.next.actionLabel)}</a></p>
+    <p style="text-align:center;margin:24px 0"><a href="${esc(p.actionUrl)}" style="display:inline-block;background:#C8912E;color:#FFFFFF;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600">${esc(p.next.actionLabel)}</a></p>${signInNote}
     <p style="color:#1C2333;font-weight:600;margin:0 0 8px">${p.completed} of ${p.total} steps done</p>
     <ul style="list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:1.5">${steps}</ul>
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Stuck or unsure? Reply to this email and a person on our team will help.</p>
@@ -490,6 +495,29 @@ export async function sendListingInquiryReceived(params: {
     </div>
     <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">Our team will try to contact the business and reply by email. We cannot guarantee that the business will respond or that your dates will be available. You can return to ${link(p.listingUrl, "the listing")} or reply to this email if your plans change.</p>`,
       { eyebrow: "Inquiry received — not a booking", title: p.listingTitle, tone: "gold" }
+    ),
+  });
+}
+
+/** Team inbox: an operator submitted a new listing, which stays hidden until we review it. */
+export async function sendListingSubmittedToTeam(params: {
+  listingTitle: string; listingType: string; islandName: string | null;
+  operatorName: string | null; operatorEmail: string; reviewUrl: string;
+}) {
+  const p = params;
+  return sendEmail({
+    from: FROM,
+    to: TEAM_INBOX,
+    replyTo: p.operatorEmail,
+    subject: `ACTION: new listing to review: ${p.listingTitle}`,
+    html: shell(
+      `
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">A business created a new listing. It is not visible to travelers, and the business cannot continue onboarding, until it is reviewed.</p>
+    <div style="background:#F5EDD8;border-radius:12px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;font-size:14px;color:#4A4F73">${row("Listing", esc(p.listingTitle))}${row("Type", esc(p.listingType))}${row("Destination", esc(p.islandName || "Not set"))}${row("Submitted by", esc((p.operatorName ? p.operatorName + " · " : "") + p.operatorEmail))}</table>
+    </div>
+    <p style="color:#4A4F73;margin:0 0 16px;line-height:1.6">${link(p.reviewUrl, "Review listings waiting for approval")}</p>`,
+      { eyebrow: "Listing submitted", title: p.listingTitle, tone: "gold" }
     ),
   });
 }

@@ -4,6 +4,7 @@ import { operatorFetch as fetch } from "@/lib/operator-session";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ClaimFinder } from "@/components/business/claim-finder";
 import {
   Plus,
   Search,
@@ -122,7 +123,7 @@ export default function ListingsPage() {
           <p className="text-navy-400 mt-2 max-w-md mx-auto">
             {searchQuery
               ? "Try a different search term."
-              : "Create your first listing to start reaching travelers on VakayGo."}
+              : "Claim the page your business already has on VakayGo, or create a new listing."}
           </p>
           {!searchQuery && (
             <Link
@@ -132,6 +133,14 @@ export default function ListingsPage() {
               <Plus size={18} />
               Create Your First Listing
             </Link>
+          )}
+          {!searchQuery && (
+            <div className="mt-10 text-left" data-testid="claim-existing">
+              <p className="mb-4 text-center text-sm text-navy-500">
+                Many businesses are already listed from public information. Search for yours first and claim it, so travelers find one page rather than two.
+              </p>
+              <ClaimFinder />
+            </div>
           )}
         </div>
       ) : (

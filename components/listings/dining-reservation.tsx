@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { analytics } from "@/lib/analytics";
+import { formatBookingDate } from "@/lib/booking-time";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock, Users, Check, Loader2 } from "lucide-react";
 import { BookingEligibilityGate, invalidateBookingControls } from "./booking-eligibility";
@@ -110,7 +111,7 @@ function EligibleDiningReservation({ listingId, listingTitle, unclaimed = false 
         )}
         <div className="mt-4 p-4 bg-cream-50 rounded-xl text-sm text-navy-600">
           <p>{listingTitle}</p>
-          <p className="mt-1">{new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at {time}</p>
+          <p className="mt-1">{formatBookingDate(date, { weekday: "long", month: "long", day: "numeric" })} at {time}</p>
           <p className="mt-1">{guests} guest{guests > 1 ? "s" : ""}</p>
         </div>
       </div>

@@ -44,6 +44,8 @@ function SignInContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  // A rejected password is also what an unverified account gets; offer the way out right there.
+  const [credentialsRejected, setCredentialsRejected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requires2fa, setRequires2fa] = useState(false);
   const [totpCode, setTotpCode] = useState("");
@@ -71,6 +73,7 @@ function SignInContent() {
     e.preventDefault();
     if (loading || magicLoading) return;
     setError("");
+    setCredentialsRejected(false);
     setLoading(true);
 
     try {
@@ -93,6 +96,7 @@ function SignInContent() {
           return;
         }
         setError(data.error || "Something went wrong");
+        setCredentialsRejected(res.status === 401);
         return;
       }
 
@@ -165,6 +169,17 @@ function SignInContent() {
           {error && (
             <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-6">
               {error}
+              {credentialsRejected && !requires2fa && !magicSent && (
+                <button
+                  type="button"
+                  data-testid="signin-link-recovery"
+                  onClick={handleMagicLink}
+                  disabled={magicLoading || loading || magicCooldown > 0}
+                  className="mt-2 block font-semibold text-red-700 underline disabled:opacity-60"
+                >
+                  {magicCooldown > 0 ? `Try again in ${magicCooldown}s` : "Email me a sign-in link instead"}
+                </button>
+              )}
             </div>
           )}
 

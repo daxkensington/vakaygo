@@ -36,7 +36,7 @@ const PAYOUT_METHODS = "Wise, PayPal or bank transfer";
 function stageHref(stage: OnboardingStage, listingId: string, directPayouts: boolean, gaps?: ListingGaps | null) {
   const id = encodeURIComponent(listingId);
   switch (stage) {
-    case "business_details": return "#company-details";
+    case "business_details": case "agreement_update": return "#company-details";
     case "listing_setup": return onlyDatesMissing(gaps) ? `/operator/listings/${id}/calendar` : `/operator/listings/${id}`;
     case "payout_setup": return directPayouts ? `/operator/payouts?listingId=${id}` : "#payments";
     case "payout_rejected": return `/operator/payouts?listingId=${id}`;
@@ -195,7 +195,7 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
           const done = status.requirements[step.key] === true;
           return <li key={step.key} className="flex items-center gap-2 text-sm text-navy-700">
             {done ? <CheckCircle2 size={18} className="shrink-0 text-teal-700" aria-label="Complete" /> : <Circle size={18} className="shrink-0 text-navy-300" aria-label="Incomplete" />}
-            {done || step.key === "activation" ? step.label : <a href={stepHref(step.key, listingId, directPayouts, gaps)} className="font-medium text-gold-800 underline-offset-2 hover:underline">{step.label}</a>}
+            {done || step.key === "activation" || (step.key === "claim" && status.listing.status === "pending_review") ? step.label : <a href={stepHref(step.key, listingId, directPayouts, gaps)} className="font-medium text-gold-800 underline-offset-2 hover:underline">{step.label}</a>}
           </li>;
         })}</ul>
         {statusCurrent && nextContent && nextStep?.kind === "stage" && (
@@ -214,7 +214,9 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
         {statusCurrent && nextStep?.kind === "done" && (
           <p data-testid="next-step" className="mt-5 rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm text-navy-700"><span className="font-semibold">Setup complete.</span> Every onboarding step is finished for this listing.</p>
         )}
-        {!status.requirements.claim && <Link className="mt-4 inline-block font-semibold text-gold-700" href={`/operator/claim/${listingId}`}>Verify the business claim</Link>}
+        {!status.requirements.claim && (status.listing.status === "pending_review"
+          ? <p data-testid="listing-in-review" className="mt-4 rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm text-navy-700"><span className="font-semibold">Waiting on VakayGo.</span> You created this listing and it is with our team for review. Company details and payouts open here once it is approved; nothing is needed from you right now.</p>
+          : <Link className="mt-4 inline-block font-semibold text-gold-700" href={`/operator/claim/${listingId}`}>Verify the business claim</Link>)}
       </section>
       <form id="company-details" className="mt-6 space-y-4 rounded-2xl border border-cream-200 bg-white p-6" onSubmit={event => { event.preventDefault(); void perform("save"); }}>
         <h2 className="text-xl font-bold text-navy-700">Company and representative</h2>

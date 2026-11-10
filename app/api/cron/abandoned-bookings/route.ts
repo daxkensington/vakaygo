@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { bookings, users, listings, islands } from "@/drizzle/schema";
-import { eq, and, isNull, ne, sql } from "drizzle-orm";
+import { eq, and, isNull, lte, ne, sql } from "drizzle-orm";
 import { sendAbandonedBookingRecovery } from "@/server/email";
 import { createNotification } from "@/server/notifications";
 import { classifyPendingBooking, expiryReason } from "@/lib/abandoned-bookings";
+import { classifyRequestedBooking, requestExpiryReason, REQUEST_EXPIRY_FLAG } from "@/lib/booking-request-expiry";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { checkRecipientSendingWindow } from "@/lib/outreach-timezone";
 import { isUnclaimedOperatorEmail } from "@/lib/booking-request";
 import { logger } from "@/lib/logger";
@@ -28,9 +30,15 @@ function getDb() {
  *                                  traveler + operator notified in-app
  *
  * The verdict comes from lib/abandoned-bookings.ts (pure, unit-tested);
- * this route only applies it. `requested` bookings are out of scope — a
- * human confirms or declines those. Payments that land after expiry are
+ * this route only applies it. Payments that land after expiry are
  * refunded by the webhook without reopening inventory.
+ *
+ *   requested + unpaid, start date passed → status=cancelled + reason, traveler
+ *                                  notified in-app; the status change queues the
+ *                                  cancellation email. Only while the feature flag
+ *                                  `booking_request_expiry_enabled` is on (it is
+ *                                  absent, so off, until someone enables it);
+ *                                  lib/booking-request-expiry.ts decides.
  *
  * Until 2026-09-03 this route only LISTED the candidates and sent nothing.
  *
@@ -158,14 +166,54 @@ export async function GET(request: Request) {
       }
     }
 
-    if (result.recovered.length || result.expired.length || result.failed.length) {
-      logger.info("Abandoned bookings cron", result);
+    // Requests nobody answered before their date. Off unless the flag is on.
+    const requestsExpired: string[] = [];
+    if (await isFeatureEnabled(REQUEST_EXPIRY_FLAG)) {
+      const requests = await db
+        .select({
+          id: bookings.id,
+          bookingNumber: bookings.bookingNumber,
+          status: bookings.status,
+          paidAt: bookings.paidAt,
+          startDate: bookings.startDate,
+          travelerId: bookings.travelerId,
+          listingTitle: listings.title,
+          listingSlug: listings.slug,
+          islandSlug: islands.slug,
+        })
+        .from(bookings)
+        .innerJoin(listings, eq(bookings.listingId, listings.id))
+        .innerJoin(islands, eq(listings.islandId, islands.id))
+        .where(and(eq(bookings.status, "requested"), isNull(bookings.paidAt), lte(bookings.startDate, now)))
+        .limit(200);
+      for (const r of requests) {
+        if (classifyRequestedBooking(r, now) !== "expired") continue;
+        const closed = await db
+          .update(bookings)
+          .set({ status: "cancelled", cancellationReason: requestExpiryReason(), updatedAt: now })
+          .where(and(eq(bookings.id, r.id), eq(bookings.status, "requested"), isNull(bookings.paidAt)))
+          .returning({ id: bookings.id });
+        if (closed.length === 0) continue; // answered since we read it
+        requestsExpired.push(r.bookingNumber);
+        createNotification({
+          userId: r.travelerId,
+          type: "booking",
+          title: `Request #${r.bookingNumber} was not confirmed`,
+          body: `${r.listingTitle} — the business did not confirm before the date. You were not charged.`,
+          link: `/${r.islandSlug}/${r.listingSlug}`,
+        }).catch(() => {});
+      }
+    }
+
+    if (result.recovered.length || result.expired.length || result.failed.length || requestsExpired.length) {
+      logger.info("Abandoned bookings cron", { ...result, requestsExpired });
     }
 
     return NextResponse.json({
       ok: true,
       candidates: candidates.length,
       ...result,
+      requestsExpired,
       timestamp: now.toISOString(),
     });
   } catch (error) {

@@ -1,11 +1,20 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { messages, users } from "@/drizzle/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { verifyCurrentSessionToken } from "@/server/session-validation";
 import { cookies } from "next/headers";
 
 import { logger } from "@/lib/logger";
+import { messageCursorAtSql, messagesAfterCursorSql } from "@/server/message-stream";
+import {
+  advanceMessageCursor,
+  isMessageCursor,
+  messageCursorFromDate,
+  MESSAGE_CURSOR_FIRST_ID,
+  MESSAGE_CURSOR_TIMESTAMP_FORMAT,
+  type MessageCursor,
+} from "@/lib/message-cursor";
 export const maxDuration = 300; // 5 minutes
 
 async function getUser() {
@@ -18,6 +27,26 @@ async function getUser() {
   } catch {
     return null;
   }
+}
+
+const BATCH_SIZE = 50;
+
+/**
+ * Where a new connection starts: the database's own clock at full precision,
+ * so the first poll cannot miss or repeat a message because the app server's
+ * clock differs. Falls back to the app clock when the read fails.
+ */
+async function startingCursor(db: { execute?: (query: ReturnType<typeof sql>) => PromiseLike<unknown> }): Promise<MessageCursor> {
+  try {
+    const result = await db.execute?.(sql`SELECT to_char(localtimestamp, ${MESSAGE_CURSOR_TIMESTAMP_FORMAT}) AS at`);
+    const rows = Array.isArray(result) ? result : (result as { rows?: unknown[] } | undefined)?.rows;
+    const at = Array.isArray(rows) ? (rows[0] as { at?: unknown } | undefined)?.at : undefined;
+    const cursor = { at, id: MESSAGE_CURSOR_FIRST_ID };
+    if (isMessageCursor(cursor)) return cursor;
+  } catch {
+    // Use the app clock below.
+  }
+  return messageCursorFromDate(new Date())!;
 }
 
 function sleep(ms: number) {
@@ -50,15 +79,17 @@ export async function GET() {
       send("connected", { userId: user.id, timestamp: Date.now() });
 
       const db = drizzle(neon(process.env.DATABASE_URL!));
-      let lastChecked = new Date();
+      let cursor = await startingCursor(db);
       let heartbeatCounter = 0;
       const reportedRead = new Set<string>();
       const POLL_INTERVAL = 3000; // 3 seconds
+      const BACKLOG_INTERVAL = 250;
       const HEARTBEAT_INTERVAL = 5; // every 5 polls = 15 seconds
       const MAX_DURATION = 290_000; // just under 5 min
       const startTime = Date.now();
 
       while (!closed && Date.now() - startTime < MAX_DURATION) {
+        let fullBatch = false;
         try {
           // Check for new messages
           const newMessages = await db
@@ -71,6 +102,8 @@ export async function GET() {
               attachmentType: messages.attachmentType,
               isRead: messages.isRead,
               createdAt: messages.createdAt,
+              // Full-precision timestamp text for the cursor; see lib/message-cursor.ts.
+              cursorAt: messageCursorAtSql,
               senderName: users.name,
               senderAvatar: users.avatarUrl,
             })
@@ -79,11 +112,11 @@ export async function GET() {
             .where(
               and(
                 eq(messages.receiverId, user.id),
-                gt(messages.createdAt, lastChecked)
+                messagesAfterCursorSql(cursor)
               )
             )
-            .orderBy(messages.createdAt)
-            .limit(50);
+            .orderBy(messages.createdAt, messages.id)
+            .limit(BATCH_SIZE);
 
           // Read receipts include older inquiries opened by their recipient today.
           const readMessages = await db
@@ -105,7 +138,8 @@ export async function GET() {
             break;
           }
 
-          for (const msg of newMessages) {
+          for (const { cursorAt: _cursorAt, ...msg } of newMessages) {
+            void _cursorAt;
             send("message", { type: "new_message", message: msg });
           }
 
@@ -113,13 +147,9 @@ export async function GET() {
             if (!reportedRead.has(msg.id)) { send("message", { type: "message_read", messageId: msg.id }); reportedRead.add(msg.id); }
           }
 
-          if (newMessages.length > 0) {
-            lastChecked = new Date(
-              Math.max(
-                ...newMessages.map((m) => new Date(m.createdAt).getTime())
-              )
-            );
-          }
+          // Strictly forward: the next poll starts after the last row delivered.
+          cursor = advanceMessageCursor(cursor, newMessages);
+          fullBatch = newMessages.length >= BATCH_SIZE;
 
           // Heartbeat
           heartbeatCounter++;
@@ -131,7 +161,9 @@ export async function GET() {
           logger.error("SSE poll error", err);
         }
 
-        await sleep(POLL_INTERVAL);
+        // A full batch means more is waiting: fetch it soon, but never without a
+        // pause. The cursor always moves past delivered rows, so this ends.
+        await sleep(fullBatch ? BACKLOG_INTERVAL : POLL_INTERVAL);
       }
 
       // Stream ending

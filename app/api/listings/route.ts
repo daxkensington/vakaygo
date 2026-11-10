@@ -6,6 +6,9 @@ import { requireOperator } from "@/server/admin-auth";
 import { logger } from "@/lib/logger";
 import { parseListingFilters } from "@/lib/listing-filters";
 import { searchListings } from "@/server/listings-search";
+import { isBookablePriceUnit } from "@/lib/listing-price-units";
+import { sendListingSubmittedToTeam } from "@/server/email-requests";
+import { createNotification } from "@/server/notifications";
 
 function getDb() {
   return drizzle(neon(process.env.DATABASE_URL!));
@@ -71,6 +74,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    // A unit bookings cannot use would leave the listing unbookable with no explanation.
+    if (priceUnit !== undefined && priceUnit !== null && priceUnit !== "" && !isBookablePriceUnit(priceUnit)) {
+      return NextResponse.json({ error: "Choose what the price is per from the list." }, { status: 400 });
+    }
 
     const db = getDb();
     const baseSlug =
@@ -129,6 +136,30 @@ export async function POST(request: Request) {
         [listing.id, defaultSpots]
       )
       .catch((err) => logger.error("Seed default availability error", err));
+
+    // The listing waits on our review; tell the team now instead of when the weekly reminder finds it.
+    if (auth.role !== "admin") {
+      try {
+        const [who] = await sql.query(
+          `SELECT u.email,u.name,u.business_name,(SELECT i.name FROM islands i WHERE i.id=$2) island_name FROM users u WHERE u.id=$1::uuid`,
+          [operatorId, islandId || 1]) as { email: string; name: string | null; business_name: string | null; island_name: string | null }[];
+        const admins = await sql.query("SELECT id FROM users WHERE role='admin'") as { id: string }[];
+        await Promise.all([
+          who?.email ? sendListingSubmittedToTeam({
+            listingTitle: String(title), listingType: String(type), islandName: who.island_name,
+            operatorName: who.business_name || who.name, operatorEmail: who.email,
+            reviewUrl: "https://vakaygo.com/admin/listings?status=pending_review",
+          }) : Promise.resolve(),
+          ...admins.map(admin => createNotification({
+            userId: admin.id, type: "system", title: "New listing to review",
+            body: `${String(title).slice(0, 120)} was submitted by ${who?.business_name || who?.name || who?.email || "an operator"}.`,
+            link: "/admin/listings?status=pending_review",
+          })),
+        ]);
+      } catch (err) {
+        logger.warn("Listing submission notice skipped", { listingId: listing.id, error: err });
+      }
+    }
 
     return NextResponse.json({ listing });
   } catch (error) {
