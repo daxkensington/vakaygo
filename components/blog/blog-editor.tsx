@@ -75,8 +75,8 @@ function markdownToHtml(md: string): string {
   html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
   html = html.replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>");
   html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>');
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1" class="rounded-xl w-full my-4" />');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>');
   html = html.replace(/^\s*[-*] (.*$)/gim, "<li>$1</li>");
   html = html.replace(/^> (.*$)/gim, "<blockquote>$1</blockquote>");
   html = html.split("\n\n").map((block) => {
