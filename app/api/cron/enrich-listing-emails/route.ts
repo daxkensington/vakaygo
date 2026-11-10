@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { OUTREACH_CAMPAIGN_KEY, OUTREACH_HEALTH_MAX_AGE_MS, checkCampaignSendingWindow } from "@/lib/outreach-campaign-policy";
+import { outreachDestinationSlugs, restrictedOutreachCountries } from "@/lib/outreach-country-policy";
+import { isValidBusinessEmail } from "@/lib/outreach-email-validation";
 import { sendBusinessInterestOutreachEmail } from "@/server/outreach-automation";
 import { refreshOutreachTelemetry } from "@/server/outreach-campaign-send";
 import { logger } from "@/lib/logger";
@@ -42,10 +44,20 @@ export async function GET(request: NextRequest) {
     }
     if (control.enabled !== true) return NextResponse.json({ ok: true, state: "paused", attempted: 0, sent: 0 });
 
+    // Only destinations that are inside local business hours right now can be
+    // selected, and only with a permission their country policy accepts. Filtering
+    // in the query (not after the LIMIT) means a destination that can never be sent
+    // to cannot fill the candidate window and stall every other destination.
+    const destinations = outreachDestinationSlugs();
+    const inWindow = (slug: string) => checkCampaignSendingWindow(slug, now).allowed;
+    const openSlugs = destinations.open.filter(inWindow);
+    const optInOnlySlugs = destinations.optInOnly.filter(inWindow);
+    if (openSlugs.length === 0 && optInOnlySlugs.length === 0) return NextResponse.json({ ok: true, state: "idle", attempted: 0, sent: 0 });
+
     // Read existing contact data with reviewed provider-bound permission only. Never scrape, seed listings,
     // create outreach rows, alter claims/onboarding or touch booking controls.
     const candidates = await db.query(
-      `SELECT DISTINCT l.id, i.slug AS island_slug
+      `SELECT DISTINCT l.id, i.slug AS island_slug, lower(btrim(l.type_data->>'email')) AS email
          FROM listings l
          JOIN islands i ON i.id=l.island_id AND i.is_active=true
          JOIN outreach_recipient_consents c ON c.listing_id=l.id
@@ -54,16 +66,26 @@ export async function GET(request: NextRequest) {
            AND c.revoked_at IS NULL AND c.granted_at<=now()
         WHERE l.status='active' AND NOT vakaygo_listing_claim_verified(l.id)
           AND coalesce(l.type_data->>'email','')<>''
+          AND ((i.slug=ANY($3::text[]) AND (c.permission_kind='explicit_opt_in'
+                OR NOT (coalesce(c.recipient_country::text,'')=ANY($5::text[]))))
+            OR (i.slug=ANY($4::text[]) AND c.permission_kind='explicit_opt_in'))
           AND NOT EXISTS(SELECT 1 FROM business_outreach o WHERE o.listing_id=l.id
             AND (o.status='do_not_contact' OR o.contacted_at IS NOT NULL))
+          AND NOT EXISTS(SELECT 1 FROM business_outreach lo JOIN listings ll ON ll.id=lo.listing_id
+            WHERE lo.listing_id<>l.id AND (lo.status='do_not_contact' OR lo.contacted_at IS NOT NULL)
+              AND (lower(btrim(ll.type_data->>'email'))=lower(btrim(l.type_data->>'email'))
+                OR lower(btrim(l.type_data->>'email')) IN (SELECT lower(m[1])
+                  FROM regexp_matches(lo.notes,'Claim invitation emailed to ([^[:space:]]+)','g') m)))
           AND NOT EXISTS(SELECT 1 FROM outreach_email_suppressions s
             WHERE s.recipient=lower(btrim(l.type_data->>'email')))
           AND NOT EXISTS(SELECT 1 FROM outreach_email_attempts a WHERE a.campaign_key=$2
             AND (a.listing_id=l.id OR a.recipient=lower(btrim(l.type_data->>'email'))))
-        ORDER BY l.id LIMIT 60`,
-      [control.provider, OUTREACH_CAMPAIGN_KEY]
+        ORDER BY l.id LIMIT 200`,
+      [control.provider, OUTREACH_CAMPAIGN_KEY, openSlugs, optInOnlySlugs, restrictedOutreachCountries()]
     );
-    const candidate = candidates.find(row => checkCampaignSendingWindow(String(row.island_slug || ""), now).allowed);
+    // The window is rechecked here, and an address the validator rejects is
+    // skipped so it cannot be picked on every run in place of a sendable one.
+    const candidate = candidates.find(row => inWindow(String(row.island_slug || "")) && isValidBusinessEmail(row.email));
     if (!candidate) return NextResponse.json({ ok: true, state: "idle", attempted: 0, sent: 0 });
 
     // Exactly one sender invocation per run. Concurrent invocations, caps,

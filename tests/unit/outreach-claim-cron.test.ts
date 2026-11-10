@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", mocks.fetch);
   mocks.neon.mockReturnValue({ query: mocks.query });
   mocks.refresh.mockResolvedValue({ ready: true, reasons: [] });
-  mocks.query.mockResolvedValueOnce([control()]).mockResolvedValue([{ id: id1, island_slug: "grenada" }, { id: id2, island_slug: "barbados" }]);
+  mocks.query.mockResolvedValueOnce([control()]).mockResolvedValue([{ id: id1, island_slug: "grenada", email: "one@business.example" }, { id: id2, island_slug: "barbados", email: "two@business.example" }]);
   mocks.send.mockResolvedValue({ sent: true, attemptId: "attempt-fixture" });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -99,6 +99,9 @@ describe("dedicated claim invitation drip cron", () => {
       expect(sql).not.toMatch(/INSERT|UPDATE|DELETE|feature_flags|booking_provider_config|availability|listing_onboarding|listing_claims|listing_claim_verifications|trusted_contacts|generate_series|payout/i);
     }
     const candidateSql = mocks.query.mock.calls[1][0];
+    // Destinations that cannot be sent to now are excluded before the LIMIT, so they cannot stall the queue.
+    expect(candidateSql).toMatch(/i\.slug=ANY\(\$3::text\[\]\)[\s\S]*i\.slug=ANY\(\$4::text\[\]\) AND c\.permission_kind='explicit_opt_in'[\s\S]*ORDER BY l\.id LIMIT 200/);
+    expect(candidateSql).toContain("Claim invitation emailed to");
     expect(candidateSql).toContain("outreach_recipient_consents");
     expect(candidateSql).toContain("vakaygo_outreach_permission_allowed(c.provider,c.permission_kind)");
     expect(candidateSql).toContain("revoked_at IS NULL");
@@ -109,11 +112,19 @@ describe("dedicated claim invitation drip cron", () => {
 
   it("dispatches one reviewed Sendcorex candidate through the shared sender", async () => {
     mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), provider: "sendcorex" }])
-      .mockResolvedValue([{ id: id1, island_slug: "grenada" }, { id: id2, island_slug: "barbados" }]);
+      .mockResolvedValue([{ id: id1, island_slug: "grenada", email: "one@business.example" }, { id: id2, island_slug: "barbados", email: "two@business.example" }]);
     const response = await GET(request());
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ attempted: 1, sent: 1, listingId: id1 });
-    expect(mocks.query.mock.calls[1][1]).toEqual(["sendcorex", "listing-claims-v2"]);
+    const [provider, campaign, openSlugs, optInOnlySlugs, restricted] = mocks.query.mock.calls[1][1];
+    expect([provider, campaign]).toEqual(["sendcorex", "listing-claims-v2"]);
+    // 14:00Z on a Tuesday: the Caribbean is in business hours, the Mediterranean (17:00 local) is not.
+    expect(openSlugs).toEqual(expect.arrayContaining(["grenada", "antigua", "st-kitts", "st-vincent", "puerto-rico"]));
+    expect(openSlugs).not.toEqual(expect.arrayContaining(["santorini"]));
+    for (const slug of ["martinique", "guadeloupe", "cartagena", "medellin"]) {
+      expect(openSlugs).not.toContain(slug); expect(optInOnlySlugs).toContain(slug);
+    }
+    expect(restricted).toEqual(["GR", "ES", "IT", "HR", "CR", "MQ", "GP", "CO"]);
     expect(mocks.send).toHaveBeenCalledExactlyOnceWith(id1, { triggeredBy: "cron" });
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
@@ -149,7 +160,7 @@ describe("dedicated claim invitation drip cron", () => {
     ["grenada", new Date("2026-10-24T14:00:00Z")],
   ])("holds %s outside known weekday business hours", async (slug, instant) => {
     vi.setSystemTime(instant);
-    mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), health_checked_at: instant.toISOString() }]).mockResolvedValue([{ id: id1, island_slug: slug }]);
+    mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), health_checked_at: instant.toISOString() }]).mockResolvedValue([{ id: id1, island_slug: slug, email: "one@business.example" }]);
     const response = await GET(request());
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ attempted: 0, sent: 0 });
@@ -159,8 +170,37 @@ describe("dedicated claim invitation drip cron", () => {
   it("skips a quiet destination before the single invocation for a destination in business hours", async () => {
     vi.setSystemTime(new Date("2026-10-20T07:00:00Z"));
     mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), health_checked_at: new Date().toISOString() }])
-      .mockResolvedValue([{ id: id1, island_slug: "grenada" }, { id: id2, island_slug: "santorini" }]);
+      .mockResolvedValue([{ id: id1, island_slug: "grenada", email: "one@business.example" }, { id: id2, island_slug: "santorini", email: "two@business.example" }]);
     await GET(request());
     expect(mocks.send).toHaveBeenCalledExactlyOnceWith(id2, { triggeredBy: "cron" });
+    // Only the Mediterranean is in hours at 07:00Z, and it accepts explicit opt-in only.
+    const [, , openSlugs, optInOnlySlugs] = mocks.query.mock.calls[1][1];
+    expect(openSlugs).toEqual([]);
+    expect(optInOnlySlugs).toEqual(expect.arrayContaining(["santorini", "mykonos", "crete", "ibiza", "mallorca", "amalfi-coast-capri", "hvar-split"]));
+  });
+
+  it("skips an address the validator rejects instead of selecting it on every run", async () => {
+    mocks.query.mockReset().mockResolvedValueOnce([control()])
+      .mockResolvedValue([{ id: id1, island_slug: "grenada", email: "info@hotel.pbz" }, { id: id2, island_slug: "barbados", email: "two@business.example" }]);
+    await GET(request());
+    expect(mocks.send).toHaveBeenCalledExactlyOnceWith(id2, { triggeredBy: "cron" });
+  });
+
+  it("does not read candidates when no destination is in business hours", async () => {
+    vi.setSystemTime(new Date("2026-10-24T14:00:00Z"));
+    mocks.query.mockReset().mockResolvedValueOnce([{ ...control(), health_checked_at: new Date().toISOString() }]);
+    expect(await (await GET(request())).json()).toMatchObject({ state: "idle", attempted: 0, sent: 0 });
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("releases a held country only when the owner lists it", async () => {
+    vi.stubEnv("OUTREACH_RELEASED_COUNTRIES", "co, GR, xx");
+    await GET(request());
+    const [, , openSlugs, optInOnlySlugs, restricted] = mocks.query.mock.calls[1][1];
+    expect(openSlugs).toEqual(expect.arrayContaining(["cartagena", "medellin"]));
+    expect(optInOnlySlugs).toEqual(expect.arrayContaining(["martinique", "guadeloupe"]));
+    // A prior opt-in country cannot be released by configuration.
+    expect(restricted).toEqual(["GR", "ES", "IT", "HR", "CR", "MQ", "GP"]);
   });
 });

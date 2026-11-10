@@ -50,7 +50,18 @@ export async function refreshSendcorexTelemetry(from: string): Promise<void> {
     }
     if (!emptyInitialFeed) cursor = data.next_cursor as string;
     if (!data.has_more) {
-      const failures = await sql.query("SELECT id FROM outreach_email_attempts WHERE provider='sendcorex' AND campaign_key=$1 AND accepted_at IS NOT NULL AND failed_at>=now()-interval '7 days' LIMIT 1", [OUTREACH_CAMPAIGN_KEY]);
+      // One soft failure, block or rate limit is an outcome for that recipient, who
+      // is not emailed again in this campaign. Health holds only when failures pass
+      // the shared limit (5 under 50 accepted, then 10%), counted since the later of
+      // 7 days ago and the last recorded delivery review.
+      const failures = await sql.query(`SELECT 1 AS held FROM (
+        SELECT count(*) FILTER(WHERE h.accepted_at IS NOT NULL AND h.failed_at>=f.since) AS failed,
+          count(*) FILTER(WHERE h.accepted_at>=f.since) AS accepted
+        FROM outreach_email_attempts h CROSS JOIN (SELECT greatest(now()-interval '7 days',
+          coalesce((to_jsonb(c)->>'holds_reviewed_at')::timestamptz,'-infinity'::timestamptz)) AS since
+          FROM outreach_campaign_control c WHERE c.id=true) f
+        WHERE h.provider='sendcorex' AND h.campaign_key=$1
+      ) health WHERE failed>0 AND CASE WHEN accepted<50 THEN failed>=5 ELSE failed::numeric/accepted>=0.1 END`, [OUTREACH_CAMPAIGN_KEY]);
       if (failures.length) throw new SendcorexError("sendcorex_failure_review_required");
       return;
     }
