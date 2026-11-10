@@ -150,6 +150,20 @@ describe("fresh paid booking returns", () => {
     fetchMock.mockResolvedValue(Response.json({ bookings: [{ ...booking, ...changes }] }));
     await render(<TravelerBookingsPage />); expect(events("purchase")).toEqual([]);
   });
+  it("shows 'confirming' instead of Pay Now until the webhook marks the returned booking paid", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false, toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
+    navigation.query = "paid=VK-PAID";
+    fetchMock.mockResolvedValue(Response.json({ bookings: [{ ...booking, status: "pending", paidAt: null, paymentEligible: true }] }));
+    await render(<TravelerBookingsPage />);
+    expect(container.querySelector('[data-testid="confirming-payment"]')).not.toBeNull();
+    expect([...container.querySelectorAll("button")].some(button => button.textContent?.includes("Pay Now"))).toBe(false);
+    const before = fetchMock.mock.calls.length;
+    fetchMock.mockResolvedValue(Response.json({ bookings: [booking] }));
+    await act(async () => { vi.advanceTimersByTime(2000); });
+    await act(async () => { await Promise.resolve(); });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(before);
+    expect(container.querySelector('[data-testid="confirming-payment"]')).toBeNull();
+  });
   it("does not infer purchases from booking history without the payment-return context", async () => {
     fetchMock.mockResolvedValue(Response.json({ bookings: [booking] }));
     await render(<TravelerBookingsPage />); expect(events("purchase")).toEqual([]);

@@ -107,23 +107,20 @@ function BookingsContent() {
   const [showSuccessBanner, setShowSuccessBanner] = useState(!!paidBookingNumber);
   const [showCancelBanner, setShowCancelBanner] = useState(!!cancelledBookingNumber);
 
-  // Auto-dismiss success banner after 10s and clean URL
+  // Clean the URL; the booking number is kept in state.
   useEffect(() => {
-    if (paidBookingNumber) {
-      setShowSuccessBanner(true);
-      const timer = setTimeout(() => {
-        setShowSuccessBanner(false);
-      }, 10000);
-      // Clean URL params
-      const timeout = setTimeout(() => {
-        router.replace("/bookings", { scroll: false });
-      }, 500);
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(timeout);
-      };
-    }
+    if (!paidBookingNumber) return;
+    const timeout = setTimeout(() => {
+      router.replace("/bookings", { scroll: false });
+    }, 500);
+    return () => clearTimeout(timeout);
   }, [paidBookingNumber, router]);
+
+  // Stripe confirms the payment by webhook, usually a few seconds after the
+  // traveler is sent back here. Until then the booking still reads "pending":
+  // show "Confirming your payment" instead of "Pay Now", and check every 2 s
+  // for up to a minute.
+  const [confirmingPayment, setConfirmingPayment] = useState(!!paidBookingNumber);
 
   // Clean URL for cancel param
   useEffect(() => {
@@ -171,6 +168,25 @@ function BookingsContent() {
     ? bookings.find((b) => b.bookingNumber === cancelledBookingNumber)
     : null;
   const returnedPaidBooking = bookings.find(booking => booking.bookingNumber === paidBookingNumber && booking.paidAt && ["confirmed", "completed"].includes(booking.status));
+  const paymentConfirmed = !!returnedPaidBooking;
+
+  useEffect(() => {
+    if (!confirmingPayment || paymentConfirmed) return;
+    let polls = 0;
+    const poll = window.setInterval(() => {
+      polls += 1;
+      if (polls > 30) { window.clearInterval(poll); setConfirmingPayment(false); return; }
+      void fetchBookingsRef.current?.();
+    }, 2000);
+    return () => window.clearInterval(poll);
+  }, [confirmingPayment, paymentConfirmed]);
+
+  // Show the success banner for 10 s once the payment is actually confirmed.
+  useEffect(() => {
+    if (!paymentConfirmed) return;
+    const timer = setTimeout(() => setShowSuccessBanner(false), 10000);
+    return () => clearTimeout(timer);
+  }, [paymentConfirmed]);
 
   useEffect(() => {
     if (!user) return;
@@ -476,7 +492,13 @@ function BookingsContent() {
                         </div>
                       </div>
                     )}
-                    {booking.paymentEligible === true && booking.status === "pending" && !booking.paidAt && (
+                    {confirmingPayment && booking.bookingNumber === paidBookingNumber && booking.status === "pending" && !booking.paidAt && (
+                      <div data-testid="confirming-payment" className="mt-4 pt-4 border-t border-cream-200 flex items-center gap-2 text-sm text-navy-500">
+                        <Loader2 size={14} className="animate-spin" />
+                        Confirming your payment with the card processor. This usually takes a few seconds.
+                      </div>
+                    )}
+                    {booking.paymentEligible === true && booking.status === "pending" && !booking.paidAt && !(confirmingPayment && booking.bookingNumber === paidBookingNumber) && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock size={14} className="text-yellow-500" />
@@ -500,7 +522,7 @@ function BookingsContent() {
                         </button>
                       </div>
                     )}
-                    {booking.status === "pending" && !booking.paidAt && booking.paymentEligible !== true && <p className="mt-4 border-t border-cream-200 pt-4 text-sm text-navy-500">Online payment is currently unavailable for this listing. Your booking history and cancellation options remain available.</p>}
+                    {booking.status === "pending" && !booking.paidAt && booking.paymentEligible !== true && !(confirmingPayment && booking.bookingNumber === paidBookingNumber) && <p className="mt-4 border-t border-cream-200 pt-4 text-sm text-navy-500">Online payment is currently unavailable for this listing. Your booking history and cancellation options remain available.</p>}
                     {booking.status === "pending" && booking.paidAt && (
                       <div className="mt-4 pt-4 border-t border-cream-200 flex items-center gap-2">
                         <Clock size={14} className="text-yellow-500" />

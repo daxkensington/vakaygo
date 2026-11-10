@@ -116,6 +116,8 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 | tax-documents | Jan 15 8am UTC | Generate annual tax documents |
 | onboarding-nudges | Every 4h (:15) | Claimed businesses stalled before activation: one next-step email, first after 48h then weekly, max 3 per step, recipient business hours; weekly team reminder for payout profiles/listings waiting on review — `lib/onboarding-nudges.ts`, kill switch flag `operator_onboarding_nudges_enabled` |
 | privacy-retention | Daily 4:27am UTC | Shortens visitor addresses on listing views older than 30 days to their network and deletes usage-budget counters older than 35 days — `server/privacy-retention.ts`; `?dryRun=1` counts only |
+| complete-past-trips | Every 6h (:40) | Completes confirmed, paid trips 48 h after they end (no cancellation pending, no open dispute) so escrow release, payouts and reviews proceed. Counts only until flag `booking_auto_complete_enabled` is on; `?dryRun=1` — `lib/trip-completion.ts` |
+| onboarding-readiness | Every 10 min | Refreshes Stripe Connect readiness; must run more often than the 15-minute readiness TTL (`PROVIDER_READINESS_TTL_MS`) |
 
 ## Data Enrichment Scripts
 
