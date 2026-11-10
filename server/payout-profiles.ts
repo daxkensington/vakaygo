@@ -8,7 +8,7 @@ export const ALLOWED_PAYOUT_METHODS = ["paypal", "wise", "bank_wire"] as const;
 export type PayoutMethod = (typeof ALLOWED_PAYOUT_METHODS)[number];
 
 export const ALLOWED_PAYOUT_CURRENCIES = [
-  "USD", "EUR", "GBP", "CAD", "XCD", "BBD", "JMD", "KYD", "TTD", "DOP", "BSD", "AWG", "ANG", "MXN", "COP", "CRC", "BZD",
+  "USD", "EUR", "GBP", "CAD", "XCD", "BBD", "JMD", "KYD", "TTD", "DOP", "BSD", "AWG", "ANG", "XCG", "MXN", "COP", "CRC", "BZD",
 ] as const;
 export type PayoutCurrency = (typeof ALLOWED_PAYOUT_CURRENCIES)[number];
 
@@ -130,7 +130,10 @@ export function validatePayoutProfileInput(input: unknown) {
     }
     bankCountry = country;
     bankAccountHolder = cleanText(body.bankAccountHolder, 2, 256, "Account holder legal name");
-    bankAccountNumber = cleanText(body.bankAccountNumber, 4, 128, "Account number or IBAN").replace(/\s+/g, "");
+    // Blank keeps the account number already on file (checked when saving).
+    bankAccountNumber = body.bankAccountNumber == null || (typeof body.bankAccountNumber === "string" && body.bankAccountNumber.trim() === "")
+      ? null
+      : cleanText(body.bankAccountNumber, 4, 128, "Account number or IBAN").replace(/\s+/g, "");
     const swift = cleanText(body.bankSwiftBic, 8, 11, "SWIFT / BIC code").toUpperCase().replace(/\s+/g, "");
     if (!SWIFT_RE.test(swift)) {
       throw new OnboardingError("Enter a valid 8- or 11-character SWIFT / BIC code (e.g. RBTTGDGD)");
@@ -290,7 +293,7 @@ export async function getOperatorPayoutListings(operatorId: string) {
 }
 
 export async function upsertOperatorPayoutProfile(operatorId: string, rawInput: unknown) {
-  const input = validatePayoutProfileInput(rawInput);
+  let input = validatePayoutProfileInput(rawInput);
 
   const [owned] = await query<{
     listing_id: string;
@@ -318,14 +321,16 @@ export async function upsertOperatorPayoutProfile(operatorId: string, rawInput: 
     throw new OnboardingError("This listing already uses a connected Stripe account for direct payouts", 409);
   }
 
-  // Updating payout details resets verification to pending_review and clears activation
-  // until compliance review approves the updated payout profile.
-  await query(
-    `UPDATE listing_onboarding
-        SET activated_at = NULL, updated_at = now()
-      WHERE listing_id = $1 AND operator_id = $2`,
-    [input.listingId, operatorId]
-  );
+  // Bank wire: a blank account number keeps the one already on file, so fixing a
+  // rejected profile does not require retyping the full number.
+  if (input.payoutMethod === "bank_wire" && !input.bankAccountNumber) {
+    const [saved] = await query<{ bank_account_number: string | null }>(
+      `SELECT bank_account_number FROM operator_payout_profiles WHERE listing_id = $1 AND operator_id = $2 AND payout_method = 'bank_wire'`,
+      [input.listingId, operatorId]
+    );
+    if (!saved?.bank_account_number) throw new OnboardingError("Enter the account number or IBAN");
+    input = { ...input, bankAccountNumber: saved.bank_account_number };
+  }
 
   await query(
     `INSERT INTO operator_payout_profiles (
@@ -394,6 +399,16 @@ export async function upsertOperatorPayoutProfile(operatorId: string, rawInput: 
       input.w8benTaxId,
       input.w8benSignedName,
     ]
+  );
+
+  // Updating payout details resets verification to pending_review and clears activation
+  // until compliance review approves the updated payout profile. Done after the save,
+  // so a rejected save no longer takes a live listing offline.
+  await query(
+    `UPDATE listing_onboarding
+        SET activated_at = NULL, updated_at = now()
+      WHERE listing_id = $1 AND operator_id = $2`,
+    [input.listingId, operatorId]
   );
 
   // Ensure the listing has future availability rows so the operator does not get blocked on setup validation

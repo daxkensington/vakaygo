@@ -133,6 +133,16 @@ const complete=(extra={})=>({id:"evt_same",type:"checkout.session.completed",dat
    assert.equal(r.status,200);assert.equal(data.pricing.subtotal,252);assert.equal(data.booking.totalAmount,"252.00");
    assert.equal(rows.bookings[0].subtotal,"252.00");assert.equal(rows.bookings[0].transferVehicleType,"suv");assert.equal(rows.bookings[0].transferRoundTrip,true);
  });
+ await check("A per-day price is charged once per booking, not per guest",async()=>{
+   const rows={listings:[{...listing,type:"transport",priceAmount:"60.00",priceUnit:"day"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:4}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.pricing.subtotal,60);assert.equal(rows.bookings[0].subtotal,"60.00");
+ });
+ await check("A per-person price is still charged per guest",async()=>{
+   const rows={listings:[listing],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
+   const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:3}));const data=await r.json();
+   assert.equal(r.status,200);assert.equal(data.pricing.subtotal,195);
+ });
  await check("An invalid transfer vehicle is rejected",async()=>{
    const rows={listings:[{...listing,type:"transfer",priceAmount:"100.00",priceUnit:"trip"}],bookings:[],users:[]};const db=dbFor(rows);const h=load("app/api/bookings/route.ts",mocksFor(db));
    const r=await h.POST(request({listingId,startDate:"2099-12-01",guestCount:1,vehicleType:"hovercraft"}));assert.equal(r.status,400);assert.equal(rows.bookings.length,0);

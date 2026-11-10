@@ -204,3 +204,27 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Expected non-transfer options rejection';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%Transfer options%' THEN RAISE; END IF; END;
 END $$;
+
+-- Migration 0023: a calendar override prices its own date only; per-booking units are not multiplied by guests.
+INSERT INTO availability(listing_id,date,spots,spots_remaining,price_override,is_blocked)
+ VALUES('20000000-0000-4000-8000-000000000011','2099-12-10',8,8,80,false),('20000000-0000-4000-8000-000000000011','2099-12-11',8,8,NULL,false);
+DO $$ BEGIN
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method)
+ VALUES('audit-override-date','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-10',2,160,160,'USD','card');
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-override-date' AND status='pending' AND subtotal=160)
+ THEN RAISE EXCEPTION 'An override date was not priced at the override'; END IF;
+ BEGIN
+  INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method)
+  VALUES('audit-override-base','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-10',2,130,130,'USD','card');
+  RAISE EXCEPTION 'Expected the base price to be rejected on an override date';
+ EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_BOOKING:%price%' THEN RAISE; END IF; END;
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method)
+ VALUES('audit-other-date','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-11',2,130,130,'USD','card');
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-other-date' AND status='pending')
+ THEN RAISE EXCEPTION 'An override on another date still forced a price request'; END IF;
+ UPDATE listings SET price_unit='event' WHERE id='20000000-0000-4000-8000-000000000011';
+ INSERT INTO bookings(booking_number,traveler_id,operator_id,listing_id,start_date,guest_count,subtotal,total_amount,currency,payment_method)
+ VALUES('audit-per-event','10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000011','2099-12-11',3,65,65,'USD','card');
+ IF NOT EXISTS(SELECT 1 FROM bookings WHERE booking_number='audit-per-event' AND subtotal=65)
+ THEN RAISE EXCEPTION 'A per-event price was multiplied by guests'; END IF;
+END $$;

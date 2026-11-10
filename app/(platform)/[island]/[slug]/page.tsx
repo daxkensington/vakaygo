@@ -1,5 +1,6 @@
 import { listingStructuredData, serializeJsonLd } from "@/lib/listing-structured-data";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { resolveListingRedirect } from "@/server/listing-redirects";
 import { getListingDetail } from "@/server/listing-detail";
 import {
   ListingDetailClient,
@@ -32,6 +33,7 @@ export default async function ListingDetailPage({
   const { slug, island } = await params;
   const result = await getListingDetail(slug, island);
 
+  if (!result) await redirectOrNotFound(island, slug);
   if (!result) notFound();
 
   return (
@@ -44,4 +46,17 @@ export default async function ListingDetailPage({
     />
     </>
   );
+}
+
+/**
+ * A URL with no public listing: a merged duplicate or moved listing redirects
+ * permanently to where it lives now, a paused listing temporarily to its
+ * destination, anything else is a 404. Called from the layout AND the page,
+ * because a layout redirect does not stop the page from rendering.
+ */
+async function redirectOrNotFound(island: string, slug: string): Promise<never> {
+  const target = await resolveListingRedirect(island, slug);
+  if (target?.permanent) permanentRedirect(target.location);
+  if (target) redirect(target.location);
+  notFound();
 }
