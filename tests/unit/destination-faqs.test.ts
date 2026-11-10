@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildBestHotelsFaqs,
@@ -107,6 +109,17 @@ describe("destination hub FAQs", () => {
       "Should I book a hotel or vacation rental in Grenada?",
     ]);
     expect(buildBestRestaurantsFaqs({ name: "Grenada", slug: "grenada" })).toHaveLength(4);
+  });
+
+  it("is what the things-to-do hub renders", () => {
+    const source = readFileSync(
+      join(process.cwd(), "app/(marketing)/things-to-do-in/[island]/page.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("buildThingsToDoFaqs({ name: island.name, slug, country: island.country })");
+    expect(source).not.toMatch(/generally a safe/i);
+    expect(source).not.toContain("depends on the destination");
+    expect(source).not.toContain("(2026)");
   });
 
   it("derives the title year from the clock", () => {
