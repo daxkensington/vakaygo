@@ -2,6 +2,7 @@
 
 import { ImageWithFallback } from "@/components/shared/image-fallback";
 import { getImageUrl } from "@/lib/image-utils";
+import { guideBylineName } from "@/lib/guide-byline";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -226,11 +227,11 @@ export function GuidesContent() {
                             />
                           ) : (
                             <div className="h-6 w-6 rounded-full bg-gold-100 flex items-center justify-center text-gold-700 font-bold text-[10px]">
-                              {post.authorName?.charAt(0) || "V"}
+                              {guideBylineName(post.authorName).charAt(0)}
                             </div>
                           )}
                           <span className="font-medium text-navy-500">
-                            {post.authorName || "VakayGo"}
+                            {guideBylineName(post.authorName)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
