@@ -719,8 +719,16 @@ export const listingViews = pgTable("listing_views", {
   listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
   viewerIp: varchar("viewer_ip", { length: 64 }),
   userId: uuid("user_id").references(() => users.id),
-  source: varchar("source", { length: 32 }), // explore, search, direct, island
+  source: varchar("source", { length: 32 }), // see lib/view-attribution.ts VIEW_SOURCES
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Attribution (migration 0019). Written through server/listing-view-attribution.ts,
+  // which also works on a database that has not run 0019 yet.
+  uaFamily: varchar("ua_family", { length: 24 }),
+  referrerHost: varchar("referrer_host", { length: 128 }),
+  utmSource: varchar("utm_source", { length: 64 }),
+  country: varchar("country", { length: 2 }),
+  isBot: boolean("is_bot").default(false).notNull(),
+  botReason: varchar("bot_reason", { length: 24 }),
 }, (t) => [
   index("listing_views_listing_idx").on(t.listingId),
   index("listing_views_created_idx").on(t.createdAt),
