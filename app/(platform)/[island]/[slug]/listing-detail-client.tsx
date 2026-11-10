@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { claimStartHref } from "@/lib/claim-return";
 import { useParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useCurrentBookingEligibility } from "@/components/listings/booking-eligibility";
 import { ListingInterest } from "@/components/listings/listing-interest";
+import { ListingInquiry } from "@/components/listings/listing-inquiry";
 import { BookingWidget } from "@/components/listings/booking-widget";
 import { DiningReservation } from "@/components/listings/dining-reservation";
 import { TransferBooking } from "@/components/listings/transfer-booking";
@@ -46,6 +47,7 @@ import { getImageUrl } from "@/lib/image-utils";
 import { getIslandFlag } from "@/lib/island-flags";
 import { analytics } from "@/lib/analytics";
 import { useCurrency } from "@/lib/currency";
+import { useListingViewBeacon } from "@/components/listings/use-listing-view-beacon";
 import { resolveListingGuestCapacity } from "@/lib/listing-capacity";
 import {
   Star,
@@ -156,7 +158,6 @@ export function ListingDetailClient({
   const [relatedGuides, setRelatedGuides] = useState<RelatedGuide[]>([]);
   const [loading, setLoading] = useState(!initialListing);
   const { isSaved, toggle } = useSaved();
-  const viewTracked = useRef(false);
 
   useEffect(() => {
     // The server component already fetched the listing — only fetch
@@ -187,25 +188,11 @@ export function ListingDetailClient({
       .catch(() => {});
   }, [listing]);
 
-  // Track listing view (once per page load)
-  useEffect(() => {
-    if (!params.slug || viewTracked.current) return;
-    viewTracked.current = true;
-
-    const source = document.referrer.includes("/explore")
-      ? "explore"
-      : document.referrer.includes("/search")
-        ? "search"
-        : document.referrer.includes(`/${params.island}`)
-          ? "island"
-          : "direct";
-
-    fetch(`/api/listings/${params.slug}/view`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source }),
-    }).catch(() => {});
-  }, [params.slug, params.island]);
+  // Count the view once a person is actually looking at the page.
+  useListingViewBeacon(
+    typeof params.slug === "string" ? params.slug : undefined,
+    typeof params.island === "string" ? params.island : undefined,
+  );
 
   // Track recently viewed in localStorage
   useEffect(() => {
@@ -268,6 +255,24 @@ export function ListingDetailClient({
         type: img.type ?? undefined,
       }))
     : [{ id: "placeholder", url: "", alt: listing.title as string | null }];
+  const mapPair =
+    listing.meetingPointLat && listing.meetingPointLng
+      ? {
+          lat: listing.meetingPointLat,
+          lng: listing.meetingPointLng,
+          title: "Meeting Point",
+        }
+      : listing.latitude && listing.longitude
+        ? {
+            lat: listing.latitude,
+            lng: listing.longitude,
+            title: "Location",
+          }
+        : null;
+  const mapLat = mapPair ? parseFloat(mapPair.lat) : Number.NaN;
+  const mapLng = mapPair ? parseFloat(mapPair.lng) : Number.NaN;
+  const showMap =
+    mapPair !== null && Number.isFinite(mapLat) && Number.isFinite(mapLng);
 
   return (
     <>
@@ -410,7 +415,9 @@ export function ListingDetailClient({
                   reviewCount={listing.reviewCount}
                   isFeatured={listing.isFeatured}
                   type={listing.type}
-                  unclaimed={td.unclaimed === true || td.source === "google-places"}
+                  unclaimed={!listing.claimVerified}
+                  claimVerified={listing.claimVerified === true}
+                  ratingSource={td.unclaimed === true || td.source === "google-places" ? "google" : "vakaygo"}
                 />
               </div>
 
@@ -423,6 +430,9 @@ export function ListingDetailClient({
 
               {/* Traveler contact comes before business-owner actions. */}
               <ContactInfo typeData={listing.typeData} listingId={listing.id} bookingEligible={bookingEligible} unclaimed={!listing.claimVerified} />
+              {!bookingEligible && !listing.claimVerified && (
+                <div className="mt-6 lg:hidden"><ListingInquiry listingId={listing.id} listingTitle={listing.title} /></div>
+              )}
 
               {/* Operator / Claim Banner */}
               {!listing.claimVerified ? (
@@ -447,12 +457,12 @@ export function ListingDetailClient({
               ) : (
                 <div className="flex items-center gap-4 mt-8 p-5 bg-white rounded-2xl shadow-[var(--shadow-card)]">
                   <div className="w-14 h-14 bg-gold-100 rounded-full flex items-center justify-center text-gold-700 font-bold text-xl">
-                    {String(listing.operatorName || "V").charAt(0)}
+                    {String(listing.operatorName || listing.title || "V").trim().charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-navy-700">
-                        {String(listing.operatorName || "Local Operator")}
+                        {String(listing.operatorName || listing.title || "Local Operator")}
                       </p>
                       {listing.operatorSuperhost && (
                         <SuperhostBadge variant="small" />
@@ -583,12 +593,11 @@ export function ListingDetailClient({
               <WhatsIncluded typeData={listing.typeData} listingType={listing.type} />
 
               {/* Interactive Location / Meeting Point Map */}
-              {((listing.meetingPointLat && listing.meetingPointLng) ||
-                (listing.latitude && listing.longitude)) && (
+              {showMap && mapPair && (
                 <MeetingPointMap
-                  lat={parseFloat((listing.meetingPointLat || listing.latitude)!)}
-                  lng={parseFloat((listing.meetingPointLng || listing.longitude)!)}
-                  title={listing.meetingPointLat && listing.meetingPointLng ? "Meeting Point" : "Location"}
+                  lat={mapLat}
+                  lng={mapLng}
+                  title={mapPair.title}
                   note={
                     listing.meetingPointNote ||
                     listing.address ||
@@ -709,7 +718,7 @@ export function ListingDetailClient({
                 <div className="mt-8">
                   <ContactOperator
                     operatorId={listing.operatorId}
-                    operatorName={String(listing.operatorName || "Operator")}
+                    operatorName={String(listing.operatorName || listing.title || "Operator")}
                     listingId={listing.id}
                     listingTitle={listing.title}
                     listingPath={`/${listing.islandSlug}/${listing.slug}`}
@@ -767,7 +776,15 @@ export function ListingDetailClient({
 
             {/* Right Sidebar — Type-Specific Booking Widget */}
             {!bookingEligible ? (
-              <aside aria-label="Listing interest" className="lg:col-span-1"><div className="sticky top-24"><ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} /></div></aside>
+              <aside aria-label={!listing.claimVerified ? "Listing inquiry" : "Listing interest"} className={!listing.claimVerified ? "hidden lg:block lg:col-span-1" : "lg:col-span-1"}>
+                <div className="sticky top-24">
+                  {!listing.claimVerified ? (
+                    <ListingInquiry listingId={listing.id} listingTitle={listing.title} />
+                  ) : (
+                    <ListingInterest listingId={listing.id} listingPath={`/${listing.islandSlug}/${listing.slug}`} operatorId={listing.operatorId} />
+                  )}
+                </div>
+              </aside>
             ) : listing.type === "dining" ? (
               <div className="lg:col-span-1">
                 <div className="sticky top-24">

@@ -1,6 +1,8 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { GuidesContent } from "@/components/blog/guides-content";
+import { GuidesIndex } from "@/components/blog/guides-index";
+import { getPublishedGuideLinks } from "@/server/guides-queries";
 import type { Metadata } from "next";
 
 // ISR: rebuilt in the background at most hourly, so new posts/listings
@@ -20,7 +22,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function GuidesPage() {
+export default async function GuidesPage() {
+  // Plain server-rendered links to every guide: the interactive list below
+  // loads in the browser from /api/blog, which crawlers cannot fetch.
+  const guides = await getPublishedGuideLinks();
+
   return (
     <>
       <Header />
@@ -50,6 +56,7 @@ export default function GuidesPage() {
         </section>
 
         <GuidesContent />
+        <GuidesIndex guides={guides} />
       </main>
       <Footer />
     </>

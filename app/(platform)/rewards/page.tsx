@@ -123,6 +123,8 @@ function RewardsAccount() {
   const [referralAttempt, setReferralAttempt] = useState(0);
   const [loyaltyRead, setLoyaltyRead] = useState<LoyaltyRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
   const [referralRead, setReferralRead] = useState<ReferralRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
+  const [nextPageStatus, setNextPageStatus] = useState<"idle" | "loading" | "error">("idle");
+  const nextPageRequest = useRef<AbortController | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const active = useRef(true);
@@ -140,6 +142,9 @@ function RewardsAccount() {
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
+    nextPageRequest.current?.abort();
+    nextPageRequest.current = null;
+    setNextPageStatus("idle");
     setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "loading" } });
     async function fetchLoyalty() {
       try {
@@ -154,7 +159,12 @@ function RewardsAccount() {
       }
     }
     void fetchLoyalty();
-    return () => { current = false; controller.abort(); };
+    return () => {
+      current = false;
+      controller.abort();
+      nextPageRequest.current?.abort();
+      nextPageRequest.current = null;
+    };
   }, [filter, loyaltyAttempt]);
 
   useEffect(() => {
@@ -184,6 +194,43 @@ function RewardsAccount() {
     ? referralRead.result : { status: "loading" };
   const loyalty = loyaltyResult.status === "success" ? loyaltyResult.data : null;
   const referrals = referralResult.status === "success" ? referralResult.data : null;
+
+  async function loadMoreHistory() {
+    if (!active.current || !loyalty?.hasMore || nextPageRequest.current) return;
+    const requestedRead = loyaltyRead;
+    const controller = new AbortController();
+    nextPageRequest.current = controller;
+    setNextPageStatus("loading");
+    try {
+      const response = await fetch(`/api/loyalty?filter=${filter}&page=${loyalty.page + 1}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("History page read failed");
+      const data: LoyaltyData = await response.json();
+      if (active.current && !controller.signal.aborted) {
+        setLoyaltyRead(prev => prev === requestedRead && prev.result.status === "success"
+          ? {
+              ...prev,
+              result: {
+                status: "success",
+                data: {
+                  ...prev.result.data,
+                  transactions: [...prev.result.data.transactions, ...data.transactions],
+                  page: data.page,
+                  hasMore: data.hasMore,
+                },
+              },
+            }
+          : prev);
+        setNextPageStatus("idle");
+      }
+    } catch {
+      if (active.current && !controller.signal.aborted) setNextPageStatus("error");
+    } finally {
+      if (nextPageRequest.current === controller) nextPageRequest.current = null;
+    }
+  }
 
   async function generateCode() {
     if (!active.current || !referrals || generatingCode) return;
@@ -344,7 +391,7 @@ function RewardsAccount() {
                     <div className="px-6 py-12 text-center">
                       <Sparkles size={32} className="text-navy-200 mx-auto mb-4" />
                       <p className="text-navy-400">No transactions yet.</p>
-                      <p className="text-navy-300 text-sm mt-1">Explore the directory while online bookings are unavailable.</p>
+                      <p className="text-navy-300 text-sm mt-1">Explore the directory and check each listing for current booking options and availability.</p>
                       <Link
                         href="/explore"
                         className="inline-flex items-center gap-2 mt-4 text-gold-700 font-medium text-sm hover:text-gold-600"
@@ -354,6 +401,22 @@ function RewardsAccount() {
                     </div>
                   )}
                 </div>
+                {loyalty?.hasMore && (
+                  <div className="p-6 text-sm text-navy-700">
+                    {nextPageStatus === "error" && (
+                      <p role="alert" className="mb-3">Unable to load more history. Please try again.</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={loadMoreHistory}
+                      disabled={nextPageStatus === "loading"}
+                      className="rounded-lg bg-gold-700 px-4 py-2 font-semibold text-white hover:bg-gold-800 disabled:opacity-60"
+                    >
+                      {nextPageStatus === "loading" ? "Loading more history…" : nextPageStatus === "error" ? "Retry loading more history" : "Load more"}
+                    </button>
+                    {nextPageStatus === "loading" && <p role="status" className="sr-only">Loading more history</p>}
+                  </div>
+                )}
               </div>
 
               {/* ─── TIER LADDER ────────────────────────────── */}
@@ -519,9 +582,9 @@ function RewardsAccount() {
               {/* Quick Redeem */}
               {loyalty && points !== undefined && points >= 500 && (
                 <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
-                  <h3 className="font-bold mb-2">Ready to Redeem?</h3>
+                  <h3 className="font-bold mb-2">Points redemption</h3>
                   <p className="text-teal-100 text-sm mb-4">
-                    You have {points.toLocaleString()} points (${(points / 100).toFixed(2)} credit). Online booking and redemption are currently unavailable.
+                    You have {points.toLocaleString()} points. Points redemption is currently unavailable.
                   </p>
                   <Link
                     href="/explore"

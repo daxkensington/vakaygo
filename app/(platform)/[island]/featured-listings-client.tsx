@@ -14,6 +14,7 @@ export type FeaturedListing = {
   image: string | null;
   parish: string | null;
   priceAmount: string | null;
+  priceCurrency: string | null;
   priceUnit: string | null;
   avgRating: string | null;
 };
@@ -60,7 +61,7 @@ export function FeaturedListingsClient({
               <div className="flex items-center justify-between mt-2">
                 {listing.priceAmount && parseFloat(listing.priceAmount) > 0 && (
                   <span className="font-bold text-navy-700">
-                    {format(parseFloat(listing.priceAmount))}
+                    {format(parseFloat(listing.priceAmount), listing.priceCurrency || "USD")}
                     <span className="text-navy-400 text-sm font-normal"> / {listing.priceUnit}</span>
                   </span>
                 )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { operatorFetch as fetch } from "@/lib/operator-session";
+
 import Image from "next/image";
 
 import { useState, useRef, useCallback } from "react";

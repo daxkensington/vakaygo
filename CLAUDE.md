@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Next.js Version Warning
 
-This uses **Next.js 16.3.4** with breaking changes from earlier versions. Read `node_modules/next/dist/docs/` before writing code. Heed deprecation notices.
+This uses **Next.js 16.4.3** with breaking changes from earlier versions. Read `node_modules/next/dist/docs/` before writing code. Heed deprecation notices.
 
 ## Commands
 
@@ -113,6 +113,7 @@ When adding a new type, update: schema enum, all UI type configs (listing-card, 
 | weekly-report | Mondays 8am UTC | Send operator weekly reports |
 | price-alerts | Daily 9am UTC | Notify travelers of price drops |
 | tax-documents | Jan 15 8am UTC | Generate annual tax documents |
+| onboarding-nudges | Every 4h (:15) | Claimed businesses stalled before activation: one next-step email, first after 48h then weekly, max 3 per step, recipient business hours; weekly team reminder for payout profiles/listings waiting on review — `lib/onboarding-nudges.ts`, kill switch flag `operator_onboarding_nudges_enabled` |
 
 ## Data Enrichment Scripts
 

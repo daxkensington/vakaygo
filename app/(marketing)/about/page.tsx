@@ -56,7 +56,9 @@ export default function AboutPage() {
                   Local businesses deserve to be easy to discover. VakayGo helps
                   travelers explore places, save favorites, and plan trips, while
                   owners can claim and manage their directory profiles for free.
-                  Online bookings and payments are not available yet.
+                  Booking availability depends on each listing&apos;s verification
+                  and setup. Travelers can use only the booking options shown on
+                  the listing for their selected dates and group size.
                 </p>
                 <p className="mt-4 text-navy-500 leading-relaxed">
                   We started in Grenada because we know the Caribbean. Today

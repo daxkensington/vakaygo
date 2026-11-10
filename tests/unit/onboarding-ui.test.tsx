@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => React.createElement("a", props, children) }));
 import BusinessOnboardingPage from "@/app/operator/onboarding/[listingId]/page";
 import OperatorTermsPage from "@/app/operator/onboarding/terms/page";
+import { OPERATOR_TERMS_VERSION, PREVIOUS_OPERATOR_TERMS_PATH } from "@/lib/operator-terms";
 
 const listingId = "20000000-0000-4000-8000-000000000001";
 const status = {
@@ -14,7 +15,7 @@ const status = {
   listing: { title: "Verified company listing", slug: "verified-company", islandSlug: "grenada" },
   requirements: { claim: true, business: true, representative: true, terms: true, listing: true, payments: false, activation: false },
   business: { legalName: "Example Company", country: "GD", address: "Example business address", representativeName: "Example Representative" },
-  allowedPaymentCountries: [], stripe: { connected: true }, termsVersion: "2026-09-06", activatedAt: null,
+  allowedPaymentCountries: [], stripe: { connected: true }, termsVersion: OPERATOR_TERMS_VERSION, activatedAt: null,
 };
 let container: HTMLDivElement; let root: Root; let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -34,7 +35,30 @@ it("rechecks provider state after onboarding return without automatically activa
   expect(container.textContent).not.toContain("This listing is eligible for online bookings");
   const finalize = Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Check and finalize setup");
   expect(finalize?.disabled).toBe(true);
-  expect(container.querySelector('a[href="/operator/onboarding/terms"]')?.textContent).toBe("operator terms review draft");
+  expect(container.querySelector('a[href="/operator/onboarding/terms"]')?.textContent).toBe("operator terms");
+});
+
+it.each([false, true])("distinguishes current listing eligibility %s from an enabled platform launch", async eligible => {
+  const current = {
+    ...status, bookingsEnabled: true, eligible,
+    state: eligible ? "ready" : "onboarding_pending",
+    reason: eligible ? "ready" : "payments_unavailable",
+    requirements: { ...status.requirements, payments: eligible, activation: eligible },
+  };
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(current)));
+  await renderPage();
+  const listingSection = Array.from(container.querySelectorAll("section"))
+    .find(section => section.querySelector("h2")?.textContent === status.listing.title)!;
+  expect(listingSection.textContent).not.toContain("Online bookings and payments are currently disabled");
+  if (eligible) {
+    expect(listingSection.textContent).toContain("This listing is eligible for online bookings");
+    expect(button("Check and finalize setup").disabled).toBe(false);
+  } else {
+    expect(listingSection.textContent).toContain("until every required check is complete");
+    expect(listingSection.textContent).not.toContain("This listing is eligible for online bookings");
+    expect(button("Check and finalize setup").disabled).toBe(true);
+  }
+  expect(fetchMock.mock.calls.every(call => !call[1]?.method || call[1].method === "GET")).toBe(true);
 });
 
 it("does not expose business setup forms when the API rejects ownership", async () => {
@@ -53,10 +77,93 @@ it("accepts worldwide registration countries without implying payment availabili
     expect(select.querySelector(`option[value="${code}"]`)?.textContent).toBe(name);
   }
   expect(container.textContent).toContain("Choose where your company is legally registered");
-  expect(container.textContent).toContain("Payment setup is not available for companies registered in Grenada yet");
+  // A country Stripe does not support is not a dead end: direct payouts are the path, and nothing says "not available".
+  expect(container.textContent).not.toContain("not available for companies registered");
+  expect(container.textContent).toContain("Companies registered in Grenada are paid directly by VakayGo");
+  const payoutLinks = Array.from(container.querySelectorAll(`a[href="/operator/payouts?listingId=${listingId}"]`)).map(item => item.textContent);
+  expect(payoutLinks).toContain("Set up payouts (Wise, PayPal or bank transfer)");
+  expect(payoutLinks).toContain("Payments and payouts verified");
+  expect(container.textContent).toContain("Next: add your payout details");
   expect(button("Save company details").disabled).toBe(false);
+  // An already-connected Stripe account stays visible but cannot continue for an unsupported country.
   expect(button("Continue secure payment setup").disabled).toBe(true);
   expect(button("Refresh verification status").disabled).toBe(false);
+});
+
+it("hides Stripe entirely for an unsupported country without a connected account and names the next step", async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...status, stripe: { connected: false } })));
+  await renderPage();
+  expect(Array.from(container.querySelectorAll("button")).some(item => /secure payment setup/.test(item.textContent || ""))).toBe(false);
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Next step");
+  expect(next.textContent).toContain("Tell us how you want to be paid");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe(`/operator/payouts?listingId=${listingId}`);
+  expect(container.querySelector('a[href="/operator/payouts?listingId=' + listingId + '"]')).not.toBeNull();
+});
+
+it("shows the waiting state while a payout profile is under review", async () => {
+  const pending = { ...status, stripe: { connected: false }, payoutProfile: { method: "bank_wire", currency: "USD", status: "pending_review", w8benCertified: true, revoked: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(pending)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Waiting on VakayGo");
+  expect(next.textContent).toContain("with our team for verification");
+  expect(container.textContent).toContain("Review payout details");
+  expect(container.textContent).toContain("Bank transfer · USD");
+  expect(container.textContent).not.toContain("Next: add your payout details");
+});
+
+it("tells a business that accepted an earlier agreement to accept the new one, not to redo its company details", async () => {
+  const reaccept = { ...status, stripe: { connected: false }, acceptedTermsVersion: "2026-09-06", requirements: { ...status.requirements, terms: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(reaccept)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Accept the updated operator agreement");
+  expect(next.textContent).not.toContain("Finish your company details");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe("#company-details");
+  const note = container.querySelector('[data-testid="agreement-only"]')!;
+  expect(note.textContent).toContain("has been updated since you accepted it");
+  expect(container.textContent).not.toContain("This is the first step and takes about three minutes");
+  // The new version is never pre-ticked on the strength of the old acceptance.
+  const boxes = Array.from(container.querySelectorAll<HTMLInputElement>('#company-details input[type="checkbox"]'));
+  expect(boxes.map(box => box.checked)).toEqual([true, false]);
+});
+
+it("points a business that never accepted the terms at the company form first", async () => {
+  const stalled = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, representative: false, terms: false, listing: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(stalled)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Finish your company details");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe("#company-details");
+  const termsStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Terms accepted");
+  expect(termsStep?.getAttribute("href")).toBe("#company-details");
+  const listingStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Listing information complete");
+  expect(listingStep?.getAttribute("href")).toBe(`/operator/listings/${listingId}`);
+  expect(container.textContent).toContain("Set price, capacity and open dates");
+});
+
+it("points a listing whose only gap is open dates at the calendar", async () => {
+  const datesOnly = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, listing: false }, listingGaps: { price: false, capacity: false, policy: false, openDates: true } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(datesOnly)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Open your dates");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe(`/operator/listings/${listingId}/calendar`);
+  const listingStep = Array.from(container.querySelectorAll("li a")).find(item => item.textContent === "Listing information complete");
+  expect(listingStep?.getAttribute("href")).toBe(`/operator/listings/${listingId}/calendar`);
+  expect(container.textContent).toContain("Open your dates in the calendar");
+  expect(container.textContent).not.toContain("Set price, capacity and open dates");
+});
+
+it("offers Stripe first for a supported country while keeping direct payouts one click away", async () => {
+  const supported = { ...status, stripe: { connected: false }, business: { ...status.business, country: "CA" }, allowedPaymentCountries: ["CA"] };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(supported)));
+  await renderPage();
+  expect(button("Start secure payment setup").disabled).toBe(false);
+  expect(container.textContent).not.toContain("paid directly by VakayGo");
+  expect(container.querySelector(`a[href="/operator/payouts?listingId=${listingId}"]`)?.textContent).toBe("Prefer Wise, PayPal or bank transfer?");
+  expect(container.textContent).toContain("Payment setup is available for your saved country of registration");
 });
 
 it("requires saved company details before connecting even when both countries are enabled", async () => {
@@ -84,10 +191,11 @@ it("keeps payment setup closed when country configuration is missing while allow
   expect(container.textContent).toContain("Verification status refreshed");
 });
 
-it("renders the exact operator terms draft version with fee, payout and refund responsibilities", async () => {
+it("renders the exact operator terms revision with its prior draft archive and fee, payout and refund responsibilities", async () => {
   await act(async () => root.render(<OperatorTermsPage />));
-  expect(container.textContent).toContain("Version 2026-09-06");
-  expect(container.textContent).toContain("Draft awaiting business and legal review");
+  expect(container.textContent).toContain(`Version ${OPERATOR_TERMS_VERSION}`);
+  expect(container.querySelector(`a[href="${PREVIOUS_OPERATOR_TERMS_PATH}"]`)).not.toBeNull();
+  expect(container.textContent).toContain("A previous acceptance does not count as acceptance of this revision");
   expect(container.textContent).toContain("Operator commission");
   expect(container.textContent).toContain("Payments and payouts");
   expect(container.textContent).toContain("Cancellations and refunds");
@@ -125,4 +233,43 @@ it("offers recovery when onboarding status cannot load initially", async () => {
   await act(async () => button("Try loading status again").click());
   expect(container.querySelector("input")!.value).toBe("Example Company");
   expect(button("Save company details").disabled).toBe(false);
+});
+
+it("clears consent for a refreshed terms version while preserving the company draft and requiring the new checkbox", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, termsVersion: "2026-09-06" }));
+  await renderPage();
+  const legalName = container.querySelector("input")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(legalName, "Unsaved Company Draft");
+    legalName.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(true);
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, requirements: { ...status.requirements, terms: false } }));
+  await act(async () => { window.dispatchEvent(new Event("focus")); });
+  expect(container.querySelector("input")!.value).toBe("Unsaved Company Draft");
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(false);
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("accept the current operator terms");
+
+  await act(async () => { container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].click(); });
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  const saved = fetchMock.mock.calls.find(call => call[1]?.method === "PATCH")!;
+  expect(JSON.parse(saved[1].body)).toMatchObject({ termsAccepted: true, termsVersion: OPERATOR_TERMS_VERSION, business: { legalName: "Unsaved Company Draft" } });
+});
+
+it("never treats an older pending save as acceptance of a newly refreshed terms version", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, termsVersion: "2026-09-06" }));
+  await renderPage();
+  let resolveSave!: (response: Response) => void;
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { resolveSave = resolve; }));
+  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ termsAccepted: true, termsVersion: "2026-09-06" });
+  fetchMock.mockResolvedValueOnce(Response.json({ ...status, requirements: { ...status.requirements, terms: false } }));
+  await act(async () => { window.dispatchEvent(new Event("pageshow")); });
+  await act(async () => { resolveSave(Response.json({ ...status, termsVersion: "2026-09-06" })); });
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].checked).toBe(false);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("operator terms changed");
+  expect(container.textContent).not.toContain("Business information saved");
 });

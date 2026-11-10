@@ -7,6 +7,8 @@ import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
+import { buildBestHotelsFaqs, hubTitleYear } from "@/lib/destination-faqs";
+import { buildHubListItem } from "@/lib/hub-structured-data";
 import {
   Star,
   MapPin,
@@ -44,8 +46,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const island = await getIslandBySlug(slug);
   if (!island) return { title: "Not Found" };
 
-  const title = `Best Hotels in ${island.name} (2026) — Top Stays & Accommodations`;
-  const description = `Browse and compare hotels, villas, resorts, guesthouses, and vacation rentals in ${island.name} on VakayGo's directory. Online bookings and payments are currently unavailable.`;
+  const title = `Best Hotels in ${island.name} (${hubTitleYear()}) — Top Stays & Accommodations`;
+  const description = `Browse and compare hotels, villas, resorts, guesthouses, and vacation rentals in ${island.name} on VakayGo. Booking options depend on each listing's current eligibility and available dates.`;
 
   return {
     title,
@@ -151,27 +153,6 @@ const amenityIcons: Record<string, typeof Wifi> = {
   "beach-access": Waves,
 };
 
-function getFaqs(name: string) {
-  return [
-    {
-      q: `What are the best hotels in ${name}?`,
-      a: `${name} offers a range of accommodations from luxury resorts to charming guesthouses and vacation rentals. Browse and compare stays in VakayGo's directory. Directory information may come from public sources; check ownership labels and confirm current prices, amenities, and availability with the business. Online bookings and payments through VakayGo are currently unavailable.`,
-    },
-    {
-      q: `How much do hotels cost in ${name}?`,
-      a: `Hotel prices in ${name} vary by season and property type. Budget guesthouses start around $50-80/night, mid-range hotels $100-200/night, and luxury resorts from $300+/night. Peak season (December-April) commands higher rates.`,
-    },
-    {
-      q: `What type of accommodation is best in ${name}?`,
-      a: `It depends on your travel style. Couples may prefer boutique hotels or villas, families enjoy resorts with amenities, and solo travelers often choose guesthouses or hostels. Compare directory listing details and confirm the property type and amenities with the business.`,
-    },
-    {
-      q: `Should I book a hotel or vacation rental in ${name}?`,
-      a: `Hotels offer convenience and services, while vacation rentals provide more space and a local feel. For longer stays, rentals often offer better value. VakayGo lists both options so you can compare directly.`,
-    },
-  ];
-}
-
 // ─── Page ───────────────────────────────────────────────────────
 export default async function BestHotelsPage({ params }: Props) {
   const { island: slug } = await params;
@@ -182,7 +163,7 @@ export default async function BestHotelsPage({ params }: Props) {
   const stayListings = await getTopListingsByType(island.id, "stay", 12);
   const stayCount = stats.typeCounts["stay"] || 0;
   const heroImg = heroImages[slug] || "/images/hero/caribbean-hero.jpg";
-  const faqs = getFaqs(island.name);
+  const faqs = buildBestHotelsFaqs({ name: island.name, slug });
 
   // Collect property types
   const propertyTypes = new Map<string, number>();
@@ -222,30 +203,9 @@ export default async function BestHotelsPage({ params }: Props) {
     itemListElement: stayListings.map((listing, idx) => ({
       "@type": "ListItem",
       position: idx + 1,
-      item: {
-        "@type": "LodgingBusiness",
-        name: listing.title,
-        url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-        address: {
-          "@type": "PostalAddress",
-          addressLocality: listing.parish || island.name,
-          addressCountry: island.country,
-        },
-        ...(listing.avgRating && parseFloat(listing.avgRating) > 0
-          ? {
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: listing.avgRating,
-                reviewCount: listing.reviewCount || 1,
-              },
-            }
-          : {}),
-        ...(getPriceRange(listing.priceAmount) !== "Varies"
-          ? {
-              priceRange: getPriceRange(listing.priceAmount),
-            }
-          : {}),
-      },
+      // Imported Google ratings and placeholder-derived price ranges are
+      // deliberately not marked up; see lib/hub-structured-data.ts.
+      item: buildHubListItem("LodgingBusiness", listing, island),
     })),
   };
 
@@ -307,8 +267,8 @@ export default async function BestHotelsPage({ params }: Props) {
             </h1>
             <p className="text-white/70 mt-3 max-w-2xl text-lg">
               Browse and compare {stayCount} directory stays, from beachfront
-              resorts to cozy villas. Online bookings and payments are currently
-              unavailable.
+              resorts to cozy villas. Booking options depend on each listing&apos;s
+              current eligibility and your selected dates and group size.
             </p>
           </div>
         </section>
@@ -670,8 +630,10 @@ export default async function BestHotelsPage({ params }: Props) {
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
               Discover local stays and compare directory listings for your trip.
-              Confirm current details with the business. Online bookings and
-              payments through VakayGo are currently unavailable.
+              Confirm current details with the business. Use only the booking
+              options shown on an eligible listing for your selected dates and
+              group size. Saving a listing or sending an inquiry does not create
+              a reservation.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Link

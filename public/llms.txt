@@ -1,38 +1,71 @@
-# VakayGo — Caribbean Travel & Direct Booking Platform
+# VakayGo — Travel Directory for the Caribbean, Latin America & the Mediterranean
 
-> VakayGo is an island travel platform connecting travelers directly with verified stays, tours, boat charters, dining, and local experiences across Grenada and the Caribbean.
+> VakayGo is a travel directory covering stays, tours, excursions, restaurants, transport, transfers, spas and local guides in 34 destinations across the Caribbean, Latin America and the Mediterranean. Online booking is available only on listings whose business has claimed the listing and completed setup; every other listing is information only.
 
-## Platform Overview
+## What VakayGo is
 - **Website:** https://vakaygo.com
-- **Headquarters & Primary Hub:** Grenada (Spice Isle of the Caribbean)
-- **Primary Regions:** Grenada, Carriacou, Petite Martinique, and expanding Caribbean destinations (Barbados, St. Lucia, Antigua).
-- **Core Mission:** Commission-friendly direct connections between travelers and verified local Caribbean hosts, operators, and guides.
+- **Coverage:** 34 destinations in three regions (listed below).
+- **Listing types:** stays, tours, excursions, dining, events, transport, transfers, VIP services, spas and local guides.
+- **Operated by:** Avmere, 240 Richmond St W, Toronto, ON M5V 1V6, Canada.
 
-## Travel Categories & Experiences
+## How listings and bookings work
+- Most listings are built from public information about a business. A listing says on its page whether the business has claimed it.
+- A business can claim its listing for free and manage its details.
+- A listing takes bookings on VakayGo only after its business has claimed it and completed setup. Each listing page shows whether it can be booked for the selected dates.
+- Where booking is available, travelers pay no VakayGo booking fee; the business pays a commission.
+- Ratings shown on listings that have not been claimed come from Google. VakayGo does not publish its own safety or quality ratings for destinations.
+- Prices, hours and availability can change. Confirm details with the business.
 
-### 1. Accommodations & Stays
-- **Villas & Residences:** Private luxury hillside villas with infinity pools and panoramic Caribbean Sea views.
-- **Beachfront Cottages & Apartments:** Walk-to-beach accommodations along Grand Anse Beach, Morne Rouge (BBC Beach), and Lance Aux Epines.
-- **Eco-Lodges & Boutique Stays:** Mountain retreats in rainforest settings near Grand Etang National Park.
+## Main pages
+- Home: https://vakaygo.com
+- All destinations: https://vakaygo.com/islands
+- Search listings: https://vakaygo.com/explore
+- Travel guides: https://vakaygo.com/guides
+- For businesses (claim a listing): https://vakaygo.com/for-businesses
+- Frequently asked questions: https://vakaygo.com/faq
+- About: https://vakaygo.com/about
+- Contact: https://vakaygo.com/contact
 
-### 2. Tours & Island Excursions
-- **Waterfalls & Rainforest Treks:** Guided excursions to Annandale Falls, Concord Falls, Seven Sisters Waterfalls, and Mount Qua Qua.
-- **Marine & Boat Charters:** Snorkeling at the world-renowned Molinere Underwater Sculpture Park, sunset catamaran sails, private yacht charters, and sport fishing.
-- **Spice & Heritage Tours:** Interactive tours of historic nutmeg processing stations (Gouyave), River Antoine Rum Distillery (oldest water-powered distillery in the Caribbean), and organic cocoa plantations.
+## Destinations
 
-### 3. Food, Dining & Nightlife
-- Traditional Grenadian "Oil Down" feasts, beachside fish fries at Gouyave, authentic roadside barbecues, and waterfront dining in St. George's and Prickly Bay.
+Each destination has a hub page, plus pages for things to do, hotels and restaurants.
 
-### 4. Island Transportation
-- Jeep rentals, 4x4 SUV hires for rugged island terrain, and airport pickup/transfer services from Maurice Bishop International Airport (GND).
+### Caribbean
+- Antigua & Barbuda: https://vakaygo.com/antigua · things to do: https://vakaygo.com/things-to-do-in-antigua · hotels: https://vakaygo.com/best-hotels-antigua · restaurants: https://vakaygo.com/best-restaurants-antigua
+- Aruba: https://vakaygo.com/aruba · things to do: https://vakaygo.com/things-to-do-in-aruba · hotels: https://vakaygo.com/best-hotels-aruba · restaurants: https://vakaygo.com/best-restaurants-aruba
+- The Bahamas: https://vakaygo.com/bahamas · things to do: https://vakaygo.com/things-to-do-in-bahamas · hotels: https://vakaygo.com/best-hotels-bahamas · restaurants: https://vakaygo.com/best-restaurants-bahamas
+- Barbados: https://vakaygo.com/barbados · things to do: https://vakaygo.com/things-to-do-in-barbados · hotels: https://vakaygo.com/best-hotels-barbados · restaurants: https://vakaygo.com/best-restaurants-barbados
+- Bonaire: https://vakaygo.com/bonaire · things to do: https://vakaygo.com/things-to-do-in-bonaire · hotels: https://vakaygo.com/best-hotels-bonaire · restaurants: https://vakaygo.com/best-restaurants-bonaire
+- British Virgin Islands: https://vakaygo.com/british-virgin-islands · things to do: https://vakaygo.com/things-to-do-in-british-virgin-islands · hotels: https://vakaygo.com/best-hotels-british-virgin-islands · restaurants: https://vakaygo.com/best-restaurants-british-virgin-islands
+- Cayman Islands: https://vakaygo.com/cayman-islands · things to do: https://vakaygo.com/things-to-do-in-cayman-islands · hotels: https://vakaygo.com/best-hotels-cayman-islands · restaurants: https://vakaygo.com/best-restaurants-cayman-islands
+- Curaçao: https://vakaygo.com/curacao · things to do: https://vakaygo.com/things-to-do-in-curacao · hotels: https://vakaygo.com/best-hotels-curacao · restaurants: https://vakaygo.com/best-restaurants-curacao
+- Dominica: https://vakaygo.com/dominica · things to do: https://vakaygo.com/things-to-do-in-dominica · hotels: https://vakaygo.com/best-hotels-dominica · restaurants: https://vakaygo.com/best-restaurants-dominica
+- Dominican Republic: https://vakaygo.com/dominican-republic · things to do: https://vakaygo.com/things-to-do-in-dominican-republic · hotels: https://vakaygo.com/best-hotels-dominican-republic · restaurants: https://vakaygo.com/best-restaurants-dominican-republic
+- Grenada: https://vakaygo.com/grenada · things to do: https://vakaygo.com/things-to-do-in-grenada · hotels: https://vakaygo.com/best-hotels-grenada · restaurants: https://vakaygo.com/best-restaurants-grenada
+- Guadeloupe: https://vakaygo.com/guadeloupe · things to do: https://vakaygo.com/things-to-do-in-guadeloupe · hotels: https://vakaygo.com/best-hotels-guadeloupe · restaurants: https://vakaygo.com/best-restaurants-guadeloupe
+- Jamaica: https://vakaygo.com/jamaica · things to do: https://vakaygo.com/things-to-do-in-jamaica · hotels: https://vakaygo.com/best-hotels-jamaica · restaurants: https://vakaygo.com/best-restaurants-jamaica
+- Martinique: https://vakaygo.com/martinique · things to do: https://vakaygo.com/things-to-do-in-martinique · hotels: https://vakaygo.com/best-hotels-martinique · restaurants: https://vakaygo.com/best-restaurants-martinique
+- Puerto Rico: https://vakaygo.com/puerto-rico · things to do: https://vakaygo.com/things-to-do-in-puerto-rico · hotels: https://vakaygo.com/best-hotels-puerto-rico · restaurants: https://vakaygo.com/best-restaurants-puerto-rico
+- St. Kitts & Nevis: https://vakaygo.com/st-kitts · things to do: https://vakaygo.com/things-to-do-in-st-kitts · hotels: https://vakaygo.com/best-hotels-st-kitts · restaurants: https://vakaygo.com/best-restaurants-st-kitts
+- St. Lucia: https://vakaygo.com/st-lucia · things to do: https://vakaygo.com/things-to-do-in-st-lucia · hotels: https://vakaygo.com/best-hotels-st-lucia · restaurants: https://vakaygo.com/best-restaurants-st-lucia
+- St. Vincent & the Grenadines: https://vakaygo.com/st-vincent · things to do: https://vakaygo.com/things-to-do-in-st-vincent · hotels: https://vakaygo.com/best-hotels-st-vincent · restaurants: https://vakaygo.com/best-restaurants-st-vincent
+- Trinidad & Tobago: https://vakaygo.com/trinidad-and-tobago · things to do: https://vakaygo.com/things-to-do-in-trinidad-and-tobago · hotels: https://vakaygo.com/best-hotels-trinidad-and-tobago · restaurants: https://vakaygo.com/best-restaurants-trinidad-and-tobago
+- Turks & Caicos: https://vakaygo.com/turks-and-caicos · things to do: https://vakaygo.com/things-to-do-in-turks-and-caicos · hotels: https://vakaygo.com/best-hotels-turks-and-caicos · restaurants: https://vakaygo.com/best-restaurants-turks-and-caicos
+- US Virgin Islands: https://vakaygo.com/us-virgin-islands · things to do: https://vakaygo.com/things-to-do-in-us-virgin-islands · hotels: https://vakaygo.com/best-hotels-us-virgin-islands · restaurants: https://vakaygo.com/best-restaurants-us-virgin-islands
 
-## For Hosts & Tour Operators
-- Verified local operators can list properties, excursions, and services directly on VakayGo.
-- Transparent direct customer communication and automated inquiry management.
+### Latin America
+- Ambergris Caye & Placencia (Belize): https://vakaygo.com/ambergris-caye · things to do: https://vakaygo.com/things-to-do-in-ambergris-caye · hotels: https://vakaygo.com/best-hotels-ambergris-caye · restaurants: https://vakaygo.com/best-restaurants-ambergris-caye
+- Cancún, Tulum & Riviera Maya (Mexico): https://vakaygo.com/cancun-riviera-maya · things to do: https://vakaygo.com/things-to-do-in-cancun-riviera-maya · hotels: https://vakaygo.com/best-hotels-cancun-riviera-maya · restaurants: https://vakaygo.com/best-restaurants-cancun-riviera-maya
+- Cartagena & Rosario Islands (Colombia): https://vakaygo.com/cartagena · things to do: https://vakaygo.com/things-to-do-in-cartagena · hotels: https://vakaygo.com/best-hotels-cartagena · restaurants: https://vakaygo.com/best-restaurants-cartagena
+- Guanacaste & Papagayo (Costa Rica): https://vakaygo.com/guanacaste · things to do: https://vakaygo.com/things-to-do-in-guanacaste · hotels: https://vakaygo.com/best-hotels-guanacaste · restaurants: https://vakaygo.com/best-restaurants-guanacaste
+- Los Cabos (Mexico): https://vakaygo.com/los-cabos · things to do: https://vakaygo.com/things-to-do-in-los-cabos · hotels: https://vakaygo.com/best-hotels-los-cabos · restaurants: https://vakaygo.com/best-restaurants-los-cabos
+- Medellín & Guatapé (Colombia): https://vakaygo.com/medellin · things to do: https://vakaygo.com/things-to-do-in-medellin · hotels: https://vakaygo.com/best-hotels-medellin · restaurants: https://vakaygo.com/best-restaurants-medellin
 
-## Useful Links
-- Main Platform: https://vakaygo.com
-- Explore Stays: https://vakaygo.com/stays
-- Island Tours & Experiences: https://vakaygo.com/tours
-- Destination Guide (Grenada): https://vakaygo.com/destinations/grenada
-- List a Property / Service: https://vakaygo.com/operator
+### Mediterranean
+- Amalfi Coast & Capri (Italy): https://vakaygo.com/amalfi-coast-capri · things to do: https://vakaygo.com/things-to-do-in-amalfi-coast-capri · hotels: https://vakaygo.com/best-hotels-amalfi-coast-capri · restaurants: https://vakaygo.com/best-restaurants-amalfi-coast-capri
+- Crete (Greece): https://vakaygo.com/crete · things to do: https://vakaygo.com/things-to-do-in-crete · hotels: https://vakaygo.com/best-hotels-crete · restaurants: https://vakaygo.com/best-restaurants-crete
+- Hvar, Split & Dalmatian Coast (Croatia): https://vakaygo.com/hvar-split · things to do: https://vakaygo.com/things-to-do-in-hvar-split · hotels: https://vakaygo.com/best-hotels-hvar-split · restaurants: https://vakaygo.com/best-restaurants-hvar-split
+- Ibiza & Formentera (Spain): https://vakaygo.com/ibiza · things to do: https://vakaygo.com/things-to-do-in-ibiza · hotels: https://vakaygo.com/best-hotels-ibiza · restaurants: https://vakaygo.com/best-restaurants-ibiza
+- Mallorca (Spain): https://vakaygo.com/mallorca · things to do: https://vakaygo.com/things-to-do-in-mallorca · hotels: https://vakaygo.com/best-hotels-mallorca · restaurants: https://vakaygo.com/best-restaurants-mallorca
+- Mykonos (Greece): https://vakaygo.com/mykonos · things to do: https://vakaygo.com/things-to-do-in-mykonos · hotels: https://vakaygo.com/best-hotels-mykonos · restaurants: https://vakaygo.com/best-restaurants-mykonos
+- Santorini (Greece): https://vakaygo.com/santorini · things to do: https://vakaygo.com/things-to-do-in-santorini · hotels: https://vakaygo.com/best-hotels-santorini · restaurants: https://vakaygo.com/best-restaurants-santorini

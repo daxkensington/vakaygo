@@ -4,7 +4,31 @@ import {
   filtersToSearchParams,
   isIndexableFilterSet,
   EXPLORE_PAGE_SIZE,
+  NO_EXPLORE_CAPABILITIES,
+  scopeHasOnlineBooking,
+  usableExploreFilters,
 } from "@/lib/listing-filters";
+
+describe("explore capabilities", () => {
+  const caps = { bookable: [{ island: "dominican-republic", type: "tour" }], amenityData: false, durationData: true };
+
+  it("offers no date or price control while nothing takes online bookings", () => {
+    expect(usableExploreFilters(NO_EXPLORE_CAPABILITIES, { island: null, type: "all" })).toEqual({ date: false, price: false, amenities: false, duration: false });
+  });
+
+  it("offers date and price only in a scope that contains a bookable listing", () => {
+    expect(scopeHasOnlineBooking(caps, {})).toBe(true);
+    expect(scopeHasOnlineBooking(caps, { island: "dominican-republic", type: "all" })).toBe(true);
+    expect(scopeHasOnlineBooking(caps, { island: "dominican-republic", type: "tour" })).toBe(true);
+    expect(scopeHasOnlineBooking(caps, { island: "dominican-republic", type: "stay" })).toBe(false);
+    expect(scopeHasOnlineBooking(caps, { island: "grenada", type: "tour" })).toBe(false);
+    expect(usableExploreFilters(caps, { island: "grenada", type: null })).toMatchObject({ date: false, price: false });
+  });
+
+  it("offers amenity and duration chips only when the catalogue has that data", () => {
+    expect(usableExploreFilters(caps, {})).toMatchObject({ amenities: false, duration: true });
+  });
+});
 
 describe("parseListingFilters", () => {
   it("returns defaults for an empty query", () => {

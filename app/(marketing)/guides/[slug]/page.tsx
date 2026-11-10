@@ -8,6 +8,7 @@ import { blogPosts, users, islands } from "@/drizzle/schema";
 import { eq, and, ne, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { buildGuideArticleJsonLd, guideBylineName } from "@/lib/guide-byline";
 
 // ISR: rebuilt in the background at most hourly, so new posts/listings
 // show up without a deploy.
@@ -62,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `https://vakaygo.com/guides/${slug}`,
       type: "article",
       publishedTime: post.publishedAt?.toISOString(),
-      authors: [post.authorName || "VakayGo"],
+      authors: [guideBylineName(post.authorName)],
       images: post.coverImage
         ? [{ url: post.coverImage, width: 1200, height: 630, alt: post.title }]
         : [],
@@ -93,6 +94,7 @@ export default async function GuidePage({ params }: Props) {
       status: blogPosts.status,
       publishedAt: blogPosts.publishedAt,
       createdAt: blogPosts.createdAt,
+      updatedAt: blogPosts.updatedAt,
       authorName: users.name,
       authorAvatar: users.avatarUrl,
       islandId: blogPosts.islandId,
@@ -133,26 +135,15 @@ export default async function GuidePage({ params }: Props) {
     .limit(3);
 
   // Article JSON-LD
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    description: post.excerpt || "",
-    image: post.coverImage || "",
-    datePublished: post.publishedAt?.toISOString(),
-    dateModified: post.createdAt?.toISOString(),
-    author: {
-      "@type": "Person",
-      name: post.authorName || "VakayGo",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "VakayGo",
-      url: "https://vakaygo.com",
-      logo: { "@type": "ImageObject", url: "https://vakaygo.com/logo.png" },
-    },
-    mainEntityOfPage: `https://vakaygo.com/guides/${slug}`,
-  };
+  const jsonLd = buildGuideArticleJsonLd({ ...post, slug });
+
+  // The seeded guides belong to a placeholder account; show the editorial
+  // byline instead of that account's name.
+  const displayPost = { ...post, authorName: guideBylineName(post.authorName) };
+  const displayRelated = related.map((item) => ({
+    ...item,
+    authorName: guideBylineName(item.authorName),
+  }));
 
   return (
     <>
@@ -162,7 +153,7 @@ export default async function GuidePage({ params }: Props) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
-        <BlogPostDetail post={post} related={related} />
+        <BlogPostDetail post={displayPost} related={displayRelated} />
       </main>
       <Footer />
     </>

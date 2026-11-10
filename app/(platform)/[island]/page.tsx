@@ -7,6 +7,10 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { Home, Compass, UtensilsCrossed, Music, Car, Users, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import {
+  DEFAULT_DESTINATION_ESSENTIALS,
+  getDestinationEssentials,
+} from "@/lib/destination-facts";
+import {
   getIslandBySlug,
   getIslandStats,
   getTopListingsForIsland,
@@ -76,90 +80,42 @@ const heroImages: Record<string, string> = {
 };
 const defaultHero = "/images/hero/caribbean-hero.jpg";
 
-const islandEssentials: Record<
-  string,
-  { currency: string; language: string; bestTime: string; airport: string; driving: string }
-> = {
-  grenada: { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "GND (Maurice Bishop)", driving: "Left side" },
-  barbados: { currency: "BDS$ (BBD) / USD", language: "English", bestTime: "Dec – Apr", airport: "BGI (Grantley Adams)", driving: "Left side" },
-  jamaica: { currency: "J$ (JMD) / USD", language: "English / Patois", bestTime: "Nov – Apr", airport: "MBJ / KIN", driving: "Left side" },
-  "st-lucia": { currency: "EC$ (XCD) / USD", language: "English / Kwéyòl", bestTime: "Dec – May", airport: "UVF (Hewanorra)", driving: "Left side" },
-  "trinidad-and-tobago": { currency: "TT$ (TTD) / USD", language: "English", bestTime: "Jan – May", airport: "POS / TAB", driving: "Left side" },
-  bahamas: { currency: "B$ (BSD) / USD", language: "English", bestTime: "Nov – Apr", airport: "NAS (Lynden Pindling)", driving: "Left side" },
-  antigua: { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – Apr", airport: "ANU (V.C. Bird)", driving: "Left side" },
-  aruba: { currency: "AWG / USD", language: "Dutch / Papiamento / EN", bestTime: "Year-round", airport: "AUA (Queen Beatrix)", driving: "Right side" },
-  curacao: { currency: "ANG / USD", language: "Dutch / Papiamento / EN", bestTime: "Year-round", airport: "CUR (Hato Intl)", driving: "Right side" },
-  "dominican-republic": { currency: "RD$ (DOP) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "PUJ / SDQ", driving: "Right side" },
-  "turks-and-caicos": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "PLS (Providenciales)", driving: "Left side" },
-  "cayman-islands": { currency: "CI$ (KYD) / USD", language: "English", bestTime: "Nov – Apr", airport: "GCM (Owen Roberts)", driving: "Left side" },
-  "puerto-rico": { currency: "USD ($)", language: "Spanish / English", bestTime: "Dec – Apr", airport: "SJU (Luis Muñoz Marín)", driving: "Right side" },
-  guadeloupe: { currency: "EUR (€)", language: "French / Creole", bestTime: "Dec – May", airport: "PTP (Pointe-à-Pitre)", driving: "Right side" },
-  martinique: { currency: "EUR (€)", language: "French / Creole", bestTime: "Dec – May", airport: "FDF (Aimé Césaire)", driving: "Right side" },
-  "us-virgin-islands": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "STT (Cyril E. King)", driving: "Left side" },
-  "british-virgin-islands": { currency: "USD ($)", language: "English", bestTime: "Dec – May", airport: "EIS (Terrance B. Lettsome)", driving: "Left side" },
-  bonaire: { currency: "USD ($)", language: "Dutch / Papiamentu / EN", bestTime: "Year-round", airport: "BON (Flamingo Intl)", driving: "Right side" },
-  "st-vincent": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SVD (Argyle Intl)", driving: "Left side" },
-  "st-kitts": { currency: "EC$ (XCD) / USD", language: "English", bestTime: "Dec – May", airport: "SKB (Robert L. Bradshaw)", driving: "Left side" },
-  dominica: { currency: "EC$ (XCD) / USD", language: "English / Kwéyòl", bestTime: "Dec – May", airport: "DOM (Douglas-Charles)", driving: "Left side" },
-  // Wave 2A — Latin America
-  cartagena: { currency: "COP ($) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "CTG (Rafael Núñez)", driving: "Right side" },
-  medellin: { currency: "COP ($) / USD", language: "Spanish / English", bestTime: "Year-round", airport: "MDE (José María Córdova)", driving: "Right side" },
-  "cancun-riviera-maya": { currency: "MXN ($) / USD", language: "Spanish / English", bestTime: "Nov – Apr", airport: "CUN / TQO", driving: "Right side" },
-  "los-cabos": { currency: "MXN ($) / USD", language: "Spanish / English", bestTime: "Nov – May", airport: "SJD (Los Cabos Intl)", driving: "Right side" },
-  guanacaste: { currency: "CRC (₡) / USD", language: "Spanish / English", bestTime: "Dec – Apr", airport: "LIR (Guanacaste Intl)", driving: "Right side" },
-  "ambergris-caye": { currency: "BZD ($) / USD", language: "English / Spanish", bestTime: "Nov – May", airport: "BZE / SPR", driving: "Right side (Golf Carts)" },
-  // Wave 2B — Mediterranean
-  santorini: { currency: "EUR (€)", language: "Greek / English", bestTime: "May – Oct", airport: "JTR (Santorini Intl)", driving: "Right side" },
-  mykonos: { currency: "EUR (€)", language: "Greek / English", bestTime: "May – Oct", airport: "JMK (Mykonos Intl)", driving: "Right side" },
-  crete: { currency: "EUR (€)", language: "Greek / English", bestTime: "Apr – Oct", airport: "HER / CHQ", driving: "Right side" },
-  ibiza: { currency: "EUR (€)", language: "Spanish / Catalan / EN", bestTime: "May – Oct", airport: "IBZ (Ibiza Airport)", driving: "Right side" },
-  mallorca: { currency: "EUR (€)", language: "Spanish / Catalan / EN", bestTime: "Apr – Oct", airport: "PMI (Palma de Mallorca)", driving: "Right side" },
-  "amalfi-coast-capri": { currency: "EUR (€)", language: "Italian / English", bestTime: "May – Oct", airport: "NAP (Naples Intl)", driving: "Right side" },
-  "hvar-split": { currency: "EUR (€)", language: "Croatian / English", bestTime: "May – Oct", airport: "SPU (Split Airport)", driving: "Right side" },
-};
-const defaultEssentials = {
-  currency: "USD & Local Currency",
-  language: "English / Local",
-  bestTime: "Dec – May",
-  airport: "International Airport",
-  driving: "Local permit / Check side",
-};
 
 const islandGuideSlugs: Record<string, string> = {
   grenada: "ultimate-guide-to-grenada-the-spice-isle",
-  barbados: "best-beaches-in-barbados-a-locals-guide",
-  "trinidad-and-tobago": "trinidad-carnival-2026-everything-you-need-to-know",
-  "st-lucia": "island-hopping-in-the-eastern-caribbean-a-7-day-itinerary",
-  jamaica: "jamaica-travel-guide-montego-bay-negril-ocho-rios",
-  bahamas: "bahamas-travel-guide-nassau-exumas-harbour-island",
-  aruba: "aruba-travel-guide-eagle-beach-palm-beach-catamaran-cruises",
-  curacao: "curacao-travel-guide-willemstad-shore-diving-hidden-coves",
-  "dominican-republic": "dominican-republic-travel-guide-punta-cana-samana-santo-domingo",
-  antigua: "antigua-travel-guide-365-beaches-english-harbour-sailing",
-  "st-vincent": "st-vincent-and-the-grenadines-travel-guide-bequia-mustique-tobago-cays",
-  dominica: "dominica-travel-guide-the-nature-island-boiling-lake-whale-watching",
-  "turks-and-caicos": "turks-and-caicos-travel-guide-grace-bay-chalk-sound-private-charters",
-  "cayman-islands": "cayman-islands-travel-guide-seven-mile-beach-stingray-city-diving",
-  bonaire: "bonaire-travel-guide-shore-diving-capital-kralendijk-klein-bonaire",
-  "st-kitts": "st-kitts-and-nevis-travel-guide-brimstone-hill-pinneys-beach",
-  martinique: "martinique-travel-guide-french-caribbean-rum-mount-pelee-beaches",
-  guadeloupe: "guadeloupe-travel-guide-grande-terre-basse-terre-cousteau-reserve",
-  "us-virgin-islands": "us-virgin-islands-travel-guide-st-thomas-st-john-trunk-bay",
-  "british-virgin-islands": "british-virgin-islands-travel-guide-tortola-virgin-gorda-sailing",
-  "puerto-rico": "puerto-rico-travel-guide-old-san-juan-el-yunque-bioluminescent-bays",
-  cartagena: "cartagena-travel-guide-walled-city-rosario-islands-rooftop-dining",
-  medellin: "medellin-travel-guide-el-poblado-guatape-eternal-spring",
-  "cancun-riviera-maya": "cancun-and-riviera-maya-travel-guide-tulum-cenotes-isla-mujeres",
-  "los-cabos": "los-cabos-travel-guide-el-arco-whale-watching-baja-dining",
-  guanacaste: "guanacaste-costa-rica-travel-guide-tamarindo-papagayo-surf-eco-luxury",
-  "ambergris-caye": "ambergris-caye-belize-travel-guide-hol-chan-great-blue-hole-san-pedro",
-  santorini: "santorini-travel-guide-oia-caldera-sunsets-catamaran-cruises",
-  mykonos: "mykonos-travel-guide-beach-clubs-little-venice-delos-yachts",
-  crete: "crete-travel-guide-chania-elafonisi-balos-lagoon-minoan-palaces",
-  ibiza: "ibiza-travel-guide-dalt-vila-formentera-yachts-hidden-calas",
-  mallorca: "mallorca-travel-guide-palma-tramuntana-deia-private-boat-charters",
-  "amalfi-coast-capri": "amalfi-coast-and-capri-travel-guide-positano-ravello-private-gozzo-boats",
-  "hvar-split": "hvar-and-split-travel-guide-dalmatian-coast-pakleni-islands-blue-cave",
+  barbados: "barbados-travel-guide-sun-rum-and-culture",
+  "trinidad-and-tobago": "trinidad-and-tobago-travel-guide-best-stays-tours-and-dining",
+  "st-lucia": "st-lucia-travel-guide-best-stays-tours-and-dining",
+  jamaica: "jamaica-beyond-the-resort-authentic-local-experiences",
+  bahamas: "bahamas-travel-guide-best-stays-tours-and-dining",
+  aruba: "aruba-travel-guide-best-stays-tours-and-dining",
+  curacao: "curacao-travel-guide-best-stays-tours-and-dining",
+  "dominican-republic": "dominican-republic-travel-guide-best-stays-tours-and-dining",
+  antigua: "antigua-travel-guide-best-stays-tours-and-dining",
+  "st-vincent": "st-vincent-travel-guide-best-stays-tours-and-dining",
+  dominica: "dominica-travel-guide-best-stays-tours-and-dining",
+  "turks-and-caicos": "turks-and-caicos-travel-guide-best-stays-tours-and-dining",
+  "cayman-islands": "cayman-islands-travel-guide-best-stays-tours-and-dining",
+  bonaire: "bonaire-travel-guide-best-stays-tours-and-dining",
+  "st-kitts": "st-kitts-travel-guide-best-stays-tours-and-dining",
+  martinique: "martinique-travel-guide-best-stays-tours-and-dining",
+  guadeloupe: "guadeloupe-travel-guide-best-stays-tours-and-dining",
+  "us-virgin-islands": "us-virgin-islands-travel-guide-best-stays-tours-and-dining",
+  "british-virgin-islands": "british-virgin-islands-travel-guide-best-stays-tours-and-dining",
+  "puerto-rico": "puerto-rico-travel-guide-best-stays-tours-and-dining",
+  cartagena: "cartagena-travel-guide-best-stays-tours-and-dining",
+  medellin: "medellin-travel-guide-best-stays-tours-and-dining",
+  "cancun-riviera-maya": "cancun-riviera-maya-travel-guide-best-stays-tours-and-dining",
+  "los-cabos": "los-cabos-travel-guide-best-stays-tours-and-dining",
+  guanacaste: "guanacaste-travel-guide-best-stays-tours-and-dining",
+  "ambergris-caye": "ambergris-caye-travel-guide-best-stays-tours-and-dining",
+  santorini: "santorini-travel-guide-best-stays-tours-and-dining",
+  mykonos: "mykonos-travel-guide-best-stays-tours-and-dining",
+  crete: "crete-travel-guide-best-stays-tours-and-dining",
+  ibiza: "ibiza-travel-guide-best-stays-tours-and-dining",
+  mallorca: "mallorca-travel-guide-best-stays-tours-and-dining",
+  "amalfi-coast-capri": "amalfi-coast-capri-travel-guide-best-stays-tours-and-dining",
+  "hvar-split": "hvar-split-travel-guide-best-stays-tours-and-dining",
 };
 
 type Props = { params: Promise<{ island: string }> };
@@ -178,7 +134,7 @@ export default async function IslandPage({ params }: Props) {
   ]);
 
   const heroImg = heroImages[islandSlug] || defaultHero;
-  const essentials = islandEssentials[islandSlug] || defaultEssentials;
+  const essentials = getDestinationEssentials(islandSlug) || DEFAULT_DESTINATION_ESSENTIALS;
   const guideSlug = islandGuideSlugs[islandSlug];
 
   return (
@@ -381,6 +337,7 @@ export default async function IslandPage({ params }: Props) {
                 image: l.image,
                 parish: l.parish,
                 priceAmount: l.priceAmount,
+                priceCurrency: l.priceCurrency,
                 priceUnit: l.priceUnit,
                 avgRating: l.avgRating,
               }))}
