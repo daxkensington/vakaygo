@@ -269,6 +269,24 @@ export function ListingDetailClient({
         type: img.type ?? undefined,
       }))
     : [{ id: "placeholder", url: "", alt: listing.title as string | null }];
+  const mapPair =
+    listing.meetingPointLat && listing.meetingPointLng
+      ? {
+          lat: listing.meetingPointLat,
+          lng: listing.meetingPointLng,
+          title: "Meeting Point",
+        }
+      : listing.latitude && listing.longitude
+        ? {
+            lat: listing.latitude,
+            lng: listing.longitude,
+            title: "Location",
+          }
+        : null;
+  const mapLat = mapPair ? parseFloat(mapPair.lat) : Number.NaN;
+  const mapLng = mapPair ? parseFloat(mapPair.lng) : Number.NaN;
+  const showMap =
+    mapPair !== null && Number.isFinite(mapLat) && Number.isFinite(mapLng);
 
   return (
     <>
@@ -587,12 +605,11 @@ export function ListingDetailClient({
               <WhatsIncluded typeData={listing.typeData} listingType={listing.type} />
 
               {/* Interactive Location / Meeting Point Map */}
-              {((listing.meetingPointLat && listing.meetingPointLng) ||
-                (listing.latitude && listing.longitude)) && (
+              {showMap && mapPair && (
                 <MeetingPointMap
-                  lat={parseFloat((listing.meetingPointLat || listing.latitude)!)}
-                  lng={parseFloat((listing.meetingPointLng || listing.longitude)!)}
-                  title={listing.meetingPointLat && listing.meetingPointLng ? "Meeting Point" : "Location"}
+                  lat={mapLat}
+                  lng={mapLng}
+                  title={mapPair.title}
                   note={
                     listing.meetingPointNote ||
                     listing.address ||

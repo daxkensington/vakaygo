@@ -222,6 +222,8 @@ export async function getOnboardingStatus(listingId: string, operatorId: string,
     bookingsEnabled: process.env.BOOKINGS_ENABLED === "true" && ctx.launch_enabled && deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries),
     business: { legalName: n?.business_legal_name || "", country: n?.business_country || "", address: n?.business_address || "", representativeName: n?.representative_name || "" },
     termsVersion: OPERATOR_TERMS_VERSION,
+    // The version this business last accepted, which may be an earlier one; `requirements.terms` says whether it is current.
+    acceptedTermsVersion: n?.terms_accepted_at && n.terms_version ? n.terms_version : null,
     allowedPaymentCountries: deploymentMatchesConfiguration(ctx.config_environment, ctx.config_platform, ctx.config_countries)
       ? [...new Set(allowedCountries())] : [],
     stripe: { connected: !!n?.stripe_account_id, chargesEnabled: n?.charges_enabled || false, payoutsEnabled: n?.payouts_enabled || false,

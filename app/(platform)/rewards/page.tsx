@@ -123,6 +123,8 @@ function RewardsAccount() {
   const [referralAttempt, setReferralAttempt] = useState(0);
   const [loyaltyRead, setLoyaltyRead] = useState<LoyaltyRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
   const [referralRead, setReferralRead] = useState<ReferralRead>({ filter: "all", attempt: 0, result: { status: "loading" } });
+  const [nextPageStatus, setNextPageStatus] = useState<"idle" | "loading" | "error">("idle");
+  const nextPageRequest = useRef<AbortController | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const active = useRef(true);
@@ -140,6 +142,9 @@ function RewardsAccount() {
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
+    nextPageRequest.current?.abort();
+    nextPageRequest.current = null;
+    setNextPageStatus("idle");
     setLoyaltyRead({ filter, attempt: loyaltyAttempt, result: { status: "loading" } });
     async function fetchLoyalty() {
       try {
@@ -154,7 +159,12 @@ function RewardsAccount() {
       }
     }
     void fetchLoyalty();
-    return () => { current = false; controller.abort(); };
+    return () => {
+      current = false;
+      controller.abort();
+      nextPageRequest.current?.abort();
+      nextPageRequest.current = null;
+    };
   }, [filter, loyaltyAttempt]);
 
   useEffect(() => {
@@ -184,6 +194,43 @@ function RewardsAccount() {
     ? referralRead.result : { status: "loading" };
   const loyalty = loyaltyResult.status === "success" ? loyaltyResult.data : null;
   const referrals = referralResult.status === "success" ? referralResult.data : null;
+
+  async function loadMoreHistory() {
+    if (!active.current || !loyalty?.hasMore || nextPageRequest.current) return;
+    const requestedRead = loyaltyRead;
+    const controller = new AbortController();
+    nextPageRequest.current = controller;
+    setNextPageStatus("loading");
+    try {
+      const response = await fetch(`/api/loyalty?filter=${filter}&page=${loyalty.page + 1}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("History page read failed");
+      const data: LoyaltyData = await response.json();
+      if (active.current && !controller.signal.aborted) {
+        setLoyaltyRead(prev => prev === requestedRead && prev.result.status === "success"
+          ? {
+              ...prev,
+              result: {
+                status: "success",
+                data: {
+                  ...prev.result.data,
+                  transactions: [...prev.result.data.transactions, ...data.transactions],
+                  page: data.page,
+                  hasMore: data.hasMore,
+                },
+              },
+            }
+          : prev);
+        setNextPageStatus("idle");
+      }
+    } catch {
+      if (active.current && !controller.signal.aborted) setNextPageStatus("error");
+    } finally {
+      if (nextPageRequest.current === controller) nextPageRequest.current = null;
+    }
+  }
 
   async function generateCode() {
     if (!active.current || !referrals || generatingCode) return;
@@ -354,6 +401,22 @@ function RewardsAccount() {
                     </div>
                   )}
                 </div>
+                {loyalty?.hasMore && (
+                  <div className="p-6 text-sm text-navy-700">
+                    {nextPageStatus === "error" && (
+                      <p role="alert" className="mb-3">Unable to load more history. Please try again.</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={loadMoreHistory}
+                      disabled={nextPageStatus === "loading"}
+                      className="rounded-lg bg-gold-700 px-4 py-2 font-semibold text-white hover:bg-gold-800 disabled:opacity-60"
+                    >
+                      {nextPageStatus === "loading" ? "Loading more history…" : nextPageStatus === "error" ? "Retry loading more history" : "Load more"}
+                    </button>
+                    {nextPageStatus === "loading" && <p role="status" className="sr-only">Loading more history</p>}
+                  </div>
+                )}
               </div>
 
               {/* ─── TIER LADDER ────────────────────────────── */}

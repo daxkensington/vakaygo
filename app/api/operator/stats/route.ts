@@ -7,7 +7,7 @@ import { eq, sql, desc, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { requireOperator } from "@/server/admin-auth";
 import { getOnboardingStatus } from "@/server/business-onboarding";
-import { completedSteps, describeNextStep, describeWaiting, nextOnboardingStep, ONBOARDING_CHECKLIST } from "@/lib/onboarding-nudges";
+import { agreementContext, completedSteps, describeNextStep, describeWaiting, nextOnboardingStep, ONBOARDING_CHECKLIST } from "@/lib/onboarding-nudges";
 
 type OnboardingTask = {
   listingId: string;
@@ -39,7 +39,7 @@ async function onboardingTasks(userId: string): Promise<OnboardingTask[]> {
   for (const row of rows) {
     try {
       const status = await getOnboardingStatus(row.id, userId);
-      const directReady = status.payoutProfile?.status === "verified" && status.payoutProfile.w8benCertified === true && !status.payoutProfile.revoked;
+      const directReady = status.payoutProfile?.status === "verified" && status.payoutProfile.w8benCertified === true && !status.payoutProfile.revoked && !status.stripe.connected;
       const requirements = { ...status.requirements, payments: status.requirements.payments || directReady };
       const step = nextOnboardingStep({
         requirements,
@@ -56,7 +56,10 @@ async function onboardingTasks(userId: string): Promise<OnboardingTask[]> {
         islandSlug: row.island_slug,
         completed: completedSteps(requirements),
         total: ONBOARDING_CHECKLIST.length,
-        next: describeNextStep(step, { listingId: row.id, stripeConnected: status.stripe.connected, listingGaps: status.listingGaps }),
+        next: describeNextStep(step, {
+          listingId: row.id, stripeConnected: status.stripe.connected, listingGaps: status.listingGaps,
+          agreement: agreementContext(requirements, status.acceptedTermsVersion, status.termsVersion),
+        }),
         waiting: describeWaiting(step),
       });
     } catch (error) {
