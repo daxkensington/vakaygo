@@ -57,3 +57,6 @@ a11y-failures.mjs
 
 scripts/_*
 
+
+# listing data repair plans and backups (scripts/repair/)
+/repair-output/

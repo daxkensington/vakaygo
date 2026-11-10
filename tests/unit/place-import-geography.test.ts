@@ -59,6 +59,8 @@ async function runImporter(file: string, name: string, latitude: number | null, 
     "../drizzle/schema": { islands: { name: "islands" }, listings: { name: "listings" }, users: { name: "users" } },
     "drizzle-orm": { eq: () => ({}), ne: () => ({}) },
     "./lib/place-geography": geography,
+    // Shared-place guard (scripts/lib/place-id-guard.ts); no listing holds the fixture's place ID.
+    "./lib/place-id-guard": { placeIdTaken: async () => false },
   };
   const loaded = { exports: {} as Record<string, unknown> };
   runInNewContext(`(function(require,module,exports){${javascript}\n})`, {

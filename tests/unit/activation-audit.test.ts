@@ -95,7 +95,7 @@ describe("agreement update stage", () => {
     expect(migration).toContain("'business_details','agreement_update','listing_setup','payout_setup','payout_rejected','activate','admin_review'");
     expect(migration).toContain(`ADD COLUMN "signin_used_at" timestamp with time zone`);
     expect(read("drizzle/schema.ts")).toContain("'business_details','agreement_update','listing_setup'");
-    expect(JSON.parse(read("drizzle/migrations/meta/_journal.json")).entries.at(-1).tag).toBe("0022_activation_reminders");
+    expect(JSON.parse(read("drizzle/migrations/meta/_journal.json")).entries.map((entry: { tag: string }) => entry.tag)).toContain("0022_activation_reminders");
   });
 });
 

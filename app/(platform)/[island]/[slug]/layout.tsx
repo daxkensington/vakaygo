@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { resolveListingRedirect } from "@/server/listing-redirects";
 import { getListingForSeo } from "@/server/seo-queries";
 
 type Props = {
@@ -106,6 +107,21 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
 export default async function ListingLayout({ children, params }: Props) {
   const { island, slug } = await params;
   const listing = await getListingForSeo(island, slug);
-  if (!listing) notFound();
+  if (!listing) {
+    await redirectOrNotFound(island, slug);
+  }
   return children;
+}
+
+/**
+ * A URL with no public listing: a merged duplicate or moved listing redirects
+ * permanently to where it lives now, a paused listing temporarily to its
+ * destination, anything else is a 404. Called from the layout AND the page,
+ * because a layout redirect does not stop the page from rendering.
+ */
+async function redirectOrNotFound(island: string, slug: string): Promise<never> {
+  const target = await resolveListingRedirect(island, slug);
+  if (target?.permanent) permanentRedirect(target.location);
+  if (target) redirect(target.location);
+  notFound();
 }
