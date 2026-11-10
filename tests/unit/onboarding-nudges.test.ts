@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
-  adminReviewDue, completedSteps, decideNudge, describeNextStep, describeWaiting, listingGapsFromFlags, nextOnboardingStep, onlyDatesMissing, snapshotFromOnboardingRow,
+  adminReviewDue, agreementContext, agreementVersionDate, completedSteps, decideNudge, describeNextStep, describeWaiting, listingGapsFromFlags, nextOnboardingStep, onlyDatesMissing, snapshotFromOnboardingRow,
   NUDGE_FIRST_AFTER_MS, NUDGE_MAX_PER_STAGE, NUDGE_MIN_GAP_MS, NUDGE_OPERATOR_GAP_MS, NUDGE_REPEAT_AFTER_MS,
   ADMIN_REVIEW_REMIND_AFTER_MS, ADMIN_REVIEW_REPEAT_MS,
   type OnboardingRowLike, type OnboardingSnapshot,
@@ -118,6 +118,36 @@ describe("describeNextStep", () => {
     expect(describeNextStep({ kind: "done" }, { listingId: id, stripeConnected: false })).toBeNull();
     expect(describeWaiting({ kind: "waiting", on: "payout_review" })).toMatch(/with our team/);
     expect(describeWaiting({ kind: "stage", stage: "activate" })).toBeNull();
+  });
+  it("asks only for the agreement when the company details are already on file", () => {
+    const step = { kind: "stage" as const, stage: "business_details" as const };
+    const done = { business: true, representative: true, terms: false };
+    // Accepted the September version; the agreement has since been revised.
+    const updated = describeNextStep(step, { listingId: id, stripeConnected: false, agreement: agreementContext(done, "2026-09-06", "2026-10-27") });
+    expect(updated?.title).toBe("Accept the updated operator agreement");
+    expect(updated?.detail).toContain("on October 27, 2026");
+    expect(updated?.detail).toContain("Your company details are saved");
+    expect(updated?.detail).not.toMatch(/legal name|registered address/);
+    expect(updated?.href).toBe(`/operator/onboarding/${id}`);
+    // Details saved, agreement never accepted: no claim that anything was "updated".
+    const first = describeNextStep(step, { listingId: id, stripeConnected: false, agreement: agreementContext(done, null, "2026-10-27") });
+    expect(first?.title).toBe("Accept the operator agreement");
+    expect(first?.detail).not.toMatch(/updated/);
+    // Company details still missing: the full company-details copy, whatever was accepted before.
+    const incomplete = describeNextStep(step, { listingId: id, stripeConnected: false, agreement: agreementContext({ business: false, representative: true, terms: false }, "2026-09-06", "2026-10-27") });
+    expect(incomplete?.title).toBe("Finish your company details");
+    // A version that is not a date is never printed as one.
+    const undated = describeNextStep(step, { listingId: id, stripeConnected: false, agreement: agreementContext(done, "v1", "v2") });
+    expect(undated?.detail).toContain("We updated the operator agreement, and");
+  });
+  it("reads the agreement state from the requirements and the accepted version", () => {
+    expect(agreementContext({ business: true, representative: true, terms: false }, "2026-09-06", "2026-10-27")).toEqual({ onlyAgreementMissing: true, acceptedEarlierVersion: true, currentVersion: "2026-10-27" });
+    expect(agreementContext({ business: true, representative: true, terms: true }, "2026-10-27", "2026-10-27")).toMatchObject({ onlyAgreementMissing: false, acceptedEarlierVersion: false });
+    expect(agreementContext({ business: true, representative: false, terms: false }, " ", "2026-10-27")).toMatchObject({ onlyAgreementMissing: false, acceptedEarlierVersion: false });
+    expect(agreementVersionDate("2026-10-27")).toBe("October 27, 2026");
+    expect(agreementVersionDate("2026-13-01")).toBeNull();
+    expect(agreementVersionDate("draft-3")).toBeNull();
+    expect(agreementVersionDate(null)).toBeNull();
   });
   it("escapes the listing id inside links", () => {
     expect(describeNextStep({ kind: "stage", stage: "payout_setup" }, { listingId: "a b&c", stripeConnected: false })?.href).toBe("/operator/payouts?listingId=a%20b%26c");

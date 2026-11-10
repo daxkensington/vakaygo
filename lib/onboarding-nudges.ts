@@ -152,7 +152,47 @@ export function onlyDatesMissing(gaps: ListingGaps | null | undefined): boolean 
   return !!gaps && gaps.openDates && !gaps.price && !gaps.capacity && !gaps.policy;
 }
 
-export interface NextStepContext { listingId: string; stripeConnected: boolean; listingGaps?: ListingGaps | null }
+/**
+ * What is open inside the company-details step. When the company and its
+ * representative are on file and only the agreement is missing, asking for
+ * "company details" again sends the operator looking for something they
+ * already did; say what is actually needed.
+ */
+export interface AgreementContext {
+  /** Company and representative are complete; only the agreement is open. */
+  onlyAgreementMissing: boolean;
+  /** The operator accepted an earlier version, so this is a re-acceptance. */
+  acceptedEarlierVersion: boolean;
+  /** Current agreement version; a `YYYY-MM-DD` version is shown as its date. */
+  currentVersion?: string | null;
+}
+
+export function agreementContext(
+  requirements: Pick<OnboardingRequirements, "business" | "representative" | "terms">,
+  acceptedVersion: string | null | undefined,
+  currentVersion: string,
+): AgreementContext {
+  const accepted = typeof acceptedVersion === "string" ? acceptedVersion.trim() : "";
+  return {
+    onlyAgreementMissing: requirements.business === true && requirements.representative === true && requirements.terms !== true,
+    acceptedEarlierVersion: accepted.length > 0 && accepted !== currentVersion,
+    currentVersion,
+  };
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "2026-10-27" → "October 27, 2026"; anything else → null. No Date parsing, so no time-zone drift. */
+export function agreementVersionDate(version: string | null | undefined): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(version || "");
+  if (!match) return null;
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${MONTHS[month - 1]} ${day}, ${match[1]}`;
+}
+
+export interface NextStepContext { listingId: string; stripeConnected: boolean; listingGaps?: ListingGaps | null; agreement?: AgreementContext | null }
 
 /** Copy and link for a stage. `null` for waiting/done/blocked — nothing for the operator to do. */
 export function describeNextStep(step: OnboardingNextStep, ctx: NextStepContext): NextStepContent | null {
@@ -160,6 +200,23 @@ export function describeNextStep(step: OnboardingNextStep, ctx: NextStepContext)
   const id = encodeURIComponent(ctx.listingId);
   switch (step.stage) {
     case "business_details":
+      if (ctx.agreement?.onlyAgreementMissing) {
+        const dated = agreementVersionDate(ctx.agreement.currentVersion);
+        if (ctx.agreement.acceptedEarlierVersion) {
+          return {
+            title: "Accept the updated operator agreement",
+            detail: `We updated the operator agreement${dated ? ` on ${dated}` : ""}, and an earlier acceptance does not carry over to the new version. Your company details are saved; nothing needs retyping. Read the new version, tick the acceptance box and save. It takes about a minute, and your listing cannot open for bookings until it is done.`,
+            actionLabel: "Review and accept",
+            href: `/operator/onboarding/${id}`,
+          };
+        }
+        return {
+          title: "Accept the operator agreement",
+          detail: "Your company details are saved. The one thing left on this step is to read the operator agreement, tick the acceptance box and save. It takes about a minute.",
+          actionLabel: "Review and accept",
+          href: `/operator/onboarding/${id}`,
+        };
+      }
       return {
         title: "Finish your company details",
         detail: "Add your company's legal name, registered address and an authorized representative, then accept the operator terms. It takes about three minutes.",
