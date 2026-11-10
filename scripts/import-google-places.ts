@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { placeSearchArea, placeWithinSearchArea } from "./lib/place-geography";
+import { placeIdTaken } from "./lib/place-id-guard";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
@@ -233,7 +234,7 @@ async function main() {
         .where(eq(listings.slug, slug))
         .limit(1);
 
-      if (existing.length > 0) {
+      if (existing.length > 0 || await placeIdTaken(db, place.place_id, grenada.id)) {
         skipped++;
         continue;
       }

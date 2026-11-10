@@ -1198,6 +1198,23 @@ export const listingTrustedContacts = pgTable("listing_trusted_contacts", {
   // Claims look up every listing that shares a trusted phone (lib/claim-contact-policy.ts).
   index("listing_trusted_contacts_phone_idx").on(t.phone)]);
 
+/**
+ * Old listing URLs kept alive after a data repair (migration 0024): a paused
+ * duplicate points at the listing it duplicated, a moved listing at itself in
+ * its new destination. Read by server/listing-redirects.ts.
+ */
+export const listingSlugRedirects = pgTable("listing_slug_redirects", {
+  islandId: integer("island_id").notNull().references(() => islands.id, { onDelete: "cascade" }),
+  slug: varchar("slug", { length: 128 }).notNull(),
+  targetListingId: uuid("target_listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 32 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  primaryKey({ name: "listing_slug_redirects_pk", columns: [t.islandId, t.slug] }),
+  index("listing_slug_redirects_target_idx").on(t.targetListingId),
+  check("listing_slug_redirects_reason_check", sql.raw("reason IN ('duplicate','moved')")),
+]);
+
 export const listingClaimVerifications = pgTable("listing_claim_verifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),

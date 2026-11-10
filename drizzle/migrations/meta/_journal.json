@@ -169,6 +169,13 @@
       "when": 1794320000000,
       "tag": "0023_booking_pricing_payout_currencies",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794330000000,
+      "tag": "0024_listing_slug_redirects",
+      "breakpoints": true
     }
   ]
 }

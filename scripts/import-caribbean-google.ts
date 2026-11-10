@@ -13,6 +13,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { islands, listings, users } from "../drizzle/schema";
 import { eq, ne } from "drizzle-orm";
 import { placeSearchArea, placeWithinSearchArea } from "./lib/place-geography";
+import { placeIdTaken } from "./lib/place-id-guard";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
@@ -100,6 +101,7 @@ async function importIsland(
       // Check existing
       const existing = await db.select({ id: listings.id }).from(listings).where(eq(listings.slug, slug)).limit(1);
       if (existing.length > 0) continue;
+      if (await placeIdTaken(db, place.place_id, island.id)) continue;
 
       try {
         await db.insert(listings).values({

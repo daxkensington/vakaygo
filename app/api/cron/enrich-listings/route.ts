@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 
 import { logger } from "@/lib/logger";
 import { recordValue, textValue, textList } from "@/lib/value-guards";
+import { closedBusinessAction } from "@/lib/listing-import-guards";
 type EnrichmentListing = { id: string; title: string; type: string; description: string | null; priceAmount: string | null; typeData: unknown };
 
 export const maxDuration = 300;
@@ -64,10 +65,19 @@ export async function GET(req: Request) {
 
       try {
         const res = await fetch(
-          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=website,formatted_phone_number,opening_hours,editorial_summary,price_level&key=${GOOGLE_API_KEY}`
+          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=website,formatted_phone_number,opening_hours,editorial_summary,price_level,business_status&key=${GOOGLE_API_KEY}`
         );
         const data = recordValue(await res.json());
-        if (data.status !== "OK") continue;
+        if (data.status !== "OK") {
+          // A dead or invalid place ID must not stay at the front of the queue forever.
+          await db.execute(sql`
+            UPDATE listings
+            SET type_data = (type_data::jsonb || jsonb_build_object('placeLookupStatus', ${String(data.status ?? "UNKNOWN").slice(0, 32)}::text, 'placeLookupAt', now()))::json,
+                updated_at = NOW()
+            WHERE id = ${listing.id}::uuid
+          `);
+          continue;
+        }
 
         const r = recordValue(data.result);
         const newTd = { ...td };
@@ -79,6 +89,13 @@ export async function GET(req: Request) {
         if (!td.website && website) newTd.website = website;
         if (!td.phone && phone) newTd.phone = phone;
         if (hours) newTd.hours = hours;
+        const businessStatus = textValue(r.business_status);
+        if (businessStatus) newTd.businessStatus = businessStatus;
+        const closure = closedBusinessAction(businessStatus, td.unclaimed === true || td.unclaimed === "true");
+        if (closure) {
+          newTd.pausedReason = closure.reason;
+          newTd.pausedAt = new Date().toISOString();
+        }
 
         const newDesc = textValue(recordValue(r.editorial_summary).overview);
         if (newDesc && newDesc.length > 30 && (listing.description?.length || 0) < 80) {
@@ -89,6 +106,7 @@ export async function GET(req: Request) {
           UPDATE listings
           SET type_data = ${JSON.stringify(newTd)}::jsonb,
               updated_at = NOW()
+              ${closure ? sql`, status = 'paused'` : sql``}
               ${descUpdate ? sql`, description = ${descUpdate}` : sql``}
           WHERE id = ${listing.id}::uuid
         `);

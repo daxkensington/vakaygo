@@ -3,6 +3,10 @@ export function safeWebUrl(value: unknown, allowRelative = false): string | unde
   if (typeof value !== "string" || !value.trim()) return undefined;
   try { const url = new URL(value, allowRelative ? BASE : undefined); return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : undefined; } catch { return undefined; }
 }
+/** A generated illustration rather than a photo of the business (see scripts/repair/05-generated-images.mjs). */
+export function isGeneratedImage(url: unknown): boolean {
+  return typeof url === "string" && /(^|\/)images\/generated\//.test(url);
+}
 export function serializeJsonLd(value: unknown): string { return JSON.stringify(value).replace(/</g, "\\u003c"); }
 export type StructuredListing = {
   title: string; slug: string; type: string; description: string | null;
@@ -21,7 +25,8 @@ export function listingStructuredData(listing: StructuredListing) {
     name: listing.title, url, description: listing.description || undefined,
     address: { "@type": "PostalAddress", streetAddress: listing.address || undefined,
       addressLocality: listing.parish || listing.islandName, addressCountry: listing.islandCountry },
-    image: listing.images.filter(img => img.type !== "video").map(img => safeWebUrl(img.url, true)).filter(Boolean),
+    // Generated illustrations (/images/generated/) do not depict the business, so they never reach Google.
+    image: listing.images.filter(img => img.type !== "video" && !isGeneratedImage(img.url)).map(img => safeWebUrl(img.url, true)).filter(Boolean),
   };
   const lat = listing.latitude === null ? NaN : Number(listing.latitude);
   const lng = listing.longitude === null ? NaN : Number(listing.longitude);
