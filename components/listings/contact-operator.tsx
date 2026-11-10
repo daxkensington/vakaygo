@@ -93,6 +93,7 @@ function ContactOperatorForm({ operatorId, operatorName, listingId, listingTitle
     return (
       <Link
         href={signInHref}
+        rel="nofollow"
         className="flex items-center gap-2 bg-white hover:bg-cream-50 text-navy-600 px-5 py-3 rounded-xl font-semibold shadow-[var(--shadow-card)] transition-colors w-full justify-center"
       >
         <MessageCircle size={18} />

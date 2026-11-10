@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!island) return { title: "Not Found" };
 
   const title = `Best Hotels in ${island.name} (${hubTitleYear()}) — Top Stays & Accommodations`;
-  const description = `Browse and compare hotels, villas, resorts, guesthouses, and vacation rentals in ${island.name} on VakayGo. Booking options depend on each listing's current eligibility and available dates.`;
+  const description = `Compare hotels, villas, resorts, guesthouses and vacation rentals in ${island.name}: photos, amenities, location and Google ratings, side by side on VakayGo.`;
 
   return {
     title,

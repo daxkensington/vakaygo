@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getListingForSeo } from "@/server/seo-queries";
+import { buildListingTitle, cleanLocationLabel, listingTitleHook, stripTemplatedDescription } from "@/lib/listing-seo";
 
 type Props = {
   children: React.ReactNode;
@@ -20,28 +21,6 @@ const typeLabels: Record<string, string> = {
   spa: "Spa & Wellness",
 };
 
-const typeHooks: Record<string, string> = {
-  dining: "Menu, Hours, Photos & Reviews",
-  stay: "Photos, Amenities, Location & Reviews",
-  excursion: "Activity Details, Photos & Reviews",
-  tour: "Tour Details, Photos & Reviews",
-  spa: "Services, Hours, Location & Reviews",
-  transport: "Transport Details, Location & Reviews",
-  transfer: "Transfer Details, Location & Reviews",
-};
-
-function cleanLocationLabel(parish: string | null, islandName: string): string {
-  const island = islandName.trim();
-  if (!parish) return island;
-  const escaped = island.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const stripped = parish
-    .replace(new RegExp(`\\b${escaped}\\b`, "ig"), "")
-    .replace(/[,\s]+$/, "")
-    .trim();
-  if (!stripped || stripped.toLowerCase() === island.toLowerCase()) return island;
-  return `${stripped}, ${island}`;
-}
-
 function clipMetaDescription(raw: string): string {
   const normalized = raw.replace(/\s+/g, " ").trim();
   if (normalized.length <= 158) return normalized;
@@ -55,7 +34,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
 
   const typeLabel = typeLabels[listing.type] || "Listing";
   const locationLabel = cleanLocationLabel(listing.parish, listing.islandName);
-  const hook = typeHooks[listing.type] || `${typeLabel} Hours, Photos & Reviews`;
+  const hook = listingTitleHook(listing.type, { hasMenu: listing.hasMenu === true });
   const isAutoMetaTitle = listing.metaTitle
     ? /\s[-—]\s[^|]+\sin\s[^|]+\|\s*VakayGo$/i.test(listing.metaTitle.trim())
     : false;
@@ -63,10 +42,10 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   // identical regardless of nesting depth.
   const title =
     (listing.metaTitle && !isAutoMetaTitle ? listing.metaTitle : null) ||
-    `${listing.title} (${locationLabel}) — ${hook} | VakayGo`;
+    buildListingTitle(listing.title, locationLabel, hook);
   const rawDescription =
     listing.metaDescription ||
-    listing.description ||
+    stripTemplatedDescription(listing.description) ||
     listing.headline ||
     `${listing.title} — ${hook.toLowerCase()} for this ${typeLabel.toLowerCase()} in ${locationLabel} on VakayGo.`;
   const description = clipMetaDescription(rawDescription);

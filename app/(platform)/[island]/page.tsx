@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { destinationStructuredData } from "@/lib/destination-structured-data";
+import { safeJsonLd } from "@/lib/json-ld";
 import { Home, Compass, UtensilsCrossed, Music, Car, Users, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";
 import { Flag } from "@/components/shared/flag";
@@ -141,6 +143,7 @@ export default async function IslandPage({ params }: Props) {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(destinationStructuredData(islandSlug, island)) }} />
       <Header />
       <main className="bg-cream-50 min-h-screen">
         {/* Breadcrumbs */}

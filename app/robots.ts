@@ -5,7 +5,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        // Share images for hubs and landings are generated under /api/og; card
+        // crawlers that honour robots.txt must be able to fetch them.
+        allow: ["/", "/api/og"],
         // /auth/signin and /auth/signup are intentionally crawlable —
         // they're public landing pages, not sensitive endpoints. All
         // sensitive auth routes (token links, OAuth callbacks) are
@@ -23,7 +25,7 @@ export default function robots(): MetadataRoute.Robots {
           "Applebot-Extended",
           "Google-Extended",
         ],
-        allow: ["/", "/llms.txt"],
+        allow: ["/", "/llms.txt", "/api/og"],
         disallow: ["/admin", "/operator", "/api", "/dashboard"],
       },
       {

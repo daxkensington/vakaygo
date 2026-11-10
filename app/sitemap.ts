@@ -6,6 +6,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { publicDirectoryListings, publicDestinations } from "@/server/public-listing-eligibility";
 import { getGrenadaExperiences } from "@/server/grenada-experiences";
 import { grenadaExperiencePath } from "@/lib/grenada-experience-routes";
+import { exploreFacetOwnedByHub } from "@/lib/listing-filters";
 
 const BASE_URL = "https://vakaygo.com";
 
@@ -170,24 +171,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .innerJoin(islands, eq(listings.islandId, islands.id))
     .where(publicDirectoryListings())
     .groupBy(islands.slug, listings.type);
-  const facetIslands = Array.from(new Set(facetCounts.map((r) => r.slug)));
-  const explorePages: MetadataRoute.Sitemap = [
-    ...facetIslands.map((slug) => ({
-      url: `${BASE_URL}/explore?island=${slug}`,
-
+  // Destination-wide, stay and dining grids defer to /X, /best-hotels-X and
+  // /best-restaurants-X (noindex there), so only the other category landings are listed.
+  const explorePages: MetadataRoute.Sitemap = facetCounts
+    .filter((r) => r.n >= 3 && !exploreFacetOwnedByHub({ island: r.slug, type: r.type }))
+    .map((r) => ({
+      // Next does not XML-escape <loc>; a raw & would invalidate the whole sitemap.
+      url: `${BASE_URL}/explore?island=${r.slug}&amp;type=${r.type}`,
       changeFrequency: "daily" as const,
-      priority: 0.7,
-    })),
-    ...facetCounts
-      .filter((r) => r.n >= 3)
-      .map((r) => ({
-        // Next does not XML-escape <loc>; a raw & would invalidate the whole sitemap.
-        url: `${BASE_URL}/explore?island=${r.slug}&amp;type=${r.type}`,
+      priority: 0.6,
+    }));
 
-        changeFrequency: "daily" as const,
-        priority: 0.6,
-      })),
-  ];
 
   return [
     ...staticPages,

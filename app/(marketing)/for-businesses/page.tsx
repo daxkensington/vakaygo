@@ -6,9 +6,9 @@ import { ClaimFinder } from "@/components/business/claim-finder";
 import { Search, BadgeCheck, PencilLine, ArrowRight } from "lucide-react";
 export const metadata: Metadata = {
   title: { absolute: "Claim Your Business Listing for Free | VakayGo" },
-  description: "Find your business across 34 Caribbean, Latin American, and Mediterranean destinations. Claim and manage your profile for free. Booking availability depends on each listing's verification and setup.",
+  description: "Find your business across 34 Caribbean, Latin American, and Mediterranean destinations, claim your listing for free, manage your profile and take bookings through VakayGo once setup is complete.",
   alternates: { canonical: "https://vakaygo.com/for-businesses" },
-  openGraph: { title: "Your business. Your story. Your listing on VakayGo.", description: "Find your listing, verify ownership through a trusted business contact, and manage your profile for free. Claiming does not activate bookings or payments.", url: "https://vakaygo.com/for-businesses" },
+  openGraph: { title: "Your business. Your story. Your listing on VakayGo.", description: "Find your listing, verify ownership through a trusted business contact and manage your profile for free. Finish setup to take bookings and payouts through VakayGo.", url: "https://vakaygo.com/for-businesses" },
 };
 const steps = [
   { icon: Search, title: "Find your listing", text: "Search your business name across our 34 Caribbean, Latin American, and Mediterranean destinations. Check the name and location before starting a claim." },

@@ -240,6 +240,29 @@ export function filtersToSearchParams(
 }
 
 /**
+ * One page per search intent. A destination's own page (/grenada) owns
+ * "things to do in X"; /best-hotels-X and /best-restaurants-X own stays and
+ * dining. The explore grids for those intents stay usable but are not
+ * offered to search engines (noindex, follow; not in the sitemap). Types
+ * without a hub keep their explore landing as the indexable page.
+ */
+export const HUB_OWNED_EXPLORE_TYPES: readonly string[] = ["stay", "dining"];
+export function exploreFacetOwnedByHub(f: { island?: string | null; type?: string | null }): boolean {
+  if (!f.island) return false;
+  return !f.type || HUB_OWNED_EXPLORE_TYPES.includes(f.type);
+}
+
+/** The words people search for each category landing ("Car Rentals & Taxis in Dominica"). */
+export const EXPLORE_SEO_LABELS: Record<string, string> = {
+  stay: "Hotels, Villas & Guesthouses",
+  dining: "Restaurants",
+  transport: "Car Rentals & Taxis",
+  transfer: "Airport Transfers & Taxis",
+  vip: "VIP Services & Airport Fast Track",
+  spa: "Spas & Massage",
+};
+
+/**
  * Only island + type combinations are worth indexing as landing pages
  * ("Stays in Grenada"). Anything narrower (a search, a price band, a
  * date) is a personal view: noindex, canonical back to the island/type page.

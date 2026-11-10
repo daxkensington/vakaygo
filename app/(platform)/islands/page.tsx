@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
+import { staticPageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/layout/header";
 
-export const metadata: Metadata = {
-  title: "Explore 34 Caribbean, Latin America & Mediterranean Destinations",
-  description:
-    "Discover stays, boat charters, tours, dining, and experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees on VakayGo.",
-  alternates: { canonical: "https://vakaygo.com/islands" },
-};
+export const metadata: Metadata = staticPageMetadata("/islands", "Explore 34 Caribbean, Latin America & Mediterranean Destinations", "Discover stays, boat charters, tours, dining, and experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees on VakayGo.");
 import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";

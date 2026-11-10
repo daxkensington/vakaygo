@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!island) return { title: "Not Found" };
 
   const title = `Best Restaurants in ${island.name} (${hubTitleYear()}) — Top Dining & Food Guide`;
-  const description = `Find the best restaurants in ${island.name}. Explore top-rated dining, local cuisine, and seafood. Browse restaurant information on VakayGo.`;
+  const description = `The best restaurants in ${island.name}: local cuisine, beach bars and fine dining with hours, location and Google ratings, side by side on VakayGo.`;
 
   return {
     title,

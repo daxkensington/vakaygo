@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { listingRatingSource, ratingCountLabel } from "@/lib/listing-display";
 import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/seo-queries";
 import { getImageUrl } from "@/lib/image-utils";
 import { buildThingsToDoFaqs, hubTitleYear } from "@/lib/destination-faqs";
@@ -247,7 +248,7 @@ export default async function ThingsToDoPage({ params }: Props) {
               {stats.avgRating > 0 && (
                 <span className="flex items-center gap-1">
                   <Star size={14} className="text-gold-400 fill-gold-400" />
-                  {stats.avgRating.toFixed(1)} avg rating
+                  {stats.avgRating.toFixed(1)} avg Google rating
                 </span>
               )}
             </div>
@@ -267,7 +268,7 @@ export default async function ThingsToDoPage({ params }: Props) {
               <p className="text-2xl font-bold text-navy-700">
                 {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "New"}
               </p>
-              <p className="text-xs text-navy-400 mt-1">Avg Rating</p>
+              <p className="text-xs text-navy-400 mt-1">Avg Google Rating</p>
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <p className="text-2xl font-bold text-navy-700">
@@ -368,12 +369,11 @@ export default async function ThingsToDoPage({ params }: Props) {
                               <span className="text-xs font-semibold text-navy-700">
                                 {rating.toFixed(1)}
                               </span>
-                              {!!listing.reviewCount &&
-                                listing.reviewCount > 0 && (
-                                  <span className="text-xs text-navy-300">
-                                    ({listing.reviewCount})
-                                  </span>
-                                )}
+                              {ratingCountLabel(listing.reviewCount, listingRatingSource(listing.typeData as { unclaimed?: unknown; source?: unknown } | null)) && (
+                                <span className="text-xs text-navy-300">
+                                  ({ratingCountLabel(listing.reviewCount, listingRatingSource(listing.typeData as { unclaimed?: unknown; source?: unknown } | null))})
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
