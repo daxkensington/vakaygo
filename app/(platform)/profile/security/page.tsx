@@ -563,35 +563,37 @@ function SecurityContent() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    <label htmlFor="id-verification-document" className="block text-sm font-medium text-navy-600 mb-1.5">
                       Government-issued ID
                     </label>
-                    <label className="flex flex-col items-center justify-center p-6 rounded-xl bg-cream-50 cursor-pointer hover:bg-cream-100 transition-colors">
+                    <label htmlFor="id-verification-document" className="flex flex-col items-center justify-center p-6 rounded-xl bg-cream-50 cursor-pointer hover:bg-cream-100 transition-colors focus-within:ring-2 focus-within:ring-gold-700 focus-within:ring-offset-2">
                       <FileText size={24} className="text-navy-300 mb-2" />
                       <span className="text-sm text-navy-500 text-center">
                         {documentFile ? documentFile.name : "Click to upload"}
                       </span>
                       <input
+                        id="id-verification-document"
                         type="file"
                         accept="image/*,.pdf"
-                        className="hidden"
+                        className="sr-only"
                         onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                       />
                     </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-navy-600 mb-1.5">
+                    <label htmlFor="id-verification-selfie" className="block text-sm font-medium text-navy-600 mb-1.5">
                       Selfie with ID
                     </label>
-                    <label className="flex flex-col items-center justify-center p-6 rounded-xl bg-cream-50 cursor-pointer hover:bg-cream-100 transition-colors">
+                    <label htmlFor="id-verification-selfie" className="flex flex-col items-center justify-center p-6 rounded-xl bg-cream-50 cursor-pointer hover:bg-cream-100 transition-colors focus-within:ring-2 focus-within:ring-gold-700 focus-within:ring-offset-2">
                       <Camera size={24} className="text-navy-300 mb-2" />
                       <span className="text-sm text-navy-500 text-center">
                         {selfieFile ? selfieFile.name : "Click to upload"}
                       </span>
                       <input
+                        id="id-verification-selfie"
                         type="file"
                         accept="image/*"
-                        className="hidden"
+                        className="sr-only"
                         onChange={(e) => setSelfieFile(e.target.files?.[0] || null)}
                       />
                     </label>

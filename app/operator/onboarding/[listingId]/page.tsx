@@ -6,7 +6,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { COUNTRIES } from "@/lib/countries";
-import { describeNextStep, describeWaiting, nextOnboardingStep, onlyDatesMissing, type ListingGaps, type OnboardingStage } from "@/lib/onboarding-nudges";
+import { agreementContext, describeNextStep, describeWaiting, nextOnboardingStep, onlyDatesMissing, type ListingGaps, type OnboardingStage } from "@/lib/onboarding-nudges";
 
 type Business = { legalName: string; country: string; address: string; representativeName: string };
 type Step = "claim" | "business" | "representative" | "terms" | "listing" | "payments" | "activation";
@@ -20,7 +20,7 @@ type PayoutProfileSummary = {
 type Onboarding = {
   listingId: string; state: string; eligible: boolean; reason: string; bookingsEnabled: boolean; canManage: boolean;
   listing: { title: string; slug: string; islandSlug: string; status?: string }; requirements: Record<Step, boolean>;
-  business: Business; termsVersion: string; allowedPaymentCountries: string[]; stripe: { connected: boolean };
+  business: Business; termsVersion: string; acceptedTermsVersion?: string | null; allowedPaymentCountries: string[]; stripe: { connected: boolean };
   payoutProfile?: PayoutProfileSummary; activatedAt: string | null; listingGaps?: ListingGaps | null;
 };
 const steps: { key: Step; label: string }[] = [
@@ -173,7 +173,8 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
     suspended: status.reason === "suspended",
   }) : null;
   const gaps = status?.listingGaps ?? null;
-  const nextContent = nextStep ? describeNextStep(nextStep, { listingId, stripeConnected: !!status?.stripe.connected, listingGaps: gaps }) : null;
+  const agreement = status ? agreementContext(status.requirements, status.acceptedTermsVersion, status.termsVersion) : null;
+  const nextContent = nextStep ? describeNextStep(nextStep, { listingId, stripeConnected: !!status?.stripe.connected, listingGaps: gaps, agreement }) : null;
   const waitingText = nextStep ? describeWaiting(nextStep) : null;
   const inputClass = "mt-1 w-full rounded-xl border border-cream-300 bg-white p-3 text-navy-700";
   const buttonClass = "rounded-xl bg-gold-700 px-5 py-3 font-semibold text-white disabled:opacity-50";
@@ -217,7 +218,10 @@ export default function BusinessOnboardingPage({ params }: { params: Promise<{ l
       </section>
       <form id="company-details" className="mt-6 space-y-4 rounded-2xl border border-cream-200 bg-white p-6" onSubmit={event => { event.preventDefault(); void perform("save"); }}>
         <h2 className="text-xl font-bold text-navy-700">Company and representative</h2>
-        {!(status.requirements.business && status.requirements.representative && status.requirements.terms) && <p className="text-sm text-navy-500">Fill in the company details, confirm you can represent it and accept the operator terms, then save. This is the first step and takes about three minutes.</p>}
+        {agreement?.onlyAgreementMissing && <p data-testid="agreement-only" className="rounded-xl border border-gold-200 bg-gold-50/70 p-3 text-sm text-navy-700">{agreement.acceptedEarlierVersion
+          ? "The operator agreement has been updated since you accepted it. Your company details below are saved. Read the new version, tick the acceptance box at the bottom of this form and save."
+          : "Your company details below are saved. Read the operator agreement, tick the acceptance box at the bottom of this form and save."}</p>}
+        {!agreement?.onlyAgreementMissing && !(status.requirements.business && status.requirements.representative && status.requirements.terms) && <p className="text-sm text-navy-500">Fill in the company details, confirm you can represent it and accept the operator terms, then save. This is the first step and takes about three minutes.</p>}
         <label className="block text-sm font-semibold text-navy-600">Legal company name<input disabled={busy} required maxLength={200} value={business.legalName || ""} onChange={event => setBusiness({ ...business, legalName: event.target.value })} className={inputClass} /></label>
         <label className="block text-sm font-semibold text-navy-600">Country or territory of registration<select disabled={busy} required aria-describedby="registration-country-help" value={business.country || ""} onChange={event => setBusiness({ ...business, country: event.target.value })} className={inputClass}><option value="">Select country or territory</option>{COUNTRIES.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select></label>
         <p id="registration-country-help" className="text-sm text-navy-500">Choose where your company is legally registered. Your listing&apos;s destination and your customers&apos; countries may be different. Registering your company details does not enable bookings or payouts.</p>

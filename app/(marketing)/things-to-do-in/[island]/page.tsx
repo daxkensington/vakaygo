@@ -134,6 +134,7 @@ const typeFallbacks: Record<string, string> = {
   transfer: "from-navy-500 to-navy-700",
   vip: "from-gold-500 to-gold-700",
   guide: "from-gold-400 to-teal-500",
+  spa: "from-teal-400 to-teal-600",
 };
 
 // ─── Page ───────────────────────────────────────────────────────
@@ -162,21 +163,20 @@ export default async function ThingsToDoPage({ params }: Props) {
   const faqs = buildThingsToDoFaqs({ name: island.name, slug, country: island.country });
 
   // JSON-LD ItemList
+  const listings = activeSections.flatMap((section) => section.listings);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Things to Do in ${island.name}`,
     description: `Top activities, tours, restaurants, and experiences in ${island.name}.`,
     url: `https://vakaygo.com/things-to-do-in-${slug}`,
-    numberOfItems: stats.totalListings,
-    itemListElement: activeSections.flatMap((section, sIdx) =>
-      section.listings.map((listing, lIdx) => ({
-        "@type": "ListItem",
-        position: sIdx * 6 + lIdx + 1,
-        name: listing.title,
-        url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
-      }))
-    ),
+    numberOfItems: listings.length,
+    itemListElement: listings.map((listing, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: listing.title,
+      url: `https://vakaygo.com/${listing.islandSlug}/${listing.slug}`,
+    })),
   };
 
   // FAQ JSON-LD
@@ -236,7 +236,7 @@ export default async function ThingsToDoPage({ params }: Props) {
             </h1>
             <p className="text-white/70 mt-3 max-w-2xl text-lg">
               {island.description ||
-                `Discover the best activities, tours, dining, and experiences in ${island.name}. Book directly with local operators on VakayGo.`}
+                `Discover the best activities, tours, dining, and experiences in ${island.name}. Browse local listings on VakayGo.`}
             </p>
             <div className="flex items-center gap-6 mt-5 text-sm text-white/60">
               <span className="flex items-center gap-1.5">
@@ -277,7 +277,7 @@ export default async function ThingsToDoPage({ params }: Props) {
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-[var(--shadow-card)] text-center">
               <Sparkles size={20} className="text-gold-700 mx-auto mb-1" />
-              <p className="text-xs text-navy-400 mt-1">Verified Operators</p>
+              <p className="text-xs text-navy-400 mt-1">Directory Listings</p>
             </div>
           </div>
         </div>
@@ -498,7 +498,8 @@ export default async function ThingsToDoPage({ params }: Props) {
               Ready to explore {island.name}?
             </h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto">
-              Book directly with verified local operators. Lowest commissions in
+              Booking options depend on each listing&apos;s current eligibility
+              and your selected dates and group size. Lowest commissions in
               the travel industry — more money stays in {island.name}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">

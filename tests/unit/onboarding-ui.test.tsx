@@ -113,6 +113,22 @@ it("shows the waiting state while a payout profile is under review", async () =>
   expect(container.textContent).not.toContain("Next: add your payout details");
 });
 
+it("tells a business that accepted an earlier agreement to accept the new one, not to redo its company details", async () => {
+  const reaccept = { ...status, stripe: { connected: false }, acceptedTermsVersion: "2026-09-06", requirements: { ...status.requirements, terms: false } };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(reaccept)));
+  await renderPage();
+  const next = container.querySelector('[data-testid="next-step"]')!;
+  expect(next.textContent).toContain("Accept the updated operator agreement");
+  expect(next.textContent).not.toContain("Finish your company details");
+  expect(next.querySelector("a")?.getAttribute("href")).toBe("#company-details");
+  const note = container.querySelector('[data-testid="agreement-only"]')!;
+  expect(note.textContent).toContain("has been updated since you accepted it");
+  expect(container.textContent).not.toContain("This is the first step and takes about three minutes");
+  // The new version is never pre-ticked on the strength of the old acceptance.
+  const boxes = Array.from(container.querySelectorAll<HTMLInputElement>('#company-details input[type="checkbox"]'));
+  expect(boxes.map(box => box.checked)).toEqual([true, false]);
+});
+
 it("points a business that never accepted the terms at the company form first", async () => {
   const stalled = { ...status, stripe: { connected: false }, requirements: { ...status.requirements, representative: false, terms: false, listing: false } };
   fetchMock.mockImplementation(async () => new Response(JSON.stringify(stalled)));

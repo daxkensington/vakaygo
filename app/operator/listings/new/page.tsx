@@ -22,6 +22,18 @@ import { CATEGORY_RATES } from "@/lib/pricing";
 import PhotoUploader from "@/components/operator/photo-uploader";
 import { AIDescriptionButton } from "@/components/operator/ai-description-button";
 
+const submissionFailureMessage = "Unable to submit your listing. Please try again.";
+
+function submissionResponseError(data: unknown): string {
+  if (typeof data !== "object" || data === null || !("error" in data)) {
+    return submissionFailureMessage;
+  }
+  const message = typeof data.error === "string" ? data.error.trim() : "";
+  return message && message.length <= 300 && !/[<>\u0000-\u001f\u007f]/.test(message)
+    ? message
+    : submissionFailureMessage;
+}
+
 const listingTypes = [
   {
     id: "stay",
@@ -128,6 +140,7 @@ export default function NewListingPage() {
   const [newExcluded, setNewExcluded] = useState("");
   const [meetingPoint, setMeetingPoint] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [createdListingId, setCreatedListingId] = useState("");
 
@@ -160,12 +173,17 @@ export default function NewListingPage() {
   };
 
   async function handleSubmit() {
+    setSubmissionError("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/session");
       const session = await res.json();
-      if (!session.user) {
-        setLoading(false);
+      if (!res.ok) {
+        setSubmissionError(submissionResponseError(session));
+        return;
+      }
+      if (!session?.user) {
+        setSubmissionError(submissionFailureMessage);
         return;
       }
 
@@ -200,13 +218,15 @@ export default function NewListingPage() {
         }),
       });
 
-      if (createRes.ok) {
-        const data = await createRes.json();
-        setCreatedListingId(data.listing?.id || "");
-        setSubmitted(true);
+      const data = await createRes.json();
+      if (!createRes.ok) {
+        setSubmissionError(submissionResponseError(data));
+        return;
       }
+      setCreatedListingId(data.listing?.id || "");
+      setSubmitted(true);
     } catch {
-      // handle error
+      setSubmissionError(submissionFailureMessage);
     } finally {
       setLoading(false);
     }
@@ -666,6 +686,12 @@ export default function NewListingPage() {
               )}
             </div>
           </div>
+        )}
+
+        {submissionError && (
+          <p role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            {submissionError}
+          </p>
         )}
 
         {/* Navigation */}
