@@ -1,3 +1,4 @@
 import type { Metadata } from "next";
-export const metadata: Metadata = {"title":"Contact VakayGo","alternates":{"canonical":"https://vakaygo.com/contact"}};
+import { staticPageMetadata } from "@/lib/page-metadata";
+export const metadata: Metadata = staticPageMetadata("/contact", "Contact us", "Contact the VakayGo team about a listing, a booking, claiming your business or partnering with us.");
 export default function Layout({children}:{children:React.ReactNode}) { return <>{children}</>; }

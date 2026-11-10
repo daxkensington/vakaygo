@@ -4,6 +4,8 @@ import {
   parseListingFilters,
   filtersToSearchParams,
   isIndexableFilterSet,
+  exploreFacetOwnedByHub,
+  EXPLORE_SEO_LABELS,
   TYPE_LABELS,
   EXPLORE_PAGE_SIZE,
   NO_EXPLORE_CAPABILITIES,
@@ -49,7 +51,7 @@ export async function loadInitial(f: ListingFilters): Promise<ExploreData | null
 }
 
 export function describe(f: ListingFilters, islandName: string | null) {
-  const what = f.type ? TYPE_LABELS[f.type].plural : "Experiences";
+  const what = f.type ? (EXPLORE_SEO_LABELS[f.type] ?? TYPE_LABELS[f.type].plural) : "Experiences";
   const where = islandName ?? (f.island ? f.island.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : null);
   const title = where ? `${what} in ${where}` : f.type ? `${what} in the Caribbean` : "Explore Caribbean experiences";
   const nouns: Record<string, string> = {
@@ -85,7 +87,8 @@ export async function buildMetadata(f: ListingFilters, data?: ExploreData | null
   // treat a successful zero-count response as empty: a temporary DB failure
   // must not remove an otherwise populated landing from the index.
   const initial = data === undefined && landing ? await loadInitial(f) : data;
-  const indexable = landing && initial?.totalCount !== 0;
+  // Destination-wide, stay and dining grids defer to their hub pages (exploreFacetOwnedByHub).
+  const indexable = landing && !exploreFacetOwnedByHub(f) && initial?.totalCount !== 0;
   const islandName = initial?.island?.name ?? null;
   const { title, description } = describe(f, islandName);
 

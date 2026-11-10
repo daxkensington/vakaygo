@@ -408,6 +408,8 @@ export function ListingDetailClient({
                 </button>
                 <Link
                   href={`/trips/new?island=${encodeURIComponent(listing.islandSlug)}&spot=${encodeURIComponent(listing.title)}`}
+                  // A per-listing URL to a noindex page: do not hand crawlers 8,000 of them.
+                  rel="nofollow"
                   className="inline-flex items-center gap-2 bg-navy-800 hover:bg-navy-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all duration-200"
                 >
                   <Compass size={16} className="text-gold-400" />
@@ -469,7 +471,7 @@ export function ListingDetailClient({
                   </a>
                   <p className="text-white/70 text-xs mt-3">
                     Already have a business account?{" "}
-                    <a href={`/auth/signin?next=/operator/claim/${listing.id}`} className="underline">Sign in to claim</a>
+                    <a href={`/auth/signin?next=/operator/claim/${listing.id}`} rel="nofollow" className="underline">Sign in to claim</a>
                   </p>
                 </div>
               ) : (

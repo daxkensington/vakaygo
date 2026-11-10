@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
+import { staticPageMetadata } from "@/lib/page-metadata";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { Globe, Heart, Shield, Users, ArrowRight } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "About VakayGo",
-  description:
-    "Caribbean-born local travel discovery. Explore businesses and plan trips across 34 Caribbean, Latin American, and Mediterranean destinations.",
-  alternates: { canonical: "https://vakaygo.com/about" },
-};
+export const metadata: Metadata = staticPageMetadata("/about", "About us", "Caribbean-born local travel discovery. Explore businesses and plan trips across 34 Caribbean, Latin American, and Mediterranean destinations.");
 
 export default function AboutPage() {
   return (

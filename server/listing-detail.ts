@@ -8,6 +8,7 @@ import { publicDirectoryListings } from "@/server/public-listing-eligibility";
 import { publicListingTypeData } from "@/lib/listing-public-data";
 import { currentListingBookable, currentListingClaimVerified } from "@/server/listing-bookability-sql";
 import { isQuarantinedLocation } from "@/server/location-quarantine";
+import { stripTemplatedDescription } from "@/lib/listing-seo";
 import { listingReviewSourceSql } from "@/server/listing-review-source";
 
 function getDb() {
@@ -147,6 +148,8 @@ export async function getListingDetail(slug: string, islandSlug?: string) {
       ...(isQuarantinedLocation(listing) ? { latitude: null, longitude: null } : {}),
       ...(isQuarantinedLocation({ id: listing.id, latitude: listing.meetingPointLat, longitude: listing.meetingPointLng })
         ? { meetingPointLat: null, meetingPointLng: null } : {}),
+      // Imported descriptions lose the restated Google rating and the claim pitch (lib/listing-seo.ts).
+      description: stripTemplatedDescription(listing.description) || null,
       typeData: sanitizedTypeData,
       images,
       bookingEligible: eligibility.eligible === true,

@@ -72,7 +72,7 @@ export function BookingUnavailableNotice({ listingId, operatorId, unclaimed = fa
       {unclaimed ? (
         <>
           <p className="mt-3 text-sm text-navy-500">This business has not claimed its listing. Company verification and onboarding must be completed before bookings can be offered.</p>
-          <Link href={user ? `/operator/claim/${listingId}` : `/auth/signup?role=operator&claim=${listingId}`} className="mt-4 inline-flex font-semibold text-gold-700 hover:underline">Own this business? Claim listing</Link>
+          <Link href={user ? `/operator/claim/${listingId}` : `/auth/signup?role=operator&claim=${listingId}`} rel="nofollow" className="mt-4 inline-flex font-semibold text-gold-700 hover:underline">Own this business? Claim listing</Link>
         </>
       ) : owner ? (
         <Link href={`/operator/onboarding/${listingId}`} className="mt-4 inline-flex font-semibold text-gold-700 hover:underline">Review business onboarding</Link>

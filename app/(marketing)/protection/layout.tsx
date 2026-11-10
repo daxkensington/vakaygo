@@ -1,3 +1,4 @@
 import type { Metadata } from "next";
-export const metadata: Metadata = {"title":"Booking protection","alternates":{"canonical":"https://vakaygo.com/protection"}};
+import { staticPageMetadata } from "@/lib/page-metadata";
+export const metadata: Metadata = staticPageMetadata("/protection", "Booking protection", "How bookings made and paid through VakayGo are protected, from payment to cancellation.");
 export default function Layout({children}:{children:React.ReactNode}) { return <>{children}</>; }

@@ -6,6 +6,11 @@ import { safeJsonLd } from "@/lib/json-ld";
 
 export type BreadcrumbItem = { label: string; href?: string };
 
+/** Breadcrumb names in structured data are plain text: no flag or other emoji. */
+export function breadcrumbName(label: string): string {
+  return label.replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+}
+
 export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   const jsonLd = {
     "@context": "https://schema.org",
@@ -13,7 +18,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
     itemListElement: items.map((item, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: item.label,
+      name: breadcrumbName(item.label) || item.label,
       ...(item.href ? { item: `https://vakaygo.com${item.href}` } : {}),
     })),
   };
