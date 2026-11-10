@@ -94,6 +94,10 @@ export function CurrencySwitcher() {
               </div>
             )}
 
+            <p className="px-4 pb-2 text-[11px] leading-snug text-navy-400">
+              Converts listing prices wherever a price is shown. Converted amounts are estimates.
+            </p>
+
             {/* Popular currencies */}
             <div className="px-4 pt-1 pb-1">
               <span className="text-[10px] font-semibold text-navy-300 uppercase tracking-wider">

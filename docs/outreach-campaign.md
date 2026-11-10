@@ -160,7 +160,7 @@ panel ("Delivery holds and review", note required). That restarts the counts; it
 does not enable sending, raise a stage, or remove anything from the report, and it
 cannot clear a complaint, uncertain or unresolved-delivery hold. The limits are
 constants in `lib/outreach-campaign-policy.ts` and are repeated in the dispatch
-gate, the admin gate and `vakaygo_reserve_outreach_attempt` (migration 0019).
+gate, the admin gate and `vakaygo_reserve_outreach_attempt` (migration 0020).
 
 Promotion requires at least 72 hours in the stage and at least 50 accepted messages
 from that stage in the last 7 days, each aged 24 hours and delivered or bounced.
@@ -192,7 +192,7 @@ a message, and would otherwise unsubscribe businesses that never asked. The mail
 client's one-click request (RFC 8058, `List-Unsubscribe-Post`) is a POST and still
 takes effect immediately.
 
-Legacy records: migration 0019 turns the do-not-contact rows of the October 2026
+Legacy records: migration 0020 turns the do-not-contact rows of the October 2026
 per-listing run into address-level suppressions. The addresses that bounced or were
 provider-suppressed in that run are only known to the mail provider; import them
 once with `node scripts/import-legacy-outreach-suppressions.mjs` (dry run by

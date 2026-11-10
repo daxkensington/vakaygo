@@ -19,7 +19,7 @@ const ACTOR = `actor AS MATERIALIZED (SELECT id FROM users WHERE id=$1::uuid AND
 // Legacy mutable outreach notes are deliberately excluded from this ledger.
 // hold_since: delivery holds count bad outcomes from the last 7 days, or since an
 // administrator last recorded a delivery review, whichever is shorter. The review
-// columns arrive with migration 0019; reading them through to_jsonb keeps this
+// columns arrive with migration 0020; reading them through to_jsonb keeps this
 // query valid on a database that does not have them yet (it then reads as "never reviewed").
 const HEALTH_CTES = `control AS MATERIALIZED (SELECT c0.*,
   greatest(now()-interval '7 days',coalesce((to_jsonb(c0)->>'holds_reviewed_at')::timestamptz,'-infinity'::timestamptz)) AS hold_since,

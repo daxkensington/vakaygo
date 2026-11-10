@@ -13,7 +13,7 @@ export const OUTREACH_HEALTH_MAX_AGE_MS = 20 * 60_000;
  * the rate applies. Counts cover the last 7 days, or the time since an
  * administrator last recorded a delivery review, whichever is shorter.
  * The same numbers are written into vakaygo_reserve_outreach_attempt (migration
- * 0019) and the SQL gates in server/outreach-campaign-*.ts: change them together.
+ * 0020) and the SQL gates in server/outreach-campaign-*.ts: change them together.
  */
 export const OUTREACH_RATE_HOLD_MIN_SAMPLE = 50;
 export const OUTREACH_BOUNCE_RATE_LIMIT = 0.02;

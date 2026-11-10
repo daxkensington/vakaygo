@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/header";
 export const metadata: Metadata = {
   title: "Explore 34 Caribbean, Latin America & Mediterranean Destinations",
   description:
-    "Discover verified stays, boat charters, tours, dining, and experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees on VakayGo.",
+    "Discover stays, boat charters, tours, dining, and experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees on VakayGo.",
   alternates: { canonical: "https://vakaygo.com/islands" },
 };
 import { Footer } from "@/components/layout/footer";
@@ -127,7 +127,7 @@ export default async function IslandsPage() {
               Explore <span className="text-gold-400">{islands.length} Destinations</span>
             </h1>
             <p className="mt-6 text-white/70 text-lg md:text-xl max-w-2xl mx-auto">
-              {islands.length} sun &amp; sea destinations. {totalListings.toLocaleString()} verified local experiences. 0% guest booking fees.
+              {islands.length} sun &amp; sea destinations. {totalListings.toLocaleString()} local listings. 0% guest booking fees.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-8 text-white/80">
               <div>

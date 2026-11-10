@@ -9,7 +9,7 @@
  *
  * The dry run reads only. It prints counts and short hashes, never an address.
  * A suppression cannot be removed afterwards, so review the dry run first.
- * Opt-outs from that run are handled by migration 0019, not by this script.
+ * Opt-outs from that run are handled by migration 0020, not by this script.
  */
 import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";

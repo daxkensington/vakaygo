@@ -113,7 +113,7 @@ export async function deliverClaimInvitation(input: Invitation): Promise<{ sent:
   try {
     // Delivery holds mirror vakaygo_reserve_outreach_attempt and lib/outreach-campaign-policy.ts:
     // counts run from the later of 7 days ago and the last recorded delivery review
-    // (read through to_jsonb so the query is valid before migration 0019 adds the column);
+    // (read through to_jsonb so the query is valid before migration 0020 adds the column);
     // under 50 accepted a hold needs 3 bounces or 5 soft failures, from 50 it is a 2% / 10% rate.
     // One bounced or failed recipient is not re-sent: an address gets one attempt per campaign.
     const [eligible] = await sql.query(`SELECT a.id FROM outreach_email_attempts a JOIN outreach_campaign_control c ON c.id=true

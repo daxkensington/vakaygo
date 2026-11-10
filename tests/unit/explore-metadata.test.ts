@@ -18,6 +18,7 @@ const empty = {
   listings: [],
   totalCount: 0,
   island: { slug: "jamaica", name: "Jamaica" },
+  capabilities: { bookable: [], amenityData: false, durationData: false },
 };
 
 describe("explore landing metadata", () => {

@@ -1,5 +1,5 @@
 {
-  "id": "bc2f8131-87a2-42c0-abcb-3836cb063508",
+  "id": "711e1596-97ed-4e22-b627-d14471a0cd56",
   "prevId": "a71b3543-7d1b-4765-9c21-b9b9954a8ca4",
   "version": "7",
   "dialect": "postgresql",
@@ -3289,6 +3289,43 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "ua_family": {
+          "name": "ua_family",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referrer_host": {
+          "name": "referrer_host",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utm_source": {
+          "name": "utm_source",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_bot": {
+          "name": "is_bot",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "bot_reason": {
+          "name": "bot_reason",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -5197,24 +5234,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'not_checked'"
-        },
-        "holds_reviewed_at": {
-          "name": "holds_reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "holds_reviewed_by": {
-          "name": "holds_reviewed_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "holds_review_note": {
-          "name": "holds_review_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -5225,19 +5244,6 @@
           "tableTo": "users",
           "columnsFrom": [
             "updated_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "outreach_campaign_control_holds_reviewed_by_users_id_fk": {
-          "name": "outreach_campaign_control_holds_reviewed_by_users_id_fk",
-          "tableFrom": "outreach_campaign_control",
-          "tableTo": "users",
-          "columnsFrom": [
-            "holds_reviewed_by"
           ],
           "columnsTo": [
             "id"

@@ -95,7 +95,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   const title = `${island.name}${countryLabel} — Stays, Tours & Experiences | VakayGo`;
   const description =
     island.description ||
-    `Explore stays, tours, dining, and experiences in ${island.name}. Book directly with verified local operators on VakayGo.`;
+    `Explore stays, tours, dining, and experiences in ${island.name}. Compare local businesses, photos, and locations on VakayGo.`;
   const url = `https://vakaygo.com/${slug}`;
 
   return {

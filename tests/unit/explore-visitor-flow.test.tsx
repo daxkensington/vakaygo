@@ -255,3 +255,62 @@ it("identifies USD estimates consistently in desktop filters, chips, sorting and
   expect(dialog.querySelector<HTMLInputElement>('[aria-label="Minimum price in USD"]')?.value).toBe("100");
   expect(dialog.querySelector<HTMLInputElement>('[aria-label="Maximum price in USD"]')?.value).toBe("120");
 });
+
+const optionalControls = () => ({
+  date: container.querySelector('input[type="date"]') !== null,
+  price: container.querySelector('[aria-label="Minimum price in USD"]') !== null,
+  priceSort: container.querySelector('option[value="price-asc"]') !== null,
+});
+const onlineTours = { bookable: [{ island: "dominican-republic", type: "tour" }], amenityData: false, durationData: false };
+
+it("offers no date, price, price-sort, amenity or duration control while none of them can match a listing", async () => {
+  await render();
+  expect(optionalControls()).toEqual({ date: false, price: false, priceSort: false });
+  expect(container.textContent).not.toContain("Price filters and sorting use USD estimates");
+  await click("Stays"); await tick();
+  expect(button("Pool")).toBeUndefined();
+  await click("Tours"); await tick();
+  expect(button("2-4 hours")).toBeUndefined();
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Open filters"]')!.click()); await tick();
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+  expect(dialog.querySelector('input[type="date"]')).toBeNull();
+  expect(dialog.textContent).not.toContain("Price Range");
+});
+
+it("offers date and price where a listing takes online bookings and withdraws them outside that scope", async () => {
+  await render(initial({ capabilities: onlineTours }));
+  expect(optionalControls()).toEqual({ date: true, price: true, priceSort: true });
+  await change(container.querySelector<HTMLSelectElement>('[aria-label="Filter by island"]')!, "grenada"); await tick();
+  expect(optionalControls()).toEqual({ date: false, price: false, priceSort: false });
+  await change(container.querySelector<HTMLSelectElement>('[aria-label="Filter by island"]')!, "dominican-republic"); await tick();
+  expect(optionalControls()).toEqual({ date: true, price: true, priceSort: true });
+  await click("Stays"); await tick();
+  expect(optionalControls()).toEqual({ date: false, price: false, priceSort: false });
+});
+
+it("shows amenity and duration chips once the catalogue carries that data", async () => {
+  await render(initial({ capabilities: { bookable: [], amenityData: true, durationData: true } }));
+  await click("Stays"); await tick();
+  expect(button("Pool")).toBeDefined();
+  await click("Tours"); await tick();
+  expect(button("2-4 hours")).toBeDefined();
+});
+
+it("keeps a filter that arrived in the link visible so it can be cleared", async () => {
+  await render(initial({ filters: parseListingFilters(new URLSearchParams("type=tour&date=2099-12-02&duration=2-4")), listings: [], totalCount: 0 }));
+  expect(container.querySelector<HTMLInputElement>('input[type="date"]')?.value).toBe("2099-12-02");
+  expect(button("2-4 hours")).toBeDefined();
+});
+
+it("does not apply a suggested budget, amenity or duration that cannot match in the suggested scope", async () => {
+  fetchMock.mockImplementation(async (url: string) => url === "/api/ai/smart-search" ? response({ filters: { type: "tour", island: "grenada", maxPrice: 50, duration: "2-4", q: "boat" }, summary: "Budget boat tours", suggestions: [] }) : url.startsWith("/api/search-history") ? response({ searches: [] }) : url.startsWith("/api/listings/count") ? response({ count: 1 }) : response({ listings: [listing(30)] }));
+  await render(initial({ capabilities: onlineTours })); const search = container.querySelector<HTMLInputElement>('[aria-label="Search"]')!;
+  await change(search, "cheap boat tours in grenada");
+  await act(async () => { search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+  await tick(); await tick();
+  expect(container.querySelector("h1")!.textContent).toBe("Tours in Grenada");
+  const requests = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/listings?"));
+  const last = new URL(requests[requests.length - 1], "https://vakaygo.com").searchParams;
+  expect(last.get("type")).toBe("tour"); expect(last.get("island")).toBe("grenada");
+  expect(last.get("maxPrice")).toBeNull(); expect(last.get("duration")).toBeNull();
+});
