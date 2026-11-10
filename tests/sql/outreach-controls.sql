@@ -171,6 +171,7 @@ DO $$
 DECLARE lost uuid; found uuid; done uuid;
 BEGIN
  -- One attempt per listing and campaign: each fixture uses its own campaign key.
+ -- The admin's session version is 1 here (raised by the identity checks above).
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state)
  VALUES('64000000-0000-4000-8000-000000000001','reconcile-lost@audit.invalid','reconcile-lost','reconcile-lost','sendcorex','uncertain') RETURNING id INTO lost;
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state)
@@ -178,17 +179,17 @@ BEGIN
  INSERT INTO outreach_email_attempts(listing_id,recipient,campaign_key,idempotency_key,provider,state,provider_email_id,accepted_at)
  VALUES('64000000-0000-4000-8000-000000000001','reconcile-done@audit.invalid','reconcile-done','reconcile-done','sendcorex','accepted','msg_done',now()) RETURNING id INTO done;
  IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000002',0,'control-owner@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'A non-admin reconciled an attempt'; END IF;
- IF NOT (SELECT changed AND audited=1 FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'Not-sent reconciliation failed'; END IF;
+ IF NOT (SELECT changed AND audited=1 FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'Not-sent reconciliation failed'; END IF;
  IF (SELECT state<>'failed' OR error_code<>'admin_reconciled_not_sent' OR failed_at IS NULL FROM outreach_email_attempts WHERE id=lost) THEN RAISE EXCEPTION 'Not-sent reconciliation recorded the wrong outcome'; END IF;
- IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'A reconciled attempt was reconciled again'; END IF;
- IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',found,'sent','msg_done','Synthetic: found in the provider log')) THEN RAISE EXCEPTION 'A provider id used by another attempt was accepted'; END IF;
- IF NOT (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',found,'sent','msg_found','Synthetic: found in the provider log')) THEN RAISE EXCEPTION 'Sent reconciliation failed'; END IF;
+ IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid',lost,'not_sent',NULL,'Synthetic: not in the provider log')) THEN RAISE EXCEPTION 'A reconciled attempt was reconciled again'; END IF;
+ IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid',found,'sent','msg_done','Synthetic: found in the provider log')) THEN RAISE EXCEPTION 'A provider id used by another attempt was accepted'; END IF;
+ IF NOT (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid',found,'sent','msg_found','Synthetic: found in the provider log')) THEN RAISE EXCEPTION 'Sent reconciliation failed'; END IF;
  IF (SELECT state<>'accepted' OR provider_email_id<>'msg_found' OR accepted_at IS NULL OR failed_at IS NOT NULL FROM outreach_email_attempts WHERE id=found) THEN RAISE EXCEPTION 'Sent reconciliation recorded the wrong outcome'; END IF;
- IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid',done,'not_sent',NULL,'Synthetic: rewriting a provider fact')) THEN RAISE EXCEPTION 'An accepted attempt was rewritten'; END IF;
+ IF (SELECT changed FROM pg_temp.attempt_reconcile('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid',done,'not_sent',NULL,'Synthetic: rewriting a provider fact')) THEN RAISE EXCEPTION 'An accepted attempt was rewritten'; END IF;
  IF (SELECT count(*) FROM audit_log WHERE action='outreach_reconcile_attempt')<>2 THEN RAISE EXCEPTION 'Reconciliation audit rows missing'; END IF;
  INSERT INTO outreach_recipient_consents(listing_id,recipient_email,evidence,provider,permission_kind)
  VALUES('64000000-0000-4000-8000-000000000001','suppress-me@audit.invalid','Synthetic opt-in receipt with date and recipient identity','resend','explicit_opt_in');
- IF NOT (SELECT changed AND audited=1 FROM pg_temp.address_suppress('63000000-0000-4000-8000-000000000001',0,'control-admin@audit.invalid','suppress-me@audit.invalid','Synthetic: replied asking to stop')) THEN RAISE EXCEPTION 'Address suppression failed'; END IF;
+ IF NOT (SELECT changed AND audited=1 FROM pg_temp.address_suppress('63000000-0000-4000-8000-000000000001',1,'control-admin@audit.invalid','suppress-me@audit.invalid','Synthetic: replied asking to stop')) THEN RAISE EXCEPTION 'Address suppression failed'; END IF;
  IF NOT EXISTS(SELECT 1 FROM outreach_email_suppressions WHERE recipient='suppress-me@audit.invalid' AND reason='manual') THEN RAISE EXCEPTION 'Suppression row missing'; END IF;
  IF EXISTS(SELECT 1 FROM outreach_recipient_consents WHERE recipient_email='suppress-me@audit.invalid' AND revoked_at IS NULL) THEN RAISE EXCEPTION 'Permission for a suppressed address left active'; END IF;
  IF (SELECT changed FROM pg_temp.address_suppress('63000000-0000-4000-8000-000000000002',0,'control-owner@audit.invalid','other-address@audit.invalid','Synthetic: not an admin')) THEN RAISE EXCEPTION 'A non-admin suppressed an address'; END IF;
