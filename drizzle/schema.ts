@@ -1194,7 +1194,9 @@ export const listingTrustedContacts = pgTable("listing_trusted_contacts", {
   source: varchar("source", { length: 64 }).notNull(),
   sourceReference: text("source_reference").notNull(),
   capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
-}, () => [check("listing_trusted_contacts_phone_check", sql.raw("phone ~ '^\\+[1-9][0-9]{7,14}$'"))]);
+}, t => [check("listing_trusted_contacts_phone_check", sql.raw("phone ~ '^\\+[1-9][0-9]{7,14}$'")),
+  // Claims look up every listing that shares a trusted phone (lib/claim-contact-policy.ts).
+  index("listing_trusted_contacts_phone_idx").on(t.phone)]);
 
 export const listingClaimVerifications = pgTable("listing_claim_verifications", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1357,3 +1359,14 @@ export const operatorTermsAcceptances = pgTable("operator_terms_acceptances", {
   uniqueIndex("operator_terms_acceptances_receipt_idx").on(t.listingId, t.operatorId, t.termsVersion, t.acceptedAt),
   check("operator_terms_acceptances_origin_check", sql.raw("record_origin in ('observed_existing','explicit_acceptance')")),
 ]);
+// Daily counters for paid provider calls a visitor can trigger (concierge, AI search,
+// text-to-speech, verification texts). One row per UTC day, feature and caller, plus a
+// site-wide row with bucket '*'. See lib/usage-budget-policy.ts and server/usage-budget.ts.
+export const usageBudgetCounters = pgTable("usage_budget_counters", {
+  day: date("day").notNull(),
+  feature: varchar("feature", { length: 32 }).notNull(),
+  bucket: varchar("bucket", { length: 80 }).notNull(),
+  calls: integer("calls").notNull().default(0),
+  units: integer("units").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [primaryKey({ columns: [t.day, t.feature, t.bucket] })]);

@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   searchListings: vi.fn(),
   bookingLaunchEnabled: vi.fn(async () => false),
 }));
+// The durable daily budget has its own tests (usage-budget*.test.ts); here every call fits.
+vi.mock("@/server/usage-budget", () => ({ consumeUsageBudget: async () => ({ allowed: true, durable: true }), budgetCaller: () => ({ ip: "203.0.113.9", userId: null }), budgetRefusal: () => { throw new Error("unexpected budget refusal"); } }));
 vi.mock("@/lib/env", () => ({ env: mocks.env }));
 vi.mock("@/lib/logger", () => ({ logger: { error: mocks.error } }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));

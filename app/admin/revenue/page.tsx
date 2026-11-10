@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DollarSign, TrendingUp, BarChart3, Globe, Loader2, CheckCircle, XCircle, Download } from "lucide-react";
+import { csvRow } from "@/lib/csv";
 
 type RevenueData = {
   totalRevenue: number;
@@ -331,7 +332,7 @@ export default function AdminRevenuePage() {
                   ["Payout ID", "Operator Name", "Operator Email", "Amount USD", "Bookings", "Period Start", "Period End"],
                   ...pendingPayouts.map((p) => [
                     p.id,
-                    `"${(p.operatorName || "").replace(/"/g, '""')}"`,
+                    p.operatorName || "",
                     p.operatorEmail,
                     Number(p.amount).toFixed(2),
                     String(p.bookingCount),
@@ -339,7 +340,7 @@ export default function AdminRevenuePage() {
                     p.periodEnd,
                   ]),
                 ];
-                const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+                const blob = new Blob([rows.map((r) => csvRow(r)).join("\n")], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;

@@ -24,6 +24,15 @@ BEGIN
  IF (SELECT count(*) FROM listing_trusted_contacts)<>1 THEN RAISE EXCEPTION 'Only independently sourced placeholder-owned import may be snapshotted'; END IF;
  IF vakaygo_listing_bookable(target) THEN RAISE EXCEPTION 'Imported active listing must be closed'; END IF;
  UPDATE listings SET type_data='{"unclaimed":false,"phone":"+14735550999","claimedAt":"forged","claimId":"forged"}' WHERE id=target;
+ -- A trusted phone recorded for two listings cannot show who runs either one (migration 0021).
+ INSERT INTO listing_trusted_contacts(listing_id,original_operator_id,phone,source,source_reference)
+ VALUES('61000000-0000-4000-8000-000000000003','60000000-0000-4000-8000-000000000001','+14735550123','google-places','ChIJ_SYNTHETIC_SHARED');
+ BEGIN
+  PERFORM vakaygo_begin_claim(target,actor,'VA_synthetic','AC_synthetic');
+  RAISE EXCEPTION 'Expected shared trusted phone rejection';
+ EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'VG_ONBOARDING:%shares its phone number%' THEN RAISE; END IF; END;
+ IF EXISTS(SELECT 1 FROM listing_claims WHERE listing_id=target) THEN RAISE EXCEPTION 'Shared trusted phone must not open a claim'; END IF;
+ DELETE FROM listing_trusted_contacts WHERE listing_id='61000000-0000-4000-8000-000000000003';
  verification:=vakaygo_begin_claim(target,actor,'VA_synthetic','AC_synthetic');
  SELECT v.target_phone,v.claim_id INTO target_phone,claim FROM listing_claim_verifications v WHERE v.id=verification;
  IF target_phone<>'+14735550123' THEN RAISE EXCEPTION 'Editable listing phone replaced trusted contact'; END IF;

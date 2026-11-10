@@ -12,6 +12,7 @@ import { PATCH } from "@/app/api/admin/claims/route";
 const enabled = process.env.VAKAYGO_CLAIM_DB_TESTS === "true";
 const actorId = "16000000-0000-4000-8000-000000000001", otherId = "16000000-0000-4000-8000-000000000002", adminId = "16000000-0000-4000-8000-000000000003";
 const listingId = "16100000-0000-4000-8000-000000000001";
+const siblingId = "16100000-0000-4000-8000-000000000002";
 const manualId = "16200000-0000-4000-8000-000000000001";
 const actorEmail = "owner@claim-fixture.invalid";
 const actor = { ok: true, userId: actorId, sessionVersion: 7, role: "operator", emailVerified: true, email: actorEmail };
@@ -47,7 +48,7 @@ describe.skipIf(!enabled)("enhanced claims against isolated PostgreSQL", () => {
   });
   beforeEach(async () => {
     await db`DELETE FROM listing_onboarding WHERE listing_id=${listingId}`;
-    await db`DELETE FROM listings WHERE id=${listingId}`;
+    await db`DELETE FROM listings WHERE id IN (${listingId},${siblingId})`;
     await db`UPDATE users SET email_verified=true,session_version=7 WHERE id IN (${actorId},${otherId},${adminId})`;
     await db`UPDATE users SET email=${actorEmail} WHERE id=${actorId}`;
     await db`INSERT INTO listings(id,operator_id,island_id,type,title,slug,status,price_amount,price_currency,price_unit,max_guests,type_data)
@@ -58,7 +59,7 @@ describe.skipIf(!enabled)("enhanced claims against isolated PostgreSQL", () => {
   afterAll(async () => {
     if (!db) return;
     await db`DELETE FROM listing_onboarding WHERE listing_id=${listingId}`;
-    await db`DELETE FROM listings WHERE id=${listingId}`;
+    await db`DELETE FROM listings WHERE id IN (${listingId},${siblingId})`;
     await db`DELETE FROM users WHERE id IN (${actorId},${otherId},${adminId})`;
     await db`DELETE FROM islands WHERE id=995016`;
   });
@@ -149,6 +150,28 @@ describe.skipIf(!enabled)("enhanced claims against isolated PostgreSQL", () => {
     expect(result.claim.id).toBe(started.claim.id);
     expect((await snapshot()).proofs[0].id).toBe(before.proofs[0].id);
     expect((await completeInstantDomainClaim(listingId, actorId, actorEmail)).claim.id).toBe(started.claim.id);
+  });
+  it("does not let an email address that another listing also publishes verify a claim automatically", async () => {
+    await db`INSERT INTO listings(id,operator_id,island_id,type,title,slug,status,price_amount,price_currency,price_unit,max_guests,type_data)
+      VALUES(${siblingId},${placeholderId},995016,'tour','Claim sibling','claim-audit-sibling','active',50,'USD','person',4,
+        ${JSON.stringify({ email: actorEmail, website: 'https://sibling-fixture.invalid', unclaimed: true })}::json)`;
+    const before = await snapshot();
+    await expect(start()).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/shares that contact/) });
+    await expect(completeInstantDomainClaim(listingId, actorId, actorEmail)).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/same email address/) });
+    expect(await snapshot()).toEqual(before); expect(state.mail).not.toHaveBeenCalled();
+  });
+  it("does not accept a mailbox on a domain that another listing also uses", async () => {
+    await db`INSERT INTO listings(id,operator_id,island_id,type,title,slug,status,price_amount,price_currency,price_unit,max_guests,type_data)
+      VALUES(${siblingId},${placeholderId},995016,'tour','Claim sibling','claim-audit-sibling','active',50,'USD','person',4,
+        ${JSON.stringify({ email: 'desk@elsewhere-fixture.invalid', website: 'https://www.claim-fixture.invalid/tours?ref=1', unclaimed: true })}::json)`;
+    const manager = 'manager@claim-fixture.invalid';
+    await db`UPDATE users SET email=${manager} WHERE id=${actorId}`;
+    state.auth.mockResolvedValue({ ...actor, email: manager });
+    await expect(completeInstantDomainClaim(listingId, actorId, manager)).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/same email or website domain/) });
+    const after = await snapshot(); expect(after.owners[0].operator_id).toBe(placeholderId); expect(after.claims).toHaveLength(0); expect(after.onboarding).toHaveLength(0);
+    // Without the sibling the same mailbox is accepted: the domain then belongs to this listing alone.
+    await db`DELETE FROM listings WHERE id=${siblingId}`;
+    expect((await completeInstantDomainClaim(listingId, actorId, manager)).claim.status).toBe("approved");
   });
   it("instant domain proof creates its first claim and onboarding atomically", async () => {
     await completeInstantDomainClaim(listingId, actorId, actorEmail);

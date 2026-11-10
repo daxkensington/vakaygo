@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const state = vi.hoisted(() => ({ session: vi.fn(), status: vi.fn(), reserve: vi.fn(), finish: vi.fn(), consume: vi.fn(), sms: vi.fn(), token: "synthetic" }));
+const state = vi.hoisted(() => ({ session: vi.fn(), status: vi.fn(), reserve: vi.fn(), finish: vi.fn(), consume: vi.fn(), sms: vi.fn(), budget: vi.fn(), token: "synthetic" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => state.token ? { value: state.token } : undefined }) }));
 vi.mock("@/server/session-validation", () => ({ verifyCurrentSessionToken: state.session }));
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
+vi.mock("@/server/usage-budget", async importOriginal => ({ ...await importOriginal<typeof import("@/server/usage-budget")>(), consumeUsageBudget: state.budget }));
 vi.mock("twilio", () => ({ default: () => ({ messages: { create: state.sms } }) }));
 vi.mock("@/server/phone-verification", async importOriginal => ({ ...await importOriginal<typeof import("@/server/phone-verification")>(), phoneStatus: state.status, reservePhoneCode: state.reserve, finishPhoneSend: state.finish, consumePhoneCode: state.consume }));
 import { GET, POST, PUT } from "@/app/api/auth/phone-verify/route";
@@ -16,6 +17,7 @@ beforeEach(() => {
   state.status.mockResolvedValue({ userId, phone, verified: true });
   state.reserve.mockResolvedValue({ id: "synthetic-challenge", code: "123456" });
   state.finish.mockResolvedValue(undefined); state.sms.mockResolvedValue({ sid: "synthetic-sms" });
+  state.budget.mockResolvedValue({ allowed: true, durable: true });
   state.consume.mockResolvedValue({ userId, phone, verified: true });
   vi.stubEnv("TWILIO_ACCOUNT_SID", "synthetic"); vi.stubEnv("TWILIO_AUTH_TOKEN", "synthetic"); vi.stubEnv("TWILIO_PHONE_NUMBER", phone);
 });
@@ -58,4 +60,27 @@ it("keeps the current code-only PUT contract and returns the actual verified pho
 it("propagates durable attempt/cooldown denials without another provider send", async () => {
   state.reserve.mockRejectedValueOnce(new PhoneVerificationError("Wait", 429)); expect((await POST(request({ phone }))).status).toBe(429); expect(state.sms).not.toHaveBeenCalled();
   state.consume.mockRejectedValueOnce(new PhoneVerificationError("Too many attempts", 429)); expect((await PUT(request({ code: "000000" }, "PUT"))).status).toBe(429);
+});
+it("refuses a destination outside the supported countries before reserving a code or spending the budget", async () => {
+  for (const destination of ["+79161234567", "+2348012345678", "+8801712345678", "+19005551234"]) {
+    const res = await POST(request({ phone: destination })); expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/cannot send verification texts/);
+  }
+  expect(state.reserve).not.toHaveBeenCalled(); expect(state.budget).not.toHaveBeenCalled(); expect(state.sms).not.toHaveBeenCalled();
+});
+it("counts a text against the account's daily budget only once a code is reserved, and sends nothing when it is spent", async () => {
+  expect((await POST(request({ phone }))).status).toBe(200);
+  expect(state.budget).toHaveBeenCalledTimes(1);
+  expect(state.budget.mock.calls[0][0]).toBe("phone_sms"); expect(state.budget.mock.calls[0][1]).toMatchObject({ userId });
+  expect(state.reserve.mock.invocationCallOrder[0]).toBeLessThan(state.budget.mock.invocationCallOrder[0]);
+  expect(state.budget.mock.invocationCallOrder[0]).toBeLessThan(state.sms.mock.invocationCallOrder[0]);
+  vi.clearAllMocks(); state.session.mockResolvedValue(actor); state.reserve.mockResolvedValue({ id: "synthetic-challenge", code: "123456" }); state.finish.mockResolvedValue(undefined);
+  for (const scope of ["caller", "global"] as const) {
+    state.budget.mockResolvedValueOnce({ allowed: false, scope, retryAfter: 3600, durable: true });
+    const res = await POST(request({ phone })); expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("3600"); expect((await res.json()).code).toBe("USAGE_BUDGET_EXHAUSTED");
+  }
+  expect(state.sms).not.toHaveBeenCalled();
+  // The reserved code is released so it cannot be used without having been sent.
+  expect(state.finish).toHaveBeenCalledTimes(2); expect(state.finish.mock.calls.every(call => call[2] === false)).toBe(true);
 });

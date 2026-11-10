@@ -16,12 +16,10 @@ import {
   startClaimVerification,
 } from "@/server/business-onboarding";
 
-const PUBLIC_EMAIL_DOMAINS = new Set([
-  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "yahoo.fr",
-  "hotmail.com", "outlook.com", "live.com", "msn.com", "icloud.com",
-  "me.com", "mac.com", "aol.com", "proton.me", "protonmail.com",
-  "zoho.com", "gmx.com", "mail.com", "yandex.com", "vakaygo.com"
-]);
+import {
+  INSTANT_CLAIM_MESSAGES, PUBLIC_EMAIL_DOMAINS, SHARED_CONTACT_MESSAGE,
+  automaticClaimChannels, instantClaimDecision, type ContactExclusivity,
+} from "@/lib/claim-contact-policy";
 
 function sql() {
   if (!process.env.DATABASE_URL) throw new OnboardingError("Business onboarding is unavailable", 503);
@@ -79,6 +77,33 @@ async function currentActor(operatorId: string): Promise<ClaimActor> {
 function matchesBusinessEmail(userEmail: string | null, businessEmail: string | null, website: unknown): boolean {
   const domain = extractDomain(userEmail);
   return !!userEmail && (userEmail === businessEmail || !!domain && [extractDomain(businessEmail), extractDomain(website)].includes(domain));
+}
+
+/**
+ * How many other listings share this listing's claim contacts. A contact that
+ * several listings share cannot prove who runs one of them, so it never
+ * verifies a claim automatically (lib/claim-contact-policy.ts).
+ */
+const CONTACT_EXCLUSIVITY_SQL = `WITH t AS (
+    SELECT l.id,nullif(lower(trim(l.type_data->>'email')),'') AS email,tc.phone
+    FROM listings l LEFT JOIN listing_trusted_contacts tc ON tc.listing_id=l.id WHERE l.id=$1::uuid
+  ) SELECT
+    (SELECT count(*) FROM listing_trusted_contacts o,t WHERE t.phone IS NOT NULL AND o.phone=t.phone AND o.listing_id<>t.id)::int AS "phoneSharedBy",
+    (SELECT count(*) FROM listings o,t WHERE t.email IS NOT NULL AND o.id<>t.id AND lower(trim(o.type_data->>'email'))=t.email)::int AS "emailSharedBy",
+    (SELECT count(*) FROM listings o,t WHERE $2::text IS NOT NULL AND o.id<>t.id AND (
+       split_part(lower(trim(coalesce(o.type_data->>'email',''))),'@',2)=$2
+       OR regexp_replace(regexp_replace(regexp_replace(lower(trim(coalesce(o.type_data->>'website',''))),
+            '^[a-z][a-z0-9+.-]*://',''),'^www[.]',''),'[/:?#].*$','')=$2))::int AS "domainSharedBy",
+    (SELECT count(*) FROM listing_claim_verifications v WHERE v.operator_id=$3::uuid AND v.service_sid='vakaygo_domain_verify'
+       AND v.status='verified' AND v.listing_id<>$1::uuid)::int AS "priorDomainClaims"`;
+
+async function claimContactExclusivity(listingId: string, operatorId: string, claimantDomain: string | null): Promise<ContactExclusivity> {
+  const [row] = await sql().query(CONTACT_EXCLUSIVITY_SQL, [listingId, claimantDomain, operatorId]) as Partial<ContactExclusivity>[];
+  const count = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+  return {
+    phoneSharedBy: count(row?.phoneSharedBy), emailSharedBy: count(row?.emailSharedBy),
+    domainSharedBy: count(row?.domainSharedBy), priorDomainClaims: count(row?.priorDomainClaims),
+  };
 }
 
 function escaped(value: string): string {
@@ -263,14 +288,15 @@ export async function getEnhancedClaimStatus(listingId: string, operatorId: stri
   const domainMatch = Boolean(
     userDomain && ((bizEmailDomain && userDomain === bizEmailDomain) || (bizWebDomain && userDomain === bizWebDomain))
   );
-  const instantEligible = exactEmailMatch || domainMatch;
+  const exclusivity = await claimContactExclusivity(listingId, operatorId, exactEmailMatch ? null : domainMatch ? userDomain : null);
+  const instantEligible = instantClaimDecision({ exactEmailMatch, domainMatch, claimantDomain: userDomain, exclusivity }).eligible;
   const emailHint = bizEmail ? maskEmail(bizEmail) : null;
 
-  const twilioAvailable = base.verification.available === true;
-  const emailOtpAvailable = Boolean(bizEmail);
-  const channels: ("sms" | "call" | "email")[] = [];
-  if (twilioAvailable) channels.push("sms", "call");
-  if (emailOtpAvailable) channels.push("email");
+  // A contact shared with other listings cannot prove who runs this one.
+  const { channels, sharedContact } = automaticClaimChannels({
+    phoneAvailable: base.verification.available === true, emailAvailable: Boolean(bizEmail), exclusivity,
+  });
+  const automatic = channels.length > 0;
 
   return {
     ...base,
@@ -278,14 +304,15 @@ export async function getEnhancedClaimStatus(listingId: string, operatorId: stri
       ...base.listing,
       emailHint,
       instantEligible,
-      matchedDomain: domainMatch ? userDomain : exactEmailMatch ? bizEmail : null,
+      matchedDomain: !instantEligible ? null : exactEmailMatch ? bizEmail : userDomain,
     },
     verification: {
       ...base.verification,
       emailHint,
       instantEligible,
-      available: twilioAvailable || emailOtpAvailable,
-      canStart: (twilioAvailable || emailOtpAvailable) && base.verification.state !== "pending" && !base.verification.busyUntil,
+      available: automatic,
+      canStart: automatic && base.verification.state !== "pending" && !base.verification.busyUntil,
+      reason: automatic ? base.verification.reason : sharedContact ? "shared_contact" : base.verification.reason,
       channels,
     },
   };
@@ -301,6 +328,8 @@ export async function startEnhancedClaimVerification(
   if (!["sms", "call", "email"].includes(channel)) throw new OnboardingError("Choose email, text message or voice call");
   const actor = await currentActor(operatorId);
   if (cleanEmail(operatorEmail) !== cleanEmail(actor.email)) throw new OnboardingError("Your account changed. Please sign in again.", 401);
+  const exclusivity = await claimContactExclusivity(listingId, operatorId, null);
+  if ((channel === "email" ? exclusivity.emailSharedBy : exclusivity.phoneSharedBy) > 0) throw new OnboardingError(SHARED_CONTACT_MESSAGE, 409);
   if (channel === "sms" || channel === "call") return startClaimVerification(listingId, operatorId, channel);
   const db = sql();
   const [row] = await db`
@@ -409,10 +438,20 @@ export async function completeInstantDomainClaim(listingId: string, operatorId: 
     FROM listings WHERE id=${listingId}::uuid`;
   const businessEmail = cleanEmail(meta?.business_email), userEmail = cleanEmail(operatorEmail);
   const website = typeof meta?.website === "string" ? meta.website : null;
+  const exactEmailMatch = !!userEmail && userEmail === businessEmail;
+  const matches = matchesBusinessEmail(userEmail, businessEmail, website);
+  const claimantDomain = extractDomain(userEmail);
+  // Possession of a mailbox proves this listing only when its address or domain
+  // belongs to this listing alone; otherwise the claim needs a code or a review.
+  const decision = instantClaimDecision({
+    exactEmailMatch, domainMatch: matches && !exactEmailMatch, claimantDomain,
+    exclusivity: await claimContactExclusivity(listingId, operatorId, exactEmailMatch ? null : matches ? claimantDomain : null),
+  });
+  if (matches && !decision.eligible && decision.reason) throw new OnboardingError(INSTANT_CLAIM_MESSAGES[decision.reason], 409);
   const claimId = await finalizeVerifiedClaimInDb(listingId, operatorId, actor, {
     kind: "domain", operatorEmail: userEmail || "", businessEmail, website,
-    matches: matchesBusinessEmail(userEmail, businessEmail, website),
-  }, "Verified via matching business email/domain");
+    matches: matches && decision.eligible,
+  }, exactEmailMatch ? "Verified via the business email address" : "Verified via the business email domain");
   return { claim: { id: claimId, status: "approved" }, verification: { state: "verified" }, onboardingUrl: "/operator/onboarding/" + listingId };
 }
 

@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ search: vi.fn(), details: vi.fn(), availability: vi.fn(), island: vi.fn(), compare: vi.fn(), actor: vi.fn(), execute: vi.fn(), send: vi.fn(), booking: vi.fn() }));
+// The durable daily budget has its own tests (usage-budget*.test.ts); here every call fits.
+vi.mock("@/server/usage-budget", () => ({ consumeUsageBudget: async () => ({ allowed: true, durable: true }), budgetCaller: () => ({ ip: "203.0.113.9", userId: null }), budgetRefusal: () => { throw new Error("unexpected budget refusal"); } }));
 vi.mock("@/lib/env", () => ({ env: { ANTHROPIC_API_KEY: "synthetic-unused-key", ANTHROPIC_CONCIERGE_MODEL: "synthetic-model" } }));
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 vi.mock("@/server/admin-auth", () => ({ verifySession: state.actor }));
