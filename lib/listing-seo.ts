@@ -55,13 +55,50 @@ export function cleanLocationLabel(parish: string | null | undefined, islandName
 
 const TITLE_TARGET = 65;
 
-/** Business name first; then the place; then the hook, each only while it fits. */
+const COMPACT_HOOKS: Record<string, string> = {
+  "Menu, Hours & Location": "Menu & Hours",
+  "Hours, Photos & Location": "Hours & Photos",
+  "Photos, Amenities & Location": "Photos & Amenities",
+  "Activity Details & Photos": "Details & Photos",
+  "Tour Details & Photos": "Tours & Photos",
+  "Services, Hours & Location": "Services & Hours",
+  "Rentals, Contact & Location": "Rentals & Contact",
+  "Transfer Details & Location": "Transfer Details",
+  "Event Details & Location": "Event Details",
+  "Services & Location": "Services",
+  "Guide Details & Location": "Guide Details",
+  "Details, Photos & Location": "Details & Photos",
+};
+
+export function compactListingHook(hook: string): string {
+  return COMPACT_HOOKS[hook] || hook.replace(/,\s*Location$/i, "").replace(/\s*&\s*Location$/i, "").trim() || hook;
+}
+
+/** Business name first; then the place; then the hook, shedding verbosity before losing the hook. */
 export function buildListingTitle(name: string, location: string, hook: string): string {
   const title = name.replace(/\s+/g, " ").trim();
   const full = `${title} (${location}) — ${hook}`;
   if (full.length <= TITLE_TARGET) return full;
+
+  const shortHook = compactListingHook(hook);
+  const compact = `${title} (${location}) — ${shortHook}`;
+  if (compact.length <= TITLE_TARGET) return compact;
+
+  const commaIdx = location.lastIndexOf(", ");
+  const destinationOnly = commaIdx >= 0 ? location.slice(commaIdx + 2).trim() : "";
+  if (destinationOnly) {
+    const destFull = `${title} (${destinationOnly}) — ${hook}`;
+    if (destFull.length <= TITLE_TARGET) return destFull;
+    const destCompact = `${title} (${destinationOnly}) — ${shortHook}`;
+    if (destCompact.length <= TITLE_TARGET) return destCompact;
+  }
+
   const placed = `${title}, ${location}`;
   if (placed.length <= TITLE_TARGET) return placed;
+  if (destinationOnly) {
+    const destPlaced = `${title}, ${destinationOnly}`;
+    if (destPlaced.length <= TITLE_TARGET) return destPlaced;
+  }
   return title;
 }
 
