@@ -28,6 +28,12 @@ describe("listing titles", () => {
   });
   it("keeps the business name first and stays near 65 characters", () => {
     expect(buildListingTitle("Dive Grenada", "St George's, Grenada", "Tour Details & Photos")).toBe("Dive Grenada (St George's, Grenada) — Tour Details & Photos");
+    const townDining = buildListingTitle("Twin Brothers Seafood", "Nassau, The Bahamas", "Menu, Hours & Location");
+    expect(townDining).toBe("Twin Brothers Seafood (Nassau, The Bahamas) — Menu & Hours");
+    expect(townDining.length).toBeLessThanOrEqual(65);
+    const townSpa = buildListingTitle("Anytime Wellness Ltd.", "George Town, Cayman Islands", "Services, Hours & Location");
+    expect(townSpa).toBe("Anytime Wellness Ltd. (Cayman Islands) — Services & Hours");
+    expect(townSpa.length).toBeLessThanOrEqual(65);
     const long = buildListingTitle("Bungalow on the Beach", "St Vincent and the Grenadines", "Photos, Amenities & Location");
     expect(long).toBe("Bungalow on the Beach, St Vincent and the Grenadines");
     expect(long.length).toBeLessThanOrEqual(65);
