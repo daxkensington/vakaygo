@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DESTINATION_ESSENTIALS } from "@/lib/destination-facts";
 import { BUSINESS_MAILING_ADDRESS, OPERATING_BUSINESS } from "@/lib/brand";
+import { buildLlmsFullTxt, LLMS_DESTINATION_DIRECTORY } from "@/lib/llms-full";
+import { GET as getLlmsFullTxt } from "@/app/llms-full.txt/route";
 
 const root = process.cwd();
 const llms = readFileSync(join(root, "public", "llms.txt"), "utf8");
@@ -63,5 +65,45 @@ describe("public/llms.txt", () => {
     expect(llms).not.toMatch(/Headquarters/i);
     expect(llms).not.toMatch(/direct customer communication/i);
     expect(llms).not.toMatch(/generally safe|is safe|safe destination/i);
+  });
+});
+
+describe("/llms-full.txt route and builder", () => {
+  it("summarizes all 34 destinations, topic hubs, travel essentials, and /guides/* hubs", async () => {
+    const full = buildLlmsFullTxt([
+      {
+        slug: "caribbean-packing-list",
+        title: "Caribbean Packing List",
+        category: "planning",
+        islandName: null,
+      },
+    ]);
+
+    expect(LLMS_DESTINATION_DIRECTORY).toHaveLength(slugs.length);
+    for (const slug of slugs) {
+      expect(full).toContain(`https://vakaygo.com/${slug}`);
+      expect(full).toContain(`https://vakaygo.com/things-to-do-in-${slug}`);
+      expect(full).toContain(`https://vakaygo.com/best-hotels-${slug}`);
+      expect(full).toContain(`https://vakaygo.com/best-restaurants-${slug}`);
+    }
+    for (const entry of LLMS_DESTINATION_DIRECTORY) {
+      expect(full).toContain(`https://vakaygo.com/guides/${entry.guideSlug}`);
+    }
+    expect(full).toContain("https://vakaygo.com/guides/caribbean-packing-list");
+    expect(full).toContain(`${OPERATING_BUSINESS}, ${BUSINESS_MAILING_ADDRESS}`);
+    expect(full).toContain(
+      "Online booking is available only on listings whose business has claimed the listing and completed setup",
+    );
+    expect(full).not.toMatch(/Direct Booking Platform/i);
+    expect(full).not.toMatch(/\bverified\b/i);
+    expect(full).not.toMatch(/Headquarters/i);
+    expect(full).not.toMatch(/generally safe|is safe|safe destination/i);
+
+    const response = await getLlmsFullTxt();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain("text/plain");
+    const responseText = await response.text();
+    expect(responseText).toContain("# VakayGo — Full Travel Planning Reference");
+    expect(responseText).toContain("https://vakaygo.com/best-hotels-grenada");
   });
 });

@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/pricing";
 import { getImageUrl } from "@/lib/image-utils";
 import { buildBestRestaurantsFaqs, hubTitleYear } from "@/lib/destination-faqs";
 import { buildHubListItem } from "@/lib/hub-structured-data";
+import { buildTopicHubTitle, clipMetaDescription } from "@/lib/listing-seo";
 import {
   Star,
   MapPin,
@@ -46,11 +47,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const island = await getIslandBySlug(slug);
   if (!island) return { title: "Not Found" };
 
-  const title = `Best Restaurants in ${island.name} (${hubTitleYear()}) — Top Dining & Food Guide`;
-  const description = `The best restaurants in ${island.name}: local cuisine, beach bars and fine dining with hours, location and Google ratings, side by side on VakayGo.`;
+  const title = buildTopicHubTitle("Best Restaurants", island.name, hubTitleYear(), "Local Dining");
+  const description = clipMetaDescription(
+    `Compare restaurants, beach bars and local dining in ${island.name} — menus, hours, locations and Google ratings side by side on VakayGo.`,
+  );
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: `https://vakaygo.com/best-restaurants-${slug}`,

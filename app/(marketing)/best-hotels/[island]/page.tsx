@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/pricing";
 import { getImageUrl } from "@/lib/image-utils";
 import { buildBestHotelsFaqs, hubTitleYear } from "@/lib/destination-faqs";
 import { buildHubListItem } from "@/lib/hub-structured-data";
+import { buildTopicHubTitle, clipMetaDescription } from "@/lib/listing-seo";
 import {
   Star,
   MapPin,
@@ -47,11 +48,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const island = await getIslandBySlug(slug);
   if (!island) return { title: "Not Found" };
 
-  const title = `Best Hotels in ${island.name} (${hubTitleYear()}) — Top Stays & Accommodations`;
-  const description = `Compare hotels, villas, resorts, guesthouses and vacation rentals in ${island.name}: photos, amenities, location and Google ratings, side by side on VakayGo.`;
+  const title = buildTopicHubTitle("Best Hotels", island.name, hubTitleYear(), "Stays & Villas");
+  const description = clipMetaDescription(
+    `Compare hotels, villas, resorts and vacation rentals in ${island.name} — photos, amenities, location and Google ratings side by side on VakayGo.`,
+  );
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: `https://vakaygo.com/best-hotels-${slug}`,

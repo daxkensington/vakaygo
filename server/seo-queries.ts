@@ -101,6 +101,8 @@ export type ListingSeoMeta = {
   islandSlug: string;
   islandName: string;
   status: string;
+  cuisineType: string | null;
+  typeData: Record<string, unknown> | null;
   /** A menu or menu PDF is on file (titles promise "Menu" only then). */
   hasMenu?: boolean;
 };
@@ -137,7 +139,9 @@ export const getListingForSeo = cache(
         islandSlug: islands.slug,
         islandName: islands.name,
         status: listings.status,
-        hasMenu: sql<boolean>`(coalesce(${listings.typeData}->>'menu','')<>'' OR coalesce(${listings.typeData}->>'menuPdfUrl','')<>'')`,
+        cuisineType: listings.cuisineType,
+        typeData: listings.typeData,
+        hasMenu: sql<boolean>`(coalesce(${listings.typeData}->>'menu','')<>'' OR coalesce(${listings.typeData}->>'menuPdfUrl','')<>'' OR coalesce(${listings.typeData}->>'menuUrl','')<>'')`,
       })
       .from(listings)
       .innerJoin(islands, eq(listings.islandId, islands.id))

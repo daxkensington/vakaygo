@@ -13,6 +13,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { LocaleHtmlAttrs } from "@/components/layout/locale-html-attrs";
 import { FlagEmojiSupport } from "@/components/layout/flag-emoji-support";
 import { SkipToContent } from "@/components/layout/skip-to-content";
+import { HOMEPAGE_DESCRIPTION, HOMEPAGE_TITLE } from "@/lib/page-metadata";
 import "./globals.css";
 
 const dmSans = localFont({
@@ -76,11 +77,10 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   title: {
-    default: "VakayGo — Sun & Sea Travel Across the Caribbean, Latin America & Mediterranean",
+    default: HOMEPAGE_TITLE,
     template: "%s | VakayGo",
   },
-  description:
-    "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
+  description: HOMEPAGE_DESCRIPTION,
   keywords: [
     "Caribbean travel",
     "Mediterranean travel",
@@ -101,9 +101,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://vakaygo.com",
     siteName: "VakayGo",
-    title: "VakayGo — Sun & Sea Travel Across the Caribbean, Latin America & Mediterranean",
-    description:
-      "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
+    title: HOMEPAGE_TITLE,
+    description: HOMEPAGE_DESCRIPTION,
     images: [
       {
         url: "https://vakaygo.com/images/hero/caribbean-hero.jpg",
@@ -116,9 +115,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@vakaygo",
-    title: "VakayGo — Sun & Sea Travel Across the Caribbean, Latin America & Mediterranean",
-    description:
-      "Explore local stays, boat charters, tours, restaurants, and businesses across 34 Caribbean, Latin American, and Mediterranean destinations. Save places and plan your trip for free.",
+    title: HOMEPAGE_TITLE,
+    description: HOMEPAGE_DESCRIPTION,
     images: ["https://vakaygo.com/images/hero/caribbean-hero.jpg"],
   },
 };

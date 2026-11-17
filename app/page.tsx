@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-export const metadata: Metadata = { alternates: { canonical: "https://vakaygo.com/" } };
+import { HOMEPAGE_DESCRIPTION, HOMEPAGE_TITLE } from "@/lib/page-metadata";
+export const metadata: Metadata = {
+  title: { absolute: HOMEPAGE_TITLE },
+  description: HOMEPAGE_DESCRIPTION,
+  alternates: { canonical: "https://vakaygo.com/" },
+};
 import { Hero } from "@/components/landing/hero";
 import { MapAiSpotlight } from "@/components/landing/map-ai-spotlight";
 import { FeaturedListings } from "@/components/landing/featured-listings";

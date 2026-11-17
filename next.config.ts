@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
   // The home directory also has a lockfile. Without an explicit root, Next
   // treats C:\Users\ianwe as the app and cannot resolve this project's CSS.
   turbopack: { root: process.cwd() },
+  // Always resolve generateMetadata into <head> before streaming HTML so
+  // Googlebot, social card bots, and AI answer-engine crawlers never receive
+  // dynamic listing/destination metadata deferred into <body>.
+  htmlLimitedBots: /.*/,
   images: {
     qualities: [75, 80],
     // Listing photos are immutable Blob objects (new photo = new URL), so

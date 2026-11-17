@@ -5,7 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/layout/header";
 
-export const metadata: Metadata = staticPageMetadata("/islands", "Explore 34 Caribbean, Latin America & Mediterranean Destinations", "Discover stays, boat charters, tours, dining, and experiences across 34 Caribbean, Latin American, and Mediterranean destinations with 0% guest booking fees on VakayGo.");
+export const metadata: Metadata = staticPageMetadata(
+  "/islands",
+  "34 Caribbean, LatAm & Mediterranean Destinations",
+  "Explore local stays, boat charters, tours, and restaurants across 34 Caribbean, Latin American, and Mediterranean destinations on VakayGo.",
+);
 import { Footer } from "@/components/layout/footer";
 import { MapPin, ArrowRight } from "lucide-react";
 import { getIslandFlag } from "@/lib/island-flags";

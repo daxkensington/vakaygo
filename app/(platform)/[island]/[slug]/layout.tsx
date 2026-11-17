@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { resolveListingRedirect } from "@/server/listing-redirects";
 import { getListingForSeo } from "@/server/seo-queries";
-import { buildListingTitle, cleanLocationLabel, listingTitleHook, stripTemplatedDescription } from "@/lib/listing-seo";
+import {
+  buildListingDescription,
+  buildListingTitle,
+  cleanLocationLabel,
+  listingTitleHook,
+  type ListingSeoOptions,
+} from "@/lib/listing-seo";
 
 type Props = {
   children: React.ReactNode;
@@ -22,12 +28,6 @@ const typeLabels: Record<string, string> = {
   spa: "Spa & Wellness",
 };
 
-function clipMetaDescription(raw: string): string {
-  const normalized = raw.replace(/\s+/g, " ").trim();
-  if (normalized.length <= 158) return normalized;
-  return `${normalized.slice(0, 155).replace(/\s+\S*$/, "").replace(/[,;:.\s]+$/, "")}…`;
-}
-
 export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
   const { island, slug } = await params;
   const listing = await getListingForSeo(island, slug);
@@ -35,7 +35,16 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
 
   const typeLabel = typeLabels[listing.type] || "Listing";
   const locationLabel = cleanLocationLabel(listing.parish, listing.islandName);
-  const hook = listingTitleHook(listing.type, { hasMenu: listing.hasMenu === true });
+  const td = listing.typeData || {};
+  const seoOptions: ListingSeoOptions = {
+    hasMenu: listing.hasMenu === true,
+    name: listing.title,
+    category: typeof td.category === "string" ? td.category : null,
+    cuisineType:
+      listing.cuisineType || (typeof td.cuisineType === "string" ? td.cuisineType : null),
+    googleTypes: td.googleTypes,
+  };
+  const hook = listingTitleHook(listing.type, seoOptions);
   const isAutoMetaTitle = listing.metaTitle
     ? /\s[-—]\s[^|]+\sin\s[^|]+\|\s*VakayGo$/i.test(listing.metaTitle.trim())
     : false;
@@ -44,12 +53,17 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   const title =
     (listing.metaTitle && !isAutoMetaTitle ? listing.metaTitle : null) ||
     buildListingTitle(listing.title, locationLabel, hook);
-  const rawDescription =
-    listing.metaDescription ||
-    stripTemplatedDescription(listing.description) ||
-    listing.headline ||
-    `${listing.title} — ${hook.toLowerCase()} for this ${typeLabel.toLowerCase()} in ${locationLabel} on VakayGo.`;
-  const description = clipMetaDescription(rawDescription);
+  const description = buildListingDescription({
+    name: listing.title,
+    type: listing.type,
+    typeLabel,
+    location: locationLabel,
+    hook,
+    metaDescription: listing.metaDescription,
+    description: listing.description,
+    headline: listing.headline,
+    options: seoOptions,
+  });
   const url = `https://vakaygo.com/${island}/${slug}`;
   const ogCardUrl = `https://vakaygo.com/api/og?title=${encodeURIComponent(listing.title)}&subtitle=${encodeURIComponent(`${typeLabel} in ${locationLabel}`)}`;
   const ogImages =
