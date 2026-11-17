@@ -10,13 +10,13 @@ import type { Metadata } from "next";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Global Sun & Sea Travel Guides — Caribbean, Latin America & Mediterranean",
+  title: "Caribbean, LatAm & Mediterranean Travel Guides",
   description:
-    "Expert destination guides, local culture insights, restaurant recommendations, and trip planning advice across 34 Caribbean, Latin American, and Mediterranean hubs.",
+    "Destination guides, local culture insights, dining tips, and trip planning advice across 34 Caribbean, Latin American, and Mediterranean hubs.",
   openGraph: {
-    title: "Global Sun & Sea Travel Guides | VakayGo",
+    title: "Caribbean, LatAm & Mediterranean Travel Guides | VakayGo",
     description:
-      "Expert destination guides, local culture insights, restaurant recommendations, and trip planning advice across 34 coastal hubs.",
+      "Destination guides, local culture insights, dining tips, and trip planning advice across 34 Caribbean, Latin American, and Mediterranean hubs.",
     url: "https://vakaygo.com/guides",
     type: "website",
   },

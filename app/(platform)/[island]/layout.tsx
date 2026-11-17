@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { buildDestinationHubTitle, clipMetaDescription } from "@/lib/listing-seo";
 import { getIslandBySlug } from "@/server/seo-queries";
 
 type Props = {
@@ -15,12 +16,11 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
   // Use title.absolute so the chain "root template → [island] → [slug]"
   // resolves the same regardless of nesting depth (it doesn't otherwise
   // — template inheritance through nested segments was inconsistent).
-  const countryLabel =
-    island.country && island.country !== island.name ? `, ${island.country}` : "";
-  const title = `${island.name}${countryLabel} — Stays, Tours & Experiences | VakayGo`;
-  const description =
+  const title = buildDestinationHubTitle(island.name, island.country);
+  const description = clipMetaDescription(
     island.description ||
-    `Explore stays, tours, dining, and experiences in ${island.name}. Compare local businesses, photos, and locations on VakayGo.`;
+      `Explore stays, tours, dining, and experiences in ${island.name}. Compare local businesses, photos, and locations on VakayGo.`,
+  );
   const url = `https://vakaygo.com/${slug}`;
 
   return {

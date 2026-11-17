@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 const ORIGIN = "https://vakaygo.com";
 const SHARE_IMAGE = { url: `${ORIGIN}/images/hero/caribbean-hero.jpg`, width: 1200, height: 630, alt: "VakayGo" };
 
+export const HOMEPAGE_TITLE = "VakayGo — Caribbean, LatAm & Med Tours, Stays & Dining";
+export const HOMEPAGE_DESCRIPTION =
+  "Explore local stays, tours, boat charters, and restaurants across 34 Caribbean, Latin American, and Mediterranean destinations. Plan your trip on VakayGo.";
+
 /**
  * Metadata for a static page. A child segment that sets only a title inherits
  * the root layout's description and Open Graph url/title, so every such page

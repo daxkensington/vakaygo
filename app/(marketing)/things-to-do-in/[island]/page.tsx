@@ -10,6 +10,7 @@ import { getIslandBySlug, getTopListingsByType, getIslandStats } from "@/server/
 import { formatCurrency } from "@/lib/pricing";
 import { getImageUrl } from "@/lib/image-utils";
 import { buildThingsToDoFaqs, hubTitleYear } from "@/lib/destination-faqs";
+import { buildTopicHubTitle, clipMetaDescription } from "@/lib/listing-seo";
 import {
   Star,
   MapPin,
@@ -44,11 +45,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const island = await getIslandBySlug(slug);
   if (!island) return { title: "Not Found" };
 
-  const title = `Things to Do in ${island.name} (${hubTitleYear()}) — Top Attractions & Experiences`;
-  const description = `Discover the best things to do in ${island.name}. Explore top tours, restaurants, hotels, events, and local experiences. Plan your ${island.name} trip with VakayGo.`;
+  const title = buildTopicHubTitle("Things to Do", island.name, hubTitleYear(), "Tours & Beaches");
+  const description = clipMetaDescription(
+    `Discover top things to do in ${island.name} — local tours, boat charters, beaches, restaurants, stays, and experiences on VakayGo.`,
+  );
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: `https://vakaygo.com/things-to-do-in-${slug}`,

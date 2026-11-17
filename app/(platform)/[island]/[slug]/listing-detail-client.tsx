@@ -604,8 +604,8 @@ export function ListingDetailClient({
                 <TourItinerary itinerary={td.itinerary as { stopNumber: number; title: string; description: string; duration?: string; time?: string }[]} />
               )}
 
-              {/* Dining Menu */}
-              {listing.type === "dining" && td.menu && Array.isArray(td.menu) && (
+              {/* Dining / Venue Menu */}
+              {Array.isArray(td.menu) && td.menu.length > 0 && (
                 <DiningMenu menu={td.menu as { section: string; items: { name: string; description?: string; price?: string }[] }[]} />
               )}
 
